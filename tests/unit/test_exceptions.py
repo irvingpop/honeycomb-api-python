@@ -254,11 +254,7 @@ class TestRaiseForStatus:
 
     def test_jsonapi_error_format(self):
         """Test parsing JSON:API error format."""
-        body = {
-            "errors": [
-                {"title": "Not Found", "detail": "Resource does not exist"}
-            ]
-        }
+        body = {"errors": [{"title": "Not Found", "detail": "Resource does not exist"}]}
         with pytest.raises(HoneycombNotFoundError) as exc_info:
             raise_for_status(404, body)
 

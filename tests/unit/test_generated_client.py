@@ -1,6 +1,5 @@
 """Smoke tests for the generated Honeycomb API client."""
 
-
 from honeycomb._generated import AuthenticatedClient
 from honeycomb._generated.models.dataset import Dataset
 from honeycomb._generated.models.slo import SLO

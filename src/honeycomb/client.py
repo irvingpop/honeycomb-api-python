@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from contextlib import suppress
+from dataclasses import dataclass
+from datetime import datetime
+from email.utils import parsedate_to_datetime
 from typing import TYPE_CHECKING, Any
 
 import httpx
@@ -32,6 +36,45 @@ DEFAULT_TIMEOUT = 30.0
 DEFAULT_MAX_RETRIES = 3
 
 
+@dataclass
+class RetryConfig:
+    """Configuration for retry behavior.
+
+    Attributes:
+        max_retries: Maximum number of retry attempts.
+        base_delay: Base delay in seconds for exponential backoff.
+        max_delay: Maximum delay in seconds between retries.
+        exponential_base: Base for exponential backoff calculation.
+        retry_statuses: HTTP status codes that should trigger a retry.
+    """
+
+    max_retries: int = 3
+    base_delay: float = 1.0
+    max_delay: float = 30.0
+    exponential_base: float = 2.0
+    retry_statuses: set[int] = None  # type: ignore
+
+    def __post_init__(self) -> None:
+        """Initialize default retry statuses if not provided."""
+        if self.retry_statuses is None:
+            self.retry_statuses = {429, 500, 502, 503, 504}
+
+
+@dataclass
+class RateLimitInfo:
+    """Rate limit information from response headers.
+
+    Attributes:
+        limit: Total requests allowed in the time window.
+        remaining: Remaining requests in the current time window.
+        reset: Seconds until the rate limit resets.
+    """
+
+    limit: int | None = None
+    remaining: int | None = None
+    reset: int | None = None
+
+
 class HoneycombClient:
     """Async-first client for the Honeycomb API.
 
@@ -53,6 +96,7 @@ class HoneycombClient:
         base_url: API base URL (default: https://api.honeycomb.io).
         timeout: Request timeout in seconds (default: 30).
         max_retries: Maximum retry attempts for failed requests (default: 3).
+        retry_config: Custom retry configuration (optional, overrides max_retries).
         sync: If True, use synchronous HTTP client (default: False).
     """
 
@@ -65,6 +109,7 @@ class HoneycombClient:
         base_url: str = DEFAULT_BASE_URL,
         timeout: float = DEFAULT_TIMEOUT,
         max_retries: int = DEFAULT_MAX_RETRIES,
+        retry_config: RetryConfig | None = None,
         sync: bool = False,
     ) -> None:
         self._auth = create_auth(
@@ -75,6 +120,7 @@ class HoneycombClient:
         self._base_url = base_url.rstrip("/")
         self._timeout = timeout
         self._max_retries = max_retries
+        self._retry_config = retry_config or RetryConfig(max_retries=max_retries)
         self._sync_mode = sync
 
         # HTTP clients (lazily initialized)
@@ -189,6 +235,79 @@ class HoneycombClient:
     # Request methods (internal)
     # -------------------------------------------------------------------------
 
+    def _parse_rate_limit_headers(self, response: httpx.Response) -> RateLimitInfo:
+        """Parse rate limit information from response headers.
+
+        Supports multiple header formats:
+        - RateLimit: limit=100, remaining=50, reset=60
+        - X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
+        """
+        info = RateLimitInfo()
+
+        # Try structured RateLimit header (RFC draft)
+        if "RateLimit" in response.headers:
+            rate_limit = response.headers["RateLimit"]
+            for part in rate_limit.split(","):
+                part = part.strip()
+                if "=" in part:
+                    key, value = part.split("=", 1)
+                    key = key.strip()
+                    try:
+                        if key == "limit":
+                            info.limit = int(value)
+                        elif key == "remaining":
+                            info.remaining = int(value)
+                        elif key == "reset":
+                            info.reset = int(value)
+                    except ValueError:
+                        pass
+
+        # Try X-RateLimit-* headers (common format)
+        if "X-RateLimit-Limit" in response.headers:
+            with suppress(ValueError):
+                info.limit = int(response.headers["X-RateLimit-Limit"])
+
+        if "X-RateLimit-Remaining" in response.headers:
+            with suppress(ValueError):
+                info.remaining = int(response.headers["X-RateLimit-Remaining"])
+
+        if "X-RateLimit-Reset" in response.headers:
+            with suppress(ValueError):
+                info.reset = int(response.headers["X-RateLimit-Reset"])
+
+        return info
+
+    def _parse_retry_after(self, response: httpx.Response) -> int | None:
+        """Parse Retry-After header.
+
+        Supports both formats:
+        - Delay-seconds: "60"
+        - HTTP-date: "Wed, 21 Oct 2015 07:28:00 GMT"
+
+        Returns:
+            Number of seconds to wait, or None if header not present.
+        """
+        retry_after = response.headers.get("Retry-After")
+        if not retry_after:
+            return None
+
+        # Try parsing as integer (seconds)
+        try:
+            return int(retry_after)
+        except ValueError:
+            pass
+
+        # Try parsing as HTTP date (RFC 7231)
+        try:
+            retry_date = parsedate_to_datetime(retry_after)
+            now = datetime.now(retry_date.tzinfo)
+            delta = (retry_date - now).total_seconds()
+            return max(int(delta), 0)
+        except (ValueError, TypeError):
+            pass
+
+        return None
+
     def _parse_error_response(self, response: httpx.Response) -> tuple[str, list[dict] | None]:
         """Parse error message from response body.
 
@@ -242,9 +361,8 @@ class HoneycombClient:
         elif status == 422:
             raise HoneycombValidationError(message, status, request_id, errors=errors)
         elif status == 429:
-            retry_after = response.headers.get("Retry-After")
-            retry_seconds = int(retry_after) if retry_after else None
-            raise HoneycombRateLimitError(message, status, request_id, retry_after=retry_seconds)
+            retry_after = self._parse_retry_after(response)
+            raise HoneycombRateLimitError(message, status, request_id, retry_after=retry_after)
         elif 500 <= status < 600:
             raise HoneycombServerError(message, status, request_id)
         else:
@@ -252,16 +370,26 @@ class HoneycombClient:
 
     def _should_retry(self, response: httpx.Response, attempt: int) -> bool:
         """Determine if request should be retried."""
-        if attempt >= self._max_retries:
+        if attempt >= self._retry_config.max_retries:
             return False
-        return response.status_code in {429, 500, 502, 503, 504}
+        return response.status_code in self._retry_config.retry_statuses
 
     def _calculate_backoff(self, attempt: int, retry_after: int | None = None) -> float:
-        """Calculate backoff delay for retry."""
+        """Calculate backoff delay for retry.
+
+        Args:
+            attempt: The current retry attempt number (0-indexed).
+            retry_after: Explicit retry delay in seconds from server (optional).
+
+        Returns:
+            Number of seconds to wait before retrying.
+        """
         if retry_after:
             return float(retry_after)
-        # Exponential backoff: 1s, 2s, 4s, ...
-        return min(2**attempt, 30.0)
+
+        # Exponential backoff: base_delay * (exponential_base ^ attempt)
+        delay = self._retry_config.base_delay * (self._retry_config.exponential_base**attempt)
+        return min(delay, self._retry_config.max_delay)
 
     # -------------------------------------------------------------------------
     # Async request methods
@@ -293,10 +421,8 @@ class HoneycombClient:
                     return response
 
                 if self._should_retry(response, attempt):
-                    retry_after = response.headers.get("Retry-After")
-                    delay = self._calculate_backoff(
-                        attempt, int(retry_after) if retry_after else None
-                    )
+                    retry_after = self._parse_retry_after(response)
+                    delay = self._calculate_backoff(attempt, retry_after)
                     await asyncio.sleep(delay)
                     continue
 
@@ -372,10 +498,8 @@ class HoneycombClient:
                     return response
 
                 if self._should_retry(response, attempt):
-                    retry_after = response.headers.get("Retry-After")
-                    delay = self._calculate_backoff(
-                        attempt, int(retry_after) if retry_after else None
-                    )
+                    retry_after = self._parse_retry_after(response)
+                    delay = self._calculate_backoff(attempt, retry_after)
                     time.sleep(delay)
                     continue
 

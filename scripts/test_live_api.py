@@ -16,6 +16,7 @@ from honeycomb import (
     TriggerQuery,
     QueryCalculation,
     HoneycombNotFoundError,
+    HoneycombRateLimitError,
 )
 
 # Load from environment variables
@@ -140,6 +141,110 @@ async def test_sync_client():
         print(f"Sync client found {len(triggers)} triggers in {TEST_DATASET}")
 
 
+async def test_rate_limiting():
+    """Test rate limiting and retry behavior.
+
+    WARNING: This test intentionally triggers rate limits by making rapid requests!
+    It will demonstrate the retry-after logic working correctly.
+    """
+    import time
+
+    print("\n=== Testing Rate Limiting & Retry Logic ===")
+    print("⚠️  WARNING: This test will make rapid requests to trigger rate limits!")
+    print("    Press Ctrl+C within 3 seconds to skip this test...")
+
+    try:
+        await asyncio.sleep(3)
+    except KeyboardInterrupt:
+        print("\n⏭️  Rate limit test skipped by user")
+        return
+
+    # First, use a client with NO retries to detect the 429
+    print("\n🔄 Phase 1: Making rapid requests (no retries) until rate limited...")
+
+    async with HoneycombClient(api_key=API_KEY, max_retries=0) as client:
+        datasets = await client.datasets.list_async()
+        if not datasets:
+            print("⚠️  No datasets available, skipping rate limit test")
+            return
+
+        test_dataset = datasets[0].slug
+        rate_limit_hit = False
+        retry_after_value = None
+        request_count = 0
+        max_requests = 200  # Safety limit
+
+        for i in range(max_requests):
+            try:
+                await client.datasets.get_async(test_dataset)
+                request_count += 1
+
+                if i % 10 == 0 and i > 0:
+                    print(f"  Request {i}... (no rate limit yet)")
+
+            except HoneycombRateLimitError as e:
+                rate_limit_hit = True
+                retry_after_value = e.retry_after
+                print(f"\n✓ Rate limit hit after {request_count} successful requests")
+                print(f"  Status code: {e.status_code}")
+                print(f"  Retry-After: {retry_after_value} seconds")
+                print(f"  Message: {e.message}")
+                if e.request_id:
+                    print(f"  Request ID: {e.request_id}")
+                break
+
+    if not rate_limit_hit:
+        print(f"\n⏭️  Rate limit not triggered after {max_requests} requests")
+        print("    (API may have high rate limits - this is OK)")
+        return
+
+    # Now test automatic retry with the client's built-in retry logic
+    print(f"\n🔄 Phase 2: Testing automatic retry (with {retry_after_value}s wait)...")
+
+    async with HoneycombClient(api_key=API_KEY, max_retries=2) as client:
+        start_time = time.time()
+        retry_succeeded = False
+
+        try:
+            # This should hit 429, wait for retry_after, then succeed
+            result = await client.datasets.get_async(test_dataset)
+            elapsed = time.time() - start_time
+            retry_succeeded = True
+
+            print(f"✓ Request succeeded after automatic retry!")
+            print(f"  Total time: {elapsed:.2f}s")
+            print(f"  Retrieved dataset: {result.name}")
+
+            # Verify the client waited approximately the right amount of time
+            if retry_after_value and retry_after_value > 0:
+                expected_wait = retry_after_value
+                if elapsed >= expected_wait * 0.8:  # Allow 20% variance
+                    print(f"✓ Client correctly waited ~{expected_wait}s before retrying")
+                else:
+                    print(f"⚠️  Client waited {elapsed:.2f}s (expected ~{expected_wait}s)")
+
+        except HoneycombRateLimitError as e:
+            elapsed = time.time() - start_time
+            print(f"⚠️  Still rate limited after {elapsed:.2f}s")
+            print(f"  This can happen if the rate limit window is longer than retry attempts")
+            print(f"  The client DID attempt retries (waited {elapsed:.2f}s)")
+
+    # Test that we can successfully make a request after waiting
+    if retry_after_value and retry_after_value > 0:
+        print(f"\n🔄 Phase 3: Waiting full {retry_after_value}s and trying again...")
+        await asyncio.sleep(retry_after_value)
+
+        async with HoneycombClient(api_key=API_KEY, max_retries=0) as client:
+            try:
+                result = await client.datasets.get_async(test_dataset)
+                print(f"✓ Request succeeded after waiting {retry_after_value}s!")
+                print(f"  Dataset: {result.name}")
+            except HoneycombRateLimitError:
+                print(f"⚠️  Still rate limited (rate window may be > {retry_after_value}s)")
+
+    print("\n✓ Rate limiting test completed")
+
+
 async def main():
     """Run all tests."""
     print("=" * 60)
@@ -151,6 +256,7 @@ async def main():
         await test_triggers()
         await test_boards()
         await test_sync_client()
+        await test_rate_limiting()
 
         print("\n" + "=" * 60)
         print("All tests completed successfully!")

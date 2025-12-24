@@ -121,7 +121,7 @@ update-deps:
 # CI Pipeline
 # =============================================================================
 
-ci: install-dev check test
+ci: install-dev format check test
 	@echo ""
 	@echo "============================================"
 	@echo "CI pipeline completed successfully!"

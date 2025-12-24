@@ -330,7 +330,10 @@ def test_404_raises_not_found_error():
         )
     )
 
-    with HoneycombClient(api_key="test-key", sync=True) as client, pytest.raises(HoneycombNotFoundError):
+    with (
+        HoneycombClient(api_key="test-key", sync=True) as client,
+        pytest.raises(HoneycombNotFoundError),
+    ):
         client.datasets.get("nonexistent")
 
 
@@ -344,7 +347,10 @@ def test_422_raises_validation_error():
         )
     )
 
-    with HoneycombClient(api_key="test-key", sync=True) as client, pytest.raises(HoneycombValidationError):
+    with (
+        HoneycombClient(api_key="test-key", sync=True) as client,
+        pytest.raises(HoneycombValidationError),
+    ):
         client.triggers.create(
             "test-dataset",
             TriggerCreate(

@@ -3,7 +3,7 @@
 __version__ = "0.1.0"
 
 from .auth import APIKeyAuth, AuthStrategy, ManagementKeyAuth, create_auth
-from .client import HoneycombClient
+from .client import HoneycombClient, RateLimitInfo, RetryConfig
 from .exceptions import (
     HoneycombAPIError,
     HoneycombAuthError,
@@ -36,6 +36,8 @@ __all__ = [
     "__version__",
     # Client
     "HoneycombClient",
+    "RetryConfig",
+    "RateLimitInfo",
     # Auth
     "AuthStrategy",
     "APIKeyAuth",
