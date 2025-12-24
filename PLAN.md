@@ -393,7 +393,7 @@ async def _request_with_retry(self, method: str, url: str, **kwargs) -> httpx.Re
     raise last_exception or HoneycombAPIError("Max retries exceeded", 0)
 ```
 
-## Phase 6: Pydantic Models
+## Phase 6: Pydantic Models ✓ COMPLETED
 
 ### 6.1 Model Strategy
 

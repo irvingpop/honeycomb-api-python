@@ -264,6 +264,8 @@ async with HoneycombClient(api_key="...") as client:
 ### Client Options
 
 ```python
+from honeycomb import HoneycombClient, RetryConfig
+
 client = HoneycombClient(
     api_key="...",                              # API key for single-environment access
     management_key="...",                       # Management key ID (alternative auth)
@@ -271,6 +273,7 @@ client = HoneycombClient(
     base_url="https://api.honeycomb.io",       # API base URL (default)
     timeout=30.0,                               # Request timeout in seconds (default: 30)
     max_retries=3,                              # Max retry attempts (default: 3)
+    retry_config=None,                          # Custom retry configuration (optional)
     sync=False,                                 # Use sync mode (default: False)
 )
 ```
@@ -283,6 +286,23 @@ The client automatically retries requests on:
 - Connection timeouts
 
 Retries use exponential backoff: 1s, 2s, 4s, ... up to 30s max.
+
+#### Custom Retry Configuration
+
+```python
+from honeycomb import HoneycombClient, RetryConfig
+
+# Customize retry behavior
+retry_config = RetryConfig(
+    max_retries=5,                # More retry attempts
+    base_delay=2.0,               # Start with 2s delay
+    max_delay=60.0,               # Cap at 60s
+    exponential_base=2.0,         # Double each time
+    retry_statuses={429, 503},    # Only retry these status codes
+)
+
+client = HoneycombClient(api_key="...", retry_config=retry_config)
+```
 
 ## API Reference
 
@@ -322,6 +342,11 @@ All methods have both sync and async variants:
 **Boards:**
 - `Board` - Response model
 - `BoardCreate` - Create/update model
+
+**Queries:**
+- `Query` - Response model
+- `QuerySpec` - Query specification for creating queries
+- `QueryResult` - Query execution results
 
 ## Development
 
@@ -440,7 +465,9 @@ honeycomb-api-python/
 │       ├── client.py            # Main HoneycombClient
 │       ├── exceptions.py        # Exception hierarchy
 │       ├── models/              # Pydantic models
+│       │   ├── boards.py
 │       │   ├── datasets.py
+│       │   ├── queries.py
 │       │   ├── slos.py
 │       │   └── triggers.py
 │       └── resources/           # API resources

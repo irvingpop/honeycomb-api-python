@@ -18,10 +18,15 @@ from .exceptions import (
 from .models import (
     SLI,
     SLO,
+    Board,
+    BoardCreate,
     Dataset,
     DatasetCreate,
+    Query,
     QueryCalculation,
     QueryFilter,
+    QueryResult,
+    QuerySpec,
     SLOCreate,
     Trigger,
     TriggerAlertType,
@@ -30,7 +35,6 @@ from .models import (
     TriggerThreshold,
     TriggerThresholdOp,
 )
-from .resources import Board, BoardCreate
 
 __all__ = [
     "__version__",
@@ -72,4 +76,8 @@ __all__ = [
     # Models - Boards
     "Board",
     "BoardCreate",
+    # Models - Queries
+    "Query",
+    "QuerySpec",
+    "QueryResult",
 ]
