@@ -4,7 +4,7 @@ This guide will help you get up and running with the Honeycomb API Python client
 
 ## Your First Request
 
-=== "Async (Recommended)"
+=== "Async"
 
     ```python
     import asyncio
@@ -30,11 +30,16 @@ This guide will help you get up and running with the Honeycomb API Python client
     ```python
     from honeycomb import HoneycombClient
 
-    with HoneycombClient(api_key="your-api-key", sync=True) as client:
-        datasets = client.datasets.list()
+    def main():
+        with HoneycombClient(api_key="your-api-key", sync=True) as client:
+            datasets = client.datasets.list()
 
-        for dataset in datasets:
-            print(f"Dataset: {dataset.name}")
+            for dataset in datasets:
+                print(f"Dataset: {dataset.name}")
+                print(f"  Columns: {dataset.regular_columns_count}")
+                print(f"  Last written: {dataset.last_written_at}")
+
+    main()
     ```
 
 ## Common Operations

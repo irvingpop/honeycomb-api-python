@@ -17,7 +17,7 @@ A modern, async-first Python client for the [Honeycomb.io](https://www.honeycomb
 - **Dual authentication** support (API keys and Management keys)
 - **Resource-oriented API** for intuitive usage
 
-## Installation
+## Installation (coming soon)
 
 ```bash
 pip install honeycomb-api-python
@@ -89,223 +89,21 @@ client = HoneycombClient(
 
 Management credentials are sent via the `Authorization: Bearer` header.
 
-## Usage Examples
+## Usage Guide
 
-### Working with Datasets
+For complete usage examples and guides, see the [full documentation](https://irvingpop.github.io/honeycomb-api-python/):
 
-```python
-from honeycomb import HoneycombClient, DatasetCreate
-
-async with HoneycombClient(api_key="...") as client:
-    # List all datasets
-    datasets = await client.datasets.list_async()
-
-    # Get a specific dataset
-    dataset = await client.datasets.get_async("my-dataset")
-    print(f"Created: {dataset.created_at}")
-    print(f"Columns: {dataset.regular_columns_count}")
-
-    # Create a new dataset
-    new_dataset = await client.datasets.create_async(
-        DatasetCreate(
-            name="My New Dataset",
-            description="For testing purposes"
-        )
-    )
-```
-
-### Working with Triggers
-
-```python
-from honeycomb import (
-    HoneycombClient,
-    TriggerCreate,
-    TriggerThreshold,
-    TriggerThresholdOp,
-    TriggerQuery,
-    QueryCalculation,
-)
-
-async with HoneycombClient(api_key="...") as client:
-    # List triggers
-    triggers = await client.triggers.list_async("my-dataset")
-
-    # Create a trigger with an inline query
-    trigger = await client.triggers.create_async(
-        "my-dataset",
-        TriggerCreate(
-            name="High Error Rate",
-            description="Alert when error rate exceeds threshold",
-            threshold=TriggerThreshold(
-                op=TriggerThresholdOp.GREATER_THAN,
-                value=0.05,  # 5%
-            ),
-            frequency=300,  # Check every 5 minutes
-            query=TriggerQuery(
-                time_range=900,  # 15-minute window (max 3600)
-                calculations=[
-                    QueryCalculation(op="AVG", column="error_rate")
-                ],
-            ),
-        )
-    )
-    print(f"Created trigger: {trigger.id}")
-
-    # Update a trigger
-    updated = await client.triggers.update_async(
-        "my-dataset",
-        trigger.id,
-        TriggerCreate(
-            name="High Error Rate (Updated)",
-            threshold=TriggerThreshold(
-                op=TriggerThresholdOp.GREATER_THAN_OR_EQUAL,
-                value=0.10,
-            ),
-            frequency=300,
-            query=TriggerQuery(time_range=900),
-        )
-    )
-
-    # Delete a trigger
-    await client.triggers.delete_async("my-dataset", trigger.id)
-```
-
-### Working with SLOs
-
-```python
-from honeycomb import HoneycombClient, SLOCreate, SLI
-
-async with HoneycombClient(api_key="...") as client:
-    # List SLOs
-    slos = await client.slos.list_async("my-dataset")
-
-    # Create an SLO
-    slo = await client.slos.create_async(
-        "my-dataset",
-        SLOCreate(
-            name="API Availability",
-            description="99.9% availability target",
-            sli=SLI(alias="availability-sli"),
-            time_period_days=30,
-            target_per_million=999000,  # 99.9%
-        )
-    )
-```
-
-### Working with Boards
-
-```python
-from honeycomb import HoneycombClient, BoardCreate
-
-async with HoneycombClient(api_key="...") as client:
-    # List boards
-    boards = await client.boards.list_async()
-
-    # Create a board
-    board = await client.boards.create_async(
-        BoardCreate(
-            name="Service Overview",
-            description="Key metrics dashboard",
-            column_layout="multi",
-            style="visual",
-        )
-    )
-```
-
-### Working with Queries
-
-```python
-from honeycomb import HoneycombClient, QuerySpec
-
-async with HoneycombClient(api_key="...") as client:
-    # Option 1: Create a saved query
-    query = await client.queries.create_async(
-        "my-dataset",
-        QuerySpec(
-            time_range=3600,  # 1 hour
-            calculations=[{"op": "COUNT"}],
-            filters=[{"column": "status", "op": "=", "value": "500"}],
-            breakdowns=["endpoint"],
-        )
-    )
-    print(f"Created query: {query.id}")
-
-    # Get a saved query
-    saved_query = await client.queries.get_async("my-dataset", query.id)
-
-    # Option 2: Run an ephemeral query (not saved)
-    result = await client.query_results.run_async(
-        "my-dataset",
-        spec=QuerySpec(time_range=1800, calculations=[{"op": "P99", "column": "duration_ms"}]),
-        poll_interval=1.0,  # Poll every second
-        timeout=60.0,       # Timeout after 60 seconds
-    )
-
-    for row in result.data:
-        print(row)
-
-    # Option 3: Create saved query AND run it in one call (best of both worlds!)
-    query, result = await client.query_results.create_and_run_async(
-        "my-dataset",
-        QuerySpec(
-            time_range=3600,
-            calculations=[{"op": "AVG", "column": "duration_ms"}],
-            breakdowns=["service"],
-        ),
-        poll_interval=1.0,
-        timeout=60.0,
-    )
-    print(f"Saved query {query.id} with {len(result.data)} rows")
-```
+- [Quick Start Guide](https://irvingpop.github.io/honeycomb-api-python/getting-started/quickstart/) - Common operations with examples
+- [Working with Queries](https://irvingpop.github.io/honeycomb-api-python/usage/queries/) - Saved, ephemeral, and combined query patterns
+- [Working with Triggers](https://irvingpop.github.io/honeycomb-api-python/usage/triggers/) - Alert configuration
+- [Working with SLOs](https://irvingpop.github.io/honeycomb-api-python/usage/slos/) - Service level objectives
+- [API Reference](https://irvingpop.github.io/honeycomb-api-python/api/resources/) - Complete API documentation
 
 ## Error Handling
 
-The client provides specific exception types for different error conditions:
+The client provides specific exception types for different error scenarios (authentication, rate limiting, validation, etc.). All exceptions include useful debugging information like HTTP status codes and request IDs for support tickets.
 
-```python
-from honeycomb import (
-    HoneycombClient,
-    HoneycombAPIError,
-    HoneycombAuthError,
-    HoneycombForbiddenError,
-    HoneycombNotFoundError,
-    HoneycombValidationError,
-    HoneycombRateLimitError,
-    HoneycombServerError,
-    HoneycombTimeoutError,
-    HoneycombConnectionError,
-)
-
-async with HoneycombClient(api_key="...") as client:
-    try:
-        trigger = await client.triggers.get_async("dataset", "invalid-id")
-    except HoneycombNotFoundError as e:
-        print(f"Trigger not found: {e}")
-        print(f"Request ID: {e.request_id}")  # Useful for support
-    except HoneycombAuthError:
-        print("Invalid API key")
-    except HoneycombRateLimitError as e:
-        print(f"Rate limited. Retry after: {e.retry_after} seconds")
-    except HoneycombValidationError as e:
-        print(f"Validation error: {e}")
-        print(f"Details: {e.errors}")
-    except HoneycombAPIError as e:
-        print(f"API error [{e.status_code}]: {e}")
-```
-
-### Exception Hierarchy
-
-| Exception | HTTP Status | Description |
-|-----------|-------------|-------------|
-| `HoneycombAPIError` | Any | Base exception for all API errors |
-| `HoneycombAuthError` | 401 | Invalid or missing credentials |
-| `HoneycombForbiddenError` | 403 | Insufficient permissions |
-| `HoneycombNotFoundError` | 404 | Resource not found |
-| `HoneycombValidationError` | 422 | Invalid request data |
-| `HoneycombRateLimitError` | 429 | Rate limit exceeded |
-| `HoneycombServerError` | 5xx | Honeycomb server error |
-| `HoneycombTimeoutError` | - | Request timed out |
-| `HoneycombConnectionError` | - | Connection failed |
+See the [Error Handling Guide](https://irvingpop.github.io/honeycomb-api-python/advanced/error-handling/) for complete documentation and best practices.
 
 ## Configuration
 
@@ -354,49 +152,18 @@ client = HoneycombClient(api_key="...", retry_config=retry_config)
 
 ## API Reference
 
-### Resources
+The client provides resource-oriented access to the Honeycomb API:
 
-| Resource | Methods |
-|----------|---------|
-| `client.datasets` | `list`, `get`, `create`, `update`, `delete` |
-| `client.triggers` | `list`, `get`, `create`, `update`, `delete` |
-| `client.slos` | `list`, `get`, `create`, `update`, `delete` |
-| `client.boards` | `list`, `get`, `create`, `update`, `delete` |
-| `client.queries` | `create`, `get` |
-| `client.query_results` | `create`, `get`, `run` (poll), `create_and_run` (save+run) |
+- `client.datasets` - Dataset management
+- `client.triggers` - Alert triggers
+- `client.slos` - Service level objectives
+- `client.boards` - Dashboards
+- `client.queries` - Saved queries
+- `client.query_results` - Query execution
 
-All methods have both sync and async variants:
-- Sync: `client.datasets.list()`
-- Async: `await client.datasets.list_async()`
+All methods have both sync and async variants (`list()` / `list_async()`).
 
-### Models
-
-**Triggers:**
-- `Trigger` - Response model
-- `TriggerCreate` - Create/update model
-- `TriggerThreshold` - Threshold configuration
-- `TriggerThresholdOp` - Comparison operators (`>`, `>=`, `<`, `<=`)
-- `TriggerQuery` - Inline query specification
-- `QueryCalculation` - Query calculation (COUNT, AVG, P99, etc.)
-- `QueryFilter` - Query filter
-
-**SLOs:**
-- `SLO` - Response model
-- `SLOCreate` - Create/update model
-- `SLI` - Service Level Indicator configuration
-
-**Datasets:**
-- `Dataset` - Response model
-- `DatasetCreate` - Create/update model
-
-**Boards:**
-- `Board` - Response model
-- `BoardCreate` - Create/update model
-
-**Queries:**
-- `Query` - Response model
-- `QuerySpec` - Query specification for creating queries
-- `QueryResult` - Query execution results
+See the [API Reference](https://irvingpop.github.io/honeycomb-api-python/api/resources/) for complete documentation.
 
 ## Development
 
@@ -405,7 +172,7 @@ All methods have both sync and async variants:
 - Python 3.10+
 - [Poetry](https://python-poetry.org/) for dependency management
 - [direnv](https://direnv.net/) (optional, for environment management)
-- Make (optional, for convenience commands)
+- Make
 
 ### Setup
 
@@ -435,8 +202,8 @@ make help          # Show all available commands
 #### Setup
 | Command | Description |
 |---------|-------------|
-| `make install` | Install production dependencies only |
-| `make install-dev` | Install all dependencies (including dev) |
+| `make install` | Install poetry production dependencies only |
+| `make install-dev` | Install all poetry dependencies (including dev) |
 
 #### Code Quality
 | Command | Description |
