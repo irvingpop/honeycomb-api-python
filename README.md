@@ -6,6 +6,8 @@ A modern, async-first Python client for the [Honeycomb.io](https://www.honeycomb
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
+📚 **[Read the full documentation](https://irvingpop.github.io/honeycomb-api-python/)**
+
 ## Features
 
 - **Async-first design** with full sync support
@@ -210,6 +212,52 @@ async with HoneycombClient(api_key="...") as client:
     )
 ```
 
+### Working with Queries
+
+```python
+from honeycomb import HoneycombClient, QuerySpec
+
+async with HoneycombClient(api_key="...") as client:
+    # Option 1: Create a saved query
+    query = await client.queries.create_async(
+        "my-dataset",
+        QuerySpec(
+            time_range=3600,  # 1 hour
+            calculations=[{"op": "COUNT"}],
+            filters=[{"column": "status", "op": "=", "value": "500"}],
+            breakdowns=["endpoint"],
+        )
+    )
+    print(f"Created query: {query.id}")
+
+    # Get a saved query
+    saved_query = await client.queries.get_async("my-dataset", query.id)
+
+    # Option 2: Run an ephemeral query (not saved)
+    result = await client.query_results.run_async(
+        "my-dataset",
+        spec=QuerySpec(time_range=1800, calculations=[{"op": "P99", "column": "duration_ms"}]),
+        poll_interval=1.0,  # Poll every second
+        timeout=60.0,       # Timeout after 60 seconds
+    )
+
+    for row in result.data:
+        print(row)
+
+    # Option 3: Create saved query AND run it in one call (best of both worlds!)
+    query, result = await client.query_results.create_and_run_async(
+        "my-dataset",
+        QuerySpec(
+            time_range=3600,
+            calculations=[{"op": "AVG", "column": "duration_ms"}],
+            breakdowns=["service"],
+        ),
+        poll_interval=1.0,
+        timeout=60.0,
+    )
+    print(f"Saved query {query.id} with {len(result.data)} rows")
+```
+
 ## Error Handling
 
 The client provides specific exception types for different error conditions:
@@ -314,6 +362,8 @@ client = HoneycombClient(api_key="...", retry_config=retry_config)
 | `client.triggers` | `list`, `get`, `create`, `update`, `delete` |
 | `client.slos` | `list`, `get`, `create`, `update`, `delete` |
 | `client.boards` | `list`, `get`, `create`, `update`, `delete` |
+| `client.queries` | `create`, `get` |
+| `client.query_results` | `create`, `get`, `run` (poll), `create_and_run` (save+run) |
 
 All methods have both sync and async variants:
 - Sync: `client.datasets.list()`

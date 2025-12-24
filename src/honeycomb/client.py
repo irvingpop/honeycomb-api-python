@@ -27,6 +27,8 @@ from .exceptions import (
 if TYPE_CHECKING:
     from .resources.boards import BoardsResource
     from .resources.datasets import DatasetsResource
+    from .resources.queries import QueriesResource
+    from .resources.query_results import QueryResultsResource
     from .resources.slos import SLOsResource
     from .resources.triggers import TriggersResource
 
@@ -132,6 +134,8 @@ class HoneycombClient:
         self._slos: SLOsResource | None = None
         self._datasets: DatasetsResource | None = None
         self._boards: BoardsResource | None = None
+        self._queries: QueriesResource | None = None
+        self._query_results: QueryResultsResource | None = None
 
     # -------------------------------------------------------------------------
     # Resource accessors
@@ -172,6 +176,24 @@ class HoneycombClient:
 
             self._boards = BoardsResource(self)
         return self._boards
+
+    @property
+    def queries(self) -> QueriesResource:
+        """Access the Queries API."""
+        if self._queries is None:
+            from .resources.queries import QueriesResource
+
+            self._queries = QueriesResource(self)
+        return self._queries
+
+    @property
+    def query_results(self) -> QueryResultsResource:
+        """Access the Query Results API."""
+        if self._query_results is None:
+            from .resources.query_results import QueryResultsResource
+
+            self._query_results = QueryResultsResource(self)
+        return self._query_results
 
     # -------------------------------------------------------------------------
     # HTTP client management

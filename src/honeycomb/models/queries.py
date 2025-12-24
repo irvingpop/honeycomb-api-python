@@ -59,9 +59,13 @@ class Query(BaseModel):
 
 
 class QueryResult(BaseModel):
-    """Results from a query execution."""
+    """Results from a query execution.
 
-    data: list[dict] = Field(description="Query result rows")
+    Note: data will be None if the query is still processing.
+    Poll until data is not None to get the complete results.
+    """
+
+    data: list[dict] | None = Field(default=None, description="Query result rows (None if pending)")
     links: dict | None = Field(default=None, description="Pagination links")
 
     model_config = {"extra": "allow"}

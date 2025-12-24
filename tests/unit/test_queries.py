@@ -1,0 +1,333 @@
+"""Tests for Queries and Query Results resources."""
+
+import pytest
+import respx
+from httpx import Response
+
+from honeycomb import HoneycombClient, QuerySpec
+
+
+@pytest.mark.asyncio
+class TestQueriesResourceAsync:
+    """Tests for QueriesResource async methods."""
+
+    @respx.mock
+    async def test_create_query(self, respx_mock):
+        """Test creating a query."""
+        client = HoneycombClient(api_key="test-key")
+
+        respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
+            return_value=Response(
+                200,
+                json={
+                    "id": "query-123",
+                    "query_json": {"time_range": 3600},
+                    "created_at": "2024-01-01T00:00:00Z",
+                },
+            )
+        )
+
+        async with client:
+            spec = QuerySpec(time_range=3600, calculations=[{"op": "COUNT"}])
+            query = await client.queries.create_async("my-dataset", spec)
+
+            assert query.id == "query-123"
+            assert query.query_json["time_range"] == 3600
+
+    @respx.mock
+    async def test_get_query(self, respx_mock):
+        """Test getting a query by ID."""
+        client = HoneycombClient(api_key="test-key")
+
+        respx_mock.get("https://api.honeycomb.io/1/queries/my-dataset/query-123").mock(
+            return_value=Response(
+                200,
+                json={
+                    "id": "query-123",
+                    "query_json": {"time_range": 3600},
+                },
+            )
+        )
+
+        async with client:
+            query = await client.queries.get_async("my-dataset", "query-123")
+            assert query.id == "query-123"
+
+
+class TestQueriesResourceSync:
+    """Tests for QueriesResource sync methods."""
+
+    @respx.mock
+    def test_create_query_sync(self, respx_mock):
+        """Test creating a query in sync mode."""
+        client = HoneycombClient(api_key="test-key", sync=True)
+
+        respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
+            return_value=Response(
+                200,
+                json={
+                    "id": "query-456",
+                    "query_json": {"time_range": 1800},
+                },
+            )
+        )
+
+        with client:
+            spec = QuerySpec(time_range=1800)
+            query = client.queries.create("my-dataset", spec)
+            assert query.id == "query-456"
+
+    @respx.mock
+    def test_get_query_sync(self, respx_mock):
+        """Test getting a query in sync mode."""
+        client = HoneycombClient(api_key="test-key", sync=True)
+
+        respx_mock.get("https://api.honeycomb.io/1/queries/my-dataset/query-456").mock(
+            return_value=Response(200, json={"id": "query-456", "query_json": {}})
+        )
+
+        with client:
+            query = client.queries.get("my-dataset", "query-456")
+            assert query.id == "query-456"
+
+    def test_sync_method_guard_create(self):
+        """Test that sync methods raise in async mode."""
+        client = HoneycombClient(api_key="test-key", sync=False)
+
+        with pytest.raises(RuntimeError, match="async mode"), client:
+            spec = QuerySpec(time_range=3600)
+            client.queries.create("my-dataset", spec)
+
+    def test_sync_method_guard_get(self):
+        """Test that sync methods raise in async mode."""
+        client = HoneycombClient(api_key="test-key", sync=False)
+
+        with pytest.raises(RuntimeError, match="async mode"), client:
+            client.queries.get("my-dataset", "query-123")
+
+
+@pytest.mark.asyncio
+class TestQueryResultsResourceAsync:
+    """Tests for QueryResultsResource async methods."""
+
+    @respx.mock
+    async def test_create_query_result(self, respx_mock):
+        """Test creating a query result."""
+        client = HoneycombClient(api_key="test-key")
+
+        respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
+            return_value=Response(200, json={"id": "qr-123"})
+        )
+
+        async with client:
+            spec = QuerySpec(time_range=3600)
+            result_id = await client.query_results.create_async("my-dataset", spec=spec)
+            assert result_id == "qr-123"
+
+    @respx.mock
+    async def test_get_query_result(self, respx_mock):
+        """Test getting query result."""
+        client = HoneycombClient(api_key="test-key")
+
+        respx_mock.get("https://api.honeycomb.io/1/query_results/my-dataset/qr-123").mock(
+            return_value=Response(
+                200,
+                json={
+                    "data": [{"count": 100}],
+                    "links": None,
+                },
+            )
+        )
+
+        async with client:
+            result = await client.query_results.get_async("my-dataset", "qr-123")
+            assert len(result.data) == 1
+            assert result.data[0]["count"] == 100
+
+    @respx.mock
+    async def test_run_query_with_polling(self, respx_mock):
+        """Test running a query with automatic polling."""
+        client = HoneycombClient(api_key="test-key")
+
+        # Mock create
+        respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
+            return_value=Response(200, json={"id": "qr-789"})
+        )
+
+        # Mock polling - first call returns None (not ready), second returns data
+        respx_mock.get("https://api.honeycomb.io/1/query_results/my-dataset/qr-789").mock(
+            side_effect=[
+                Response(200, json={"data": None}),
+                Response(200, json={"data": [{"count": 42}]}),
+            ]
+        )
+
+        async with client:
+            spec = QuerySpec(time_range=3600)
+            result = await client.query_results.run_async(
+                "my-dataset", spec=spec, poll_interval=0.1, timeout=5.0
+            )
+
+            assert result.data is not None
+            assert len(result.data) == 1
+            assert result.data[0]["count"] == 42
+
+    @respx.mock
+    async def test_run_query_timeout(self, respx_mock):
+        """Test query run timeout."""
+        from honeycomb.exceptions import HoneycombTimeoutError
+
+        client = HoneycombClient(api_key="test-key")
+
+        respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
+            return_value=Response(200, json={"id": "qr-slow"})
+        )
+
+        # Always return None (never completes)
+        respx_mock.get("https://api.honeycomb.io/1/query_results/my-dataset/qr-slow").mock(
+            return_value=Response(200, json={"data": None})
+        )
+
+        async with client:
+            spec = QuerySpec(time_range=3600)
+            with pytest.raises(HoneycombTimeoutError) as exc_info:
+                await client.query_results.run_async(
+                    "my-dataset", spec=spec, poll_interval=0.1, timeout=0.3
+                )
+
+            assert exc_info.value.timeout == 0.3
+
+    @respx.mock
+    async def test_create_and_run(self, respx_mock):
+        """Test create_and_run convenience method."""
+        client = HoneycombClient(api_key="test-key")
+
+        # Mock query creation
+        respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
+            return_value=Response(
+                200,
+                json={"id": "saved-query-123", "query_json": {"time_range": 3600}},
+            )
+        )
+
+        # Mock query result creation
+        respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
+            return_value=Response(200, json={"id": "qr-combo-1"})
+        )
+
+        # Mock query result polling
+        respx_mock.get("https://api.honeycomb.io/1/query_results/my-dataset/qr-combo-1").mock(
+            return_value=Response(200, json={"data": [{"count": 999}]})
+        )
+
+        async with client:
+            spec = QuerySpec(time_range=3600)
+            query, result = await client.query_results.create_and_run_async(
+                "my-dataset", spec, poll_interval=0.1, timeout=5.0
+            )
+
+            # Verify we got both the saved query and results
+            assert query.id == "saved-query-123"
+            assert result.data is not None
+            assert len(result.data) == 1
+            assert result.data[0]["count"] == 999
+
+
+class TestQueryResultsResourceSync:
+    """Tests for QueryResultsResource sync methods."""
+
+    @respx.mock
+    def test_create_query_result_sync(self, respx_mock):
+        """Test creating a query result in sync mode."""
+        client = HoneycombClient(api_key="test-key", sync=True)
+
+        respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
+            return_value=Response(200, json={"id": "qr-sync-1"})
+        )
+
+        with client:
+            spec = QuerySpec(time_range=1800)
+            result_id = client.query_results.create("my-dataset", spec=spec)
+            assert result_id == "qr-sync-1"
+
+    @respx.mock
+    def test_get_query_result_sync(self, respx_mock):
+        """Test getting query result in sync mode."""
+        client = HoneycombClient(api_key="test-key", sync=True)
+
+        respx_mock.get("https://api.honeycomb.io/1/query_results/my-dataset/qr-sync-1").mock(
+            return_value=Response(200, json={"data": [{"metric": "value"}]})
+        )
+
+        with client:
+            result = client.query_results.get("my-dataset", "qr-sync-1")
+            assert result.data[0]["metric"] == "value"
+
+    def test_create_requires_spec_or_query_id(self):
+        """Test that create requires either spec or query_id."""
+        client = HoneycombClient(api_key="test-key", sync=True)
+
+        with client, pytest.raises(ValueError, match="Must provide either spec or query_id"):
+            client.query_results.create("my-dataset")
+
+    @respx.mock
+    def test_create_and_run_sync(self, respx_mock):
+        """Test create_and_run in sync mode."""
+        client = HoneycombClient(api_key="test-key", sync=True)
+
+        # Mock query creation
+        respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
+            return_value=Response(
+                200, json={"id": "saved-sync-query", "query_json": {"time_range": 1800}}
+            )
+        )
+
+        # Mock query result creation
+        respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
+            return_value=Response(200, json={"id": "qr-sync-combo"})
+        )
+
+        # Mock query result polling
+        respx_mock.get("https://api.honeycomb.io/1/query_results/my-dataset/qr-sync-combo").mock(
+            return_value=Response(200, json={"data": [{"total": 555}]})
+        )
+
+        with client:
+            spec = QuerySpec(time_range=1800)
+            query, result = client.query_results.create_and_run(
+                "my-dataset", spec, poll_interval=0.1, timeout=5.0
+            )
+
+            assert query.id == "saved-sync-query"
+            assert result.data[0]["total"] == 555
+
+
+class TestQuerySpec:
+    """Tests for QuerySpec model."""
+
+    def test_model_dump_for_api(self):
+        """Test serialization for API."""
+        spec = QuerySpec(
+            time_range=3600,
+            granularity=60,
+            calculations=[{"op": "COUNT"}],
+            filters=[{"column": "status", "op": "=", "value": "200"}],
+            breakdowns=["endpoint"],
+        )
+
+        data = spec.model_dump_for_api()
+
+        assert data["time_range"] == 3600
+        assert data["granularity"] == 60
+        assert data["calculations"] == [{"op": "COUNT"}]
+        assert data["filters"] == [{"column": "status", "op": "=", "value": "200"}]
+        assert data["breakdowns"] == ["endpoint"]
+
+    def test_model_dump_excludes_none(self):
+        """Test that None values are excluded."""
+        spec = QuerySpec(time_range=1800)
+        data = spec.model_dump_for_api()
+
+        assert "time_range" in data
+        assert "granularity" not in data
+        assert "calculations" not in data

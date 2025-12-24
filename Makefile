@@ -1,5 +1,5 @@
 # Honeycomb API Python Client - Development Makefile
-.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs
+.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs
 
 # Default target
 help:
@@ -27,12 +27,18 @@ help:
 	@echo "  make publish        Publish to PyPI (requires credentials)"
 	@echo "  make publish-test   Publish to Test PyPI"
 	@echo ""
+	@echo "Documentation:"
+	@echo "  make docs-serve     Serve docs locally with live reload"
+	@echo "  make docs-build     Build static docs site"
+	@echo "  make validate-docs  Validate all documentation code examples"
+	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean          Remove build artifacts and cache files"
 	@echo "  make update-deps    Update dependencies to latest versions"
 	@echo ""
 	@echo "CI:"
-	@echo "  make ci             Run full CI pipeline (install, check, test)"
+	@echo "  make ci             Run full CI pipeline (install, format, check, test, validate-docs)"
+	@echo "  make validate-docs  Validate documentation code examples"
 
 # =============================================================================
 # Setup
@@ -98,6 +104,19 @@ publish-test: build
 	poetry publish -r testpypi
 
 # =============================================================================
+# Documentation
+# =============================================================================
+
+docs-serve:
+	poetry run mkdocs serve
+
+docs-build:
+	poetry run mkdocs build
+
+validate-docs:
+	poetry run python scripts/validate_docs_examples.py
+
+# =============================================================================
 # Maintenance
 # =============================================================================
 
@@ -110,6 +129,7 @@ clean:
 	rm -rf .ruff_cache/
 	rm -rf htmlcov/
 	rm -rf .coverage
+	rm -rf site/
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 
@@ -121,7 +141,7 @@ update-deps:
 # CI Pipeline
 # =============================================================================
 
-ci: install-dev format check test
+ci: install-dev format check test validate-docs
 	@echo ""
 	@echo "============================================"
 	@echo "CI pipeline completed successfully!"

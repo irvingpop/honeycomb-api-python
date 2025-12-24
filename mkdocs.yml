@@ -1,0 +1,93 @@
+site_name: Honeycomb API Python Client
+site_description: A modern, async-first Python client for the Honeycomb.io API
+site_author: Irving Popovetsky
+site_url: https://irvingpop.github.io/honeycomb-api-python/
+repo_url: https://github.com/irvingpop/honeycomb-api-python
+repo_name: irvingpop/honeycomb-api-python
+
+theme:
+  name: material
+  palette:
+    # Light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: deep orange
+      accent: amber
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: deep orange
+      accent: amber
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+      - Authentication: getting-started/authentication.md
+  - Usage Guides:
+      - Datasets: usage/datasets.md
+      - Triggers: usage/triggers.md
+      - SLOs: usage/slos.md
+      - Boards: usage/boards.md
+      - Queries: usage/queries.md
+  - Advanced:
+      - Error Handling: advanced/error-handling.md
+      - Retry Configuration: advanced/retry-config.md
+      - Async vs Sync: advanced/async-sync.md
+  - API Reference:
+      - Client: api/client.md
+      - Resources: api/resources.md
+      - Models: api/models.md
+      - Exceptions: api/exceptions.md
+  - Contributing: contributing.md
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: false
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            members_order: source
+            filters:
+              - "!^_"  # Hide private members
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - tables
+  - toc:
+      permalink: true
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/irvingpop/honeycomb-api-python

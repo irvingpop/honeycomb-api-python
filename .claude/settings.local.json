@@ -11,7 +11,8 @@
       "Bash(poetry run python:*)",
       "Bash(poetry run ruff check:*)",
       "Bash(poetry run pytest:*)",
-      "Bash(make:*)"
+      "Bash(make:*)",
+      "Bash(poetry run mkdocs:*)"
     ]
   }
 }
