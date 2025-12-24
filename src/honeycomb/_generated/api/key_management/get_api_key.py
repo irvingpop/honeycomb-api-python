@@ -1,0 +1,225 @@
+from http import HTTPStatus
+from typing import Any, Optional, Union, cast
+
+import httpx
+
+from ...client import AuthenticatedClient, Client
+from ...types import Response, UNSET
+from ... import errors
+
+from ...models.api_key_response import ApiKeyResponse
+from ...models.detailed_error import DetailedError
+from ...models.error import Error
+from typing import cast
+
+
+
+def _get_kwargs(
+    team_slug: str,
+    id: str,
+
+) -> dict[str, Any]:
+    
+
+    
+
+    
+
+    _kwargs: dict[str, Any] = {
+        "method": "get",
+        "url": "/2/teams/{team_slug}/api-keys/{id}".format(team_slug=team_slug,id=id,),
+    }
+
+
+    return _kwargs
+
+
+def _parse_response(*, client: Union[AuthenticatedClient, Client], response: httpx.Response) -> Optional[Union[ApiKeyResponse, DetailedError, Error]]:
+    if response.status_code == 200:
+        response_200 = ApiKeyResponse.from_dict(response.json())
+
+
+
+        return response_200
+    if response.status_code == 400:
+        response_400 = DetailedError.from_dict(response.json())
+
+
+
+        return response_400
+    if response.status_code == 401:
+        response_401 = Error.from_dict(response.json())
+
+
+
+        return response_401
+    if response.status_code == 404:
+        response_404 = Error.from_dict(response.json())
+
+
+
+        return response_404
+    if response.status_code == 429:
+        response_429 = Error.from_dict(response.json())
+
+
+
+        return response_429
+    if response.status_code == 500:
+        response_500 = DetailedError.from_dict(response.json())
+
+
+
+        return response_500
+    if client.raise_on_unexpected_status:
+        raise errors.UnexpectedStatus(response.status_code, response.content)
+    else:
+        return None
+
+
+def _build_response(*, client: Union[AuthenticatedClient, Client], response: httpx.Response) -> Response[Union[ApiKeyResponse, DetailedError, Error]]:
+    return Response(
+        status_code=HTTPStatus(response.status_code),
+        content=response.content,
+        headers=response.headers,
+        parsed=_parse_response(client=client, response=response),
+    )
+
+
+def sync_detailed(
+    team_slug: str,
+    id: str,
+    *,
+    client: AuthenticatedClient,
+
+) -> Response[Union[ApiKeyResponse, DetailedError, Error]]:
+    """ Get an API Key
+
+     Fetches an environment API Key, either a key of type `ingest` or type `configuration` based on the
+    ID given.
+
+    Args:
+        team_slug (str):
+        id (str):
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        Response[Union[ApiKeyResponse, DetailedError, Error]]
+     """
+
+
+    kwargs = _get_kwargs(
+        team_slug=team_slug,
+id=id,
+
+    )
+
+    response = client.get_httpx_client().request(
+        **kwargs,
+    )
+
+    return _build_response(client=client, response=response)
+
+def sync(
+    team_slug: str,
+    id: str,
+    *,
+    client: AuthenticatedClient,
+
+) -> Optional[Union[ApiKeyResponse, DetailedError, Error]]:
+    """ Get an API Key
+
+     Fetches an environment API Key, either a key of type `ingest` or type `configuration` based on the
+    ID given.
+
+    Args:
+        team_slug (str):
+        id (str):
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        Union[ApiKeyResponse, DetailedError, Error]
+     """
+
+
+    return sync_detailed(
+        team_slug=team_slug,
+id=id,
+client=client,
+
+    ).parsed
+
+async def asyncio_detailed(
+    team_slug: str,
+    id: str,
+    *,
+    client: AuthenticatedClient,
+
+) -> Response[Union[ApiKeyResponse, DetailedError, Error]]:
+    """ Get an API Key
+
+     Fetches an environment API Key, either a key of type `ingest` or type `configuration` based on the
+    ID given.
+
+    Args:
+        team_slug (str):
+        id (str):
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        Response[Union[ApiKeyResponse, DetailedError, Error]]
+     """
+
+
+    kwargs = _get_kwargs(
+        team_slug=team_slug,
+id=id,
+
+    )
+
+    response = await client.get_async_httpx_client().request(
+        **kwargs
+    )
+
+    return _build_response(client=client, response=response)
+
+async def asyncio(
+    team_slug: str,
+    id: str,
+    *,
+    client: AuthenticatedClient,
+
+) -> Optional[Union[ApiKeyResponse, DetailedError, Error]]:
+    """ Get an API Key
+
+     Fetches an environment API Key, either a key of type `ingest` or type `configuration` based on the
+    ID given.
+
+    Args:
+        team_slug (str):
+        id (str):
+
+    Raises:
+        errors.UnexpectedStatus: If the server returns an undocumented status code and Client.raise_on_unexpected_status is True.
+        httpx.TimeoutException: If the request takes longer than Client.timeout.
+
+    Returns:
+        Union[ApiKeyResponse, DetailedError, Error]
+     """
+
+
+    return (await asyncio_detailed(
+        team_slug=team_slug,
+id=id,
+client=client,
+
+    )).parsed

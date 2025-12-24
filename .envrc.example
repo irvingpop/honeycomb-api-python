@@ -1,0 +1,12 @@
+# Honeycomb API credentials
+# Copy this file to .envrc and fill in your values
+# Then run: direnv allow
+
+export HONEYCOMB_API_KEY="your-api-key-here"
+
+# Optional: Management API credentials (for multi-environment access)
+# export HONEYCOMB_MANAGEMENT_KEY="your-key-id"
+# export HONEYCOMB_MANAGEMENT_SECRET="your-key-secret"
+
+# Optional: Test dataset name (defaults to "test-dataset")
+# export HONEYCOMB_TEST_DATASET="my-test-dataset"

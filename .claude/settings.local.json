@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(pipx install:*)",
+      "Bash(openapi-python-client generate:*)",
+      "Bash(chmod:*)",
+      "Bash(python3:*)",
+      "Bash(poetry init:*)",
+      "Bash(poetry install:*)",
+      "Bash(poetry run python:*)",
+      "Bash(poetry run ruff check:*)",
+      "Bash(poetry run pytest:*)",
+      "Bash(make:*)"
+    ]
+  }
+}

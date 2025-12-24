@@ -1,0 +1,11 @@
+# openapi-python-client configuration
+# See: https://github.com/openapi-generators/openapi-python-client#configuration
+
+project_name_override: honeycomb-generated
+package_name_override: _generated
+
+# Use path prefixes to avoid model name collisions
+use_path_prefixes_for_title_model_names: true
+
+# Disable post-generation hooks (we'll run ruff manually)
+post_hooks: []

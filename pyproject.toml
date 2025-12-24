@@ -1,0 +1,90 @@
+[tool.poetry]
+name = "honeycomb-api"
+version = "0.1.0"
+description = "Python client for the Honeycomb.io API"
+authors = ["Irving Popovetsky"]
+license = "MIT"
+readme = "README.md"
+homepage = "https://github.com/irvingpop/honeycomb-api-python"
+repository = "https://github.com/irvingpop/honeycomb-api-python"
+keywords = ["honeycomb", "observability", "api", "client", "sdk"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+packages = [{ include = "honeycomb", from = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+httpx = ">=0.27"
+pydantic = ">=2.0"
+attrs = ">=23.0"          # Used by generated client
+python-dateutil = ">=2.8" # Used by generated client
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.0"
+pytest-asyncio = ">=0.24"
+respx = ">=0.21"
+ruff = ">=0.8.0"
+mypy = ">=1.0"
+
+[tool.poetry.group.codegen.dependencies]
+pyyaml = ">=6.0"          # For patching OpenAPI spec
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+testpaths = ["tests"]
+markers = [
+    "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src", "tests"]
+exclude = ["src/honeycomb/_generated"]  # Generated code - don't lint
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # Pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+]
+ignore = [
+    "E501",   # line too long (handled by formatter)
+    "B008",   # do not perform function calls in argument defaults
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["honeycomb"]
+
+[tool.mypy]
+python_version = "3.10"
+warn_unused_ignores = true
+disallow_untyped_defs = true
+plugins = ["pydantic.mypy"]
+# Relax some strict checks for pragmatic development
+disallow_any_generics = false
+warn_return_any = false
+
+[[tool.mypy.overrides]]
+module = "honeycomb._generated.*"
+ignore_errors = true

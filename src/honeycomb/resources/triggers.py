@@ -1,0 +1,182 @@
+"""Triggers resource for Honeycomb API."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from ..models.triggers import Trigger, TriggerCreate
+from .base import BaseResource
+
+if TYPE_CHECKING:
+    from ..client import HoneycombClient
+
+
+class TriggersResource(BaseResource):
+    """Resource for managing Honeycomb triggers.
+
+    Triggers allow you to define alert conditions on your data
+    and receive notifications when those conditions are met.
+
+    Example (async):
+        >>> async with HoneycombClient(api_key="...") as client:
+        ...     triggers = await client.triggers.list(dataset="my-dataset")
+        ...     trigger = await client.triggers.get(dataset="my-dataset", trigger_id="abc123")
+
+    Example (sync):
+        >>> with HoneycombClient(api_key="...", sync=True) as client:
+        ...     triggers = client.triggers.list(dataset="my-dataset")
+    """
+
+    def __init__(self, client: HoneycombClient) -> None:
+        super().__init__(client)
+
+    def _build_path(self, dataset: str, trigger_id: str | None = None) -> str:
+        """Build API path for triggers."""
+        base = f"/1/triggers/{dataset}"
+        if trigger_id:
+            return f"{base}/{trigger_id}"
+        return base
+
+    # -------------------------------------------------------------------------
+    # Async methods
+    # -------------------------------------------------------------------------
+
+    async def list_async(self, dataset: str) -> list[Trigger]:
+        """List all triggers for a dataset (async).
+
+        Args:
+            dataset: Dataset slug.
+
+        Returns:
+            List of Trigger objects.
+        """
+        data = await self._get_async(self._build_path(dataset))
+        return self._parse_model_list(Trigger, data)
+
+    async def get_async(self, dataset: str, trigger_id: str) -> Trigger:
+        """Get a specific trigger (async).
+
+        Args:
+            dataset: Dataset slug.
+            trigger_id: Trigger ID.
+
+        Returns:
+            Trigger object.
+        """
+        data = await self._get_async(self._build_path(dataset, trigger_id))
+        return self._parse_model(Trigger, data)
+
+    async def create_async(self, dataset: str, trigger: TriggerCreate) -> Trigger:
+        """Create a new trigger (async).
+
+        Args:
+            dataset: Dataset slug.
+            trigger: Trigger configuration.
+
+        Returns:
+            Created Trigger object.
+        """
+        data = await self._post_async(self._build_path(dataset), json=trigger.model_dump_for_api())
+        return self._parse_model(Trigger, data)
+
+    async def update_async(self, dataset: str, trigger_id: str, trigger: TriggerCreate) -> Trigger:
+        """Update an existing trigger (async).
+
+        Args:
+            dataset: Dataset slug.
+            trigger_id: Trigger ID.
+            trigger: Updated trigger configuration.
+
+        Returns:
+            Updated Trigger object.
+        """
+        data = await self._put_async(
+            self._build_path(dataset, trigger_id), json=trigger.model_dump_for_api()
+        )
+        return self._parse_model(Trigger, data)
+
+    async def delete_async(self, dataset: str, trigger_id: str) -> None:
+        """Delete a trigger (async).
+
+        Args:
+            dataset: Dataset slug.
+            trigger_id: Trigger ID.
+        """
+        await self._delete_async(self._build_path(dataset, trigger_id))
+
+    # -------------------------------------------------------------------------
+    # Sync methods
+    # -------------------------------------------------------------------------
+
+    def list(self, dataset: str) -> list[Trigger]:
+        """List all triggers for a dataset.
+
+        Args:
+            dataset: Dataset slug.
+
+        Returns:
+            List of Trigger objects.
+        """
+        if not self._client.is_sync:
+            raise RuntimeError("Use list_async() for async mode, or pass sync=True to client")
+        data = self._get_sync(self._build_path(dataset))
+        return self._parse_model_list(Trigger, data)
+
+    def get(self, dataset: str, trigger_id: str) -> Trigger:
+        """Get a specific trigger.
+
+        Args:
+            dataset: Dataset slug.
+            trigger_id: Trigger ID.
+
+        Returns:
+            Trigger object.
+        """
+        if not self._client.is_sync:
+            raise RuntimeError("Use get_async() for async mode, or pass sync=True to client")
+        data = self._get_sync(self._build_path(dataset, trigger_id))
+        return self._parse_model(Trigger, data)
+
+    def create(self, dataset: str, trigger: TriggerCreate) -> Trigger:
+        """Create a new trigger.
+
+        Args:
+            dataset: Dataset slug.
+            trigger: Trigger configuration.
+
+        Returns:
+            Created Trigger object.
+        """
+        if not self._client.is_sync:
+            raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
+        data = self._post_sync(self._build_path(dataset), json=trigger.model_dump_for_api())
+        return self._parse_model(Trigger, data)
+
+    def update(self, dataset: str, trigger_id: str, trigger: TriggerCreate) -> Trigger:
+        """Update an existing trigger.
+
+        Args:
+            dataset: Dataset slug.
+            trigger_id: Trigger ID.
+            trigger: Updated trigger configuration.
+
+        Returns:
+            Updated Trigger object.
+        """
+        if not self._client.is_sync:
+            raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
+        data = self._put_sync(
+            self._build_path(dataset, trigger_id), json=trigger.model_dump_for_api()
+        )
+        return self._parse_model(Trigger, data)
+
+    def delete(self, dataset: str, trigger_id: str) -> None:
+        """Delete a trigger.
+
+        Args:
+            dataset: Dataset slug.
+            trigger_id: Trigger ID.
+        """
+        if not self._client.is_sync:
+            raise RuntimeError("Use delete_async() for async mode, or pass sync=True to client")
+        self._delete_sync(self._build_path(dataset, trigger_id))
