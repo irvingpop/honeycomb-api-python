@@ -108,7 +108,7 @@ publish-test: build
 # =============================================================================
 
 docs-serve:
-	poetry run mkdocs serve
+	poetry run mkdocs serve --livereload --watch-theme
 
 docs-build:
 	poetry run mkdocs build
