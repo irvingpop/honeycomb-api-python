@@ -74,7 +74,7 @@ check: lint typecheck
 # =============================================================================
 
 test:
-	poetry run pytest tests/ -v
+	poetry run pytest tests/ -s -q --tb=short --disable-warnings
 
 test-unit:
 	poetry run pytest tests/unit/ -v

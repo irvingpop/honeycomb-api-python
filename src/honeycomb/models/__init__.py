@@ -10,6 +10,15 @@ from .events import BatchEvent, BatchEventResult
 from .markers import Marker, MarkerCreate, MarkerSetting, MarkerSettingCreate
 from .queries import Query, QueryResult, QuerySpec
 from .recipients import Recipient, RecipientCreate, RecipientType
+from .service_map_dependencies import (
+    ServiceMapDependency,
+    ServiceMapDependencyRequest,
+    ServiceMapDependencyRequestCreate,
+    ServiceMapDependencyRequestStatus,
+    ServiceMapDependencyResult,
+    ServiceMapNode,
+    ServiceMapNodeType,
+)
 from .slos import SLI, SLO, SLOCreate
 from .triggers import (
     QueryCalculation,
@@ -75,4 +84,12 @@ __all__ = [
     "EnvironmentCreate",
     "EnvironmentUpdate",
     "EnvironmentColor",
+    # Service Map Dependencies
+    "ServiceMapDependency",
+    "ServiceMapDependencyRequest",
+    "ServiceMapDependencyRequestCreate",
+    "ServiceMapDependencyRequestStatus",
+    "ServiceMapDependencyResult",
+    "ServiceMapNode",
+    "ServiceMapNodeType",
 ]

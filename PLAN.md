@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Current Phase:** Phase 8 - Pagination (Next Phase)
+**Current Phase:** Production Ready - All core features complete
 
 **Completed Phases:**
 - ✅ Phase 1: Project Setup & Generation
@@ -14,9 +14,10 @@
 - ✅ Phase 7.1: Priority Resources (Triggers, SLOs, Datasets, Boards, Queries, Query Results)
 - ✅ Phase 7.2: Secondary Resources (Columns, Markers, Recipients, Burn Alerts, Events)
 - ✅ Phase 7.3: v2 Team-Scoped Resources (API Keys, Environments)
-- ✅ Documentation: MkDocs + Material with auto-generated API reference + 7 new resource guides
+- ✅ Phase 8: Pagination (API Keys, Environments, Service Map Dependencies)
+- ✅ Documentation: MkDocs + Material with auto-generated API reference + 13 resource guides
 
-**Test Coverage:** 145 tests passing | **Doc Validation:** 215 code examples validated
+**Test Coverage:** 159 tests passing | **Doc Validation:** 222 code examples validated
 
 ---
 
@@ -515,19 +516,36 @@ __all__ = [
 
 | Resource | Implementation | Notes |
 |----------|----------------|-------|
-| API Keys | ✅ `resources/api_keys.py` | Team-scoped key management (ingest & configuration) |
-| Environments | ✅ `resources/environments.py` | Team-scoped environment management |
+| API Keys | ✅ `resources/api_keys.py` | Team-scoped key management (ingest & configuration) with auto-pagination |
+| Environments | ✅ `resources/environments.py` | Team-scoped environment management with auto-pagination |
 | Pipelines | ⏸️ Deferred | Team-scoped (internal, low priority) |
 
 **Implementation Summary:**
 - Full CRUD for API Keys and Environments
 - JSON:API format support with proper parsing
 - Management Key authentication required
+- Transparent auto-pagination for list operations
 - Delete protection for environments
 - Key rotation and security best practices in docs
 - Files: `src/honeycomb/resources/{api_keys,environments}.py`
 
-### 7.4 Base Resource Implementation
+### 7.4 Service Map Dependencies ✓ COMPLETED
+
+| Resource | Implementation | Notes |
+|----------|----------------|-------|
+| Service Map Dependencies | ✅ `resources/service_map_dependencies.py` | Query service relationships with auto-pagination |
+
+**Implementation Summary:**
+- Create/Get/Poll pattern for async dependency queries
+- Transparent auto-pagination (default max_pages=640 for safety)
+- Time range filtering (absolute or relative timestamps)
+- Service filtering by node name
+- Polling convenience method (`get_async()`) that creates and waits
+- Support for up to 64,000 dependencies (640 pages at 100/page)
+- Comprehensive rate limiting documentation
+- Files: `src/honeycomb/resources/service_map_dependencies.py`, `src/honeycomb/models/service_map_dependencies.py`
+
+### 7.5 Base Resource Implementation (Reference Pattern)
 
 ```python
 # resources/base.py
@@ -555,7 +573,7 @@ class BaseResource(Generic[T, CreateT, UpdateT]):
     # ... _put, _delete, etc.
 ```
 
-### 7.5 Triggers Resource Example
+### 7.6 Triggers Resource Example (Reference Pattern)
 
 ```python
 # resources/triggers.py
@@ -588,31 +606,62 @@ class TriggersResource(BaseResource[Trigger, TriggerCreate, TriggerUpdate]):
         await self._delete(f"/1/triggers/{dataset}/{trigger_id}")
 ```
 
-## Phase 8: Pagination
+## Phase 8: Pagination ✓ COMPLETED
 
-### 8.1 Pagination Response Model
+**Implementation Summary:**
+Transparent auto-pagination for all endpoints that support it. Users call `list()` and get complete results automatically.
+
+### 8.1 Paginated Endpoints
+
+| Endpoint | Parameters | Implementation | Notes |
+|----------|------------|----------------|-------|
+| `/2/teams/{team}/api-keys` | `page[after]`, `page[size]` (max 100) | ✅ Transparent pagination | Small result sets (typically < 100 keys) |
+| `/2/teams/{team}/environments` | `page[after]`, `page[size]` (max 100) | ✅ Transparent pagination | Small result sets (typically < 20 envs) |
+| `/1/maps/dependencies/requests/{id}` | `page[after]`, `page[size]` (max 100) | ✅ Transparent pagination with `max_pages` | Can return up to 64,000 items (640 pages) |
+
+### 8.2 Service Map Dependencies Resource (NEW)
+
+New resource added for querying service dependencies:
+- **Models**: `ServiceMapDependency`, `ServiceMapDependencyRequest`, `ServiceMapDependencyResult`, `ServiceMapNode`
+- **Methods**: `create_async()`, `get_result_async()`, `get_async()` (convenience method with polling)
+- **Features**:
+  - Automatic pagination (default max_pages=640)
+  - Polling support for async request processing
+  - Time range filtering (absolute or relative)
+  - Service filtering
+- **Documentation**: Full usage guide with examples
+- **Tests**: 9 new tests covering pagination, polling, and filtering
+
+### 8.3 Design Decision: Transparent Pagination
+
+All paginated `list()` methods automatically fetch all pages:
 
 ```python
-class PaginatedResponse(BaseModel, Generic[T]):
-    data: list[T]
-    links: PaginationLinks | None = None
+# API Keys - automatically paginates
+keys = await client.api_keys.list_async(team="my-team")  # Returns ALL keys
 
-class PaginationLinks(BaseModel):
-    next: str | None = None
+# Environments - automatically paginates
+envs = await client.environments.list_async(team="my-team")  # Returns ALL environments
+
+# Service Map Dependencies - transparent with max_pages safety valve
+deps = await client.service_map_dependencies.get_async(
+    request=ServiceMapDependencyRequestCreate(time_range=7200),
+    max_pages=640  # Default, prevents runaway pagination
+)
 ```
 
-### 8.2 Pagination Helpers
+**Rationale:**
+- Consistent DX with v1 endpoints (all return complete results)
+- Small result sets for API Keys/Environments (typically < 100 items)
+- `max_pages` parameter provides safety for large Service Map queries
+- Rate limiting with exponential backoff prevents overwhelming the API
 
-```python
-# Manual pagination
-page = await client.boards.list(page_size=20)
-while page.links and page.links.next:
-    page = await client.boards.list(page_size=20, page_after=page.links.next)
+### 8.4 Rate Limiting Documentation
 
-# Auto-pagination async generator
-async for board in client.boards.list_all():
-    print(board.name)
-```
+All paginated methods include documentation about:
+- Default rate limit: 100 requests per minute per operation
+- Link to Honeycomb support for higher limits: https://www.honeycomb.io/support
+- Warning about potential number of requests for large result sets
 
 ## Phase 9: Testing
 
@@ -746,28 +795,30 @@ async def create(self, dataset: str, trigger: TriggerCreate) -> Trigger:
 11. ✅ **Datasets** - CRUD operations
 12. ✅ **Secondary resources** - Columns, Markers, Recipients, Burn Alerts, Events (CRUD with tests)
 13. ✅ **v2 resources** - API Keys, Environments (team-scoped with JSON:API support)
-14. ⏸️ **Pagination helpers** - Auto-pagination iterators (deferred)
-15. ✅ **Documentation** - MkDocs + Material, auto-generated API reference, validated examples
-16. ✅ **CI setup** - Makefile with format, lint, typecheck, test, validate-docs
+14. ✅ **Pagination** - Transparent auto-pagination for API Keys, Environments, Service Map Dependencies
+15. ✅ **Service Map Dependencies** - Query service relationships with polling and pagination
+16. ✅ **Documentation** - MkDocs + Material, auto-generated API reference, validated examples
+17. ✅ **CI setup** - Makefile with format, lint, typecheck, test, validate-docs
 
 ## Completed Features
 
 ### Core Functionality (Production Ready)
 - **Client**: Async-first with sync support, configurable retry logic, rate limit handling
 - **Authentication**: API keys and Management keys with automatic header management
-- **v1 Resources**: Datasets, Triggers, SLOs, Boards, Queries, Query Results, Columns, Markers, Recipients, Burn Alerts, Events
-- **v2 Resources**: API Keys (team-scoped), Environments (team-scoped)
+- **v1 Resources**: Datasets, Triggers, SLOs, Boards, Queries, Query Results, Columns, Markers, Recipients, Burn Alerts, Events, Service Map Dependencies
+- **v2 Resources**: API Keys (team-scoped with pagination), Environments (team-scoped with pagination)
 - **Models**: Pydantic models for all resources with validation and serialization
 - **Error Handling**: 9 specific exception types with request ID tracking
 - **Retry Logic**: Exponential backoff with Retry-After header support (RFC 7231 dates)
 - **Rate Limiting**: Automatic handling with configurable retry behavior
 - **HTTP Methods**: GET, POST, PUT, PATCH, DELETE with headers support
+- **Pagination**: Transparent auto-pagination for API Keys, Environments, and Service Map Dependencies
 
 ### Developer Experience
-- **Documentation**: 20-page MkDocs site with auto-generated API reference
-- **Testing**: 145 unit tests (all passing)
+- **Documentation**: 21-page MkDocs site with auto-generated API reference
+- **Testing**: 159 unit tests (all passing)
 - **Code Quality**: Ruff (format + lint), mypy (type checking), all integrated in CI
-- **Validation**: 215 documentation code examples validated in CI
+- **Validation**: 222 documentation code examples validated in CI
 - **Live API Testing**: Rate limit test suite with automatic retry verification
 
 ### Advanced Features
@@ -778,25 +829,26 @@ async def create(self, dataset: str, trigger: TriggerCreate) -> Trigger:
 - **Batch Event Sending**: Efficient event ingestion with per-event status tracking
 - **Marker Settings**: Color configuration for marker types
 - **Delete Protection**: Environment safety with delete-protected flag
+- **Transparent Pagination**: Automatic multi-page result fetching with max_pages safety valve
+- **Service Map Queries**: Query service dependencies with polling and automatic pagination
 
 ## Key Metrics
 
 | Metric | Count |
 |--------|-------|
-| **Test Coverage** | 145 tests passing |
-| **Doc Examples** | 215 code blocks validated |
-| **Resources Implemented** | 13 resources (11 v1 + 2 v2) |
-| **Models** | 30+ Pydantic models |
+| **Test Coverage** | 159 tests passing |
+| **Doc Examples** | 222 code blocks validated |
+| **Resources Implemented** | 14 resources (12 v1 + 2 v2) |
+| **Models** | 37+ Pydantic models |
 | **Exceptions** | 9 specific types |
-| **Doc Pages** | 20 pages |
+| **Doc Pages** | 21 pages |
 | **Type Coverage** | 100% (mypy strict on src/) |
 
 ## Next Steps (Recommended Priority)
 
-1. **Pagination Helpers** (Phase 8) - Auto-pagination for list operations
-2. **GitHub Actions CI/CD** (Phase 9) - Automate testing and docs deployment
-3. **PyPI Publishing** (Phase 10) - Make package publicly available
-4. **Optional Enhancements** - CLI tool, JSON schema export, etc.
+1. **GitHub Actions CI/CD** - Automate testing and docs deployment
+2. **PyPI Publishing** - Make package publicly available
+3. **Optional Enhancements** - CLI tool (Phase 12), JSON schema export (Phase 11)
 
 ---
 

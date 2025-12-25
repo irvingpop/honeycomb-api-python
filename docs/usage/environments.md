@@ -5,6 +5,9 @@ Environments help organize your Honeycomb data and API keys by deployment stage 
 !!! note "Management Key Required"
     The Environments API requires a Management Key (not a regular API key). See [Authentication](../getting-started/authentication.md#management-key-authentication) for setup.
 
+!!! info "Automatic Pagination"
+    The `list()` and `list_async()` methods automatically paginate through all results. For teams with many environments, this may result in multiple API requests. The default rate limit is 100 requests per minute per operation. If you need higher limits, contact [Honeycomb support](https://www.honeycomb.io/support).
+
 ## Basic Environment Operations
 
 ### List Environments

@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from .resources.queries import QueriesResource
     from .resources.query_results import QueryResultsResource
     from .resources.recipients import RecipientsResource
+    from .resources.service_map_dependencies import ServiceMapDependenciesResource
     from .resources.slos import SLOsResource
     from .resources.triggers import TriggersResource
 
@@ -150,6 +151,7 @@ class HoneycombClient:
         self._events: EventsResource | None = None
         self._api_keys: ApiKeysResource | None = None
         self._environments: EnvironmentsResource | None = None
+        self._service_map_dependencies: ServiceMapDependenciesResource | None = None
 
     # -------------------------------------------------------------------------
     # Resource accessors
@@ -271,6 +273,15 @@ class HoneycombClient:
 
             self._environments = EnvironmentsResource(self)
         return self._environments
+
+    @property
+    def service_map_dependencies(self) -> ServiceMapDependenciesResource:
+        """Access the Service Map Dependencies API."""
+        if self._service_map_dependencies is None:
+            from .resources.service_map_dependencies import ServiceMapDependenciesResource
+
+            self._service_map_dependencies = ServiceMapDependenciesResource(self)
+        return self._service_map_dependencies
 
     # -------------------------------------------------------------------------
     # HTTP client management
