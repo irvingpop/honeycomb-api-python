@@ -41,11 +41,21 @@ nav:
       - Quick Start: getting-started/quickstart.md
       - Authentication: getting-started/authentication.md
   - Usage Guides:
-      - Datasets: usage/datasets.md
-      - Triggers: usage/triggers.md
-      - SLOs: usage/slos.md
-      - Boards: usage/boards.md
-      - Queries: usage/queries.md
+      - Core Resources:
+          - Datasets: usage/datasets.md
+          - Triggers: usage/triggers.md
+          - SLOs: usage/slos.md
+          - Boards: usage/boards.md
+          - Queries: usage/queries.md
+      - Data Management:
+          - Columns: usage/columns.md
+          - Markers: usage/markers.md
+          - Recipients: usage/recipients.md
+          - Burn Alerts: usage/burn_alerts.md
+          - Events (Ingestion): usage/events.md
+      - Team Management (v2):
+          - API Keys: usage/api_keys.md
+          - Environments: usage/environments.md
   - Advanced:
       - Error Handling: advanced/error-handling.md
       - Retry Configuration: advanced/retry-config.md

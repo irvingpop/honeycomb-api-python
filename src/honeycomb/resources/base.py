@@ -37,17 +37,39 @@ class BaseResource:
         return response.json()
 
     async def _post_async(
-        self, path: str, *, json: dict[str, Any] | None = None, params: dict[str, Any] | None = None
+        self,
+        path: str,
+        *,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Any:
         """Make an async POST request and return JSON response."""
-        response = await self._client.post_async(path, json=json, params=params)
+        response = await self._client.post_async(path, json=json, params=params, headers=headers)
         return response.json()
 
     async def _put_async(
-        self, path: str, *, json: dict[str, Any] | None = None, params: dict[str, Any] | None = None
+        self,
+        path: str,
+        *,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Any:
         """Make an async PUT request and return JSON response."""
-        response = await self._client.put_async(path, json=json, params=params)
+        response = await self._client.put_async(path, json=json, params=params, headers=headers)
+        return response.json()
+
+    async def _patch_async(
+        self,
+        path: str,
+        *,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> Any:
+        """Make an async PATCH request and return JSON response."""
+        response = await self._client.patch_async(path, json=json, params=params, headers=headers)
         return response.json()
 
     async def _delete_async(self, path: str, *, params: dict[str, Any] | None = None) -> None:
@@ -64,17 +86,39 @@ class BaseResource:
         return response.json()
 
     def _post_sync(
-        self, path: str, *, json: dict[str, Any] | None = None, params: dict[str, Any] | None = None
+        self,
+        path: str,
+        *,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Any:
         """Make a sync POST request and return JSON response."""
-        response = self._client.post_sync(path, json=json, params=params)
+        response = self._client.post_sync(path, json=json, params=params, headers=headers)
         return response.json()
 
     def _put_sync(
-        self, path: str, *, json: dict[str, Any] | None = None, params: dict[str, Any] | None = None
+        self,
+        path: str,
+        *,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
     ) -> Any:
         """Make a sync PUT request and return JSON response."""
-        response = self._client.put_sync(path, json=json, params=params)
+        response = self._client.put_sync(path, json=json, params=params, headers=headers)
+        return response.json()
+
+    def _patch_sync(
+        self,
+        path: str,
+        *,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> Any:
+        """Make a sync PATCH request and return JSON response."""
+        response = self._client.patch_sync(path, json=json, params=params, headers=headers)
         return response.json()
 
     def _delete_sync(self, path: str, *, params: dict[str, Any] | None = None) -> None:

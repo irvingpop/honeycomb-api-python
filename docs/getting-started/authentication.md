@@ -38,7 +38,7 @@ async with HoneycombClient(api_key=api_key) as client:
     pass
 ```
 
-## Management Key Authentication (Advanced)
+## Management Key Authentication
 
 Management keys provide access to management APIs across multiple environments. Use this for:
 

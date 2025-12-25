@@ -2,7 +2,7 @@
 
 ## Project Status
 
-**Current Phase:** Phase 7 - Resource Implementation (Priority Resources Complete)
+**Current Phase:** Phase 8 - Pagination (Next Phase)
 
 **Completed Phases:**
 - ✅ Phase 1: Project Setup & Generation
@@ -12,9 +12,11 @@
 - ✅ Phase 5: Rate Limiting & Retries
 - ✅ Phase 6: Pydantic Models
 - ✅ Phase 7.1: Priority Resources (Triggers, SLOs, Datasets, Boards, Queries, Query Results)
-- ✅ Documentation: MkDocs + Material with auto-generated API reference
+- ✅ Phase 7.2: Secondary Resources (Columns, Markers, Recipients, Burn Alerts, Events)
+- ✅ Phase 7.3: v2 Team-Scoped Resources (API Keys, Environments)
+- ✅ Documentation: MkDocs + Material with auto-generated API reference + 7 new resource guides
 
-**Test Coverage:** 145 tests passing | **Doc Validation:** 75 code examples validated
+**Test Coverage:** 145 tests passing | **Doc Validation:** 215 code examples validated
 
 ---
 
@@ -491,24 +493,39 @@ __all__ = [
 - Full error handling and validation
 - Files: `src/honeycomb/resources/{triggers,slos,boards,datasets,queries,query_results}.py`
 
-### 7.2 Secondary Resources (Deferred)
+### 7.2 Secondary Resources ✓ COMPLETED
 
-| Resource | Notes |
-|----------|-------|
-| Columns | Dataset-scoped column management |
-| Markers | Dataset-scoped event markers |
-| Marker Settings | Marker configuration |
-| Recipients | Notification targets |
-| Burn Alerts | SLO burn rate alerts |
-| Events | Data ingestion (batch/single/kinesis) |
+| Resource | Implementation | Notes |
+|----------|----------------|-------|
+| Columns | ✅ `resources/columns.py` | Dataset-scoped column management |
+| Markers | ✅ `resources/markers.py` | Dataset-scoped event markers + settings |
+| Recipients | ✅ `resources/recipients.py` | Notification targets (email, Slack, PagerDuty, etc.) |
+| Burn Alerts | ✅ `resources/burn_alerts.py` | SLO burn rate alerts (exhaustion_time, budget_rate) |
+| Events | ✅ `resources/events.py` | Data ingestion (batch/single) |
 
-### 7.3 v2 Team-Scoped Resources
+**Implementation Summary:**
+- All 5 secondary resources fully implemented with async + sync variants
+- Marker Settings included in Markers resource (list/create/update/delete)
+- Events support both single and batch sending with result tracking
+- JSON:API format handling for v2 endpoints
+- Comprehensive documentation with usage examples
+- Files: `src/honeycomb/resources/{columns,markers,recipients,burn_alerts,events}.py`
 
-| Resource | Notes |
-|----------|-------|
-| API Keys | Team-scoped management |
-| Environments | Team-scoped management |
-| Pipelines | Team-scoped (internal) |
+### 7.3 v2 Team-Scoped Resources ✓ COMPLETED
+
+| Resource | Implementation | Notes |
+|----------|----------------|-------|
+| API Keys | ✅ `resources/api_keys.py` | Team-scoped key management (ingest & configuration) |
+| Environments | ✅ `resources/environments.py` | Team-scoped environment management |
+| Pipelines | ⏸️ Deferred | Team-scoped (internal, low priority) |
+
+**Implementation Summary:**
+- Full CRUD for API Keys and Environments
+- JSON:API format support with proper parsing
+- Management Key authentication required
+- Delete protection for environments
+- Key rotation and security best practices in docs
+- Files: `src/honeycomb/resources/{api_keys,environments}.py`
 
 ### 7.4 Base Resource Implementation
 
@@ -727,29 +744,30 @@ async def create(self, dataset: str, trigger: TriggerCreate) -> Trigger:
 9. ✅ **Boards resource** - Full CRUD with tests
 10. ✅ **Queries + Query Results** - Create/run queries (with create_and_run convenience method)
 11. ✅ **Datasets** - CRUD operations
-12. ⏸️ **Remaining resources** - Columns, Markers, Recipients, etc. (deferred)
-13. ⏸️ **v2 resources** - API Keys, Environments (team-scoped) (deferred)
-14. ⏸️ **Events** - Data ingestion (deferred)
-15. ⏸️ **Pagination helpers** - Auto-pagination iterators (deferred)
-16. ✅ **Documentation** - MkDocs + Material, auto-generated API reference, validated examples
-17. ✅ **CI setup** - Makefile with format, lint, typecheck, test, validate-docs
+12. ✅ **Secondary resources** - Columns, Markers, Recipients, Burn Alerts, Events (CRUD with tests)
+13. ✅ **v2 resources** - API Keys, Environments (team-scoped with JSON:API support)
+14. ⏸️ **Pagination helpers** - Auto-pagination iterators (deferred)
+15. ✅ **Documentation** - MkDocs + Material, auto-generated API reference, validated examples
+16. ✅ **CI setup** - Makefile with format, lint, typecheck, test, validate-docs
 
 ## Completed Features
 
 ### Core Functionality (Production Ready)
 - **Client**: Async-first with sync support, configurable retry logic, rate limit handling
 - **Authentication**: API keys and Management keys with automatic header management
-- **Resources**: Datasets, Triggers, SLOs, Boards, Queries, Query Results
+- **v1 Resources**: Datasets, Triggers, SLOs, Boards, Queries, Query Results, Columns, Markers, Recipients, Burn Alerts, Events
+- **v2 Resources**: API Keys (team-scoped), Environments (team-scoped)
 - **Models**: Pydantic models for all resources with validation and serialization
 - **Error Handling**: 9 specific exception types with request ID tracking
 - **Retry Logic**: Exponential backoff with Retry-After header support (RFC 7231 dates)
 - **Rate Limiting**: Automatic handling with configurable retry behavior
+- **HTTP Methods**: GET, POST, PUT, PATCH, DELETE with headers support
 
 ### Developer Experience
-- **Documentation**: 13-page MkDocs site with auto-generated API reference
-- **Testing**: 145 unit tests (all passing), 5 doc example tests
+- **Documentation**: 20-page MkDocs site with auto-generated API reference
+- **Testing**: 145 unit tests (all passing)
 - **Code Quality**: Ruff (format + lint), mypy (type checking), all integrated in CI
-- **Validation**: 75 documentation code examples validated in CI
+- **Validation**: 215 documentation code examples validated in CI
 - **Live API Testing**: Rate limit test suite with automatic retry verification
 
 ### Advanced Features
@@ -757,32 +775,415 @@ async def create(self, dataset: str, trigger: TriggerCreate) -> Trigger:
 - **RetryConfig**: Fully customizable retry behavior (delays, statuses, limits)
 - **RateLimitInfo**: Parse rate limit headers (multiple formats supported)
 - **Multiple error formats**: RFC 7807, JSON:API, simple JSON
+- **Batch Event Sending**: Efficient event ingestion with per-event status tracking
+- **Marker Settings**: Color configuration for marker types
+- **Delete Protection**: Environment safety with delete-protected flag
 
 ## Key Metrics
 
 | Metric | Count |
 |--------|-------|
 | **Test Coverage** | 145 tests passing |
-| **Doc Examples** | 75 code blocks validated |
-| **Resources** | 6 fully implemented |
-| **Models** | 15+ Pydantic models |
+| **Doc Examples** | 215 code blocks validated |
+| **Resources Implemented** | 13 resources (11 v1 + 2 v2) |
+| **Models** | 30+ Pydantic models |
 | **Exceptions** | 9 specific types |
-| **Doc Pages** | 13 pages |
+| **Doc Pages** | 20 pages |
 | **Type Coverage** | 100% (mypy strict on src/) |
 
 ## Next Steps (Recommended Priority)
 
-1. **GitHub Actions CI/CD** - Automate testing and docs deployment
-2. **PyPI Publishing** - Make package publicly available
-3. **Secondary Resources** - Columns, Markers, Recipients (as needed)
-4. **Pagination Helpers** - Auto-pagination for list operations
-5. **Events API** - Data ingestion support
+1. **Pagination Helpers** (Phase 8) - Auto-pagination for list operations
+2. **GitHub Actions CI/CD** (Phase 9) - Automate testing and docs deployment
+3. **PyPI Publishing** (Phase 10) - Make package publicly available
+4. **Optional Enhancements** - CLI tool, JSON schema export, etc.
+
+---
+
+## Phase 11: JSON Schema Export
+
+**Purpose:** Export Pydantic model schemas as JSON Schema files for validation in external tools and improved AI understanding of the API structure.
+
+### 11.1 Use Cases
+
+- **External validation**: Use JSON Schema validators in other languages/tools
+- **AI context**: Provide schema files to Claude/other LLMs for better API understanding
+- **Documentation**: Machine-readable API contract documentation
+- **Code generation**: Enable client generation in other languages
+
+### 11.2 Implementation
+
+```python
+# scripts/export_schemas.py
+from honeycomb.models import (
+    Trigger, TriggerCreate, SLO, SLOCreate, Board, BoardCreate,
+    Query, QuerySpec, Dataset, DatasetCreate, # ... all models
+)
+import json
+from pathlib import Path
+
+MODELS = [
+    Trigger, TriggerCreate, TriggerUpdate,
+    SLO, SLOCreate, SLOUpdate,
+    Board, BoardCreate, BoardUpdate,
+    Query, QuerySpec, QueryResult,
+    Dataset, DatasetCreate, DatasetUpdate,
+    # ... all public models
+]
+
+def export_schemas(output_dir: Path):
+    """Export all model schemas to JSON files."""
+    output_dir.mkdir(parents=True, exist_ok=True)
+
+    # Individual model schemas
+    for model in MODELS:
+        schema = model.model_json_schema()
+        schema_file = output_dir / f"{model.__name__}.json"
+        schema_file.write_text(json.dumps(schema, indent=2))
+
+    # Combined schema with all models
+    combined = {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Honeycomb API Models",
+        "definitions": {
+            model.__name__: model.model_json_schema()
+            for model in MODELS
+        }
+    }
+    (output_dir / "honeycomb-models.json").write_text(
+        json.dumps(combined, indent=2)
+    )
+
+if __name__ == "__main__":
+    export_schemas(Path("schemas"))
+```
+
+### 11.3 Package Integration
+
+```toml
+# pyproject.toml addition
+[project.scripts]
+honeycomb-export-schemas = "honeycomb.cli.schemas:main"
+```
+
+### 11.4 Makefile Target
+
+```makefile
+export-schemas:
+    poetry run python scripts/export_schemas.py
+    @echo "Schemas exported to schemas/"
+```
+
+### 11.5 Output Structure
+
+```
+schemas/
+├── honeycomb-models.json     # Combined schema with all models
+├── Trigger.json
+├── TriggerCreate.json
+├── SLO.json
+├── SLOCreate.json
+├── Board.json
+├── Query.json
+├── QuerySpec.json
+├── QueryResult.json
+└── ...
+```
+
+### 11.6 Deliverables
+
+- [ ] Schema export script
+- [ ] Makefile target `make export-schemas`
+- [ ] CI step to regenerate schemas on model changes (optional)
+- [ ] Include schemas in package distribution (optional)
+
+---
+
+## Phase 12: CLI Tool
+
+**Purpose:** Provide a `honeycomb` CLI for ergonomic CRUD operations, particularly useful for porting objects between Honeycomb teams/environments.
+
+### 12.1 Framework Choice
+
+**Typer** - Modern CLI framework using Python type hints
+- Auto-generates help text and shell completion
+- Rich integration for beautiful output
+- Minimal boilerplate
+
+### 12.2 Dependencies
+
+```toml
+# pyproject.toml additions
+[project.optional-dependencies]
+cli = [
+    "typer[all]>=0.9.0",
+    "rich>=13.0",
+]
+
+[project.scripts]
+honeycomb = "honeycomb.cli:app"
+```
+
+### 12.3 Authentication
+
+Support multiple auth mechanisms for team/environment porting:
+
+```bash
+# Environment variables (default)
+export HONEYCOMB_API_KEY=hcaik_xxx
+honeycomb triggers list --dataset my-dataset
+
+# Explicit key override
+honeycomb triggers list --dataset my-dataset --api-key hcaik_other
+
+# Named profiles for multi-team workflows
+honeycomb config add-profile production --api-key hcaik_prod
+honeycomb config add-profile staging --api-key hcaik_staging
+honeycomb triggers list --dataset my-dataset --profile production
+
+# Config file location: ~/.honeycomb/config.yaml
+```
+
+**Config file format:**
+```yaml
+# ~/.honeycomb/config.yaml
+default_profile: production
+profiles:
+  production:
+    api_key: hcaik_prod_xxx
+    base_url: https://api.honeycomb.io  # optional
+  staging:
+    api_key: hcaik_staging_xxx
+  eu_production:
+    api_key: hcaik_eu_xxx
+    base_url: https://api.eu1.honeycomb.io
+```
+
+### 12.4 Command Structure
+
+```bash
+honeycomb <resource> <action> [options]
+```
+
+**Resources and actions:**
+```bash
+# Triggers
+honeycomb triggers list --dataset my-dataset
+honeycomb triggers get <id> --dataset my-dataset
+honeycomb triggers create --dataset my-dataset --from-file trigger.json
+honeycomb triggers update <id> --dataset my-dataset --from-file trigger.json
+honeycomb triggers delete <id> --dataset my-dataset
+honeycomb triggers export <id> --dataset my-dataset > trigger.json
+
+# SLOs
+honeycomb slos list --dataset my-dataset
+honeycomb slos get <id> --dataset my-dataset
+honeycomb slos create --dataset my-dataset --from-file slo.json
+honeycomb slos export <id> --dataset my-dataset > slo.json
+
+# Boards
+honeycomb boards list
+honeycomb boards get <id>
+honeycomb boards create --from-file board.json
+honeycomb boards export <id> > board.json
+
+# Queries
+honeycomb queries run --dataset my-dataset --spec '{"calculations": [{"op": "COUNT"}]}'
+honeycomb queries run --dataset my-dataset --from-file query.json
+
+# Datasets
+honeycomb datasets list
+honeycomb datasets get <slug>
+honeycomb datasets create --name "My Dataset" --slug my-dataset
+
+# Config management
+honeycomb config show
+honeycomb config add-profile <name> --api-key <key>
+honeycomb config remove-profile <name>
+honeycomb config set-default <name>
+```
+
+### 12.5 Output Formats
+
+```bash
+# Default: Rich table output
+honeycomb triggers list --dataset my-dataset
+
+# JSON output for piping/scripting
+honeycomb triggers list --dataset my-dataset --output json
+
+# YAML output
+honeycomb triggers list --dataset my-dataset --output yaml
+
+# Quiet mode (IDs only)
+honeycomb triggers list --dataset my-dataset --quiet
+```
+
+### 12.6 Porting Workflow
+
+Primary use case: copy objects between teams/environments
+
+```bash
+# Export from production
+honeycomb triggers export trigger-123 \
+    --dataset my-dataset \
+    --profile production > trigger.json
+
+# Import to staging (IDs are stripped/regenerated)
+honeycomb triggers create \
+    --dataset my-dataset \
+    --profile staging \
+    --from-file trigger.json
+
+# Bulk export all triggers
+honeycomb triggers list --dataset my-dataset --profile production --output json \
+    | jq '.[]' > triggers/
+
+# Or with built-in bulk export
+honeycomb triggers export-all --dataset my-dataset --profile production --output-dir triggers/
+```
+
+### 12.7 Package Structure
+
+```
+src/honeycomb/
+├── cli/
+│   ├── __init__.py          # Main Typer app
+│   ├── config.py            # Profile/config management
+│   ├── formatters.py        # Output formatting (table, json, yaml)
+│   ├── triggers.py          # honeycomb triggers <action>
+│   ├── slos.py              # honeycomb slos <action>
+│   ├── boards.py            # honeycomb boards <action>
+│   ├── queries.py           # honeycomb queries <action>
+│   ├── datasets.py          # honeycomb datasets <action>
+│   └── schemas.py           # honeycomb export-schemas
+```
+
+### 12.8 Implementation Example
+
+```python
+# cli/__init__.py
+import typer
+from rich.console import Console
+
+app = typer.Typer(
+    name="honeycomb",
+    help="CLI for Honeycomb.io API operations",
+    no_args_is_help=True,
+)
+console = Console()
+
+# Import and register subcommands
+from honeycomb.cli import triggers, slos, boards, queries, datasets, config
+
+app.add_typer(triggers.app, name="triggers")
+app.add_typer(slos.app, name="slos")
+app.add_typer(boards.app, name="boards")
+app.add_typer(queries.app, name="queries")
+app.add_typer(datasets.app, name="datasets")
+app.add_typer(config.app, name="config")
+```
+
+```python
+# cli/triggers.py
+import typer
+from typing import Optional
+from pathlib import Path
+from honeycomb.cli.config import get_client
+from honeycomb.cli.formatters import output_result, OutputFormat
+
+app = typer.Typer(help="Manage triggers")
+
+@app.command("list")
+def list_triggers(
+    dataset: str = typer.Option(..., "--dataset", "-d", help="Dataset slug"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p", help="Config profile"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", envvar="HONEYCOMB_API_KEY"),
+    output: OutputFormat = typer.Option(OutputFormat.table, "--output", "-o"),
+):
+    """List all triggers in a dataset."""
+    client = get_client(profile=profile, api_key=api_key)
+    triggers = client.triggers.list(dataset=dataset)
+    output_result(triggers, output, columns=["id", "name", "disabled", "frequency"])
+
+@app.command("get")
+def get_trigger(
+    trigger_id: str = typer.Argument(..., help="Trigger ID"),
+    dataset: str = typer.Option(..., "--dataset", "-d"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", envvar="HONEYCOMB_API_KEY"),
+    output: OutputFormat = typer.Option(OutputFormat.json, "--output", "-o"),
+):
+    """Get a specific trigger."""
+    client = get_client(profile=profile, api_key=api_key)
+    trigger = client.triggers.get(dataset=dataset, trigger_id=trigger_id)
+    output_result(trigger, output)
+
+@app.command("create")
+def create_trigger(
+    dataset: str = typer.Option(..., "--dataset", "-d"),
+    from_file: Path = typer.Option(..., "--from-file", "-f", help="JSON file with trigger config"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", envvar="HONEYCOMB_API_KEY"),
+    output: OutputFormat = typer.Option(OutputFormat.json, "--output", "-o"),
+):
+    """Create a trigger from a JSON file."""
+    import json
+    from honeycomb.models import TriggerCreate
+
+    client = get_client(profile=profile, api_key=api_key)
+    data = json.loads(from_file.read_text())
+
+    # Strip IDs and timestamps for import
+    data.pop("id", None)
+    data.pop("created_at", None)
+    data.pop("updated_at", None)
+
+    trigger_create = TriggerCreate.model_validate(data)
+    trigger = client.triggers.create(dataset=dataset, trigger=trigger_create)
+    output_result(trigger, output)
+
+@app.command("export")
+def export_trigger(
+    trigger_id: str = typer.Argument(..., help="Trigger ID"),
+    dataset: str = typer.Option(..., "--dataset", "-d"),
+    profile: Optional[str] = typer.Option(None, "--profile", "-p"),
+    api_key: Optional[str] = typer.Option(None, "--api-key", envvar="HONEYCOMB_API_KEY"),
+):
+    """Export a trigger as JSON (suitable for import to another environment)."""
+    import json
+    client = get_client(profile=profile, api_key=api_key)
+    trigger = client.triggers.get(dataset=dataset, trigger_id=trigger_id)
+
+    # Export without IDs/timestamps for portability
+    data = trigger.model_dump(exclude={"id", "created_at", "updated_at"})
+    print(json.dumps(data, indent=2, default=str))
+```
+
+### 12.9 Deliverables
+
+- [ ] CLI package structure (`src/honeycomb/cli/`)
+- [ ] Config file management (profiles, credentials)
+- [ ] Resource commands: triggers, slos, boards, queries, datasets
+- [ ] Output formatters (table, json, yaml)
+- [ ] Export/import workflow for porting
+- [ ] Shell completion support
+- [ ] CLI documentation page in MkDocs
+- [ ] Tests for CLI commands
+
+### 12.10 Future CLI Enhancements
+
+- **Bulk operations**: `honeycomb triggers export-all`, `honeycomb triggers import-all`
+- **Diff command**: `honeycomb triggers diff <id> --profile prod --compare-profile staging`
+- **Watch mode**: `honeycomb query run --watch --interval 30`
+- **Interactive mode**: `honeycomb shell` (REPL with autocomplete)
+
+---
 
 ## Future Enhancements (Nice-to-Have)
 
 - **Caching**: Optional response caching with TTL
 - **OpenTelemetry**: Built-in tracing instrumentation
-- **CLI**: `honeycomb triggers list --env production`
 - **VCR-style recording**: Cassette recording for integration tests
 - **Streaming Events**: Async event ingestion with batching
 

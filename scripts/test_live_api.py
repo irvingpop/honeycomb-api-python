@@ -1,22 +1,39 @@
 #!/usr/bin/env python3
-"""Test the wrapper client against the live Honeycomb API."""
+"""Test the wrapper client against the live Honeycomb API.
+
+Tests the following resources with API Key authentication:
+- Datasets, Triggers, Boards (core resources)
+- Columns, Markers, Recipients, Events (secondary resources)
+- Sync client operations
+- Rate limiting behavior
+
+Not tested (require additional setup):
+- Burn Alerts (requires existing SLO)
+- API Keys and Environments (require Management Key authentication)
+"""
 
 import asyncio
-import sys
 import os
+import sys
 
 # Add src to path for local development
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from honeycomb import (
+from honeycomb import (  # type: ignore[import-untyped]
+    BatchEvent,
+    ColumnCreate,
+    ColumnType,
     HoneycombClient,
-    TriggerCreate,
-    TriggerThreshold,
-    TriggerThresholdOp,
-    TriggerQuery,
-    QueryCalculation,
     HoneycombNotFoundError,
     HoneycombRateLimitError,
+    MarkerCreate,
+    QueryCalculation,
+    RecipientCreate,
+    RecipientType,
+    TriggerCreate,
+    TriggerQuery,
+    TriggerThreshold,
+    TriggerThresholdOp,
 )
 
 # Load from environment variables
@@ -29,7 +46,7 @@ if not API_KEY:
 TEST_DATASET = os.environ.get("HONEYCOMB_TEST_DATASET", "test-dataset")
 
 
-async def test_datasets():
+async def test_datasets() -> None:
     """Test dataset operations."""
     print("\n=== Testing Datasets ===")
 
@@ -48,7 +65,7 @@ async def test_datasets():
             print(f"  Columns: {ds.regular_columns_count}")
 
 
-async def test_triggers():
+async def test_triggers() -> None:
     """Test trigger operations."""
     print("\n=== Testing Triggers ===")
 
@@ -117,7 +134,7 @@ async def test_triggers():
             print("Verified: Trigger no longer exists")
 
 
-async def test_boards():
+async def test_boards() -> None:
     """Test board operations."""
     print("\n=== Testing Boards ===")
 
@@ -129,7 +146,128 @@ async def test_boards():
             print(f"  - {b.name} (id: {b.id})")
 
 
-async def test_sync_client():
+async def test_columns() -> None:
+    """Test column operations."""
+    print("\n=== Testing Columns ===")
+
+    async with HoneycombClient(api_key=API_KEY) as client:
+        # List columns
+        columns = await client.columns.list_async(TEST_DATASET)
+        print(f"Found {len(columns)} columns in {TEST_DATASET}:")
+        for col in columns[:5]:
+            print(f"  - {col.key_name} ({col.type.value})")
+
+        # Create a test column
+        print("\nCreating a test column...")
+        new_column = ColumnCreate(
+            key_name="test_wrapper_column",
+            type=ColumnType.FLOAT,
+            description="Test column created by wrapper client",
+        )
+        created = await client.columns.create_async(TEST_DATASET, new_column)
+        print(f"Created column: {created.key_name} (id: {created.id})")
+
+        # Clean up
+        print("Deleting test column...")
+        await client.columns.delete_async(TEST_DATASET, created.id)
+        print("Column deleted successfully")
+
+
+async def test_markers() -> None:
+    """Test marker operations."""
+    print("\n=== Testing Markers ===")
+
+    async with HoneycombClient(api_key=API_KEY) as client:
+        # List existing markers
+        markers = await client.markers.list_async(TEST_DATASET)
+        print(f"Found {len(markers)} markers in {TEST_DATASET}")
+
+        # Create a marker
+        print("\nCreating a test marker...")
+        new_marker = MarkerCreate(
+            message="Test deploy from wrapper client",
+            type="test_deploy",
+        )
+        created = await client.markers.create_async(TEST_DATASET, new_marker)
+        print(f"Created marker: {created.id} - {created.message}")
+
+        # List marker settings
+        settings = await client.markers.list_settings_async(TEST_DATASET)
+        print(f"\nFound {len(settings)} marker settings for {TEST_DATASET}")
+
+        # Clean up
+        print("Deleting test marker...")
+        await client.markers.delete_async(TEST_DATASET, created.id)
+        print("Marker deleted successfully")
+
+
+async def test_recipients() -> None:
+    """Test recipient operations."""
+    print("\n=== Testing Recipients ===")
+
+    async with HoneycombClient(api_key=API_KEY) as client:
+        # List recipients
+        recipients = await client.recipients.list_async()
+        print(f"Found {len(recipients)} recipients:")
+        for r in recipients[:5]:
+            print(f"  - {r.type.value} (id: {r.id})")
+
+        # Create a test email recipient
+        print("\nCreating a test recipient...")
+        new_recipient = RecipientCreate(
+            type=RecipientType.EMAIL,
+            details={"email_address": "test-wrapper@example.com"}
+        )
+        created = await client.recipients.create_async(new_recipient)
+        print(f"Created recipient: {created.id} ({created.type.value})")
+
+        # Get triggers for this recipient
+        triggers = await client.recipients.get_triggers_async(created.id)
+        print(f"Recipient has {len(triggers)} associated triggers")
+
+        # Clean up
+        print("Deleting test recipient...")
+        await client.recipients.delete_async(created.id)
+        print("Recipient deleted successfully")
+
+
+async def test_events() -> None:
+    """Test event ingestion."""
+    print("\n=== Testing Events ===")
+
+    async with HoneycombClient(api_key=API_KEY) as client:
+        # Send single event
+        print("Sending single test event...")
+        await client.events.send_async(
+            TEST_DATASET,
+            data={
+                "test_source": "wrapper_client",
+                "test_type": "live_api_test",
+                "duration_ms": 42,
+            }
+        )
+        print("Single event sent successfully")
+
+        # Send batch of events
+        print("\nSending batch of 3 test events...")
+        events = [
+            BatchEvent(data={"event": 1, "test": "batch"}),
+            BatchEvent(data={"event": 2, "test": "batch"}),
+            BatchEvent(data={"event": 3, "test": "batch"}),
+        ]
+        results = await client.events.send_batch_async(TEST_DATASET, events)
+        print(f"Batch sent: {len(results)} results received")
+
+        successful = [r for r in results if r.status == 202]
+        failed = [r for r in results if r.status != 202]
+        print(f"  ✓ {len(successful)} events accepted")
+        if failed:
+            print(f"  ✗ {len(failed)} events failed")
+            for r in failed:
+                print(f"    {r.status}: {r.error}")
+
+
+async def test_sync_client() -> None:
     """Test sync client operations."""
     print("\n=== Testing Sync Client ===")
 
@@ -140,8 +278,17 @@ async def test_sync_client():
         triggers = client.triggers.list(TEST_DATASET)
         print(f"Sync client found {len(triggers)} triggers in {TEST_DATASET}")
 
+        columns = client.columns.list(TEST_DATASET)
+        print(f"Sync client found {len(columns)} columns in {TEST_DATASET}")
 
-async def test_rate_limiting():
+        markers = client.markers.list(TEST_DATASET)
+        print(f"Sync client found {len(markers)} markers in {TEST_DATASET}")
+
+        recipients = client.recipients.list()
+        print(f"Sync client found {len(recipients)} recipients")
+
+
+async def test_rate_limiting() -> None:
     """Test rate limiting and retry behavior.
 
     WARNING: This test intentionally triggers rate limits by making rapid requests!
@@ -203,15 +350,13 @@ async def test_rate_limiting():
 
     async with HoneycombClient(api_key=API_KEY, max_retries=2) as client:
         start_time = time.time()
-        retry_succeeded = False
 
         try:
             # This should hit 429, wait for retry_after, then succeed
             result = await client.datasets.get_async(test_dataset)
             elapsed = time.time() - start_time
-            retry_succeeded = True
 
-            print(f"✓ Request succeeded after automatic retry!")
+            print("✓ Request succeeded after automatic retry!")
             print(f"  Total time: {elapsed:.2f}s")
             print(f"  Retrieved dataset: {result.name}")
 
@@ -223,10 +368,10 @@ async def test_rate_limiting():
                 else:
                     print(f"⚠️  Client waited {elapsed:.2f}s (expected ~{expected_wait}s)")
 
-        except HoneycombRateLimitError as e:
+        except HoneycombRateLimitError:
             elapsed = time.time() - start_time
             print(f"⚠️  Still rate limited after {elapsed:.2f}s")
-            print(f"  This can happen if the rate limit window is longer than retry attempts")
+            print("  This can happen if the rate limit window is longer than retry attempts")
             print(f"  The client DID attempt retries (waited {elapsed:.2f}s)")
 
     # Test that we can successfully make a request after waiting
@@ -245,17 +390,28 @@ async def test_rate_limiting():
     print("\n✓ Rate limiting test completed")
 
 
-async def main():
+async def main() -> int:
     """Run all tests."""
     print("=" * 60)
     print("Testing Honeycomb Wrapper Client against Live API")
     print("=" * 60)
 
     try:
+        # Core resources
         await test_datasets()
         await test_triggers()
         await test_boards()
+
+        # Secondary resources
+        await test_columns()
+        await test_markers()
+        await test_recipients()
+        await test_events()
+
+        # Sync client
         await test_sync_client()
+
+        # Rate limiting (optional, user can skip)
         await test_rate_limiting()
 
         print("\n" + "=" * 60)

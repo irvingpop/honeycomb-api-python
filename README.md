@@ -154,12 +154,24 @@ client = HoneycombClient(api_key="...", retry_config=retry_config)
 
 The client provides resource-oriented access to the Honeycomb API:
 
+**Core Resources:**
 - `client.datasets` - Dataset management
 - `client.triggers` - Alert triggers
 - `client.slos` - Service level objectives
 - `client.boards` - Dashboards
 - `client.queries` - Saved queries
 - `client.query_results` - Query execution
+
+**Data Management:**
+- `client.columns` - Column schema management
+- `client.markers` - Event markers and annotations
+- `client.recipients` - Notification recipients
+- `client.burn_alerts` - SLO burn rate alerts
+- `client.events` - Event ingestion (send data to Honeycomb)
+
+**Team Management (v2 - requires Management Key):**
+- `client.api_keys` - API key management (team-scoped)
+- `client.environments` - Environment management (team-scoped)
 
 All methods have both sync and async variants (`list()` / `list_async()`).
 

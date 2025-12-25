@@ -25,10 +25,17 @@ from .exceptions import (
 )
 
 if TYPE_CHECKING:
+    from .resources.api_keys import ApiKeysResource
     from .resources.boards import BoardsResource
+    from .resources.burn_alerts import BurnAlertsResource
+    from .resources.columns import ColumnsResource
     from .resources.datasets import DatasetsResource
+    from .resources.environments import EnvironmentsResource
+    from .resources.events import EventsResource
+    from .resources.markers import MarkersResource
     from .resources.queries import QueriesResource
     from .resources.query_results import QueryResultsResource
+    from .resources.recipients import RecipientsResource
     from .resources.slos import SLOsResource
     from .resources.triggers import TriggersResource
 
@@ -136,6 +143,13 @@ class HoneycombClient:
         self._boards: BoardsResource | None = None
         self._queries: QueriesResource | None = None
         self._query_results: QueryResultsResource | None = None
+        self._columns: ColumnsResource | None = None
+        self._markers: MarkersResource | None = None
+        self._recipients: RecipientsResource | None = None
+        self._burn_alerts: BurnAlertsResource | None = None
+        self._events: EventsResource | None = None
+        self._api_keys: ApiKeysResource | None = None
+        self._environments: EnvironmentsResource | None = None
 
     # -------------------------------------------------------------------------
     # Resource accessors
@@ -194,6 +208,69 @@ class HoneycombClient:
 
             self._query_results = QueryResultsResource(self)
         return self._query_results
+
+    @property
+    def columns(self) -> ColumnsResource:
+        """Access the Columns API."""
+        if self._columns is None:
+            from .resources.columns import ColumnsResource
+
+            self._columns = ColumnsResource(self)
+        return self._columns
+
+    @property
+    def markers(self) -> MarkersResource:
+        """Access the Markers API."""
+        if self._markers is None:
+            from .resources.markers import MarkersResource
+
+            self._markers = MarkersResource(self)
+        return self._markers
+
+    @property
+    def recipients(self) -> RecipientsResource:
+        """Access the Recipients API."""
+        if self._recipients is None:
+            from .resources.recipients import RecipientsResource
+
+            self._recipients = RecipientsResource(self)
+        return self._recipients
+
+    @property
+    def burn_alerts(self) -> BurnAlertsResource:
+        """Access the Burn Alerts API."""
+        if self._burn_alerts is None:
+            from .resources.burn_alerts import BurnAlertsResource
+
+            self._burn_alerts = BurnAlertsResource(self)
+        return self._burn_alerts
+
+    @property
+    def events(self) -> EventsResource:
+        """Access the Events API (data ingestion)."""
+        if self._events is None:
+            from .resources.events import EventsResource
+
+            self._events = EventsResource(self)
+        return self._events
+
+    @property
+    def api_keys(self) -> ApiKeysResource:
+        """Access the API Keys API (v2 team-scoped)."""
+        if self._api_keys is None:
+            from .resources.api_keys import ApiKeysResource
+
+            self._api_keys = ApiKeysResource(self)
+        return self._api_keys
+
+    @property
+    def environments(self) -> EnvironmentsResource:
+        """Access the Environments API (v2 team-scoped)."""
+        if self._environments is None:
+            from .resources.environments import EnvironmentsResource
+
+            self._environments = EnvironmentsResource(self)
+        return self._environments
 
     # -------------------------------------------------------------------------
     # HTTP client management
@@ -424,6 +501,7 @@ class HoneycombClient:
         *,
         json: dict | None = None,
         params: dict | None = None,
+        headers: dict[str, str] | None = None,
     ) -> httpx.Response:
         """Make an async HTTP request with retry logic."""
         client = self._get_async_client()
@@ -436,6 +514,7 @@ class HoneycombClient:
                     path,
                     json=json,
                     params=params,
+                    headers=headers,
                 )
                 last_response = response
 
@@ -473,16 +552,37 @@ class HoneycombClient:
         return await self._request_async("GET", path, params=params)
 
     async def post_async(
-        self, path: str, *, json: dict | None = None, params: dict | None = None
+        self,
+        path: str,
+        *,
+        json: dict | None = None,
+        params: dict | None = None,
+        headers: dict[str, str] | None = None,
     ) -> httpx.Response:
         """Make an async POST request."""
-        return await self._request_async("POST", path, json=json, params=params)
+        return await self._request_async("POST", path, json=json, params=params, headers=headers)
 
     async def put_async(
-        self, path: str, *, json: dict | None = None, params: dict | None = None
+        self,
+        path: str,
+        *,
+        json: dict | None = None,
+        params: dict | None = None,
+        headers: dict[str, str] | None = None,
     ) -> httpx.Response:
         """Make an async PUT request."""
-        return await self._request_async("PUT", path, json=json, params=params)
+        return await self._request_async("PUT", path, json=json, params=params, headers=headers)
+
+    async def patch_async(
+        self,
+        path: str,
+        *,
+        json: dict | None = None,
+        params: dict | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> httpx.Response:
+        """Make an async PATCH request."""
+        return await self._request_async("PATCH", path, json=json, params=params, headers=headers)
 
     async def delete_async(self, path: str, *, params: dict | None = None) -> httpx.Response:
         """Make an async DELETE request."""
@@ -499,6 +599,7 @@ class HoneycombClient:
         *,
         json: dict | None = None,
         params: dict | None = None,
+        headers: dict[str, str] | None = None,
     ) -> httpx.Response:
         """Make a sync HTTP request with retry logic."""
         import time
@@ -513,6 +614,7 @@ class HoneycombClient:
                     path,
                     json=json,
                     params=params,
+                    headers=headers,
                 )
                 last_response = response
 
@@ -550,16 +652,37 @@ class HoneycombClient:
         return self._request_sync("GET", path, params=params)
 
     def post_sync(
-        self, path: str, *, json: dict | None = None, params: dict | None = None
+        self,
+        path: str,
+        *,
+        json: dict | None = None,
+        params: dict | None = None,
+        headers: dict[str, str] | None = None,
     ) -> httpx.Response:
         """Make a sync POST request."""
-        return self._request_sync("POST", path, json=json, params=params)
+        return self._request_sync("POST", path, json=json, params=params, headers=headers)
 
     def put_sync(
-        self, path: str, *, json: dict | None = None, params: dict | None = None
+        self,
+        path: str,
+        *,
+        json: dict | None = None,
+        params: dict | None = None,
+        headers: dict[str, str] | None = None,
     ) -> httpx.Response:
         """Make a sync PUT request."""
-        return self._request_sync("PUT", path, json=json, params=params)
+        return self._request_sync("PUT", path, json=json, params=params, headers=headers)
+
+    def patch_sync(
+        self,
+        path: str,
+        *,
+        json: dict | None = None,
+        params: dict | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> httpx.Response:
+        """Make a sync PATCH request."""
+        return self._request_sync("PATCH", path, json=json, params=params, headers=headers)
 
     def delete_sync(self, path: str, *, params: dict | None = None) -> httpx.Response:
         """Make a sync DELETE request."""
