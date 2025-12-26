@@ -112,7 +112,7 @@ class TestQueryResultsResourceAsync:
 
     @respx.mock
     async def test_create_query_result(self, respx_mock):
-        """Test creating a query result."""
+        """Test creating a query result from saved query."""
         client = HoneycombClient(api_key="test-key")
 
         respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
@@ -120,8 +120,9 @@ class TestQueryResultsResourceAsync:
         )
 
         async with client:
-            spec = QuerySpec(time_range=3600)
-            result_id = await client.query_results.create_async("my-dataset", spec=spec)
+            result_id = await client.query_results.create_async(
+                "my-dataset", query_id="saved-query-id"
+            )
             assert result_id == "qr-123"
 
     @respx.mock
@@ -133,7 +134,10 @@ class TestQueryResultsResourceAsync:
             return_value=Response(
                 200,
                 json={
-                    "data": [{"count": 100}],
+                    "data": {
+                        "results": [{"count": 100}],
+                        "series": [],
+                    },
                     "links": None,
                 },
             )
@@ -141,15 +145,20 @@ class TestQueryResultsResourceAsync:
 
         async with client:
             result = await client.query_results.get_async("my-dataset", "qr-123")
-            assert len(result.data) == 1
-            assert result.data[0]["count"] == 100
+            assert len(result.data.rows) == 1
+            assert result.data.rows[0]["count"] == 100
 
     @respx.mock
     async def test_run_query_with_polling(self, respx_mock):
         """Test running a query with automatic polling."""
         client = HoneycombClient(api_key="test-key")
 
-        # Mock create
+        # Mock create saved query
+        respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
+            return_value=Response(200, json={"id": "saved-query-789", "query_json": {}})
+        )
+
+        # Mock create query result
         respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
             return_value=Response(200, json={"id": "qr-789"})
         )
@@ -158,19 +167,28 @@ class TestQueryResultsResourceAsync:
         respx_mock.get("https://api.honeycomb.io/1/query_results/my-dataset/qr-789").mock(
             side_effect=[
                 Response(200, json={"data": None}),
-                Response(200, json={"data": [{"count": 42}]}),
+                Response(
+                    200,
+                    json={
+                        "data": {
+                            "results": [{"count": 42}],
+                            "series": [],
+                        }
+                    },
+                ),
             ]
         )
 
         async with client:
             spec = QuerySpec(time_range=3600)
-            result = await client.query_results.run_async(
+            query, result = await client.query_results.create_and_run_async(
                 "my-dataset", spec=spec, poll_interval=0.1, timeout=5.0
             )
 
             assert result.data is not None
-            assert len(result.data) == 1
-            assert result.data[0]["count"] == 42
+            assert result.data.rows is not None
+            assert len(result.data.rows) == 1
+            assert result.data.rows[0]["count"] == 42
 
     @respx.mock
     async def test_run_query_timeout(self, respx_mock):
@@ -179,6 +197,12 @@ class TestQueryResultsResourceAsync:
 
         client = HoneycombClient(api_key="test-key")
 
+        # Mock create saved query
+        respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
+            return_value=Response(200, json={"id": "saved-query-slow", "query_json": {}})
+        )
+
+        # Mock create query result
         respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
             return_value=Response(200, json={"id": "qr-slow"})
         )
@@ -191,7 +215,7 @@ class TestQueryResultsResourceAsync:
         async with client:
             spec = QuerySpec(time_range=3600)
             with pytest.raises(HoneycombTimeoutError) as exc_info:
-                await client.query_results.run_async(
+                await client.query_results.create_and_run_async(
                     "my-dataset", spec=spec, poll_interval=0.1, timeout=0.3
                 )
 
@@ -217,7 +241,15 @@ class TestQueryResultsResourceAsync:
 
         # Mock query result polling
         respx_mock.get("https://api.honeycomb.io/1/query_results/my-dataset/qr-combo-1").mock(
-            return_value=Response(200, json={"data": [{"count": 999}]})
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "results": [{"count": 999}],
+                        "series": [],
+                    }
+                },
+            )
         )
 
         async with client:
@@ -229,8 +261,9 @@ class TestQueryResultsResourceAsync:
             # Verify we got both the saved query and results
             assert query.id == "saved-query-123"
             assert result.data is not None
-            assert len(result.data) == 1
-            assert result.data[0]["count"] == 999
+            assert result.data.rows is not None
+            assert len(result.data.rows) == 1
+            assert result.data.rows[0]["count"] == 999
 
 
 class TestQueryResultsResourceSync:
@@ -238,7 +271,7 @@ class TestQueryResultsResourceSync:
 
     @respx.mock
     def test_create_query_result_sync(self, respx_mock):
-        """Test creating a query result in sync mode."""
+        """Test creating a query result in sync mode from saved query."""
         client = HoneycombClient(api_key="test-key", sync=True)
 
         respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
@@ -246,8 +279,7 @@ class TestQueryResultsResourceSync:
         )
 
         with client:
-            spec = QuerySpec(time_range=1800)
-            result_id = client.query_results.create("my-dataset", spec=spec)
+            result_id = client.query_results.create("my-dataset", query_id="saved-query-id")
             assert result_id == "qr-sync-1"
 
     @respx.mock
@@ -256,18 +288,30 @@ class TestQueryResultsResourceSync:
         client = HoneycombClient(api_key="test-key", sync=True)
 
         respx_mock.get("https://api.honeycomb.io/1/query_results/my-dataset/qr-sync-1").mock(
-            return_value=Response(200, json={"data": [{"metric": "value"}]})
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "results": [{"metric": "value"}],
+                        "series": [],
+                    }
+                },
+            )
         )
 
         with client:
             result = client.query_results.get("my-dataset", "qr-sync-1")
-            assert result.data[0]["metric"] == "value"
+            assert result.data.rows[0]["metric"] == "value"
 
-    def test_create_requires_spec_or_query_id(self):
-        """Test that create requires either spec or query_id."""
+    def test_create_requires_query_id(self):
+        """Test that create requires query_id parameter."""
         client = HoneycombClient(api_key="test-key", sync=True)
 
-        with client, pytest.raises(ValueError, match="Must provide either spec or query_id"):
+        # query_id is now a required parameter - Python will raise TypeError if missing
+        with (
+            client,
+            pytest.raises(TypeError, match="missing 1 required positional argument: 'query_id'"),
+        ):
             client.query_results.create("my-dataset")
 
     @respx.mock
@@ -289,7 +333,15 @@ class TestQueryResultsResourceSync:
 
         # Mock query result polling
         respx_mock.get("https://api.honeycomb.io/1/query_results/my-dataset/qr-sync-combo").mock(
-            return_value=Response(200, json={"data": [{"total": 555}]})
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "results": [{"total": 555}],
+                        "series": [],
+                    }
+                },
+            )
         )
 
         with client:
@@ -299,7 +351,7 @@ class TestQueryResultsResourceSync:
             )
 
             assert query.id == "saved-sync-query"
-            assert result.data[0]["total"] == 555
+            assert result.data.rows[0]["total"] == 555
 
 
 class TestQuerySpec:
@@ -331,3 +383,29 @@ class TestQuerySpec:
         assert "time_range" in data
         assert "granularity" not in data
         assert "calculations" not in data
+
+    def test_limit_validation_max_1000(self):
+        """Test that limit > 1000 raises validation error."""
+        with pytest.raises(ValueError, match="limit cannot exceed 1000"):
+            QuerySpec(
+                time_range=3600,
+                calculations=[{"op": "COUNT"}],
+                limit=10000,  # Too high!
+            )
+
+    def test_limit_validation_allows_1000(self):
+        """Test that limit = 1000 is allowed."""
+        spec = QuerySpec(
+            time_range=3600,
+            calculations=[{"op": "COUNT"}],
+            limit=1000,  # Maximum allowed
+        )
+        assert spec.limit == 1000
+
+    def test_limit_validation_allows_none(self):
+        """Test that limit = None is allowed."""
+        spec = QuerySpec(
+            time_range=3600,
+            calculations=[{"op": "COUNT"}],
+        )
+        assert spec.limit is None

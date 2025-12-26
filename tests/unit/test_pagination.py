@@ -517,3 +517,293 @@ class TestServiceMapDependenciesModels:
 
         node = ServiceMapNode(name="my-service")
         assert node.type == ServiceMapNodeType.SERVICE
+
+
+# =============================================================================
+# Query Results Pagination Tests
+# =============================================================================
+
+
+class TestQueryResultsPagination:
+    """Tests for Query Results pagination and disable_series."""
+
+    @respx.mock
+    async def test_run_with_disable_series_default(self):
+        """Test that create_and_run_async defaults to disable_series=True."""
+        from honeycomb.models import QuerySpec
+
+        # Mock create saved query
+        respx.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
+            return_value=Response(200, json={"id": "query-456", "query_json": {}})
+        )
+
+        # Mock create query result
+        create_result_route = respx.post(
+            "https://api.honeycomb.io/1/query_results/my-dataset"
+        ).mock(return_value=Response(200, json={"id": "result-123"}))
+
+        # Mock get query result (complete)
+        respx.get("https://api.honeycomb.io/1/query_results/my-dataset/result-123").mock(
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "results": [{"count": 100}, {"count": 50}],
+                        "series": [],
+                    },
+                },
+            )
+        )
+
+        async with HoneycombClient(api_key="test-api-key") as client:
+            query, result = await client.query_results.create_and_run_async(
+                dataset="my-dataset",
+                spec=QuerySpec(
+                    time_range=3600,
+                    calculations=[{"op": "COUNT"}],
+                ),
+            )
+
+        assert len(result.data.rows) == 2
+        assert query.id == "query-456"
+
+        # Verify disable_series=True was set on query result creation
+        import json
+
+        body = json.loads(create_result_route.calls[0].request.content)
+        assert body["disable_series"] is True
+        assert body["query_id"] == "query-456"
+
+    @respx.mock
+    async def test_run_with_disable_series_false(self):
+        """Test that disable_series can be set to False."""
+        from honeycomb.models import QuerySpec
+
+        # Mock create saved query
+        respx.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
+            return_value=Response(200, json={"id": "query-456", "query_json": {}})
+        )
+
+        # Mock create query result
+        create_result_route = respx.post(
+            "https://api.honeycomb.io/1/query_results/my-dataset"
+        ).mock(return_value=Response(200, json={"id": "result-123"}))
+
+        # Mock get query result
+        respx.get("https://api.honeycomb.io/1/query_results/my-dataset/result-123").mock(
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "results": [{"count": 100}],
+                        "series": [{"time": 123, "count": 100}],
+                    }
+                },
+            )
+        )
+
+        async with HoneycombClient(api_key="test-api-key") as client:
+            await client.query_results.create_and_run_async(
+                dataset="my-dataset",
+                spec=QuerySpec(time_range=3600, calculations=[{"op": "COUNT"}]),
+                disable_series=False,
+            )
+
+        # Verify disable_series=False was set
+        import json
+
+        body = json.loads(create_result_route.calls[0].request.content)
+        assert body["disable_series"] is False
+        assert body["query_id"] == "query-456"
+
+
+class TestQueryResultsPaginationHelpers:
+    """Tests for query results pagination helper methods."""
+
+    def test_normalize_time_range_relative(self):
+        """Test normalizing relative time range."""
+        from honeycomb.models import QuerySpec
+
+        client = HoneycombClient(api_key="test", sync=True)
+        resource = client.query_results
+
+        spec = QuerySpec(time_range=3600)  # 1 hour ago
+        start, end = resource._normalize_time_range(spec)
+
+        assert end > start
+        assert end - start == 3600  # 1 hour difference
+
+    def test_normalize_time_range_absolute(self):
+        """Test normalizing absolute time range."""
+        from honeycomb.models import QuerySpec
+
+        client = HoneycombClient(api_key="test", sync=True)
+        resource = client.query_results
+
+        spec = QuerySpec(start_time=1000000, end_time=1003600)
+        start, end = resource._normalize_time_range(spec)
+
+        assert start == 1000000
+        assert end == 1003600
+
+    def test_build_row_key_with_breakdowns(self):
+        """Test building composite key from breakdowns."""
+        from honeycomb.models import QuerySpec
+
+        client = HoneycombClient(api_key="test", sync=True)
+        resource = client.query_results
+
+        spec = QuerySpec(
+            time_range=3600,
+            calculations=[{"op": "COUNT"}],
+            breakdowns=["service", "endpoint"],
+        )
+
+        row = {"service": "api", "endpoint": "/users", "COUNT": 100}
+        key = resource._build_row_key(row, spec)
+
+        assert key == ("api", "/users", 100)
+
+    def test_build_row_key_with_alias(self):
+        """Test building composite key with calculation alias."""
+        from honeycomb.models import QuerySpec
+
+        client = HoneycombClient(api_key="test", sync=True)
+        resource = client.query_results
+
+        spec = QuerySpec(
+            time_range=3600,
+            calculations=[{"op": "AVG", "column": "duration_ms", "alias": "avg_duration"}],
+            breakdowns=["service"],
+        )
+
+        row = {"service": "api", "avg_duration": 150.5}
+        key = resource._build_row_key(row, spec)
+
+        assert key == ("api", 150.5)
+
+
+class TestRunAllAsync:
+    """Tests for run_all_async method."""
+
+    @respx.mock
+    async def test_run_all_single_page(self):
+        """Test run_all_async with single page of results."""
+        from honeycomb.models import QuerySpec
+
+        # Mock create saved query
+        respx.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
+            return_value=Response(200, json={"id": "query-456", "query_json": {}})
+        )
+
+        # Mock first (and only) query result
+        respx.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
+            return_value=Response(200, json={"id": "result-123"})
+        )
+
+        respx.get("https://api.honeycomb.io/1/query_results/my-dataset/result-123").mock(
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "results": [
+                            {"service": "api", "count": 100},
+                            {"service": "worker", "count": 50},
+                        ],
+                        "series": [],
+                    }
+                },
+            )
+        )
+
+        async with HoneycombClient(api_key="test-api-key") as client:
+            rows = await client.query_results.run_all_async(
+                dataset="my-dataset",
+                spec=QuerySpec(
+                    time_range=3600,
+                    calculations=[{"op": "COUNT"}],
+                    breakdowns=["service"],
+                ),
+            )
+
+        assert len(rows) == 2
+        assert rows[0]["service"] == "api"
+        assert rows[1]["service"] == "worker"
+
+    @respx.mock
+    async def test_run_all_with_progress_callback(self):
+        """Test run_all_async progress callback."""
+        from honeycomb.models import QuerySpec
+
+        progress_calls = []
+
+        def track_progress(page, total):
+            progress_calls.append((page, total))
+
+        # Mock create saved query
+        respx.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
+            return_value=Response(200, json={"id": "query-456", "query_json": {}})
+        )
+
+        # Mock single page
+        respx.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
+            return_value=Response(200, json={"id": "result-123"})
+        )
+
+        respx.get("https://api.honeycomb.io/1/query_results/my-dataset/result-123").mock(
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "results": [{"service": "api", "count": 100}],
+                        "series": [],
+                    }
+                },
+            )
+        )
+
+        async with HoneycombClient(api_key="test-api-key") as client:
+            await client.query_results.run_all_async(
+                dataset="my-dataset",
+                spec=QuerySpec(
+                    time_range=3600,
+                    calculations=[{"op": "COUNT"}],
+                    breakdowns=["service"],
+                ),
+                on_page=track_progress,
+            )
+
+        assert len(progress_calls) == 1
+        assert progress_calls[0] == (1, 1)  # page 1, 1 total row
+
+    @respx.mock
+    async def test_run_all_validation_error_no_calculations(self):
+        """Test run_all_async raises error if no calculations."""
+        import pytest
+
+        from honeycomb.models import QuerySpec
+
+        async with HoneycombClient(api_key="test-api-key") as client:
+            with pytest.raises(ValueError, match="calculations is required"):
+                await client.query_results.run_all_async(
+                    dataset="my-dataset",
+                    spec=QuerySpec(time_range=3600),  # No calculations!
+                )
+
+    @respx.mock
+    async def test_run_all_validation_error_conflicting_orders(self):
+        """Test run_all_async raises error if spec has orders."""
+        import pytest
+
+        from honeycomb.models import QuerySpec
+
+        async with HoneycombClient(api_key="test-api-key") as client:
+            with pytest.raises(ValueError, match="orders must be None"):
+                await client.query_results.run_all_async(
+                    dataset="my-dataset",
+                    spec=QuerySpec(
+                        time_range=3600,
+                        calculations=[{"op": "COUNT"}],
+                        orders=[{"op": "COUNT", "order": "ascending"}],
+                    ),
+                )

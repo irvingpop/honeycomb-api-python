@@ -8,7 +8,7 @@ from .datasets import Dataset, DatasetCreate
 from .environments import Environment, EnvironmentColor, EnvironmentCreate, EnvironmentUpdate
 from .events import BatchEvent, BatchEventResult
 from .markers import Marker, MarkerCreate, MarkerSetting, MarkerSettingCreate
-from .queries import Query, QueryResult, QuerySpec
+from .queries import Query, QueryResult, QueryResultData, QuerySpec
 from .recipients import Recipient, RecipientCreate, RecipientType
 from .service_map_dependencies import (
     ServiceMapDependency,
@@ -55,6 +55,7 @@ __all__ = [
     "Query",
     "QuerySpec",
     "QueryResult",
+    "QueryResultData",
     # Columns
     "Column",
     "ColumnCreate",

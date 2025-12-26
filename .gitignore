@@ -24,6 +24,10 @@ wheels/
 .installed.cfg
 *.egg
 
+# Make sentinel files
+.venv-installed
+.venv-dev-installed
+
 # PyInstaller
 *.manifest
 *.spec

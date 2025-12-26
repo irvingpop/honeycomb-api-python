@@ -183,7 +183,7 @@ This guide will help you get up and running with the Honeycomb API Python client
         print(f"Saved as query: {query.id}")
 
         # Process results
-        for row in result.data:
+        for row in result.data.rows:
             print(f"Endpoint: {row.get('endpoint')}, P99: {row.get('duration_ms')}")
     ```
 
@@ -208,16 +208,15 @@ This guide will help you get up and running with the Honeycomb API Python client
         print(f"Saved as query: {query.id}")
 
         # Process results
-        for row in result.data:
+        for row in result.data.rows:
             print(f"Endpoint: {row.get('endpoint')}, P99: {row.get('duration_ms')}")
     ```
 
 !!! tip "Query Execution Options"
-    See the [Queries Guide](../usage/queries.md) for three different ways to run queries:
+    See the [Queries Guide](../usage/queries.md) for two ways to run queries:
 
-    - **Ephemeral** (`run`) - One-time execution, not saved
-    - **Saved** (`create` + `run`) - Save for reuse
-    - **Both** (`create_and_run`) - Save AND execute in one call
+    - **Saved** (`create` + `run`) - Save for reuse, then run
+    - **Both** (`create_and_run`) - Save AND execute in one call (recommended)
 
 ### Creating SLOs
 

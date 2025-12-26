@@ -1,5 +1,5 @@
 # Honeycomb API Python Client - Development Makefile
-.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs
+.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs ci update-deps
 
 # Default target
 help:
@@ -44,11 +44,18 @@ help:
 # Setup
 # =============================================================================
 
-install:
+# Sentinel files to track installation state
+.venv-installed: pyproject.toml poetry.lock
 	poetry install --only main
+	@touch .venv-installed
 
-install-dev:
+.venv-dev-installed: pyproject.toml poetry.lock
 	poetry install
+	@touch .venv-dev-installed
+
+install: .venv-installed
+
+install-dev: .venv-dev-installed
 
 # =============================================================================
 # Code Quality
@@ -130,6 +137,7 @@ clean:
 	rm -rf htmlcov/
 	rm -rf .coverage
 	rm -rf site/
+	rm -f .venv-installed .venv-dev-installed
 	find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 

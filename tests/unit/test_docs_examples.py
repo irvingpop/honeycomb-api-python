@@ -131,10 +131,13 @@ class TestQuickstartExamples:
             return_value=Response(
                 200,
                 json={
-                    "data": [
-                        {"endpoint": "/api/users", "duration_ms": 125.5},
-                        {"endpoint": "/api/orders", "duration_ms": 89.3},
-                    ]
+                    "data": {
+                        "results": [
+                            {"endpoint": "/api/users", "duration_ms": 125.5},
+                            {"endpoint": "/api/orders", "duration_ms": 89.3},
+                        ],
+                        "series": [],
+                    }
                 },
             )
         )
@@ -156,8 +159,9 @@ class TestQuickstartExamples:
 
             # Process results
             assert result.data is not None
-            assert len(result.data) == 2
-            for row in result.data:
+            assert result.data.rows is not None
+            assert len(result.data.rows) == 2
+            for row in result.data.rows:
                 endpoint = row.get("endpoint")
                 duration = row.get("duration_ms")
                 assert endpoint is not None
