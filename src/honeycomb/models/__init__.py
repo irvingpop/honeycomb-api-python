@@ -9,6 +9,17 @@ from .environments import Environment, EnvironmentColor, EnvironmentCreate, Envi
 from .events import BatchEvent, BatchEventResult
 from .markers import Marker, MarkerCreate, MarkerSetting, MarkerSettingCreate
 from .queries import Query, QueryResult, QueryResultData, QuerySpec
+from .query_builder import (
+    CalcOp,
+    Calculation,
+    Filter,
+    FilterCombination,
+    FilterOp,
+    Having,
+    Order,
+    OrderDirection,
+    QueryBuilder,
+)
 from .recipients import Recipient, RecipientCreate, RecipientType
 from .service_map_dependencies import (
     ServiceMapDependency,
@@ -21,8 +32,6 @@ from .service_map_dependencies import (
 )
 from .slos import SLI, SLO, SLOCreate
 from .triggers import (
-    QueryCalculation,
-    QueryFilter,
     Trigger,
     TriggerAlertType,
     TriggerCreate,
@@ -32,6 +41,16 @@ from .triggers import (
 )
 
 __all__ = [
+    # Query Builder (enums and typed models)
+    "CalcOp",
+    "FilterOp",
+    "OrderDirection",
+    "FilterCombination",
+    "Calculation",
+    "Filter",
+    "Order",
+    "Having",
+    "QueryBuilder",
     # Triggers
     "Trigger",
     "TriggerCreate",
@@ -39,8 +58,6 @@ __all__ = [
     "TriggerThresholdOp",
     "TriggerAlertType",
     "TriggerQuery",
-    "QueryCalculation",
-    "QueryFilter",
     # SLOs
     "SLO",
     "SLOCreate",

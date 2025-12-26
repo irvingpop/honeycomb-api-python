@@ -27,11 +27,10 @@ from honeycomb import (  # type: ignore[import-untyped]
     HoneycombNotFoundError,
     HoneycombRateLimitError,
     MarkerCreate,
-    QueryCalculation,
+    QueryBuilder,
     RecipientCreate,
     RecipientType,
     TriggerCreate,
-    TriggerQuery,
     TriggerThreshold,
     TriggerThresholdOp,
 )
@@ -76,7 +75,7 @@ async def test_triggers() -> None:
         for t in triggers:
             print(f"  - {t.name} (id: {t.id}, triggered: {t.triggered})")
 
-        # Create a new trigger
+        # Create a new trigger using the fluent QueryBuilder
         print("\nCreating a new trigger...")
         new_trigger = TriggerCreate(
             name="Test Wrapper Trigger",
@@ -86,10 +85,10 @@ async def test_triggers() -> None:
                 value=100.0,
             ),
             frequency=900,  # 15 minutes
-            query=TriggerQuery(
-                time_range=900,  # 15 minutes (must be <= 3600)
-                calculations=[QueryCalculation(op="COUNT")],
-            ),
+            query=QueryBuilder()
+                .last_30_minutes()
+                .count()
+                .build_for_trigger(),
         )
 
         created = await client.triggers.create_async(TEST_DATASET, new_trigger)
@@ -112,10 +111,10 @@ async def test_triggers() -> None:
                 value=150.0,
             ),
             frequency=900,
-            query=TriggerQuery(
-                time_range=900,
-                calculations=[QueryCalculation(op="COUNT")],
-            ),
+            query=QueryBuilder()
+                .last_30_minutes()
+                .count()
+                .build_for_trigger(),
         )
         updated = await client.triggers.update_async(TEST_DATASET, created.id, updated_trigger)
         print(f"Updated trigger: {updated.name}")

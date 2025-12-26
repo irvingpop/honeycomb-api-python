@@ -6,8 +6,9 @@ from httpx import Response
 
 from honeycomb import (
     SLI,
+    CalcOp,
+    Calculation,
     HoneycombClient,
-    QueryCalculation,
     QuerySpec,
     SLOCreate,
     TriggerCreate,
@@ -100,7 +101,7 @@ class TestQuickstartExamples:
                     frequency=300,
                     query=TriggerQuery(
                         time_range=900,
-                        calculations=[QueryCalculation(op="AVG", column="error_rate")],
+                        calculations=[Calculation(op=CalcOp.AVG, column="error_rate")],
                     ),
                 ),
             )

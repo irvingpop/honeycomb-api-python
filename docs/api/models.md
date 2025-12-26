@@ -10,8 +10,6 @@ Pydantic models for type-safe request and response handling.
 ::: honeycomb.models.triggers.TriggerThresholdOp
 ::: honeycomb.models.triggers.TriggerAlertType
 ::: honeycomb.models.triggers.TriggerQuery
-::: honeycomb.models.triggers.QueryCalculation
-::: honeycomb.models.triggers.QueryFilter
 
 ## SLO Models
 
@@ -34,3 +32,15 @@ Pydantic models for type-safe request and response handling.
 ::: honeycomb.models.queries.Query
 ::: honeycomb.models.queries.QuerySpec
 ::: honeycomb.models.queries.QueryResult
+
+## QueryBuilder
+
+::: honeycomb.models.query_builder.QueryBuilder
+::: honeycomb.models.query_builder.Calculation
+::: honeycomb.models.query_builder.Filter
+::: honeycomb.models.query_builder.Order
+::: honeycomb.models.query_builder.Having
+::: honeycomb.models.query_builder.CalcOp
+::: honeycomb.models.query_builder.FilterOp
+::: honeycomb.models.query_builder.OrderDirection
+::: honeycomb.models.query_builder.FilterCombination

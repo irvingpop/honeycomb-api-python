@@ -3,30 +3,94 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field, field_validator
 
+from honeycomb.models.query_builder import (
+    Calculation,
+    Filter,
+    FilterCombination,
+    Having,
+    Order,
+)
+
+if TYPE_CHECKING:
+    from honeycomb.models.query_builder import QueryBuilder
+
+
+def _normalize_calculation(calc: Calculation | dict[str, Any]) -> dict[str, Any]:
+    """Convert a Calculation or dict to API dict format."""
+    if isinstance(calc, Calculation):
+        return calc.to_dict()
+    return calc
+
+
+def _normalize_filter(filt: Filter | dict[str, Any]) -> dict[str, Any]:
+    """Convert a Filter or dict to API dict format."""
+    if isinstance(filt, Filter):
+        return filt.to_dict()
+    return filt
+
+
+def _normalize_order(order: Order | dict[str, Any]) -> dict[str, Any]:
+    """Convert an Order or dict to API dict format."""
+    if isinstance(order, Order):
+        return order.to_dict()
+    return order
+
+
+def _normalize_having(having: Having | dict[str, Any]) -> dict[str, Any]:
+    """Convert a Having or dict to API dict format."""
+    if isinstance(having, Having):
+        return having.to_dict()
+    return having
+
+
+def _normalize_filter_combination(combo: FilterCombination | str | None) -> str | None:
+    """Convert a FilterCombination or string to API format."""
+    if combo is None:
+        return None
+    if isinstance(combo, FilterCombination):
+        return combo.value
+    return combo
+
 
 class QuerySpec(BaseModel):
-    """Query specification for creating queries."""
+    """Query specification for creating queries.
+
+    Accepts both typed models and dicts for flexibility:
+        >>> # Using dicts (backward compatible)
+        >>> QuerySpec(calculations=[{"op": "COUNT"}])
+
+        >>> # Using typed models
+        >>> from honeycomb import Calculation, CalcOp
+        >>> QuerySpec(calculations=[Calculation(op=CalcOp.COUNT)])
+
+        >>> # Using the builder
+        >>> QuerySpec.builder().count().last_1_hour().build()
+    """
 
     time_range: int | None = Field(default=None, description="Query time range in seconds")
     start_time: int | None = Field(default=None, description="Absolute start time (Unix timestamp)")
     end_time: int | None = Field(default=None, description="Absolute end time (Unix timestamp)")
     granularity: int | None = Field(default=None, description="Time granularity in seconds")
-    calculations: list[dict] | None = Field(default=None, description="Calculations to perform")
-    filters: list[dict] | None = Field(default=None, description="Query filters")
+    calculations: list[Calculation | dict[str, Any]] | None = Field(
+        default=None, description="Calculations to perform"
+    )
+    filters: list[Filter | dict[str, Any]] | None = Field(default=None, description="Query filters")
     breakdowns: list[str] | None = Field(default=None, description="Columns to group by")
-    filter_combination: str | None = Field(
+    filter_combination: FilterCombination | str | None = Field(
         default=None, description="How to combine filters (AND/OR)"
     )
-    orders: list[dict] | None = Field(default=None, description="Result ordering")
+    orders: list[Order | dict[str, Any]] | None = Field(default=None, description="Result ordering")
     limit: int | None = Field(
         default=None,
         description="Result limit (max 1000 for saved queries, 10K when using disable_series=True)",
     )
-    havings: list[dict] | None = Field(default=None, description="Having clauses")
+    havings: list[Having | dict[str, Any]] | None = Field(
+        default=None, description="Having clauses"
+    )
 
     @field_validator("limit")
     @classmethod
@@ -40,8 +104,22 @@ class QuerySpec(BaseModel):
             )
         return v
 
+    @classmethod
+    def builder(cls) -> QueryBuilder:
+        """Create a QueryBuilder for fluent query construction.
+
+        Returns:
+            A new QueryBuilder instance
+
+        Example:
+            >>> spec = QuerySpec.builder().count().last_1_hour().build()
+        """
+        from honeycomb.models.query_builder import QueryBuilder
+
+        return QueryBuilder()
+
     def model_dump_for_api(self) -> dict[str, Any]:
-        """Serialize for API request."""
+        """Serialize for API request, normalizing typed models to dicts."""
         data: dict[str, Any] = {}
 
         # Time range (either relative or absolute)
@@ -55,19 +133,19 @@ class QuerySpec(BaseModel):
         if self.granularity is not None:
             data["granularity"] = self.granularity
         if self.calculations:
-            data["calculations"] = self.calculations
+            data["calculations"] = [_normalize_calculation(c) for c in self.calculations]
         if self.filters:
-            data["filters"] = self.filters
+            data["filters"] = [_normalize_filter(f) for f in self.filters]
         if self.breakdowns:
             data["breakdowns"] = self.breakdowns
         if self.filter_combination:
-            data["filter_combination"] = self.filter_combination
+            data["filter_combination"] = _normalize_filter_combination(self.filter_combination)
         if self.orders:
-            data["orders"] = self.orders
+            data["orders"] = [_normalize_order(o) for o in self.orders]
         if self.limit is not None:
             data["limit"] = self.limit
         if self.havings:
-            data["havings"] = self.havings
+            data["havings"] = [_normalize_having(h) for h in self.havings]
 
         return data
 

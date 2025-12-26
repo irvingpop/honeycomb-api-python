@@ -29,7 +29,7 @@ from datetime import datetime
 # Add src to path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from honeycomb import HoneycombClient, QuerySpec
+from honeycomb import HoneycombClient, QueryBuilder
 
 
 def parse_args():
@@ -112,10 +112,7 @@ async def test_basic_query_with_disable_series(args):
             print("   Time range: Last 1 hour")
             print("   Expected: disable_series=True, limit=10000 (automatic)")
 
-            spec = QuerySpec(
-                time_range=3600,  # Last hour
-                calculations=[{"op": "COUNT"}],
-            )
+            spec = QueryBuilder().last_1_hour().count().build()
 
             if args.verbose:
                 import json
@@ -164,11 +161,11 @@ async def test_query_with_breakdowns(args):
 
         query, result = await client.query_results.create_and_run_async(
             args.dataset,
-            spec=QuerySpec(
-                time_range=21600,  # 6 hours
-                calculations=[{"op": "COUNT"}],
-                breakdowns=args.breakdown_list,
-            ),
+            spec=QueryBuilder()
+                .time_range(21600)  # 6 hours
+                .count()
+                .group_by(*args.breakdown_list)
+                .build(),
         )
 
         print(f"\n✅ Query completed!")
@@ -234,11 +231,11 @@ async def test_run_all_with_pagination(args):
 
             rows = await client.query_results.run_all_async(
                 args.dataset,
-                spec=QuerySpec(
-                    time_range=86400,  # Last 24 hours
-                    calculations=[{"op": "COUNT"}],
-                    breakdowns=args.breakdown_list,
-                ),
+                spec=QueryBuilder()
+                    .last_24_hours()
+                    .count()
+                    .group_by(*args.breakdown_list)
+                    .build(),
                 sort_order="descending",  # Highest counts first
                 max_results=100_000,
                 on_page=on_page,
@@ -309,11 +306,11 @@ async def test_disable_series_false(args):
 
         query, result = await client.query_results.create_and_run_async(
             args.dataset,
-            spec=QuerySpec(
-                time_range=3600,
-                granularity=300,  # 5-minute buckets
-                calculations=[{"op": "COUNT"}],
-            ),
+            spec=QueryBuilder()
+                .last_1_hour()
+                .granularity(300)  # 5-minute buckets
+                .count()
+                .build(),
             disable_series=False,  # Get timeseries data
         )
 

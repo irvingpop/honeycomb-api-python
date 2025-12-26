@@ -4,6 +4,44 @@ Queries allow you to analyze your data in Honeycomb. All queries must first be s
 
 **Note:** Query Results API requires Enterprise plan.
 
+## Building Queries
+
+The recommended way to build queries is using the fluent `QueryBuilder`:
+
+```python
+from honeycomb import HoneycombClient, QueryBuilder
+
+async with HoneycombClient(api_key="...") as client:
+    query, result = await client.query_results.create_and_run_async(
+        "my-dataset",
+        QueryBuilder()
+            .last_1_hour()
+            .count()
+            .p99("duration_ms")
+            .gte("status", 500)
+            .group_by("service", "endpoint")
+            .order_by_count()
+            .build(),
+    )
+
+    for row in result.data.rows:
+        print(row)
+```
+
+The builder provides:
+
+- **IDE autocomplete** for all operations
+- **Time presets** matching the Honeycomb UI (`last_10_minutes()`, `last_1_hour()`, etc.)
+- **Chainable methods** for calculations, filters, grouping, and ordering
+- **Filter shortcuts** like `.gte()`, `.eq()`, `.contains()` for cleaner syntax
+- **Type safety** with enums for operators
+
+You can also use `QuerySpec.builder()` as an entry point:
+
+```python
+spec = QuerySpec.builder().last_24_hours().count().avg("duration_ms").build()
+```
+
 ## Two Ways to Run Queries
 
 ### 1. Saved Queries (Two Steps)
@@ -11,17 +49,17 @@ Queries allow you to analyze your data in Honeycomb. All queries must first be s
 Create a saved query, then run it:
 
 ```python
-from honeycomb import HoneycombClient, QuerySpec
+from honeycomb import HoneycombClient, QueryBuilder
 
 async with HoneycombClient(api_key="...") as client:
     # Step 1: Create and save the query
     query = await client.queries.create_async(
         "my-dataset",
-        QuerySpec(
-            time_range=3600,  # Last hour
-            calculations=[{"op": "P99", "column": "duration_ms"}],
-            breakdowns=["service"],
-        )
+        QueryBuilder()
+            .last_1_hour()
+            .p99("duration_ms")
+            .group_by("service")
+            .build()
     )
     print(f"Saved query: {query.id}")
 
@@ -42,22 +80,17 @@ async with HoneycombClient(api_key="...") as client:
 Save a query AND get immediate results in one call:
 
 ```python
-from honeycomb import HoneycombClient, QuerySpec
+from honeycomb import HoneycombClient, QueryBuilder
 
 async with HoneycombClient(api_key="...") as client:
-    # One call does both!
     query, result = await client.query_results.create_and_run_async(
         "my-dataset",
-        QuerySpec(
-            time_range=7200,
-            calculations=[
-                {"op": "AVG", "column": "duration_ms"},
-                {"op": "COUNT"},
-            ],
-            filters=[
-                {"column": "status", "op": ">=", "value": 500}
-            ],
-        ),
+        QueryBuilder()
+            .last_2_hours()
+            .avg("duration_ms")
+            .count()
+            .gte("status", 500)
+            .build(),
         poll_interval=1.0,
         timeout=60.0,
     )
@@ -155,75 +188,107 @@ print(f"Total: {len(rows)} traces")
 
 ## Query Specifications
 
-### Basic Query
+### Using the Builder (Recommended)
+
+```python
+from honeycomb import QueryBuilder, CalcOp, FilterOp
+
+# Simple query
+spec = QueryBuilder().last_1_hour().count().build()
+
+# With multiple calculations
+spec = (
+    QueryBuilder()
+    .last_1_hour()
+    .count()
+    .avg("duration_ms")
+    .p99("duration_ms")
+    .sum("bytes_sent")
+    .build()
+)
+
+# With filters (using shortcuts)
+spec = (
+    QueryBuilder()
+    .last_1_hour()
+    .count()
+    .eq("status", "500")
+    .eq("service", "api")
+    .filter_with("AND")
+    .build()
+)
+
+# With grouping
+spec = (
+    QueryBuilder()
+    .last_1_hour()
+    .count()
+    .group_by("endpoint", "status")
+    .build()
+)
+```
+
+### Using Dict Syntax (Alternative)
+
+You can also use dict syntax for calculations and filters:
 
 ```python
 from honeycomb import QuerySpec
 
 spec = QuerySpec(
-    time_range=3600,  # Required: time range in seconds
-)
-```
-
-### With Calculations
-
-```python
-spec = QuerySpec(
     time_range=3600,
-    calculations=[
-        {"op": "COUNT"},                           # Count all rows
-        {"op": "AVG", "column": "duration_ms"},    # Average duration
-        {"op": "P99", "column": "duration_ms"},    # 99th percentile
-        {"op": "SUM", "column": "bytes_sent"},     # Sum of bytes
-    ],
-)
-```
-
-### With Filters
-
-```python
-spec = QuerySpec(
-    time_range=3600,
-    calculations=[{"op": "COUNT"}],
-    filters=[
-        {"column": "status", "op": "=", "value": "500"},
-        {"column": "service", "op": "=", "value": "api"},
-    ],
-    filter_combination="AND",  # or "OR"
-)
-```
-
-### With Breakdowns (GROUP BY)
-
-```python
-spec = QuerySpec(
-    time_range=3600,
-    calculations=[{"op": "COUNT"}],
-    breakdowns=["endpoint", "status"],  # Group by these columns
-)
-```
-
-### Complete Example
-
-```python
-from honeycomb import QuerySpec
-
-spec = QuerySpec(
-    time_range=7200,                              # Last 2 hours
-    granularity=300,                              # 5-minute buckets
     calculations=[
         {"op": "COUNT"},
         {"op": "AVG", "column": "duration_ms"},
         {"op": "P99", "column": "duration_ms"},
     ],
     filters=[
-        {"column": "service", "op": "=", "value": "api"},
-        {"column": "status", "op": ">=", "value": 400},
+        {"column": "status", "op": "=", "value": "500"},
     ],
-    filter_combination="AND",
-    breakdowns=["endpoint"],
-    orders=[{"op": "COUNT", "order": "descending"}],
-    limit=100,
+    breakdowns=["endpoint", "status"],
+)
+```
+
+### Using Typed Models
+
+For full type safety, use the typed model classes:
+
+```python
+from honeycomb import QuerySpec, Calculation, CalcOp, Filter, FilterOp
+
+spec = QuerySpec(
+    time_range=3600,
+    calculations=[
+        Calculation(op=CalcOp.COUNT),
+        Calculation(op=CalcOp.AVG, column="duration_ms"),
+        Calculation(op=CalcOp.P99, column="duration_ms"),
+    ],
+    filters=[
+        Filter(column="status", op=FilterOp.EQUALS, value="500"),
+    ],
+    breakdowns=["endpoint", "status"],
+)
+```
+
+### Complete Example
+
+```python
+from honeycomb import QueryBuilder
+
+spec = (
+    QueryBuilder()
+    .last_2_hours()
+    .granularity(300)  # 5-minute buckets
+    .count()
+    .avg("duration_ms")
+    .p99("duration_ms")
+    .eq("service", "api")
+    .gte("status", 400)
+    .filter_with("AND")
+    .group_by("endpoint")
+    .order_by_count()
+    .limit(100)
+    .build()
 )
 ```
 
@@ -336,44 +401,48 @@ print(f"Found {len(slow_traces)} slow traces")
 ### Error Rate by Endpoint
 
 ```python
-spec = QuerySpec(
-    time_range=3600,
-    calculations=[
-        {"op": "COUNT"},
-    ],
-    filters=[
-        {"column": "status", "op": ">=", "value": 500}
-    ],
-    breakdowns=["endpoint"],
-    orders=[{"op": "COUNT", "order": "descending"}],
-    limit=10,
+from honeycomb import QueryBuilder
+
+spec = (
+    QueryBuilder()
+    .last_1_hour()
+    .count()
+    .gte("status", 500)
+    .group_by("endpoint")
+    .order_by_count()
+    .limit(10)
+    .build()
 )
 ```
 
 ### Latency Percentiles
 
 ```python
-spec = QuerySpec(
-    time_range=3600,
-    calculations=[
-        {"op": "P50", "column": "duration_ms"},
-        {"op": "P95", "column": "duration_ms"},
-        {"op": "P99", "column": "duration_ms"},
-    ],
-    breakdowns=["service"],
+from honeycomb import QueryBuilder
+
+spec = (
+    QueryBuilder()
+    .last_1_hour()
+    .p50("duration_ms")
+    .p95("duration_ms")
+    .p99("duration_ms")
+    .group_by("service")
+    .build()
 )
 ```
 
 ### Time Series Data
 
 ```python
-spec = QuerySpec(
-    time_range=86400,      # Last 24 hours
-    granularity=3600,      # 1-hour buckets
-    calculations=[
-        {"op": "COUNT"},
-        {"op": "AVG", "column": "duration_ms"},
-    ],
+from honeycomb import QueryBuilder
+
+spec = (
+    QueryBuilder()
+    .last_24_hours()
+    .granularity(3600)  # 1-hour buckets
+    .count()
+    .avg("duration_ms")
+    .build()
 )
 ```
 

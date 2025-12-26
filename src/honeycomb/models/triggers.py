@@ -8,6 +8,13 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from honeycomb.models.query_builder import (
+    CalcOp,
+    Calculation,
+    Filter,
+    FilterCombination,
+)
+
 
 class TriggerThresholdOp(str, Enum):
     """Threshold comparison operators."""
@@ -35,25 +42,22 @@ class TriggerThreshold(BaseModel):
     )
 
 
-class QueryCalculation(BaseModel):
-    """A calculation in a query."""
-
-    op: str = Field(description="Calculation operation (COUNT, AVG, P99, etc.)")
-    column: str | None = Field(default=None, description="Column to calculate on")
-
-
-class QueryFilter(BaseModel):
-    """A filter in a query."""
-
-    column: str = Field(description="Column to filter on")
-    op: str = Field(description="Filter operator (=, !=, >, <, contains, etc.)")
-    value: Any = Field(description="Filter value")
+def _default_calculations() -> list[Calculation | dict[str, Any]]:
+    """Default calculations for TriggerQuery."""
+    return [Calculation(op=CalcOp.COUNT)]
 
 
 class TriggerQuery(BaseModel):
     """Inline query specification for a trigger.
 
     Note: time_range must be <= 3600 (1 hour) for triggers.
+
+    Accepts both typed models and dicts for flexibility:
+        >>> # Using typed models
+        >>> TriggerQuery(calculations=[Calculation(op=CalcOp.P99, column="duration_ms")])
+
+        >>> # Using dicts
+        >>> TriggerQuery(calculations=[{"op": "P99", "column": "duration_ms"}])
     """
 
     time_range: int = Field(
@@ -62,15 +66,38 @@ class TriggerQuery(BaseModel):
         description="Query time range in seconds (max 3600 for triggers)",
     )
     granularity: int | None = Field(default=None, description="Time granularity in seconds")
-    calculations: list[QueryCalculation] = Field(
-        default_factory=lambda: [QueryCalculation(op="COUNT")],
+    calculations: list[Calculation | dict[str, Any]] | None = Field(
+        default_factory=_default_calculations,
         description="Calculations to perform",
     )
-    filters: list[QueryFilter] | None = Field(default=None, description="Query filters")
+    filters: list[Filter | dict[str, Any]] | None = Field(default=None, description="Query filters")
     breakdowns: list[str] | None = Field(default=None, description="Columns to group by")
-    filter_combination: str | None = Field(
+    filter_combination: FilterCombination | str | None = Field(
         default=None, description="How to combine filters (AND/OR)"
     )
+
+
+def _normalize_calculation(calc: Calculation | dict[str, Any]) -> dict[str, Any]:
+    """Convert a Calculation or dict to API dict format."""
+    if isinstance(calc, Calculation):
+        return calc.to_dict()
+    return calc
+
+
+def _normalize_filter(filt: Filter | dict[str, Any]) -> dict[str, Any]:
+    """Convert a Filter or dict to API dict format."""
+    if isinstance(filt, Filter):
+        return filt.to_dict()
+    return filt
+
+
+def _normalize_filter_combination(combo: FilterCombination | str | None) -> str | None:
+    """Convert a FilterCombination or string to API format."""
+    if combo is None:
+        return None
+    if isinstance(combo, FilterCombination):
+        return combo.value
+    return combo
 
 
 class TriggerCreate(BaseModel):
@@ -94,7 +121,7 @@ class TriggerCreate(BaseModel):
     )
     recipients: list[dict] | None = Field(default=None, description="Notification recipients")
 
-    def model_dump_for_api(self) -> dict:
+    def model_dump_for_api(self) -> dict[str, Any]:
         """Serialize for API request, handling nested models."""
         data: dict[str, Any] = {
             "name": self.name,
@@ -119,17 +146,16 @@ class TriggerCreate(BaseModel):
                 query_data["granularity"] = self.query.granularity
             if self.query.calculations:
                 query_data["calculations"] = [
-                    {"op": c.op, "column": c.column} if c.column else {"op": c.op}
-                    for c in self.query.calculations
+                    _normalize_calculation(c) for c in self.query.calculations
                 ]
             if self.query.filters:
-                query_data["filters"] = [
-                    {"column": f.column, "op": f.op, "value": f.value} for f in self.query.filters
-                ]
+                query_data["filters"] = [_normalize_filter(f) for f in self.query.filters]
             if self.query.breakdowns:
                 query_data["breakdowns"] = self.query.breakdowns
             if self.query.filter_combination:
-                query_data["filter_combination"] = self.query.filter_combination
+                query_data["filter_combination"] = _normalize_filter_combination(
+                    self.query.filter_combination
+                )
             data["query"] = query_data
 
         if self.query_id:

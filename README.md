@@ -35,7 +35,7 @@ poetry add honeycomb-api-python
 
 ```python
 import asyncio
-from honeycomb import HoneycombClient
+from honeycomb import HoneycombClient, QueryBuilder
 
 async def main():
     async with HoneycombClient(api_key="your-api-key") as client:
@@ -44,10 +44,20 @@ async def main():
         for ds in datasets:
             print(f"Dataset: {ds.name} ({ds.slug})")
 
-        # List triggers for a dataset
-        triggers = await client.triggers.list_async("my-dataset")
-        for trigger in triggers:
-            print(f"Trigger: {trigger.name} (triggered: {trigger.triggered})")
+        # Run a query using the fluent QueryBuilder
+        query, result = await client.query_results.create_and_run_async(
+            "my-dataset",
+            QueryBuilder()
+                .last_1_hour()
+                .count()
+                .p99("duration_ms")
+                .gte("status", 500)          # Filter shortcuts for cleaner code
+                .group_by("service")
+                .order_by_count()
+                .build(),
+        )
+        for row in result.data.rows:
+            print(f"Service: {row['service']}, Count: {row['COUNT']}, P99: {row['P99']}")
 
 asyncio.run(main())
 ```
@@ -55,11 +65,16 @@ asyncio.run(main())
 ### Sync Usage
 
 ```python
-from honeycomb import HoneycombClient
+from honeycomb import HoneycombClient, QueryBuilder
 
 with HoneycombClient(api_key="your-api-key", sync=True) as client:
     datasets = client.datasets.list()
-    triggers = client.triggers.list("my-dataset")
+
+    # Run queries with the same fluent API
+    query, result = client.query_results.create_and_run(
+        "my-dataset",
+        QueryBuilder().last_1_hour().count().group_by("endpoint").build(),
+    )
 ```
 
 ## Authentication

@@ -36,7 +36,9 @@ await client.triggers.delete_async("my-dataset", "trigger-id")
 
 ## Creating Triggers
 
-### Basic Trigger with Inline Query
+### Using the Builder (Recommended)
+
+The fluent `QueryBuilder` makes trigger creation concise and readable:
 
 ```python
 from honeycomb import (
@@ -44,8 +46,7 @@ from honeycomb import (
     TriggerCreate,
     TriggerThreshold,
     TriggerThresholdOp,
-    TriggerQuery,
-    QueryCalculation,
+    QueryBuilder,
 )
 
 async with HoneycombClient(api_key="...") as client:
@@ -59,12 +60,10 @@ async with HoneycombClient(api_key="...") as client:
                 value=0.05,
             ),
             frequency=300,  # Check every 5 minutes
-            query=TriggerQuery(
-                time_range=900,  # 15-minute window
-                calculations=[
-                    QueryCalculation(op="AVG", column="error_rate")
-                ],
-            ),
+            query=QueryBuilder()
+                .last_30_minutes()
+                .avg("error_rate")
+                .build_for_trigger(),
         )
     )
     print(f"Created trigger: {trigger.id}")
@@ -73,7 +72,12 @@ async with HoneycombClient(api_key="...") as client:
 ### Trigger with Query Filters
 
 ```python
-from honeycomb import TriggerCreate, TriggerThreshold, TriggerThresholdOp, TriggerQuery, QueryFilter
+from honeycomb import (
+    TriggerCreate,
+    TriggerThreshold,
+    TriggerThresholdOp,
+    QueryBuilder,
+)
 
 trigger = await client.triggers.create_async(
     "my-dataset",
@@ -85,20 +89,18 @@ trigger = await client.triggers.create_async(
             value=10,  # More than 10 errors
         ),
         frequency=300,
-        query=TriggerQuery(
-            time_range=600,  # 10-minute window
-            calculations=[QueryCalculation(op="COUNT")],
-            filters=[
-                QueryFilter(column="service", op="=", value="api"),
-                QueryFilter(column="status", op=">=", value=500),
-            ],
-            filter_combination="AND",
-        ),
+        query=QueryBuilder()
+            .last_10_minutes()
+            .count()
+            .eq("service", "api")
+            .gte("status", 500)
+            .filter_with("AND")
+            .build_for_trigger(),
     )
 )
 ```
 
-### Trigger with Breakdowns
+### Trigger with Grouping
 
 ```python
 trigger = await client.triggers.create_async(
@@ -110,11 +112,11 @@ trigger = await client.triggers.create_async(
             value=1000,  # P99 > 1000ms
         ),
         frequency=300,
-        query=TriggerQuery(
-            time_range=1800,
-            calculations=[QueryCalculation(op="P99", column="duration_ms")],
-            breakdowns=["endpoint"],  # Alert per endpoint
-        ),
+        query=QueryBuilder()
+            .last_30_minutes()
+            .p99("duration_ms")
+            .group_by("endpoint")  # Alert per endpoint
+            .build_for_trigger(),
     )
 )
 ```
@@ -222,12 +224,18 @@ updated = await client.triggers.update_async(
 Trigger queries have a maximum time range of 1 hour (3600 seconds):
 
 ```python
-# Valid
+# Valid - using builder (recommended)
+query=QueryBuilder().last_1_hour().count().build_for_trigger()
+
+# Valid - using TriggerQuery directly
+from honeycomb import TriggerQuery
 query=TriggerQuery(time_range=3600)  # OK: 1 hour
 
-# Invalid
+# Invalid - exceeds max
 query=TriggerQuery(time_range=7200)  # ERROR: exceeds max
 ```
+
+**Note:** `build_for_trigger()` validates time range and raises `ValueError` if it exceeds 3600 seconds.
 
 ### Frequency
 
@@ -244,16 +252,18 @@ frequency=3600  # Every hour
 ### Error Rate Monitoring
 
 ```python
+from honeycomb import TriggerCreate, TriggerThreshold, TriggerThresholdOp, QueryBuilder
+
 trigger = await client.triggers.create_async(
     "my-dataset",
     TriggerCreate(
         name="Error Rate Spike",
         threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=0.01),
         frequency=300,
-        query=TriggerQuery(
-            time_range=900,
-            calculations=[QueryCalculation(op="AVG", column="error_rate")],
-        ),
+        query=QueryBuilder()
+            .last_30_minutes()
+            .avg("error_rate")
+            .build_for_trigger(),
     )
 )
 ```
@@ -267,11 +277,11 @@ trigger = await client.triggers.create_async(
         name="High P99 Latency",
         threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=500),
         frequency=300,
-        query=TriggerQuery(
-            time_range=1800,
-            calculations=[QueryCalculation(op="P99", column="duration_ms")],
-            breakdowns=["service"],
-        ),
+        query=QueryBuilder()
+            .last_30_minutes()
+            .p99("duration_ms")
+            .group_by("service")
+            .build_for_trigger(),
     )
 )
 ```
@@ -285,10 +295,10 @@ trigger = await client.triggers.create_async(
         name="Low Traffic Warning",
         threshold=TriggerThreshold(op=TriggerThresholdOp.LESS_THAN, value=100),
         frequency=300,
-        query=TriggerQuery(
-            time_range=600,
-            calculations=[QueryCalculation(op="COUNT")],
-        ),
+        query=QueryBuilder()
+            .last_10_minutes()
+            .count()
+            .build_for_trigger(),
     )
 )
 ```

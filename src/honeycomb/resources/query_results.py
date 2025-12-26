@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import TYPE_CHECKING, Any
 
 from ..models.queries import Query, QueryResult, QuerySpec
+from ..models.query_builder import Calculation
 from .base import BaseResource
 
 if TYPE_CHECKING:
@@ -18,6 +19,26 @@ DEFAULT_MAX_RESULTS = 100_000
 
 # Duplication threshold for smart stopping
 DUPLICATION_THRESHOLD = 0.5  # 50%
+
+
+def _get_calc_attr(calc: Calculation | dict[str, Any], attr: str, default: Any = None) -> Any:
+    """Get an attribute from a Calculation or dict.
+
+    Args:
+        calc: Either a Calculation object or a dict
+        attr: The attribute name to get
+        default: Default value if attribute is not present
+
+    Returns:
+        The attribute value or default
+    """
+    if isinstance(calc, Calculation):
+        value = getattr(calc, attr, default)
+        # Handle enum values
+        if hasattr(value, "value"):
+            return value.value
+        return value
+    return calc.get(attr, default)
 
 
 class QueryResultsResource(BaseResource):
@@ -328,36 +349,42 @@ class QueryResultsResource(BaseResource):
         if sort_field is None:
             # Auto-default from first calculation
             first_calc = spec.calculations[0]
-            if first_calc.get("alias"):
+            alias = _get_calc_attr(first_calc, "alias")
+            if alias:
                 # Alias provided - use it for both orders and access
-                sort_field_for_access = first_calc["alias"]
-                sort_field_for_orders = first_calc["alias"]
+                sort_field_for_access = alias
+                sort_field_for_orders = alias
             else:
                 # No alias - use uppercase op for both (results use uppercase like "COUNT")
-                sort_field_for_orders = first_calc.get("op", "COUNT")
-                sort_field_for_access = first_calc.get("op", "COUNT")
+                op = _get_calc_attr(first_calc, "op", "COUNT")
+                sort_field_for_orders = op
+                sort_field_for_access = op
         else:
             # User provided sort_field - check if it matches a calculation op
             matched_calc = None
             for calc in spec.calculations:
                 # Check if sort_field matches this calculation's op (case-insensitive)
-                if calc.get("op", "").lower() == sort_field.lower():
+                calc_op = _get_calc_attr(calc, "op", "")
+                if calc_op.lower() == sort_field.lower():
                     matched_calc = calc
                     break
                 # Or matches the alias exactly
-                if calc.get("alias") == sort_field:
+                calc_alias = _get_calc_attr(calc, "alias")
+                if calc_alias == sort_field:
                     matched_calc = calc
                     break
 
             if matched_calc:
                 # Matched a calculation - use uppercase op or alias
-                if matched_calc.get("alias"):
-                    sort_field_for_access = matched_calc["alias"]
-                    sort_field_for_orders = matched_calc["alias"]
+                matched_alias = _get_calc_attr(matched_calc, "alias")
+                if matched_alias:
+                    sort_field_for_access = matched_alias
+                    sort_field_for_orders = matched_alias
                 else:
                     # No alias - use uppercase op for both
-                    sort_field_for_orders = matched_calc.get("op", "COUNT")
-                    sort_field_for_access = matched_calc.get("op", "COUNT")
+                    matched_op = _get_calc_attr(matched_calc, "op", "COUNT")
+                    sort_field_for_orders = matched_op
+                    sort_field_for_access = matched_op
             else:
                 # Assume it's a breakdown field - use as-is
                 sort_field_for_access = sort_field
@@ -403,8 +430,8 @@ class QueryResultsResource(BaseResource):
 
                 # Check if we're paginating on a calculation or breakdown
                 is_calculation = any(
-                    calc.get("alias") == sort_field_for_access
-                    or calc.get("op") == sort_field_for_access
+                    _get_calc_attr(calc, "alias") == sort_field_for_access
+                    or _get_calc_attr(calc, "op") == sort_field_for_access
                     for calc in spec.calculations
                 )
 
@@ -547,7 +574,7 @@ class QueryResultsResource(BaseResource):
         if spec.calculations:
             for calc in spec.calculations:
                 # Use alias if present, otherwise uppercase op (results use "COUNT" not "count")
-                field = calc.get("alias") or calc.get("op", "COUNT")
+                field = _get_calc_attr(calc, "alias") or _get_calc_attr(calc, "op", "COUNT")
                 key_parts.append(row.get(field))
 
         return tuple(key_parts)

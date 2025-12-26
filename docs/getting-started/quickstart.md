@@ -54,8 +54,7 @@ This guide will help you get up and running with the Honeycomb API Python client
         TriggerCreate,
         TriggerThreshold,
         TriggerThresholdOp,
-        TriggerQuery,
-        QueryCalculation,
+        QueryBuilder,
     )
 
     async with HoneycombClient(api_key="...") as client:
@@ -63,7 +62,7 @@ This guide will help you get up and running with the Honeycomb API Python client
         triggers = await client.triggers.list_async("my-dataset")
         print(f"Found {len(triggers)} triggers")
 
-        # Create a new trigger
+        # Create a new trigger using the fluent QueryBuilder
         trigger = await client.triggers.create_async(
             "my-dataset",
             TriggerCreate(
@@ -74,12 +73,10 @@ This guide will help you get up and running with the Honeycomb API Python client
                     value=0.05,
                 ),
                 frequency=300,  # Check every 5 minutes
-                query=TriggerQuery(
-                    time_range=900,  # 15-minute window
-                    calculations=[
-                        QueryCalculation(op="AVG", column="error_rate")
-                    ],
-                ),
+                query=QueryBuilder()
+                    .last_30_minutes()
+                    .avg("error_rate")
+                    .build_for_trigger(),
             )
         )
         print(f"Created trigger: {trigger.id}")
@@ -95,7 +92,10 @@ This guide will help you get up and running with the Honeycomb API Python client
                     value=0.10,
                 ),
                 frequency=300,
-                query=TriggerQuery(time_range=900),
+                query=QueryBuilder()
+                    .last_30_minutes()
+                    .avg("error_rate")
+                    .build_for_trigger(),
             )
         )
 
@@ -111,8 +111,7 @@ This guide will help you get up and running with the Honeycomb API Python client
         TriggerCreate,
         TriggerThreshold,
         TriggerThresholdOp,
-        TriggerQuery,
-        QueryCalculation,
+        QueryBuilder,
     )
 
     with HoneycombClient(api_key="...", sync=True) as client:
@@ -120,7 +119,7 @@ This guide will help you get up and running with the Honeycomb API Python client
         triggers = client.triggers.list("my-dataset")
         print(f"Found {len(triggers)} triggers")
 
-        # Create a new trigger
+        # Create a new trigger using the fluent QueryBuilder
         trigger = client.triggers.create(
             "my-dataset",
             TriggerCreate(
@@ -131,12 +130,10 @@ This guide will help you get up and running with the Honeycomb API Python client
                     value=0.05,
                 ),
                 frequency=300,  # Check every 5 minutes
-                query=TriggerQuery(
-                    time_range=900,  # 15-minute window
-                    calculations=[
-                        QueryCalculation(op="AVG", column="error_rate")
-                    ],
-                ),
+                query=QueryBuilder()
+                    .last_30_minutes()
+                    .avg("error_rate")
+                    .build_for_trigger(),
             )
         )
         print(f"Created trigger: {trigger.id}")
@@ -152,7 +149,10 @@ This guide will help you get up and running with the Honeycomb API Python client
                     value=0.10,
                 ),
                 frequency=300,
-                query=TriggerQuery(time_range=900),
+                query=QueryBuilder()
+                    .last_30_minutes()
+                    .avg("error_rate")
+                    .build_for_trigger(),
             )
         )
 
@@ -165,17 +165,17 @@ This guide will help you get up and running with the Honeycomb API Python client
 === "Async"
 
     ```python
-    from honeycomb import HoneycombClient, QuerySpec
+    from honeycomb import HoneycombClient, QueryBuilder
 
     async with HoneycombClient(api_key="...") as client:
-        # Create a saved query and run it (returns both!)
+        # Create a saved query and run it using the fluent QueryBuilder
         query, result = await client.query_results.create_and_run_async(
             "my-dataset",
-            QuerySpec(
-                time_range=3600,
-                calculations=[{"op": "P99", "column": "duration_ms"}],
-                breakdowns=["endpoint"],
-            ),
+            QueryBuilder()
+                .last_1_hour()
+                .p99("duration_ms")
+                .group_by("endpoint")
+                .build(),
             poll_interval=1.0,
             timeout=60.0,
         )
@@ -184,23 +184,23 @@ This guide will help you get up and running with the Honeycomb API Python client
 
         # Process results
         for row in result.data.rows:
-            print(f"Endpoint: {row.get('endpoint')}, P99: {row.get('duration_ms')}")
+            print(f"Endpoint: {row.get('endpoint')}, P99: {row.get('P99')}")
     ```
 
 === "Sync"
 
     ```python
-    from honeycomb import HoneycombClient, QuerySpec
+    from honeycomb import HoneycombClient, QueryBuilder
 
     with HoneycombClient(api_key="...", sync=True) as client:
-        # Create a saved query and run it (returns both!)
+        # Create a saved query and run it using the fluent QueryBuilder
         query, result = client.query_results.create_and_run(
             "my-dataset",
-            QuerySpec(
-                time_range=3600,
-                calculations=[{"op": "P99", "column": "duration_ms"}],
-                breakdowns=["endpoint"],
-            ),
+            QueryBuilder()
+                .last_1_hour()
+                .p99("duration_ms")
+                .group_by("endpoint")
+                .build(),
             poll_interval=1.0,
             timeout=60.0,
         )
@@ -209,7 +209,7 @@ This guide will help you get up and running with the Honeycomb API Python client
 
         # Process results
         for row in result.data.rows:
-            print(f"Endpoint: {row.get('endpoint')}, P99: {row.get('duration_ms')}")
+            print(f"Endpoint: {row.get('endpoint')}, P99: {row.get('P99')}")
     ```
 
 !!! tip "Query Execution Options"

@@ -9,6 +9,7 @@ A modern, async-first Python client for the [Honeycomb.io](https://www.honeycomb
 ## Features
 
 - **Async-first design** with full sync support for maximum flexibility
+- **Fluent QueryBuilder** for constructing queries with IDE autocomplete
 - **Pydantic models** for type-safe request/response handling
 - **Automatic retries** with exponential backoff for transient failures
 - **Comprehensive error handling** with specific exception types
@@ -19,27 +20,29 @@ A modern, async-first Python client for the [Honeycomb.io](https://www.honeycomb
 
 ```python
 import asyncio
-from honeycomb import HoneycombClient, TriggerCreate, TriggerThreshold, TriggerThresholdOp
+from honeycomb import HoneycombClient, QueryBuilder
 
 async def main():
     async with HoneycombClient(api_key="your-api-key") as client:
         # List all datasets
         datasets = await client.datasets.list_async()
-        print(f"Found {len(datasets)} datasets")
+        for ds in datasets:
+            print(f"Dataset: {ds.name} ({ds.slug})")
 
-        # Create a trigger
-        trigger = await client.triggers.create_async(
+        # Run a query using the fluent QueryBuilder
+        query, result = await client.query_results.create_and_run_async(
             "my-dataset",
-            TriggerCreate(
-                name="High Error Rate",
-                threshold=TriggerThreshold(
-                    op=TriggerThresholdOp.GREATER_THAN,
-                    value=0.05,
-                ),
-                frequency=300,
-            )
+            QueryBuilder()
+                .last_1_hour()
+                .count()
+                .p99("duration_ms")
+                .gte("status", 500)
+                .group_by("service")
+                .order_by_count()
+                .build(),
         )
-        print(f"Created trigger: {trigger.id}")
+        for row in result.data.rows:
+            print(f"Service: {row['service']}, Count: {row['COUNT']}, P99: {row['P99']}")
 
 asyncio.run(main())
 ```
