@@ -14,7 +14,12 @@
       "Bash(make:*)",
       "Bash(poetry run mkdocs:*)",
       "Bash(poetry run mypy:*)",
-      "Bash(direnv exec:*)"
+      "Bash(direnv exec:*)",
+      "Skill(ci)",
+      "Skill(ci:*)",
+      "Bash(poetry run ruff format:*)",
+      "Skill(live-test)",
+      "Skill(live-test:*)"
     ]
   }
 }

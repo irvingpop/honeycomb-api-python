@@ -4,14 +4,42 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Quick Reference
 
-**For usage examples, API reference, and setup:** See [README.md](README.md)
-**For architecture decisions and implementation plan:** See [PLAN.md](PLAN.md)
+| Resource | Purpose |
+|----------|---------|
+| [README.md](README.md) | Usage examples, API reference, setup |
+| [PLAN.md](PLAN.md) | Architecture decisions, implementation plan |
+| [api.yaml](api.yaml) | OpenAPI spec (source of truth for API) |
 
 ## Ground Rules
-* Always be concise
-* Always be candidly honest
-* Don't use emoji
-* The plan isn't perfect, question it but tell me if you want to deviate from it
+
+- Always be concise
+- Always be candidly honest
+- Don't use emoji
+- The plan isn't perfect, question it but tell me if you want to deviate from it
+
+## Agents
+
+Use these specialized agents for complex tasks:
+
+| Agent | When to Use |
+|-------|-------------|
+| `live-tester` | "Test against the real API", "Verify this works in production" |
+| `honeycomb-reviewer` | "Review my changes", "Check code quality before commit" |
+| `resource-implementer` | "Add a new resource", "Implement the Pipelines API" |
+| `test-fixer` | "Fix the failing tests", "Debug this test failure" |
+| `api-explorer` | "What endpoints exist for X?", "What fields are required?" |
+
+Invoke explicitly: "Use the `live-tester` agent to verify this works"
+
+## Slash Commands
+
+| Command | Purpose |
+|---------|---------|
+| `/ci` | Run full CI pipeline |
+| `/check` | Quick lint + typecheck |
+| `/test <path>` | Run specific tests |
+| `/live-test` | Run live API tests (requires credentials) |
+| `/docs-serve` | Preview documentation |
 
 ## Development Commands
 
@@ -36,22 +64,13 @@ Run `make help` for full command list.
 
 ## Development Workflow
 
-After implementing each phase item (new resource, feature, etc.), you MUST:
+After implementing changes, you MUST:
 
-1. **Run CI and fix all issues**
-   ```bash
-   make ci  # Runs format, lint, typecheck, test, validate-docs
-   ```
-   All checks must pass before moving forward.
+1. **Run CI**: `make ci` (or `/ci`) - all checks must pass
+2. **Update docs**: Docstrings + `docs/usage/*.md` examples
+3. **Test live API**: Use `live-tester` agent or `/live-test` for real API verification
 
-2. **Update documentation**
-   - Add/update docstrings (Google-style) for all new public methods
-   - Add usage examples to relevant `docs/**/*.md` files
-   - Update [README.md](README.md) if adding major features
-
-3. **Update live API tests**
-   - Modify [scripts/test_live_api.py](scripts/test_live_api.py) for new/changed resources
-   - Test against real API with `make test-live` (requires `HONEYCOMB_API_KEY`)
+For new resources, use the `resource-implementer` agent which handles the full checklist.
 
 ## Critical Architecture Points
 
@@ -128,3 +147,17 @@ Code examples in `docs/**/*.md` are validated in CI via [scripts/validate_docs_e
 - **Ruff**: Excludes `_generated/`, line length 100, Python 3.10+ target
 - **Mypy**: Strict on `src/` (except `_generated/`), Pydantic plugin enabled
 - **Pytest**: Async mode auto-enabled, respx for HTTP mocking
+
+## Live API Testing Credentials
+
+For testing against the real Honeycomb API:
+
+1. Copy `.envrc.example` to `.envrc` and add your management key
+2. Run `direnv allow`
+3. The `live-tester` agent will create test environments automatically
+
+Credentials are stored securely:
+- `.envrc` - Your management key (gitignored)
+- `.claude/secrets/` - Generated test API keys (gitignored)
+
+See [.claude/skills/live-test/SKILL.md](.claude/skills/live-test/SKILL.md) for details.

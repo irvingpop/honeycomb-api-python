@@ -5,6 +5,7 @@ from .boards import Board, BoardCreate
 from .burn_alerts import BurnAlert, BurnAlertCreate, BurnAlertType
 from .columns import Column, ColumnCreate, ColumnType
 from .datasets import Dataset, DatasetCreate
+from .derived_columns import DerivedColumn, DerivedColumnBuilder, DerivedColumnCreate
 from .environments import Environment, EnvironmentColor, EnvironmentCreate, EnvironmentUpdate
 from .events import BatchEvent, BatchEventResult
 from .markers import Marker, MarkerCreate, MarkerSetting, MarkerSettingCreate
@@ -20,6 +21,7 @@ from .query_builder import (
     OrderDirection,
     QueryBuilder,
 )
+from .recipient_builder import RecipientBuilder, RecipientMixin
 from .recipients import Recipient, RecipientCreate, RecipientType
 from .service_map_dependencies import (
     ServiceMapDependency,
@@ -31,6 +33,8 @@ from .service_map_dependencies import (
     ServiceMapNodeType,
 )
 from .slos import SLI, SLO, SLOCreate
+from .tags_mixin import TagsMixin
+from .trigger_builder import TriggerBuilder
 from .triggers import (
     Trigger,
     TriggerAlertType,
@@ -58,6 +62,7 @@ __all__ = [
     "TriggerThresholdOp",
     "TriggerAlertType",
     "TriggerQuery",
+    "TriggerBuilder",
     # SLOs
     "SLO",
     "SLOCreate",
@@ -77,6 +82,10 @@ __all__ = [
     "Column",
     "ColumnCreate",
     "ColumnType",
+    # Derived Columns (Calculated Fields)
+    "DerivedColumn",
+    "DerivedColumnCreate",
+    "DerivedColumnBuilder",
     # Markers
     "Marker",
     "MarkerCreate",
@@ -86,6 +95,10 @@ __all__ = [
     "Recipient",
     "RecipientCreate",
     "RecipientType",
+    "RecipientBuilder",
+    "RecipientMixin",
+    # Tags
+    "TagsMixin",
     # Burn Alerts
     "BurnAlert",
     "BurnAlertCreate",

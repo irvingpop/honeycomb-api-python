@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from .resources.burn_alerts import BurnAlertsResource
     from .resources.columns import ColumnsResource
     from .resources.datasets import DatasetsResource
+    from .resources.derived_columns import DerivedColumnsResource
     from .resources.environments import EnvironmentsResource
     from .resources.events import EventsResource
     from .resources.markers import MarkersResource
@@ -145,6 +146,7 @@ class HoneycombClient:
         self._queries: QueriesResource | None = None
         self._query_results: QueryResultsResource | None = None
         self._columns: ColumnsResource | None = None
+        self._derived_columns: DerivedColumnsResource | None = None
         self._markers: MarkersResource | None = None
         self._recipients: RecipientsResource | None = None
         self._burn_alerts: BurnAlertsResource | None = None
@@ -219,6 +221,15 @@ class HoneycombClient:
 
             self._columns = ColumnsResource(self)
         return self._columns
+
+    @property
+    def derived_columns(self) -> DerivedColumnsResource:
+        """Access the Derived Columns (Calculated Fields) API."""
+        if self._derived_columns is None:
+            from .resources.derived_columns import DerivedColumnsResource
+
+            self._derived_columns = DerivedColumnsResource(self)
+        return self._derived_columns
 
     @property
     def markers(self) -> MarkersResource:

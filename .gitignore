@@ -92,3 +92,6 @@ dmypy.json
 # OS
 .DS_Store
 Thumbs.db
+
+# Claude Code secrets (test session keys, never commit)
+.claude/secrets/

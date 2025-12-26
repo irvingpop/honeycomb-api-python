@@ -120,6 +120,13 @@ class TriggerCreate(BaseModel):
         description="When to send alerts",
     )
     recipients: list[dict] | None = Field(default=None, description="Notification recipients")
+    tags: list[dict[str, str]] | None = Field(
+        default=None, description="Tags for organizing triggers (max 10)"
+    )
+    baseline_details: dict[str, Any] | None = Field(
+        default=None,
+        description="Baseline threshold configuration for comparing against historical data",
+    )
 
     def model_dump_for_api(self) -> dict[str, Any]:
         """Serialize for API request, handling nested models."""
@@ -164,6 +171,12 @@ class TriggerCreate(BaseModel):
         if self.recipients:
             data["recipients"] = self.recipients
 
+        if self.tags:
+            data["tags"] = self.tags
+
+        if self.baseline_details:
+            data["baseline_details"] = self.baseline_details
+
         return data
 
 
@@ -182,6 +195,12 @@ class Trigger(BaseModel):
     triggered: bool = Field(default=False, description="Whether currently triggered")
     alert_type: str = Field(default="on_change", description="When to send alerts")
     recipients: list[dict] | None = Field(default=None, description="Notification recipients")
+    tags: list[dict[str, str]] | None = Field(
+        default=None, description="Tags for organizing triggers"
+    )
+    baseline_details: dict[str, Any] | None = Field(
+        default=None, description="Baseline threshold configuration"
+    )
     evaluation_schedule_type: str | None = Field(default=None)
     created_at: datetime | None = Field(default=None, description="Creation timestamp")
     updated_at: datetime | None = Field(default=None, description="Last update timestamp")
