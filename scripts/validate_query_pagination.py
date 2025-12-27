@@ -125,7 +125,7 @@ async def test_basic_query_with_disable_series(args):
                 print(f"   limit: 10000 (set at execution, not in saved query)")
 
             query, result = await client.query_results.create_and_run_async(
-                args.dataset, spec=spec
+                spec, dataset=args.dataset
             )
 
             print(f"\n✅ Query completed!")
@@ -160,12 +160,11 @@ async def test_query_with_breakdowns(args):
         print("   Calculations: COUNT")
 
         query, result = await client.query_results.create_and_run_async(
-            args.dataset,
-            spec=QueryBuilder()
+            QueryBuilder()
+                .dataset(args.dataset)
                 .time_range(21600)  # 6 hours
                 .count()
-                .group_by(*args.breakdown_list)
-                .build(),
+                .group_by(*args.breakdown_list),
         )
 
         print(f"\n✅ Query completed!")
@@ -305,12 +304,11 @@ async def test_disable_series_false(args):
         print("   Expected: Timeseries data in results")
 
         query, result = await client.query_results.create_and_run_async(
-            args.dataset,
-            spec=QueryBuilder()
+            QueryBuilder()
+                .dataset(args.dataset)
                 .last_1_hour()
                 .granularity(300)  # 5-minute buckets
-                .count()
-                .build(),
+                .count(),
             disable_series=False,  # Get timeseries data
         )
 

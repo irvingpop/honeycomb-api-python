@@ -145,7 +145,7 @@ Create an SLO across multiple datasets with an environment-wide derived column:
 
 ### Recipient Methods (from RecipientMixin)
 
-See [Recipients documentation](recipients.md#recipient-methods-reference) for full details on available recipient methods:
+See [Recipients documentation](recipients.md) for full details on available recipient methods:
 - `.email(address)` - Email notification
 - `.slack(channel)` - Slack notification
 - `.pagerduty(routing_key, severity)` - PagerDuty notification

@@ -133,7 +133,7 @@ bundle = (
 
 ### Tag Methods (from TagsMixin)
 
-See [Triggers documentation](triggers.md#tags-reference) for full details on tag methods:
+See [Triggers documentation](triggers.md) for full details on tag methods:
 - `.tag(key, value)` - Add a single tag
 - `.tags(dict)` - Add multiple tags from dictionary
 
