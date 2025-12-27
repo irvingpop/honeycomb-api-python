@@ -288,22 +288,22 @@ async def ensure_events_queryable(client: HoneycombClient, ensure_dataset: str) 
 
 Expand existing example files to include full CRUD lifecycle:
 
-- [ ] `triggers/basic_trigger.py` - Add get, update examples
-- [ ] `boards/basic_board.py` - Add get, update, delete examples
-- [ ] `slos/basic_slo.py` - Add get, update, delete examples
-- [ ] `burn_alerts/basic_burn_alert.py` - Add get, update, delete examples
-- [ ] `markers/basic_marker.py` - Add get, update, delete, settings examples
-- [ ] `queries/basic_query.py` - Add get, delete examples
-- [ ] `columns/basic_column.py` - Add get, update, delete examples
+- [x] `triggers/basic_trigger.py` - Add get, update examples
+- [x] `boards/basic_board.py` - Add get, update, delete examples
+- [x] `slos/basic_slo.py` - Add get, update, delete examples
+- [x] `burn_alerts/basic_burn_alert.py` - Add get, update, delete examples
+- [x] `markers/basic_marker.py` - Add get, update, delete, settings examples
+- [x] `queries/basic_query.py` - Add get, delete examples
+- [x] `columns/basic_column.py` - Add get, update, delete examples
 
 ### Phase 2: Add Missing Resources
 
 Create example files for resources with no coverage:
 
-- [ ] `events/basic_event.py` - send, send_batch, then query to verify
-- [ ] `api_keys/basic_api_key.py` - Full CRUD (requires management key fixture)
-- [ ] `environments/basic_environment.py` - Full CRUD (requires management key fixture)
-- [ ] `service_map/basic_service_map.py` - create request, poll for result, get
+- [x] `events/basic_event.py` - send, send_batch, then query to verify
+- [x] `api_keys/basic_api_key.py` - Full CRUD (requires management key fixture)
+- [x] `environments/basic_environment.py` - Full CRUD (requires management key fixture)
+- [x] `service_map/basic_service_map.py` - create request, poll for result, get
 
 ### Phase 3: Update Documentation
 

@@ -120,6 +120,7 @@ async def create_api_key(
                     "manage_queries": True,
                     "send_events": True,
                     "run_queries": True,
+                    "read_service_maps": True,
                 },
             },
             "relationships": {

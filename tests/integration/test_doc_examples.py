@@ -178,6 +178,52 @@ class TestDerivedColumnExamples:
         assert isinstance(columns, list)
 
 
+class TestEventExamples:
+    """Test event examples from docs/examples/events/.
+
+    Note: Events cannot be deleted. They persist in the dataset as telemetry data.
+    """
+
+    @pytest.mark.asyncio
+    async def test_send_event(self, client: HoneycombClient, ensure_dataset: str) -> None:
+        """Test sending a single event."""
+        from docs.examples.events.basic_event import (
+            send_event,
+            test_send_event,
+        )
+
+        await send_event(client, ensure_dataset)
+        await test_send_event(client, ensure_dataset)
+
+    @pytest.mark.asyncio
+    async def test_send_batch(self, client: HoneycombClient, ensure_dataset: str) -> None:
+        """Test sending a batch of events."""
+        from docs.examples.events.basic_event import (
+            send_batch,
+            test_send_batch,
+        )
+
+        await send_batch(client, ensure_dataset)
+        await test_send_batch(client, ensure_dataset)
+
+    @pytest.mark.asyncio
+    async def test_verify_events(self, client: HoneycombClient, ensure_dataset: str) -> None:
+        """Test verifying events via query."""
+        from docs.examples.events.basic_event import (
+            test_verify_events,
+            verify_events,
+        )
+
+        # Send some events first
+        from docs.examples.events.basic_event import send_batch
+
+        await send_batch(client, ensure_dataset)
+
+        # Verify they're queryable
+        count = await verify_events(client, ensure_dataset)
+        await test_verify_events(count)
+
+
 class TestTriggerExamples:
     """Test trigger examples from docs/examples/triggers/."""
 
@@ -819,3 +865,175 @@ class TestBurnAlertExamples:
         slo_id, _ = ensure_slo
         alerts = await list_burn_alerts(client, ensure_dataset, slo_id)
         await test_list_burn_alerts(alerts)
+
+
+class TestServiceMapExamples:
+    """Test service map examples from docs/examples/service_map/.
+
+    Note: Service map requires trace data in your environment.
+    If no trace data exists, the API returns a 404 error.
+    These tests handle both cases: with trace data (full test) and without (skip).
+    """
+
+    @pytest.mark.asyncio
+    async def test_create_request(self, client: HoneycombClient) -> None:
+        """Test creating a service map dependency request."""
+        from honeycomb import HoneycombNotFoundError
+
+        from docs.examples.service_map.basic_service_map import (
+            create_service_map_request,
+            test_create_request,
+        )
+
+        try:
+            request_id = await create_service_map_request(client)
+            await test_create_request(request_id)
+        except HoneycombNotFoundError as e:
+            if "Service map data not found" in str(e):
+                pytest.skip("No trace data in environment - service map unavailable")
+            raise
+
+    @pytest.mark.asyncio
+    async def test_poll_result(self, client: HoneycombClient) -> None:
+        """Test polling for service map result."""
+        from honeycomb import HoneycombNotFoundError
+
+        from docs.examples.service_map.basic_service_map import (
+            create_service_map_request,
+            poll_service_map_result,
+            test_poll_result,
+        )
+
+        try:
+            # Create request first
+            request_id = await create_service_map_request(client)
+
+            # Poll for result
+            result = await poll_service_map_result(client, request_id)
+            await test_poll_result(result)
+        except HoneycombNotFoundError as e:
+            if "Service map data not found" in str(e):
+                pytest.skip("No trace data in environment - service map unavailable")
+            raise
+
+    @pytest.mark.asyncio
+    async def test_get_service_map(self, client: HoneycombClient) -> None:
+        """Test the convenience method that creates and polls in one call."""
+        from honeycomb import HoneycombNotFoundError
+
+        from docs.examples.service_map.basic_service_map import (
+            get_service_map,
+            test_get_service_map,
+        )
+
+        try:
+            result = await get_service_map(client)
+            await test_get_service_map(result)
+        except HoneycombNotFoundError as e:
+            if "Service map data not found" in str(e):
+                pytest.skip("No trace data in environment - service map unavailable")
+            raise
+
+
+class TestEnvironmentExamples:
+    """Test environment examples from docs/examples/environments/.
+
+    Note: These tests require management key authentication.
+    They will be skipped if management credentials are not available.
+    """
+
+    @pytest.mark.asyncio
+    async def test_environment_lifecycle(
+        self, management_client: HoneycombClient, team_slug: str
+    ) -> None:
+        """Test full environment CRUD lifecycle: list -> create -> get -> update -> delete."""
+        from docs.examples.environments.basic_environment import (
+            create_environment,
+            get_environment,
+            list_environments,
+            test_create_environment,
+            test_get_environment,
+            test_list_environments,
+            test_update_environment,
+            update_environment,
+        )
+
+        # List (before create)
+        initial_envs = await list_environments(management_client, team_slug)
+        await test_list_environments(initial_envs)
+        initial_count = len(initial_envs)
+
+        # Create
+        env_id = await create_environment(management_client, team_slug)
+        try:
+            await test_create_environment(env_id)
+
+            # Get
+            env = await get_environment(management_client, team_slug, env_id)
+            await test_get_environment(env, env_id)
+
+            # Update
+            updated = await update_environment(management_client, team_slug, env_id)
+            await test_update_environment(updated, env_id)
+
+            # List (after create - verify it appears)
+            envs = await list_environments(management_client, team_slug)
+            assert len(envs) == initial_count + 1
+        finally:
+            # Delete (always, even on failure)
+            from docs.examples.environments.basic_environment import cleanup
+
+            await cleanup(management_client, team_slug, env_id)
+
+
+class TestApiKeyExamples:
+    """Test API key examples from docs/examples/api_keys/.
+
+    Note: These tests require management key authentication.
+    They will be skipped if management credentials are not available.
+    """
+
+    @pytest.mark.asyncio
+    async def test_api_key_lifecycle(
+        self, management_client: HoneycombClient, team_slug: str, session_info: dict
+    ) -> None:
+        """Test full API key CRUD lifecycle: list -> create -> get -> update -> delete."""
+        from docs.examples.api_keys.basic_api_key import (
+            create_api_key,
+            delete_api_key,
+            get_api_key,
+            list_api_keys,
+            test_create_api_key,
+            test_get_api_key,
+            test_list_api_keys,
+            test_update_api_key,
+            update_api_key,
+        )
+
+        # List (before create)
+        initial_keys = await list_api_keys(management_client, team_slug)
+        await test_list_api_keys(initial_keys)
+        initial_count = len(initial_keys)
+
+        # Use the test environment from session
+        environment_id = session_info["environment_id"]
+
+        # Create
+        key_id, secret = await create_api_key(management_client, team_slug, environment_id)
+        try:
+            await test_create_api_key(key_id, secret)
+
+            # Get
+            key = await get_api_key(management_client, team_slug, key_id)
+            await test_get_api_key(key, key_id)
+
+            # Update
+            updated = await update_api_key(management_client, team_slug, key_id, environment_id)
+            await test_update_api_key(updated, key_id)
+
+            # List (after create - verify it appears)
+            keys = await list_api_keys(management_client, team_slug)
+            assert len(keys) == initial_count + 1
+        finally:
+            # Delete (always, even on failure)
+            await delete_api_key(management_client, team_slug, key_id)

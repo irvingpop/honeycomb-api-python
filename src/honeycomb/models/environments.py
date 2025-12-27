@@ -10,7 +10,12 @@ from pydantic import BaseModel, Field
 
 
 class EnvironmentColor(str, Enum):
-    """Environment display colors."""
+    """Environment display colors.
+
+    Note: 'classic' is a special color used only for auto-created Classic environments
+    and cannot be set on any other environment. Classic environments cannot be set
+    to any other color.
+    """
 
     BLUE = "blue"
     GREEN = "green"
@@ -22,6 +27,8 @@ class EnvironmentColor(str, Enum):
     LIGHT_GOLD = "lightGold"
     LIGHT_RED = "lightRed"
     LIGHT_PURPLE = "lightPurple"
+    # Special read-only color for Classic environments
+    CLASSIC = "classic"
 
 
 class EnvironmentCreate(BaseModel):

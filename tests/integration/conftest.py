@@ -347,3 +347,78 @@ async def ensure_recipient(client: HoneycombClient) -> str:
     )
 
     return recipient.id
+
+
+def load_management_credentials() -> tuple[str, str] | None:
+    """Load management API credentials from environment.
+
+    Returns:
+        Tuple of (management_key, management_secret) or None if not available
+    """
+    mgmt_key = os.environ.get("HONEYCOMB_MANAGEMENT_KEY")
+    mgmt_secret = os.environ.get("HONEYCOMB_MANAGEMENT_SECRET")
+
+    if mgmt_key and mgmt_secret:
+        return mgmt_key, mgmt_secret
+
+    return None
+
+
+@pytest.fixture(scope="session")
+def management_credentials() -> tuple[str, str]:
+    """Get management API credentials.
+
+    Raises:
+        pytest.skip: If management credentials are not available
+    """
+    creds = load_management_credentials()
+    if not creds:
+        pytest.skip(
+            "Management credentials not available. Set HONEYCOMB_MANAGEMENT_KEY "
+            "and HONEYCOMB_MANAGEMENT_SECRET in .envrc"
+        )
+    return creds
+
+
+@pytest.fixture(scope="session")
+def team_slug(management_credentials: tuple[str, str]) -> str:
+    """Get team slug from management API.
+
+    Raises:
+        pytest.skip: If management credentials not available
+    """
+    import httpx
+
+    mgmt_key, mgmt_secret = management_credentials
+
+    # Get team slug from auth endpoint (sync call for session-scoped fixture)
+    # Management API uses Authorization: Bearer {key_id}:{key_secret}
+    with httpx.Client() as http:
+        headers = {
+            "Authorization": f"Bearer {mgmt_key}:{mgmt_secret}",
+        }
+        resp = http.get("https://api.honeycomb.io/2/auth", headers=headers)
+        resp.raise_for_status()
+        auth_data = resp.json()
+        # Team info is in the "included" array, find the team type
+        for included in auth_data.get("included", []):
+            if included.get("type") == "teams":
+                return included["attributes"]["slug"]
+        raise ValueError("Team not found in auth response")
+
+
+@pytest.fixture
+async def management_client(
+    management_credentials: tuple[str, str]
+) -> AsyncGenerator[HoneycombClient, None]:
+    """Create HoneycombClient with management key for testing.
+
+    Yields:
+        HoneycombClient with management authentication
+    """
+    from honeycomb import HoneycombClient
+
+    mgmt_key, mgmt_secret = management_credentials
+
+    async with HoneycombClient(management_key=mgmt_key, management_secret=mgmt_secret) as client:
+        yield client

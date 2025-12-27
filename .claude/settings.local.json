@@ -21,7 +21,8 @@
       "Skill(live-test)",
       "Skill(live-test:*)",
       "Skill(check)",
-      "Skill(check:*)"
+      "Skill(check:*)",
+      "Bash(cat:*)"
     ]
   }
 }
