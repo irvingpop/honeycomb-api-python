@@ -154,6 +154,10 @@ class Query(BaseModel):
     """A Honeycomb query (response model)."""
 
     id: str = Field(description="Unique identifier")
+    query_annotation_id: str | None = Field(
+        default=None,
+        description="Annotation ID for referencing this query in boards (returned by API but not in spec)",
+    )
     query_json: dict | None = Field(default=None, description="Query specification")
     created_at: datetime | None = Field(default=None, description="Creation timestamp")
     updated_at: datetime | None = Field(default=None, description="Last update timestamp")

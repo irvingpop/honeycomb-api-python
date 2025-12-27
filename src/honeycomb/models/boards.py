@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -11,13 +11,38 @@ class BoardCreate(BaseModel):
     """Model for creating a new board.
 
     The Honeycomb Board API only supports flexible boards.
+
+    Attributes:
+        name: Human-readable name (1-255 chars)
+        description: Longer description (0-1024 chars)
+        type: Board type (only "flexible" is supported)
+        panels: Array of board panels (queries, SLOs, text)
+        layout_generation: Layout mode - "auto" or "manual" (default: "manual")
+        tags: Array of tag objects (max 10 items)
+        preset_filters: Array of preset filter objects
     """
 
-    name: str = Field(description="Human-readable name for the board")
-    description: str | None = Field(default=None, description="Longer description")
+    name: str = Field(description="Human-readable name for the board (1-255 chars)")
+    description: str | None = Field(default=None, description="Longer description (0-1024 chars)")
     type: str = Field(
         default="flexible",
         description="Board type: only 'flexible' is supported",
+    )
+    panels: list[dict[str, Any]] | None = Field(
+        default=None,
+        description="Array of board panels (queries, SLOs, text)",
+    )
+    layout_generation: Literal["auto", "manual"] = Field(
+        default="manual",
+        description="Layout mode: 'auto' or 'manual'",
+    )
+    tags: list[dict[str, str]] | None = Field(
+        default=None,
+        description="Array of tag objects (max 10)",
+    )
+    preset_filters: list[dict[str, str]] | None = Field(
+        default=None,
+        description="Array of preset filter objects",
     )
 
     def model_dump_for_api(self) -> dict[str, Any]:
@@ -25,10 +50,20 @@ class BoardCreate(BaseModel):
         data: dict[str, Any] = {
             "name": self.name,
             "type": self.type,
+            "layout_generation": self.layout_generation,
         }
 
         if self.description:
             data["description"] = self.description
+
+        if self.panels:
+            data["panels"] = self.panels
+
+        if self.tags:
+            data["tags"] = self.tags
+
+        if self.preset_filters:
+            data["preset_filters"] = self.preset_filters
 
         return data
 

@@ -1,6 +1,15 @@
 """Pydantic models for Honeycomb API resources."""
 
 from .api_keys import ApiKey, ApiKeyCreate, ApiKeyType
+from .board_builder import (
+    BoardBuilder,
+    BoardPanel,
+    BoardPanelPosition,
+    BoardPanelType,
+    BoardQueryPanel,
+    BoardSLOPanel,
+    BoardTextPanel,
+)
 from .boards import Board, BoardCreate
 from .burn_alerts import BurnAlert, BurnAlertCreate, BurnAlertRecipient, BurnAlertType
 from .columns import Column, ColumnCreate, ColumnType
@@ -11,6 +20,7 @@ from .events import BatchEvent, BatchEventResult
 from .marker_builder import MarkerBuilder
 from .markers import Marker, MarkerCreate, MarkerSetting, MarkerSettingCreate
 from .queries import Query, QueryResult, QueryResultData, QuerySpec
+from .query_annotations import QueryAnnotation, QueryAnnotationCreate, QueryAnnotationSource
 from .query_builder import (
     CalcOp,
     Calculation,
@@ -79,12 +89,23 @@ __all__ = [
     "DatasetCreate",
     # Boards
     "Board",
+    "BoardBuilder",
     "BoardCreate",
+    "BoardPanel",
+    "BoardPanelPosition",
+    "BoardPanelType",
+    "BoardQueryPanel",
+    "BoardSLOPanel",
+    "BoardTextPanel",
     # Queries
     "Query",
     "QuerySpec",
     "QueryResult",
     "QueryResultData",
+    # Query Annotations
+    "QueryAnnotation",
+    "QueryAnnotationCreate",
+    "QueryAnnotationSource",
     # Columns
     "Column",
     "ColumnCreate",

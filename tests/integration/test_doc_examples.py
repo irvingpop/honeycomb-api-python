@@ -441,6 +441,43 @@ class TestBoardExamples:
         boards = await list_boards(client)
         await test_list_boards(boards)
 
+    @pytest.mark.asyncio
+    async def test_builder_board(self, client: HoneycombClient, ensure_dataset: str) -> None:
+        """Test board creation with BoardBuilder including multiple query panels."""
+        from docs.examples.boards.builder_board import (
+            cleanup,
+            create_board_with_builder,
+            test_lifecycle,
+        )
+
+        board_id = await create_board_with_builder(client, ensure_dataset)
+        try:
+            await test_lifecycle(client, board_id, "Service Health Dashboard")
+        finally:
+            await cleanup(client, board_id)
+
+    @pytest.mark.asyncio
+    async def test_builder_complex_board(
+        self,
+        client: HoneycombClient,
+        ensure_dataset: str,
+        ensure_slo: tuple[str, str],
+    ) -> None:
+        """Test comprehensive board with queries, SLO, text, filters, and manual layout."""
+        from docs.examples.boards.builder_board import (
+            cleanup,
+            create_complex_board,
+            test_lifecycle,
+        )
+
+        slo_id, _ = ensure_slo
+
+        board_id = await create_complex_board(client, ensure_dataset, slo_id)
+        try:
+            await test_lifecycle(client, board_id, "Production Monitoring Dashboard")
+        finally:
+            await cleanup(client, board_id)
+
 
 class TestColumnExamples:
     """Test column examples from docs/examples/columns/."""

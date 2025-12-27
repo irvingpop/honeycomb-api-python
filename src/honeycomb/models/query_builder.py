@@ -235,6 +235,9 @@ class QueryBuilder:
         self._orders: list[Order] = []
         self._limit: int | None = None
         self._havings: list[Having] = []
+        # Query annotation metadata (for board integration)
+        self._annotation_name: str | None = None
+        self._annotation_description: str | None = None
 
     # -------------------------------------------------------------------------
     # Time Methods - Custom
@@ -665,6 +668,44 @@ class QueryBuilder:
         """
         self._havings.append(Having(calculate_op=calculate_op, column=column, op=op, value=value))
         return self
+
+    # -------------------------------------------------------------------------
+    # Annotation (for board integration)
+    # -------------------------------------------------------------------------
+
+    def annotate(self, name: str, description: str | None = None) -> QueryBuilder:
+        """Add annotation metadata for board integration.
+
+        When creating a query with annotation, you can use it directly in
+        BoardBuilder without needing to separately create a query annotation.
+
+        Args:
+            name: Name for the query (1-320 chars)
+            description: Optional description (max 1023 chars)
+
+        Example:
+            >>> query = (
+            ...     QueryBuilder()
+            ...     .last_1_hour()
+            ...     .count()
+            ...     .annotate("Request Count", "Total requests over time")
+            ... )
+        """
+        self._annotation_name = name
+        self._annotation_description = description
+        return self
+
+    def get_annotation_name(self) -> str | None:
+        """Get the annotation name if set."""
+        return self._annotation_name
+
+    def get_annotation_description(self) -> str | None:
+        """Get the annotation description if set."""
+        return self._annotation_description
+
+    def has_annotation(self) -> bool:
+        """Check if this query has annotation metadata."""
+        return self._annotation_name is not None
 
     # -------------------------------------------------------------------------
     # Build Methods

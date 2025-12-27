@@ -35,6 +35,7 @@ if TYPE_CHECKING:
     from .resources.events import EventsResource
     from .resources.markers import MarkersResource
     from .resources.queries import QueriesResource
+    from .resources.query_annotations import QueryAnnotationsResource
     from .resources.query_results import QueryResultsResource
     from .resources.recipients import RecipientsResource
     from .resources.service_map_dependencies import ServiceMapDependenciesResource
@@ -144,6 +145,7 @@ class HoneycombClient:
         self._datasets: DatasetsResource | None = None
         self._boards: BoardsResource | None = None
         self._queries: QueriesResource | None = None
+        self._query_annotations: QueryAnnotationsResource | None = None
         self._query_results: QueryResultsResource | None = None
         self._columns: ColumnsResource | None = None
         self._derived_columns: DerivedColumnsResource | None = None
@@ -203,6 +205,15 @@ class HoneycombClient:
 
             self._queries = QueriesResource(self)
         return self._queries
+
+    @property
+    def query_annotations(self) -> QueryAnnotationsResource:
+        """Access the Query Annotations API."""
+        if self._query_annotations is None:
+            from .resources.query_annotations import QueryAnnotationsResource
+
+            self._query_annotations = QueryAnnotationsResource(self)
+        return self._query_annotations
 
     @property
     def query_results(self) -> QueryResultsResource:

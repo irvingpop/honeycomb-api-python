@@ -9,6 +9,7 @@ from .base import BaseResource
 
 if TYPE_CHECKING:
     from ..client import HoneycombClient
+    from ..models.query_builder import QueryBuilder
 
 
 class QueriesResource(BaseResource):
@@ -79,6 +80,61 @@ class QueriesResource(BaseResource):
         """
         data = await self._get_async(self._build_path(dataset, query_id))
         return self._parse_model(Query, data)
+
+    async def create_with_annotation_async(
+        self,
+        dataset: str,
+        builder: QueryBuilder,
+    ) -> tuple[Query, str]:
+        """Create a query and annotation together from QueryBuilder (async).
+
+        This is a convenience method for QueryBuilder instances that have
+        annotation metadata (.annotate() was called). It creates both the
+        query and its annotation in one call.
+
+        Args:
+            dataset: The dataset slug.
+            builder: QueryBuilder with .annotate() called
+
+        Returns:
+            Tuple of (Query object, annotation_id)
+
+        Raises:
+            ValueError: If the QueryBuilder doesn't have annotation metadata
+
+        Example:
+            >>> query_builder = (
+            ...     QueryBuilder()
+            ...     .last_1_hour()
+            ...     .count()
+            ...     .annotate("Error Count", "Tracks errors over time")
+            ... )
+            >>> query, annotation_id = await client.queries.create_with_annotation_async(
+            ...     "my-dataset", query_builder
+            ... )
+            >>> # Use query.id and annotation_id in BoardBuilder
+        """
+        from ..models.query_annotations import QueryAnnotationCreate
+
+        # Check if this has annotation metadata
+        if not hasattr(builder, "has_annotation") or not builder.has_annotation():
+            raise ValueError(
+                "create_with_annotation requires a QueryBuilder with .annotate() called. "
+                "Use create_async() for plain QuerySpec objects."
+            )
+
+        # Create the query first
+        query = await self.create_async(dataset, builder.build())
+
+        # Create the annotation
+        annotation = QueryAnnotationCreate(
+            name=builder.get_annotation_name() or "",
+            query_id=query.id,
+            description=builder.get_annotation_description(),
+        )
+        created_annotation = await self._client.query_annotations.create_async(dataset, annotation)
+
+        return (query, created_annotation.id)
 
     # -------------------------------------------------------------------------
     # Sync methods
