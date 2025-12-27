@@ -60,7 +60,7 @@ Boards are visualization dashboards in Honeycomb. They organize multiple queries
 
 **Key Points:**
 - Use `QueryBuilder` instances directly in `.query()` calls - no need to create queries separately
-- Requires `.name()` on each QueryBuilder (becomes the annotation name)
+- Pass name in constructor: `QueryBuilder("Query Name")` (required for board integration)
 - `create_from_bundle_async()` handles query creation + annotation + board in one call
 
 ### Complex Example - Full Featured Dashboard
@@ -97,7 +97,7 @@ This example demonstrates all capabilities: inline QueryBuilder instances, SLO p
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `query` | `QueryBuilder \| str` | QueryBuilder instance with `.name()` OR existing query ID |
+| `query` | `QueryBuilder \| str` | QueryBuilder instance with name OR existing query ID |
 | `annotation_id` | `str \| None` | Required only when using existing query ID |
 | `position` | `tuple[int, int, int, int] \| None` | Optional (x, y, width, height) for manual layout |
 | `style` | `"graph" \| "table" \| "combo"` | Display style (default: "graph") |
@@ -116,7 +116,7 @@ bundle = (
     BoardBuilder("Dashboard")
     .manual_layout()
     .query(
-        QueryBuilder().dataset("api-logs").last_1_hour().count().name("Requests"),
+        QueryBuilder("Requests").dataset("api-logs").last_1_hour().count(),
         position=(0, 0, 9, 6),  # Top left, large
     )
     .slo("slo-id", position=(9, 0, 3, 6))  # Top right, small

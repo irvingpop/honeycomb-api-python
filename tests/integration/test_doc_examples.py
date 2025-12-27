@@ -442,7 +442,7 @@ class TestBoardExamples:
         await test_list_boards(boards)
 
     @pytest.mark.asyncio
-    async def test_builder_board(self, client: HoneycombClient, ensure_dataset: str) -> None:
+    async def test_builder_board(self, client: HoneycombClient) -> None:
         """Test board creation with BoardBuilder including multiple query panels."""
         from docs.examples.boards.builder_board import (
             cleanup,
@@ -450,7 +450,7 @@ class TestBoardExamples:
             test_lifecycle,
         )
 
-        board_id = await create_board_with_builder(client, ensure_dataset)
+        board_id = await create_board_with_builder(client)
         try:
             await test_lifecycle(client, board_id, "Service Health Dashboard")
         finally:
@@ -472,7 +472,7 @@ class TestBoardExamples:
 
         slo_id, _ = ensure_slo
 
-        board_id = await create_complex_board(client, ensure_dataset, slo_id)
+        board_id = await create_complex_board(client, slo_id, ensure_dataset)
         try:
             await test_lifecycle(client, board_id, "Production Monitoring Dashboard")
         finally:

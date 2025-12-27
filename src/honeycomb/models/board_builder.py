@@ -121,11 +121,10 @@ class BoardBuilder(TagsMixin):
             .description("Overview of API health")
             .auto_layout()
             .query(
-                QueryBuilder()
+                QueryBuilder("Request Count")
                 .dataset("api-logs")
                 .last_1_hour()
                 .count()
-                .name("Request Count")
             )
             .slo("slo-id-1")
             .text("## Notes\\nMonitor during peak hours")
@@ -137,7 +136,7 @@ class BoardBuilder(TagsMixin):
             BoardBuilder("Custom Layout")
             .manual_layout()
             .query(
-                QueryBuilder().dataset("api-logs").last_1_hour().count().name("Requests"),
+                QueryBuilder("Requests").dataset("api-logs").last_1_hour().count(),
                 position=(0, 0, 8, 6)
             )
             .slo("slo-id-1", position=(8, 0, 4, 6))
@@ -232,12 +231,11 @@ class BoardBuilder(TagsMixin):
 
         Example - Inline QueryBuilder:
             .query(
-                QueryBuilder()
+                QueryBuilder("Request Count")
                     .dataset("api-logs")
                     .last_24_hours()
                     .count()
                     .group_by("service")
-                    .name("Request Count")
                     .description("Requests by service over 24h"),
                 position=(0, 0, 9, 6),
                 style="graph",
@@ -251,7 +249,7 @@ class BoardBuilder(TagsMixin):
 
         if isinstance(query, QueryBuilder):
             if not query.has_name():
-                raise ValueError("QueryBuilder must have .name() set for board panels")
+                raise ValueError("QueryBuilder must have name in constructor for board panels")
 
             self._query_builder_panels.append(
                 QueryBuilderPanel(

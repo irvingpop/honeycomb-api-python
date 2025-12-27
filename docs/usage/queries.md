@@ -12,9 +12,10 @@ The recommended way to build queries is using the fluent `QueryBuilder`:
 from honeycomb import HoneycombClient, QueryBuilder
 
 async with HoneycombClient(api_key="...") as client:
+    # Standalone query - no name needed
     query, result = await client.query_results.create_and_run_async(
         "my-dataset",
-        QueryBuilder()
+        QueryBuilder()  # No name for standalone queries
             .last_1_hour()
             .count()
             .p99("duration_ms")
@@ -35,6 +36,30 @@ The builder provides:
 - **Chainable methods** for calculations, filters, grouping, and ordering
 - **Filter shortcuts** like `.gte()`, `.eq()`, `.contains()` for cleaner syntax
 - **Type safety** with enums for operators
+
+### When to Use Query Names
+
+Query names are **optional** for standalone queries but **required** for board integration:
+
+```python
+from honeycomb import QueryBuilder
+
+# Standalone query - no name needed
+spec1 = QueryBuilder().last_1_hour().count().build()
+
+# For boards - name required (becomes the panel annotation)
+spec2 = QueryBuilder("Request Count").dataset("api-logs").last_1_hour().count().build()
+
+# With description (optional)
+spec3 = (
+    QueryBuilder("Request Count")
+    .dataset("api-logs")
+    .last_1_hour()
+    .count()
+    .description("Total requests over time")
+    .build()
+)
+```
 
 You can also use `QuerySpec.builder()` as an entry point:
 

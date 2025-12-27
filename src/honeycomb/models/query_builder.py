@@ -222,8 +222,16 @@ class QueryBuilder:
         ... )
     """
 
-    def __init__(self) -> None:
-        """Initialize an empty query builder."""
+    def __init__(self, name: str | None = None) -> None:
+        """Initialize a query builder.
+
+        Args:
+            name: Optional query name (required for board integration)
+
+        Examples:
+            >>> QueryBuilder()  # No name (for standalone queries)
+            >>> QueryBuilder("Request Count")  # With name (for board queries)
+        """
         self._time_range: int | None = None
         self._start_time: int | None = None
         self._end_time: int | None = None
@@ -237,7 +245,7 @@ class QueryBuilder:
         self._havings: list[Having] = []
         # Query metadata (for board integration)
         self._dataset: str | None = None
-        self._query_name: str | None = None
+        self._query_name: str | None = name
         self._query_description: str | None = None
 
     # -------------------------------------------------------------------------
@@ -713,24 +721,6 @@ class QueryBuilder:
     # Query Metadata (for board integration)
     # -------------------------------------------------------------------------
 
-    def name(self, name: str) -> QueryBuilder:
-        """Set query name (required for board integration).
-
-        For boards: This becomes the query annotation name.
-        Outside boards: Optional, useful for documentation.
-
-        Args:
-            name: Query name (1-320 chars)
-
-        Returns:
-            self for chaining
-
-        Example:
-            >>> QueryBuilder().dataset("api-logs").last_1_hour().count().name("Request Count")
-        """
-        self._query_name = name
-        return self
-
     def description(self, desc: str) -> QueryBuilder:
         """Set query description (optional).
 
@@ -743,11 +733,10 @@ class QueryBuilder:
             self for chaining
 
         Example:
-            >>> (QueryBuilder()
+            >>> (QueryBuilder("Request Count")
             ...     .dataset("api-logs")
             ...     .last_1_hour()
             ...     .count()
-            ...     .name("Request Count")
             ...     .description("Total requests over 24 hours"))
         """
         self._query_description = desc

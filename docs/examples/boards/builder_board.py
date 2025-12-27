@@ -6,18 +6,15 @@ from honeycomb import Board, HoneycombClient
 
 
 # start_example:create_with_builder
-async def create_board_with_builder(
-    client: HoneycombClient,
-    dataset: str,
-) -> str:
+async def create_board_with_builder(client: HoneycombClient, dataset: str = "integration-test") -> str:
     """Create a service dashboard with inline QueryBuilder instances.
 
     This example demonstrates:
-    - Inline QueryBuilder instances with .name() and .description()
+    - Inline QueryBuilder with name in constructor
     - Automatic query + annotation creation via create_from_bundle_async()
     - Multiple query panels with different visualization styles
     - Auto-layout for automatic panel arrangement
-    - Tags for board organization
+    - Dataset scoping variations (explicit vs environment-wide)
     """
     from honeycomb import BoardBuilder, QueryBuilder
 
@@ -28,25 +25,24 @@ async def create_board_with_builder(
         .auto_layout()
         .tag("team", "platform")
         .tag("service", "api")
-        # Query panels with inline QueryBuilder
+        # Query 1: Dataset-scoped query
         .query(
-            QueryBuilder()
+            QueryBuilder("Request Count")
             .dataset(dataset)
             .last_24_hours()
             .count()
             .group_by("service")
-            .name("Request Count")
             .description("Total requests by service over 24 hours"),
             style="graph",
         )
+        # Query 2: Environment-wide query (all datasets)
         .query(
-            QueryBuilder()
-            .dataset(dataset)
+            QueryBuilder("Avg Latency")
+            .environment_wide()
             .last_1_hour()
             .avg("duration_ms")
             .group_by("endpoint")
             .limit(10)
-            .name("Avg Latency")
             .description("Top 10 endpoints by average latency"),
             style="table",
         )
@@ -58,14 +54,12 @@ async def create_board_with_builder(
 
 # start_example:create_complex
 async def create_complex_board(
-    client: HoneycombClient,
-    dataset: str,
-    slo_id: str,
+    client: HoneycombClient, slo_id: str, dataset: str = "integration-test"
 ) -> str:
     """Create a comprehensive dashboard with all panel types and advanced features.
 
     This example demonstrates:
-    - Inline QueryBuilder instances with automatic query creation
+    - Inline QueryBuilder with name in constructor
     - Multiple query panels with different styles (graph, table, combo)
     - SLO panel for availability tracking
     - Text panel for notes
@@ -85,14 +79,13 @@ async def create_complex_board(
         # Preset filters for dynamic filtering
         .preset_filter("service", "Service")
         .preset_filter("environment", "Environment")
-        # Top row: Request count (large graph with advanced settings)
+        # Top row: Request count (dataset-scoped, graph with advanced settings)
         .query(
-            QueryBuilder()
+            QueryBuilder("Request Count")
             .dataset(dataset)
             .last_24_hours()
             .count()
             .group_by("service")
-            .name("Request Count")
             .description("Total requests by service over 24 hours"),
             position=(0, 0, 9, 6),
             style="graph",
@@ -100,28 +93,26 @@ async def create_complex_board(
         )
         # Top right: SLO status
         .slo(slo_id, position=(9, 0, 3, 6))
-        # Middle left: Latency table
+        # Middle left: Latency table (environment-wide)
         .query(
-            QueryBuilder()
-            .dataset(dataset)
+            QueryBuilder("Avg Latency")
+            .environment_wide()
             .last_1_hour()
             .avg("duration_ms")
             .group_by("endpoint")
             .limit(10)
-            .name("Avg Latency")
             .description("Top 10 endpoints by average latency"),
             position=(0, 6, 6, 5),
             style="table",
         )
-        # Middle right: Error rate combo view
+        # Middle right: Error rate combo view (dataset-scoped)
         .query(
-            QueryBuilder()
+            QueryBuilder("Error Rate")
             .dataset(dataset)
             .last_2_hours()
             .count()
             .gte("status_code", 400)
             .group_by("status_code")
-            .name("Error Rate")
             .description("HTTP errors by status code"),
             position=(6, 6, 6, 5),
             style="combo",
@@ -152,7 +143,7 @@ async def get_board(client: HoneycombClient, board_id: str) -> Board:
 
 
 # start_example:update
-async def update_board(client: HoneycombClient, board_id: str, dataset: str) -> Board:
+async def update_board(client: HoneycombClient, board_id: str) -> Board:
     """Update a board's name and description."""
     from honeycomb import BoardCreate
 
@@ -177,9 +168,7 @@ async def delete_board(client: HoneycombClient, board_id: str) -> None:
 
 
 # TEST_ASSERTIONS
-async def test_lifecycle(
-    client: HoneycombClient, board_id: str, expected_name: str
-) -> None:
+async def test_lifecycle(client: HoneycombClient, board_id: str, expected_name: str) -> None:
     """Verify the full lifecycle worked."""
     board = await client.boards.get_async(board_id)
     assert board.id == board_id

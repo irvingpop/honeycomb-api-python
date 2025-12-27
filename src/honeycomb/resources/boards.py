@@ -118,11 +118,10 @@ class BoardsResource(BaseResource):
             ...     BoardBuilder("Dashboard")
             ...         .auto_layout()
             ...         .query(
-            ...             QueryBuilder()
+            ...             QueryBuilder("Request Count")
             ...                 .dataset("api-logs")
             ...                 .last_1_hour()
             ...                 .count()
-            ...                 .name("Request Count")
             ...         )
             ...         .build()
             ... )
@@ -143,7 +142,6 @@ class BoardsResource(BaseResource):
                     qb_panel.position,
                     qb_panel.style,
                     qb_panel.visualization,
-                    dataset,
                 )
             )
 
@@ -156,7 +154,6 @@ class BoardsResource(BaseResource):
                     existing.position,
                     existing.style,
                     existing.visualization,
-                    existing.dataset,
                 )
             )
 
@@ -188,7 +185,6 @@ class BoardsResource(BaseResource):
         position: tuple[int, int, int, int] | None,
         style: str,
         visualization: dict[str, Any] | None,
-        dataset: str | None,
     ) -> dict[str, Any]:
         """Build query panel dictionary for API."""
         query_panel: dict[str, Any] = {
@@ -196,10 +192,7 @@ class BoardsResource(BaseResource):
             "query_annotation_id": annotation_id,
             "query_style": style,
         }
-        # Only include dataset for environment-wide queries or explicit overrides
-        # Dataset-scoped queries don't need dataset in panel (query itself knows)
-        if dataset and dataset == "__all__":
-            query_panel["dataset"] = dataset
+        # Dataset is not included - query already knows its scope
         if visualization:
             query_panel["visualization_settings"] = visualization
 
