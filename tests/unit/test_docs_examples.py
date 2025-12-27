@@ -146,12 +146,12 @@ class TestQuickstartExamples:
         # This is the exact code from quickstart.md (updated to create_and_run)
         async with HoneycombClient(api_key="...") as client:
             query, result = await client.query_results.create_and_run_async(
-                "my-dataset",
                 QuerySpec(
                     time_range=3600,
                     calculations=[{"op": "P99", "column": "duration_ms"}],
                     breakdowns=["endpoint"],
                 ),
+                dataset="my-dataset",
                 poll_interval=1.0,
                 timeout=60.0,
             )

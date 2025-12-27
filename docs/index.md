@@ -31,15 +31,14 @@ async def main():
 
         # Run a query using the fluent QueryBuilder
         query, result = await client.query_results.create_and_run_async(
-            "my-dataset",
             QueryBuilder()
+                .dataset("my-dataset")
                 .last_1_hour()
                 .count()
                 .p99("duration_ms")
                 .gte("status", 500)
                 .group_by("service")
-                .order_by_count()
-                .build(),
+                .order_by_count(),
         )
         for row in result.data.rows:
             print(f"Service: {row['service']}, Count: {row['COUNT']}, P99: {row['P99']}")

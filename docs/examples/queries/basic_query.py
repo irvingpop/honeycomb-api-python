@@ -21,8 +21,12 @@ async def create_and_run_query(client: HoneycombClient, dataset: str) -> tuple[Q
         Tuple of (saved query, query result)
     """
     query, result = await client.query_results.create_and_run_async(
-        dataset,
-        QueryBuilder().last_1_hour().count().avg("duration_ms").group_by("service").build(),
+        QueryBuilder()
+        .dataset(dataset)
+        .last_1_hour()
+        .count()
+        .avg("duration_ms")
+        .group_by("service"),
     )
     print(f"Query {query.id} returned {len(result.data.rows)} rows")
     return query, result
@@ -44,8 +48,11 @@ async def save_then_run_query(client: HoneycombClient, dataset: str) -> tuple[Qu
     """
     # Step 1: Create and save the query
     query = await client.queries.create_async(
-        dataset,
-        QueryBuilder().last_1_hour().p99("duration_ms").group_by("endpoint").build(),
+        QueryBuilder()
+        .dataset(dataset)
+        .last_1_hour()
+        .p99("duration_ms")
+        .group_by("endpoint"),
     )
     print(f"Saved query: {query.id}")
 
@@ -69,8 +76,8 @@ async def query_with_filters(client: HoneycombClient, dataset: str) -> tuple[Que
         Tuple of (saved query, query result)
     """
     query, result = await client.query_results.create_and_run_async(
-        dataset,
         QueryBuilder()
+        .dataset(dataset)
         .last_2_hours()
         .count()
         .gte("status_code", 400)
@@ -78,8 +85,7 @@ async def query_with_filters(client: HoneycombClient, dataset: str) -> tuple[Que
         .filter_with("AND")
         .group_by("endpoint")
         .order_by_count()
-        .limit(10)
-        .build(),
+        .limit(10),
     )
     return query, result
 

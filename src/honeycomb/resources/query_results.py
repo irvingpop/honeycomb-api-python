@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import time as time_module
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, overload
 
 from ..models.queries import Query, QueryResult, QuerySpec
 from ..models.query_builder import Calculation
@@ -13,6 +13,7 @@ from .base import BaseResource
 
 if TYPE_CHECKING:
     from ..client import HoneycombClient
+    from ..models.query_builder import QueryBuilder
 
 # Default max results for run_all_async
 DEFAULT_MAX_RESULTS = 100_000
@@ -214,10 +215,34 @@ class QueryResultsResource(BaseResource):
             # Wait before next poll
             await asyncio.sleep(poll_interval)
 
+    @overload
     async def create_and_run_async(
         self,
-        dataset: str,
+        spec: QueryBuilder,
+        *,
+        disable_series: bool = True,
+        limit: int | None = None,
+        poll_interval: float = 1.0,
+        timeout: float = 60.0,
+    ) -> tuple[Query, QueryResult]: ...
+
+    @overload
+    async def create_and_run_async(
+        self,
         spec: QuerySpec,
+        *,
+        dataset: str,
+        disable_series: bool = True,
+        limit: int | None = None,
+        poll_interval: float = 1.0,
+        timeout: float = 60.0,
+    ) -> tuple[Query, QueryResult]: ...
+
+    async def create_and_run_async(
+        self,
+        spec: QuerySpec | QueryBuilder,
+        *,
+        dataset: str | None = None,
         disable_series: bool = True,
         limit: int | None = None,
         poll_interval: float = 1.0,
@@ -234,8 +259,8 @@ class QueryResultsResource(BaseResource):
         AND get immediate results.
 
         Args:
-            dataset: The dataset slug.
-            spec: Query specification (don't set spec.limit > 1000).
+            spec: Query specification (QueryBuilder or QuerySpec).
+            dataset: Dataset slug. Required for QuerySpec, extracted from QueryBuilder.
             disable_series: If True, disable timeseries data and allow up to 10K results
                            (default: True for better performance).
             limit: Override result limit (max 10,000 when disable_series=True, 1,000 otherwise).
@@ -249,16 +274,45 @@ class QueryResultsResource(BaseResource):
         Raises:
             HoneycombTimeoutError: If query doesn't complete within timeout.
             HoneycombValidationError: If the query spec is invalid.
+            ValueError: If dataset parameter is misused.
 
-        Example:
+        Example (QueryBuilder - recommended):
             >>> query, result = await client.query_results.create_and_run_async(
-            ...     "my-dataset",
-            ...     QuerySpec(time_range=3600, calculations=[{"op": "COUNT"}]),
+            ...     QueryBuilder()
+            ...         .dataset("my-dataset")
+            ...         .last_1_hour()
+            ...         .count(),
             ... )
-            >>> print(f"Saved as query {query.id} with {len(result.data.rows)} rows")
+
+        Example (QuerySpec - advanced):
+            >>> query, result = await client.query_results.create_and_run_async(
+            ...     QuerySpec(time_range=3600, calculations=[{"op": "COUNT"}]),
+            ...     dataset="my-dataset"
+            ... )
         """
+        from ..models.query_builder import QueryBuilder
+
+        # Extract dataset based on spec type
+        if isinstance(spec, QueryBuilder):
+            if dataset is not None:
+                raise ValueError(
+                    "dataset parameter not allowed with QueryBuilder. "
+                    "Use .dataset() on the builder instead."
+                )
+            dataset = spec.get_dataset()
+        else:
+            if dataset is None:
+                raise ValueError(
+                    "dataset parameter required when using QuerySpec. "
+                    "Pass dataset='your-dataset' or use QueryBuilder instead."
+                )
+
         # Create the saved query
-        query = await self._client.queries.create_async(dataset, spec)
+        query = (
+            await self._client.queries.create_async(spec, dataset=dataset)
+            if not isinstance(spec, QueryBuilder)
+            else await self._client.queries.create_async(spec)
+        )
 
         # Run it and poll for results
         result = await self.run_async(
@@ -464,11 +518,15 @@ class QueryResultsResource(BaseResource):
                     f"{cursor_op} {cursor_value}"
                 )
 
-            # Run the page query (create and run in one call)
+            # Run the page query (create saved query then run it)
             try:
-                _, result = await self.create_and_run_async(
+                # Create the saved query (page_spec is QuerySpec, pass dataset explicitly)
+                query = await self._client.queries.create_async(page_spec, dataset=dataset)
+
+                # Run it and poll for results
+                result = await self.run_async(
                     dataset,
-                    spec=page_spec,
+                    query_id=query.id,
                     disable_series=True,
                     limit=10000,  # Override to get max results per page
                     poll_interval=poll_interval,
@@ -711,10 +769,34 @@ class QueryResultsResource(BaseResource):
             # Wait before next poll
             time.sleep(poll_interval)
 
+    @overload
     def create_and_run(
         self,
-        dataset: str,
+        spec: QueryBuilder,
+        *,
+        disable_series: bool = True,
+        limit: int | None = None,
+        poll_interval: float = 1.0,
+        timeout: float = 60.0,
+    ) -> tuple[Query, QueryResult]: ...
+
+    @overload
+    def create_and_run(
+        self,
         spec: QuerySpec,
+        *,
+        dataset: str,
+        disable_series: bool = True,
+        limit: int | None = None,
+        poll_interval: float = 1.0,
+        timeout: float = 60.0,
+    ) -> tuple[Query, QueryResult]: ...
+
+    def create_and_run(
+        self,
+        spec: QuerySpec | QueryBuilder,
+        *,
+        dataset: str | None = None,
         disable_series: bool = True,
         limit: int | None = None,
         poll_interval: float = 1.0,
@@ -731,8 +813,8 @@ class QueryResultsResource(BaseResource):
         AND get immediate results.
 
         Args:
-            dataset: The dataset slug.
-            spec: Query specification (don't set spec.limit > 1000).
+            spec: Query specification (QueryBuilder or QuerySpec).
+            dataset: Dataset slug. Required for QuerySpec, extracted from QueryBuilder.
             disable_series: If True, disable timeseries data and allow up to 10K results
                            (default: True for better performance).
             limit: Override result limit (max 10,000 when disable_series=True, 1,000 otherwise).
@@ -746,21 +828,50 @@ class QueryResultsResource(BaseResource):
         Raises:
             HoneycombTimeoutError: If query doesn't complete within timeout.
             HoneycombValidationError: If the query spec is invalid.
+            ValueError: If dataset parameter is misused.
 
-        Example:
+        Example (QueryBuilder - recommended):
             >>> query, result = client.query_results.create_and_run(
-            ...     "my-dataset",
-            ...     QuerySpec(time_range=3600, calculations=[{"op": "COUNT"}]),
+            ...     QueryBuilder()
+            ...         .dataset("my-dataset")
+            ...         .last_1_hour()
+            ...         .count(),
             ... )
-            >>> print(f"Saved as query {query.id} with {len(result.data.rows)} rows")
+
+        Example (QuerySpec - advanced):
+            >>> query, result = client.query_results.create_and_run(
+            ...     QuerySpec(time_range=3600, calculations=[{"op": "COUNT"}]),
+            ...     dataset="my-dataset"
+            ... )
         """
         if not self._client.is_sync:
             raise RuntimeError(
                 "Use create_and_run_async() for async mode, or pass sync=True to client"
             )
 
+        from ..models.query_builder import QueryBuilder
+
+        # Extract dataset based on spec type
+        if isinstance(spec, QueryBuilder):
+            if dataset is not None:
+                raise ValueError(
+                    "dataset parameter not allowed with QueryBuilder. "
+                    "Use .dataset() on the builder instead."
+                )
+            dataset = spec.get_dataset()
+        else:
+            if dataset is None:
+                raise ValueError(
+                    "dataset parameter required when using QuerySpec. "
+                    "Pass dataset='your-dataset' or use QueryBuilder instead."
+                )
+
         # Create the saved query
-        query = self._client.queries.create(dataset, spec)
+        query = (
+            self._client.queries.create(spec, dataset=dataset)
+            if not isinstance(spec, QueryBuilder)
+            else self._client.queries.create(spec)
+        )
 
         # Run it and poll for results
         result = self.run(

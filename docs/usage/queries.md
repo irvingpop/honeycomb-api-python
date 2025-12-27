@@ -12,17 +12,16 @@ The recommended way to build queries is using the fluent `QueryBuilder`:
 from honeycomb import HoneycombClient, QueryBuilder
 
 async with HoneycombClient(api_key="...") as client:
-    # Standalone query - no name needed
+    # Dataset on builder - no name needed for standalone queries
     query, result = await client.query_results.create_and_run_async(
-        "my-dataset",
         QueryBuilder()  # No name for standalone queries
+            .dataset("my-dataset")  # Dataset on builder
             .last_1_hour()
             .count()
             .p99("duration_ms")
             .gte("status", 500)
             .group_by("service", "endpoint")
-            .order_by_count()
-            .build(),
+            .order_by_count(),
     )
 
     for row in result.data.rows:
@@ -139,12 +138,11 @@ By default, `run_async()` and `create_and_run_async()`:
 ```python
 # Automatically gets up to 10K results
 query, result = await client.query_results.create_and_run_async(
-    "my-dataset",
-    QuerySpec(
-        time_range=86400,
-        calculations=[{"op": "COUNT"}],
-        breakdowns=["trace.trace_id"],
-    ),
+    QueryBuilder()
+        .dataset("my-dataset")
+        .time_range(86400)
+        .count()
+        .breakdown("trace.trace_id"),
 )
 print(f"Got {len(result.data.rows)} traces (up to 10,000)")
 ```
@@ -218,7 +216,9 @@ Query execution is async on Honeycomb's servers. The client handles polling auto
 Results are returned as `QueryResult` objects:
 
 ```python
-query, result = await client.query_results.create_and_run_async("my-dataset", spec)
+query, result = await client.query_results.create_and_run_async(
+    QueryBuilder().dataset("my-dataset").last_1_hour().count().avg("duration_ms")
+)
 
 # Each row is a dict with calculated values (uppercase) and breakdown values
 for row in result.data.rows:
@@ -236,16 +236,20 @@ All query operations have sync equivalents:
 with HoneycombClient(api_key="...", sync=True) as client:
     # Create and run query
     query, result = client.query_results.create_and_run(
-        "my-dataset",
-        QueryBuilder().last_1_hour().count().build()
+        QueryBuilder()
+            .dataset("my-dataset")
+            .last_1_hour()
+            .count()
     )
 
     # Create saved query
-    query = client.queries.create("my-dataset", spec)
+    query = client.queries.create(
+        QueryBuilder().dataset("my-dataset").count()
+    )
 
-    # Run saved query
+    # Run saved query (still needs dataset parameter)
     result = client.query_results.run("my-dataset", query_id=query.id)
 
-    # Get saved query
+    # Get saved query (still needs dataset parameter)
     query = client.queries.get("my-dataset", query_id)
 ```

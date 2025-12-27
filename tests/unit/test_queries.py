@@ -4,7 +4,7 @@ import pytest
 import respx
 from httpx import Response
 
-from honeycomb import HoneycombClient, QuerySpec
+from honeycomb import HoneycombClient, QueryBuilder, QuerySpec
 
 
 @pytest.mark.asyncio
@@ -28,8 +28,8 @@ class TestQueriesResourceAsync:
         )
 
         async with client:
-            spec = QuerySpec(time_range=3600, calculations=[{"op": "COUNT"}])
-            query = await client.queries.create_async("my-dataset", spec)
+            builder = QueryBuilder().dataset("my-dataset").time_range(3600).count()
+            query = await client.queries.create_async(builder)
 
             assert query.id == "query-123"
             assert query.query_json["time_range"] == 3600
@@ -73,8 +73,8 @@ class TestQueriesResourceSync:
         )
 
         with client:
-            spec = QuerySpec(time_range=1800)
-            query = client.queries.create("my-dataset", spec)
+            builder = QueryBuilder().dataset("my-dataset").time_range(1800)
+            query = client.queries.create(builder)
             assert query.id == "query-456"
 
     @respx.mock
@@ -95,8 +95,8 @@ class TestQueriesResourceSync:
         client = HoneycombClient(api_key="test-key", sync=False)
 
         with pytest.raises(RuntimeError, match="async mode"), client:
-            spec = QuerySpec(time_range=3600)
-            client.queries.create("my-dataset", spec)
+            builder = QueryBuilder().dataset("my-dataset").time_range(3600)
+            client.queries.create(builder)
 
     def test_sync_method_guard_get(self):
         """Test that sync methods raise in async mode."""
@@ -180,9 +180,9 @@ class TestQueryResultsResourceAsync:
         )
 
         async with client:
-            spec = QuerySpec(time_range=3600)
+            builder = QueryBuilder().dataset("my-dataset").time_range(3600)
             query, result = await client.query_results.create_and_run_async(
-                "my-dataset", spec=spec, poll_interval=0.1, timeout=5.0
+                builder.build(), dataset="my-dataset", poll_interval=0.1, timeout=5.0
             )
 
             assert result.data is not None
@@ -213,10 +213,10 @@ class TestQueryResultsResourceAsync:
         )
 
         async with client:
-            spec = QuerySpec(time_range=3600)
+            builder = QueryBuilder().dataset("my-dataset").time_range(3600)
             with pytest.raises(HoneycombTimeoutError) as exc_info:
                 await client.query_results.create_and_run_async(
-                    "my-dataset", spec=spec, poll_interval=0.1, timeout=0.3
+                    builder.build(), dataset="my-dataset", poll_interval=0.1, timeout=0.3
                 )
 
             assert exc_info.value.timeout == 0.3
@@ -253,9 +253,9 @@ class TestQueryResultsResourceAsync:
         )
 
         async with client:
-            spec = QuerySpec(time_range=3600)
+            builder = QueryBuilder().dataset("my-dataset").time_range(3600)
             query, result = await client.query_results.create_and_run_async(
-                "my-dataset", spec, poll_interval=0.1, timeout=5.0
+                builder.build(), dataset="my-dataset", poll_interval=0.1, timeout=5.0
             )
 
             # Verify we got both the saved query and results
@@ -347,7 +347,7 @@ class TestQueryResultsResourceSync:
         with client:
             spec = QuerySpec(time_range=1800)
             query, result = client.query_results.create_and_run(
-                "my-dataset", spec, poll_interval=0.1, timeout=5.0
+                spec, dataset="my-dataset", poll_interval=0.1, timeout=5.0
             )
 
             assert query.id == "saved-sync-query"

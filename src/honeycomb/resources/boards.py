@@ -131,10 +131,20 @@ class BoardsResource(BaseResource):
 
         # Create query panels from QueryBuilder instances
         for qb_panel in bundle.query_builder_panels:
-            dataset = qb_panel.dataset_override or qb_panel.builder.get_dataset()
-            query, annotation_id = await self._client.queries.create_with_annotation_async(
-                dataset, qb_panel.builder
-            )
+            # Apply dataset override if specified
+            if qb_panel.dataset_override:
+                # Temporarily override the dataset on the builder
+                original_dataset = qb_panel.builder.get_dataset()
+                qb_panel.builder.dataset(qb_panel.dataset_override)
+                query, annotation_id = await self._client.queries.create_with_annotation_async(
+                    qb_panel.builder
+                )
+                # Restore original dataset
+                qb_panel.builder.dataset(original_dataset)
+            else:
+                query, annotation_id = await self._client.queries.create_with_annotation_async(
+                    qb_panel.builder
+                )
             panels.append(
                 self._build_query_panel_dict(
                     query.id,

@@ -530,7 +530,7 @@ class TestQueryResultsPagination:
     @respx.mock
     async def test_run_with_disable_series_default(self):
         """Test that create_and_run_async defaults to disable_series=True."""
-        from honeycomb.models import QuerySpec
+        from honeycomb.models import QueryBuilder
 
         # Mock create saved query
         respx.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
@@ -557,11 +557,8 @@ class TestQueryResultsPagination:
 
         async with HoneycombClient(api_key="test-api-key") as client:
             query, result = await client.query_results.create_and_run_async(
+                QueryBuilder().dataset("my-dataset").time_range(3600).count().build(),
                 dataset="my-dataset",
-                spec=QuerySpec(
-                    time_range=3600,
-                    calculations=[{"op": "COUNT"}],
-                ),
             )
 
         assert len(result.data.rows) == 2
@@ -577,7 +574,7 @@ class TestQueryResultsPagination:
     @respx.mock
     async def test_run_with_disable_series_false(self):
         """Test that disable_series can be set to False."""
-        from honeycomb.models import QuerySpec
+        from honeycomb.models import QueryBuilder
 
         # Mock create saved query
         respx.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
@@ -604,8 +601,8 @@ class TestQueryResultsPagination:
 
         async with HoneycombClient(api_key="test-api-key") as client:
             await client.query_results.create_and_run_async(
+                QueryBuilder().dataset("my-dataset").time_range(3600).count().build(),
                 dataset="my-dataset",
-                spec=QuerySpec(time_range=3600, calculations=[{"op": "COUNT"}]),
                 disable_series=False,
             )
 

@@ -124,8 +124,7 @@ async def verify_events(client: HoneycombClient, dataset: str) -> int:
 
     # Query to count recent events
     query, result = await client.query_results.create_and_run_async(
-        dataset,
-        QueryBuilder().last_10_minutes().count().build(),
+        QueryBuilder().dataset(dataset).last_10_minutes().count(),
     )
 
     # Get the count from the result

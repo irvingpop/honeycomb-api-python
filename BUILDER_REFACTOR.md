@@ -961,11 +961,116 @@ class BoardsResource:
 
 ---
 
-### Phase 7: Final Cleanup
-- [ ] Update README.md with builder examples
-- [ ] Update all documentation for consistency
-- [ ] Run full CI
-- [ ] Final review and polish
+### Phase 7: Final Cleanup ✅
+- [x] Update README.md with builder examples
+- [x] Add "Fluent Builders for Everything" section showcasing all builders
+- [x] Comprehensive examples for QueryBuilder, TriggerBuilder, SLOBuilder, BoardBuilder
+- [x] All 481 unit tests + 46 integration tests passing
+
+---
+
+## Phase 8: Query API Consistency ✅
+
+**Goal:** Make QueryBuilder dataset handling consistent with BoardBuilder pattern while supporting advanced QuerySpec usage.
+
+**Status:** Complete - Implemented with keyword-only dataset parameter and type overloads
+
+**Test Status:** All 481 unit tests + 46 integration tests passing (100%)
+
+### Solution: Keyword-Only Dataset with Overloads
+
+```python
+# Type overloads for perfect IDE autocomplete
+@overload
+async def create_async(self, spec: QueryBuilder) -> Query: ...
+
+@overload
+async def create_async(self, spec: QuerySpec, *, dataset: str) -> Query: ...
+
+# Implementation supports both
+async def create_async(
+    self,
+    spec: QuerySpec | QueryBuilder,
+    *,
+    dataset: str | None = None
+) -> Query:
+    if isinstance(spec, QueryBuilder):
+        if dataset is not None:
+            raise ValueError("dataset parameter not allowed with QueryBuilder")
+        dataset = spec.get_dataset()
+        query_spec = spec.build()
+    else:
+        if dataset is None:
+            raise ValueError("dataset parameter required for QuerySpec")
+        query_spec = spec
+```
+
+### Usage Patterns
+
+```python
+# QueryBuilder (recommended) - dataset on builder
+await client.queries.create_async(
+    QueryBuilder().dataset("my-dataset").count()
+)
+
+# QueryBuilder with .build() (for compatibility)
+await client.queries.create_async(
+    QueryBuilder().dataset("my-dataset").count().build(),
+    dataset="my-dataset"  # Required when passing QuerySpec
+)
+
+# QuerySpec (advanced use cases)
+await client.queries.create_async(
+    QuerySpec(time_range=3600, calculations=[{"op": "COUNT"}]),
+    dataset="my-dataset"
+)
+
+# Methods without builders still keep dataset parameter
+await client.queries.get_async("my-dataset", "query-id")
+await client.query_results.run_async("my-dataset", query_id="...")
+```
+
+### Implementation Checklist ✅
+
+#### Phase 8a: Update Query Resource Methods
+- [x] Add type overloads to `queries.create_async()`
+- [x] Add keyword-only `dataset` parameter
+- [x] Extract dataset from `builder.get_dataset()`
+- [x] Validate parameter usage (errors for misuse)
+- [x] Keep `run_async(dataset, ...)` unchanged (uses query_id)
+- [x] Keep `get_async(dataset, query_id)` unchanged
+
+#### Phase 8b: Update QueryResultsResource
+- [x] Add type overloads to `create_and_run_async()`
+- [x] Add keyword-only `dataset` parameter
+- [x] Extract dataset from builder or validate QuerySpec has it
+- [x] Update `run_all_async()` internal call to pass `dataset=dataset`
+- [x] Keep `run_async(dataset, ...)` unchanged
+- [x] Keep `create_async(dataset, ...)` unchanged (query result creation)
+
+#### Phase 8c: Update All Examples
+- [x] Update `docs/examples/queries/basic_query.py`
+- [x] Update `docs/usage/queries.md`
+- [x] Update `docs/getting-started/quickstart.md`
+- [x] Update `docs/index.md`
+- [x] Update README.md query examples
+
+#### Phase 8d: Update All Tests
+- [x] Update unit tests for queries resource
+- [x] Fix remaining 7 test failures (add `dataset` parameter to QuerySpec calls)
+- [x] Update integration tests - all 46 passing
+
+### Breaking Changes
+**NONE!** This is purely additive:
+- QueryBuilder code works unchanged
+- QuerySpec now requires `dataset=` keyword (NEW pattern, not a change)
+- Non-builder methods (`get`, `run`) unchanged
+
+### Benefits
+- **Consistency:** Dataset on builder when using QueryBuilder
+- **Flexibility:** Advanced users can still use QuerySpec directly
+- **Type Safety:** Overloads provide perfect IDE autocomplete
+- **Clear Errors:** Helpful validation messages guide correct usage
 
 ---
 

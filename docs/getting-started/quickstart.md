@@ -170,12 +170,11 @@ This guide will help you get up and running with the Honeycomb API Python client
     async with HoneycombClient(api_key="...") as client:
         # Create a saved query and run it using the fluent QueryBuilder
         query, result = await client.query_results.create_and_run_async(
-            "my-dataset",
             QueryBuilder()
+                .dataset("my-dataset")
                 .last_1_hour()
                 .p99("duration_ms")
-                .group_by("endpoint")
-                .build(),
+                .group_by("endpoint"),
             poll_interval=1.0,
             timeout=60.0,
         )
@@ -195,12 +194,11 @@ This guide will help you get up and running with the Honeycomb API Python client
     with HoneycombClient(api_key="...", sync=True) as client:
         # Create a saved query and run it using the fluent QueryBuilder
         query, result = client.query_results.create_and_run(
-            "my-dataset",
             QueryBuilder()
+                .dataset("my-dataset")
                 .last_1_hour()
                 .p99("duration_ms")
-                .group_by("endpoint")
-                .build(),
+                .group_by("endpoint"),
             poll_interval=1.0,
             timeout=60.0,
         )

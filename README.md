@@ -11,6 +11,7 @@ A modern, async-first Python client for the [Honeycomb.io](https://www.honeycomb
 ## Features
 
 - **Async-first design** with full sync support
+- **Fluent builder pattern** for queries, triggers, SLOs, and boards
 - **Pydantic models** for type-safe request/response handling
 - **Automatic retries** with exponential backoff for transient failures
 - **Comprehensive error handling** with specific exception types
@@ -46,16 +47,18 @@ async def main():
 
         # Run a query using the fluent QueryBuilder
         query, result = await client.query_results.create_and_run_async(
-            "my-dataset",
-            QueryBuilder()
-                .last_1_hour()
+            QueryBuilder("Error Analysis")  # Optional name for board integration
+                .dataset("my-dataset")       # Dataset scope on builder
+                .last_24_hours()             # Time preset matching Honeycomb UI
                 .count()
                 .p99("duration_ms")
-                .gte("status", 500)          # Filter shortcuts for cleaner code
-                .group_by("service")
+                .avg("duration_ms")
+                .gte("status_code", 500)     # Filter shortcuts: gte, eq, contains, etc.
+                .group_by("service", "endpoint")
                 .order_by_count()
-                .build(),
+                .limit(100)
         )
+
         for row in result.data.rows:
             print(f"Service: {row['service']}, Count: {row['COUNT']}, P99: {row['P99']}")
 
@@ -72,10 +75,104 @@ with HoneycombClient(api_key="your-api-key", sync=True) as client:
 
     # Run queries with the same fluent API
     query, result = client.query_results.create_and_run(
-        "my-dataset",
-        QueryBuilder().last_1_hour().count().group_by("endpoint").build(),
+        QueryBuilder()
+            .dataset("my-dataset")
+            .last_1_hour()
+            .count()
+            .group_by("endpoint"),
     )
 ```
+
+## Builders with resource mixins
+
+### TriggerBuilder
+
+```python
+from honeycomb import TriggerBuilder
+
+# Create sophisticated alert in one fluent call
+trigger = await client.triggers.create_async(
+    "api-logs",
+    TriggerBuilder("High Error Rate")
+        .dataset("api-logs")             # Or .environment_wide() for all datasets
+        .last_15_minutes()                # Frequency presets
+        .count()
+        .gte("status_code", 500)
+        .threshold_gt(100)                # Threshold shortcuts
+        .email("oncall@example.com")      # Multiple recipients
+        .pagerduty("critical")
+        .slack("#incidents")
+        .tag("team", "backend")           # Tag support with validation
+        .build()
+)
+```
+
+### SLOBuilder
+
+```python
+from honeycomb import SLOBuilder
+
+# Create SLO with derived column and burn alerts automatically
+slos = await client.slos.create_from_bundle_async(
+    SLOBuilder("API Availability")
+        .dataset("api-logs")
+        .target_nines(3)                         # 99.9% = .target_percentage(99.9)
+        .time_period_days(30)
+        .sli(
+            alias="success_rate",
+            expression="IF(LT($status_code, 400), 1, 0)",
+            description="Success indicator"
+        )
+        # Burn alerts with integrated recipients
+        .exhaustion_alert(exhaustion_minutes=15)
+        .budget_rate_alert(window_minutes=60, threshold_percentage=10)
+        .email("sre@example.com")
+        .pagerduty("critical")
+        .build()
+)
+```
+
+### BoardBuilder
+
+```python
+from honeycomb import BoardBuilder, QueryBuilder, SLOBuilder
+
+# Create board with inline queries and SLOs - no pre-creation needed!
+board = await client.boards.create_from_bundle_async(
+    BoardBuilder("Production Dashboard")
+        .description("Service health monitoring")
+        .auto_layout()
+        .tag("team", "platform")
+        # Inline QueryBuilder - creates query automatically
+        .query(
+            QueryBuilder("Request Count")
+                .dataset("api-logs")
+                .last_24_hours()
+                .count()
+                .group_by("service"),
+            style="graph"
+        )
+        # Inline SLOBuilder - creates SLO automatically
+        .slo(
+            SLOBuilder("API Availability")
+                .dataset("api-logs")
+                .target_nines(3)
+                .sli(alias="sli_success")
+        )
+        # Environment-wide query
+        .query(
+            QueryBuilder("P99 Latency")
+                .environment_wide()  # All datasets
+                .last_1_hour()
+                .p99("duration_ms")
+                .group_by("endpoint"),
+            style="table"
+        )
+        .build()
+)
+```
+
+See [full documentation](https://irvingpop.github.io/honeycomb-api-python/) for more examples and advanced features.
 
 ## Authentication
 
@@ -131,7 +228,7 @@ client = HoneycombClient(
     api_key="...",                              # API key for single-environment access
     management_key="...",                       # Management key ID (alternative auth)
     management_secret="...",                    # Management key secret
-    base_url="https://api.honeycomb.io",       # API base URL (default)
+    base_url="https://api.honeycomb.io",        # API base URL (default)
     timeout=30.0,                               # Request timeout in seconds (default: 30)
     max_retries=3,                              # Max retry attempts (default: 3)
     retry_config=None,                          # Custom retry configuration (optional)
@@ -288,46 +385,6 @@ make check
 poetry run ruff check src/ tests/    # Linting
 poetry run ruff format src/ tests/   # Formatting
 poetry run mypy src/                 # Type checking
-```
-
-### Live API Testing
-
-```bash
-# Requires HONEYCOMB_API_KEY environment variable
-make test-live
-# Or: poetry run python scripts/test_live_api.py
-```
-
-## Project Structure
-
-```
-honeycomb-api-python/
-├── src/
-│   └── honeycomb/
-│       ├── __init__.py          # Package exports
-│       ├── auth.py              # Authentication strategies
-│       ├── client.py            # Main HoneycombClient
-│       ├── exceptions.py        # Exception hierarchy
-│       ├── models/              # Pydantic models
-│       │   ├── boards.py
-│       │   ├── datasets.py
-│       │   ├── queries.py
-│       │   ├── slos.py
-│       │   └── triggers.py
-│       └── resources/           # API resources
-│           ├── base.py
-│           ├── boards.py
-│           ├── datasets.py
-│           ├── slos.py
-│           └── triggers.py
-├── tests/
-│   └── unit/
-├── scripts/
-│   └── test_live_api.py
-├── Makefile                     # Development commands
-├── pyproject.toml               # Project configuration
-├── .envrc.example               # Environment template
-└── README.md
 ```
 
 ## Contributing
