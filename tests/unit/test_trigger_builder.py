@@ -57,7 +57,7 @@ class TestTriggerBuilderBasics:
             .count()
             .threshold_gt(100)
         )
-        assert builder.get_dataset() is None
+        assert builder.get_dataset() == "__all__"
 
 
 class TestTriggerBuilderThresholds:

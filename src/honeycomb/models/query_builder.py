@@ -235,9 +235,10 @@ class QueryBuilder:
         self._orders: list[Order] = []
         self._limit: int | None = None
         self._havings: list[Having] = []
-        # Query annotation metadata (for board integration)
-        self._annotation_name: str | None = None
-        self._annotation_description: str | None = None
+        # Query metadata (for board integration)
+        self._dataset: str | None = None
+        self._query_name: str | None = None
+        self._query_description: str | None = None
 
     # -------------------------------------------------------------------------
     # Time Methods - Custom
@@ -670,42 +671,111 @@ class QueryBuilder:
         return self
 
     # -------------------------------------------------------------------------
-    # Annotation (for board integration)
+    # Dataset Scoping
     # -------------------------------------------------------------------------
 
-    def annotate(self, name: str, description: str | None = None) -> QueryBuilder:
-        """Add annotation metadata for board integration.
-
-        When creating a query with annotation, you can use it directly in
-        BoardBuilder without needing to separately create a query annotation.
+    def dataset(self, dataset_slug: str) -> QueryBuilder:
+        """Set dataset scope for this query.
 
         Args:
-            name: Name for the query (1-320 chars)
-            description: Optional description (max 1023 chars)
+            dataset_slug: Dataset slug to query against
+
+        Returns:
+            self for chaining
 
         Example:
-            >>> query = (
-            ...     QueryBuilder()
-            ...     .last_1_hour()
-            ...     .count()
-            ...     .annotate("Request Count", "Total requests over time")
-            ... )
+            >>> QueryBuilder().dataset("api-logs").last_1_hour().count()
         """
-        self._annotation_name = name
-        self._annotation_description = description
+        self._dataset = dataset_slug
         return self
 
-    def get_annotation_name(self) -> str | None:
-        """Get the annotation name if set."""
-        return self._annotation_name
+    def environment_wide(self) -> QueryBuilder:
+        """Mark query as environment-wide (all datasets).
 
-    def get_annotation_description(self) -> str | None:
-        """Get the annotation description if set."""
-        return self._annotation_description
+        Returns:
+            self for chaining
 
-    def has_annotation(self) -> bool:
-        """Check if this query has annotation metadata."""
-        return self._annotation_name is not None
+        Example:
+            >>> QueryBuilder().environment_wide().last_1_hour().count()
+        """
+        self._dataset = "__all__"
+        return self
+
+    def get_dataset(self) -> str:
+        """Get dataset scope (defaults to \"__all__\" if not set).
+
+        Returns:
+            Dataset slug or \"__all__\" for environment-wide
+        """
+        return self._dataset if self._dataset else "__all__"
+
+    # -------------------------------------------------------------------------
+    # Query Metadata (for board integration)
+    # -------------------------------------------------------------------------
+
+    def name(self, name: str) -> QueryBuilder:
+        """Set query name (required for board integration).
+
+        For boards: This becomes the query annotation name.
+        Outside boards: Optional, useful for documentation.
+
+        Args:
+            name: Query name (1-320 chars)
+
+        Returns:
+            self for chaining
+
+        Example:
+            >>> QueryBuilder().dataset("api-logs").last_1_hour().count().name("Request Count")
+        """
+        self._query_name = name
+        return self
+
+    def description(self, desc: str) -> QueryBuilder:
+        """Set query description (optional).
+
+        For boards: This becomes the query annotation description.
+
+        Args:
+            desc: Query description (max 1023 chars)
+
+        Returns:
+            self for chaining
+
+        Example:
+            >>> (QueryBuilder()
+            ...     .dataset("api-logs")
+            ...     .last_1_hour()
+            ...     .count()
+            ...     .name("Request Count")
+            ...     .description("Total requests over 24 hours"))
+        """
+        self._query_description = desc
+        return self
+
+    def has_name(self) -> bool:
+        """Check if query has name set.
+
+        Returns:
+            True if name is set
+        """
+        return self._query_name is not None
+
+    def get_name(self) -> str | None:
+        """Get query name.
+
+        Returns:
+            Query name or None
+        """
+        return self._query_name
+
+    def get_description(self) -> str | None:
+        """Get query description.
+
+        Returns:
+            Query description or None
+        """
+        return self._query_description
 
     # -------------------------------------------------------------------------
     # Build Methods

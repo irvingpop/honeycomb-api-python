@@ -3,126 +3,144 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
-from typing import Any, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
-from honeycomb.models.boards import BoardCreate
 from honeycomb.models.tags_mixin import TagsMixin
 
+if TYPE_CHECKING:
+    from honeycomb.models.query_builder import QueryBuilder
+
+
+# =============================================================================
+# BoardBundle Data Structures
+# =============================================================================
+
 
 @dataclass
-class BoardPanelPosition:
-    """Position and size of a board panel.
+class QueryBuilderPanel:
+    """Query panel from inline QueryBuilder (needs creation).
 
     Attributes:
-        x_coordinate: X-axis origin point (0+)
-        y_coordinate: Y-axis origin point (0+)
-        width: Panel width (0 = auto-calculated)
-        height: Panel height (0 = auto-calculated)
+        builder: QueryBuilder instance with .name() set
+        position: Optional (x, y, width, height) for manual layout
+        style: Display style (graph, table, combo)
+        visualization: Optional visualization settings dict
+        dataset_override: Optional dataset override
     """
 
-    x_coordinate: int = 0
-    y_coordinate: int = 0
-    width: int = 0  # 0 = auto-calculated
-    height: int = 0  # 0 = auto-calculated
-
-
-class BoardPanelType(str, Enum):
-    """Types of panels that can be added to a board."""
-
-    QUERY = "query"
-    SLO = "slo"
-    TEXT = "text"
+    builder: QueryBuilder
+    position: tuple[int, int, int, int] | None
+    style: Literal["graph", "table", "combo"]
+    visualization: dict[str, Any] | None
+    dataset_override: str | None
 
 
 @dataclass
-class BoardQueryPanel:
-    """Query panel configuration.
+class ExistingQueryPanel:
+    """Query panel from existing query ID.
 
     Attributes:
-        query_id: ID of the saved query
-        query_annotation_id: Annotation ID of the query
-        query_style: Display style (graph, table, combo)
-        dataset: Dataset name (optional, read-only from query)
-        visualization_settings: Advanced visualization configuration
+        query_id: ID of saved query
+        annotation_id: Annotation ID of query
+        position: Optional (x, y, width, height) for manual layout
+        style: Display style (graph, table, combo)
+        visualization: Optional visualization settings dict
+        dataset: Optional dataset name
     """
 
     query_id: str
-    query_annotation_id: str
-    query_style: Literal["graph", "table", "combo"] = "graph"
-    dataset: str | None = None
-    visualization_settings: dict[str, Any] | None = None
+    annotation_id: str
+    position: tuple[int, int, int, int] | None
+    style: Literal["graph", "table", "combo"]
+    visualization: dict[str, Any] | None
+    dataset: str | None
 
 
 @dataclass
-class BoardSLOPanel:
-    """SLO panel configuration.
+class SLOPanel:
+    """SLO panel.
 
     Attributes:
-        slo_id: ID of the saved SLO
+        slo_id: ID of the SLO
+        position: Optional (x, y, width, height) for manual layout
     """
 
     slo_id: str
+    position: tuple[int, int, int, int] | None
 
 
 @dataclass
-class BoardTextPanel:
-    """Text panel configuration.
+class TextPanel:
+    """Text panel.
 
     Attributes:
-        content: Markdown-formatted text content (max 10000 chars)
+        content: Markdown text content
+        position: Optional (x, y, width, height) for manual layout
     """
 
     content: str
+    position: tuple[int, int, int, int] | None
 
 
 @dataclass
-class BoardPanel:
-    """A panel on a board (query, SLO, or text).
+class BoardBundle:
+    """Board creation bundle for orchestration.
+
+    Returned by BoardBuilder.build(), consumed by boards.create_from_bundle_async().
 
     Attributes:
-        panel_type: Type of panel (query, slo, text)
-        position: Optional position and size
-        query_panel: Query panel configuration (if panel_type=query)
-        slo_panel: SLO panel configuration (if panel_type=slo)
-        text_panel: Text panel configuration (if panel_type=text)
+        board_name: Board name
+        board_description: Optional board description
+        layout_generation: Layout mode (auto or manual)
+        tags: Optional tags list
+        preset_filters: Optional preset filters list
+        query_builder_panels: Panels from QueryBuilder instances
+        existing_query_panels: Panels from existing query IDs
+        slo_panels: SLO panels
+        text_panels: Text panels
     """
 
-    panel_type: BoardPanelType
-    position: BoardPanelPosition | None = None
-    # Type-specific configurations
-    query_panel: BoardQueryPanel | None = None
-    slo_panel: BoardSLOPanel | None = None
-    text_panel: BoardTextPanel | None = None
+    board_name: str
+    board_description: str | None
+    layout_generation: Literal["auto", "manual"]
+    tags: list[dict[str, str]] | None
+    preset_filters: list[dict[str, str]] | None
+    # Panels (in order added)
+    query_builder_panels: list[QueryBuilderPanel]
+    existing_query_panels: list[ExistingQueryPanel]
+    slo_panels: list[SLOPanel]
+    text_panels: list[TextPanel]
 
 
 class BoardBuilder(TagsMixin):
-    """Fluent builder for boards with queries, SLOs, and text panels.
+    """Fluent builder for boards with inline QueryBuilder or existing query IDs.
 
-    Example - Basic board with auto-layout:
-        board = (
+    Example - Inline QueryBuilder with auto-layout:
+        board = await client.boards.create_from_bundle_async(
             BoardBuilder("Service Dashboard")
             .description("Overview of API health")
             .auto_layout()
-            .query("query-id-1", "annotation-id-1")
+            .query(
+                QueryBuilder()
+                .dataset("api-logs")
+                .last_1_hour()
+                .count()
+                .name("Request Count")
+            )
             .slo("slo-id-1")
             .text("## Notes\\nMonitor during peak hours")
             .build()
         )
 
-    Example - Manual layout with positioning:
-        board = (
+    Example - Manual layout with tuple positioning:
+        board = await client.boards.create_from_bundle_async(
             BoardBuilder("Custom Layout")
             .manual_layout()
             .query(
-                "query-id-1",
-                "annotation-id-1",
-                position=BoardPanelPosition(x_coordinate=0, y_coordinate=0, width=8, height=6)
+                QueryBuilder().dataset("api-logs").last_1_hour().count().name("Requests"),
+                position=(0, 0, 8, 6)
             )
-            .slo(
-                "slo-id-1",
-                position=BoardPanelPosition(x_coordinate=8, y_coordinate=0, width=4, height=6)
-            )
+            .slo("slo-id-1", position=(8, 0, 4, 6))
             .build()
         )
     """
@@ -132,8 +150,12 @@ class BoardBuilder(TagsMixin):
         self._name = name
         self._description: str | None = None
         self._layout_generation: Literal["auto", "manual"] = "manual"
-        self._panels: list[BoardPanel] = []
         self._preset_filters: list[dict[str, str]] = []
+        # Panel storage (in order added)
+        self._query_builder_panels: list[QueryBuilderPanel] = []
+        self._existing_query_panels: list[ExistingQueryPanel] = []
+        self._slo_panels: list[SLOPanel] = []
+        self._text_panels: list[TextPanel] = []
 
     def description(self, desc: str) -> BoardBuilder:
         """Set board description (max 1024 chars).
@@ -190,181 +212,146 @@ class BoardBuilder(TagsMixin):
 
     def query(
         self,
-        query_id: str,
-        query_annotation_id: str,
+        query: QueryBuilder | str,
+        annotation_id: str | None = None,
         *,
-        position: BoardPanelPosition | None = None,
+        position: tuple[int, int, int, int] | None = None,
         style: Literal["graph", "table", "combo"] = "graph",
+        visualization: dict[str, Any] | None = None,
         dataset: str | None = None,
-        visualization_settings: dict[str, Any] | None = None,
     ) -> BoardBuilder:
-        """Add a saved query panel to the board.
+        """Add a query panel.
 
         Args:
-            query_id: ID of the saved query
-            query_annotation_id: Annotation ID of the query
-            position: Optional position and size (None for auto-layout)
-            style: Display style - graph, table, or combo (default: graph)
-            dataset: Optional dataset name
-            visualization_settings: Optional advanced visualization configuration
+            query: QueryBuilder with .name() OR existing query_id string
+            annotation_id: Required only if query is string
+            position: (x, y, width, height) for manual layout
+            style: graph | table | combo
+            visualization: {"hide_markers": True, "utc_xaxis": True, ...}
+            dataset: Override QueryBuilder's dataset
 
-        Example:
+        Example - Inline QueryBuilder:
             .query(
-                "query-id-123",
-                "annotation-456",
-                position=BoardPanelPosition(x_coordinate=0, y_coordinate=0, width=8, height=6),
-                style="graph"
+                QueryBuilder()
+                    .dataset("api-logs")
+                    .last_24_hours()
+                    .count()
+                    .group_by("service")
+                    .name("Request Count")
+                    .description("Requests by service over 24h"),
+                position=(0, 0, 9, 6),
+                style="graph",
+                visualization={"hide_markers": True, "utc_xaxis": True}
             )
+
+        Example - Existing query:
+            .query("query-id-123", "annotation-id-456", style="table")
         """
-        self._panels.append(
-            BoardPanel(
-                panel_type=BoardPanelType.QUERY,
-                position=position,
-                query_panel=BoardQueryPanel(
-                    query_id=query_id,
-                    query_annotation_id=query_annotation_id,
-                    query_style=style,
-                    dataset=dataset,
-                    visualization_settings=visualization_settings,
-                ),
+        from honeycomb.models.query_builder import QueryBuilder
+
+        if isinstance(query, QueryBuilder):
+            if not query.has_name():
+                raise ValueError("QueryBuilder must have .name() set for board panels")
+
+            self._query_builder_panels.append(
+                QueryBuilderPanel(
+                    builder=query,
+                    position=position,
+                    style=style,
+                    visualization=visualization,
+                    dataset_override=dataset,
+                )
             )
-        )
+        else:
+            if not annotation_id:
+                raise ValueError("annotation_id required when using existing query ID")
+
+            self._existing_query_panels.append(
+                ExistingQueryPanel(
+                    query_id=query,
+                    annotation_id=annotation_id,
+                    position=position,
+                    style=style,
+                    visualization=visualization,
+                    dataset=dataset,
+                )
+            )
         return self
 
     def slo(
         self,
         slo_id: str,
         *,
-        position: BoardPanelPosition | None = None,
+        position: tuple[int, int, int, int] | None = None,
     ) -> BoardBuilder:
-        """Add an SLO panel to the board.
+        """Add an SLO panel.
 
         Args:
             slo_id: ID of the SLO
-            position: Optional position and size (None for auto-layout)
+            position: (x, y, width, height) for manual layout
 
         Example:
-            .slo(
-                "slo-id-123",
-                position=BoardPanelPosition(x_coordinate=8, y_coordinate=0, width=4, height=6)
-            )
+            .slo("slo-id-123", position=(8, 0, 4, 6))
         """
-        self._panels.append(
-            BoardPanel(
-                panel_type=BoardPanelType.SLO,
-                position=position,
-                slo_panel=BoardSLOPanel(slo_id=slo_id),
-            )
-        )
+        self._slo_panels.append(SLOPanel(slo_id=slo_id, position=position))
         return self
 
     def text(
         self,
         content: str,
         *,
-        position: BoardPanelPosition | None = None,
+        position: tuple[int, int, int, int] | None = None,
     ) -> BoardBuilder:
-        """Add a text panel to the board (supports markdown).
+        """Add a text panel (supports markdown, max 10000 chars).
 
         Args:
-            content: Markdown-formatted text (max 10000 chars)
-            position: Optional position and size (None for auto-layout)
+            content: Markdown text content
+            position: (x, y, width, height) for manual layout
 
         Example:
-            .text(
-                "## Service Status\\n\\nAll systems operational",
-                position=BoardPanelPosition(x_coordinate=0, y_coordinate=6, width=12, height=2)
-            )
+            .text("## Service Status\\n\\nAll systems operational", position=(0, 6, 12, 2))
         """
         if len(content) > 10000:
-            raise ValueError(f"Text panel content must be <= 10000 characters, got {len(content)}")
-
-        self._panels.append(
-            BoardPanel(
-                panel_type=BoardPanelType.TEXT,
-                position=position,
-                text_panel=BoardTextPanel(content=content),
-            )
-        )
+            raise ValueError(f"Text content must be <= 10000 characters, got {len(content)}")
+        self._text_panels.append(TextPanel(content=content, position=position))
         return self
 
     # -------------------------------------------------------------------------
     # Build
     # -------------------------------------------------------------------------
 
-    def build(self) -> BoardCreate:
-        """Build BoardCreate with validation.
+    def build(self) -> BoardBundle:
+        """Build BoardBundle for orchestration.
 
         Returns:
-            BoardCreate object ready for API submission
+            BoardBundle (not BoardCreate) for client orchestration
 
         Raises:
-            ValueError: If manual layout is used without positions
+            ValueError: If manual layout requires positions but some are missing
         """
-        # Validate manual layout requires positions
+        # Validate manual layout requires all positions
         if self._layout_generation == "manual":
-            for i, panel in enumerate(self._panels):
+            all_panels = (
+                self._query_builder_panels
+                + self._existing_query_panels
+                + self._slo_panels
+                + self._text_panels
+            )
+            for i, panel in enumerate(all_panels):
                 if panel.position is None:
                     raise ValueError(
                         f"Manual layout requires position for all panels. "
-                        f"Panel {i} ({panel.panel_type.value}) has no position. "
-                        "Use auto_layout() or specify positions for all panels."
+                        f"Panel {i} missing position. Use position=(x, y, width, height)"
                     )
 
-        # Build panels array
-        panels_data = []
-        for panel in self._panels:
-            panel_dict: dict[str, Any] = {"type": panel.panel_type.value}
-
-            # Add type-specific configuration
-            if panel.query_panel:
-                query_panel_dict: dict[str, Any] = {
-                    "query_id": panel.query_panel.query_id,
-                    "query_annotation_id": panel.query_panel.query_annotation_id,
-                    "query_style": panel.query_panel.query_style,
-                }
-                if panel.query_panel.dataset:
-                    query_panel_dict["dataset"] = panel.query_panel.dataset
-                if panel.query_panel.visualization_settings:
-                    query_panel_dict["visualization_settings"] = (
-                        panel.query_panel.visualization_settings
-                    )
-                panel_dict["query_panel"] = query_panel_dict
-
-            elif panel.slo_panel:
-                panel_dict["slo_panel"] = {"slo_id": panel.slo_panel.slo_id}
-
-            elif panel.text_panel:
-                panel_dict["text_panel"] = {"content": panel.text_panel.content}
-
-            # Add position if specified
-            if panel.position:
-                panel_dict["position"] = {
-                    "x_coordinate": panel.position.x_coordinate,
-                    "y_coordinate": panel.position.y_coordinate,
-                    "width": panel.position.width,
-                    "height": panel.position.height,
-                }
-
-            panels_data.append(panel_dict)
-
-        # Build tags
-        tags_data = self._get_all_tags()
-
-        return BoardCreate(
-            name=self._name,
-            description=self._description,
-            type="flexible",
-            panels=panels_data if panels_data else None,
+        return BoardBundle(
+            board_name=self._name,
+            board_description=self._description,
             layout_generation=self._layout_generation,
-            tags=tags_data,
+            tags=self._get_all_tags(),
             preset_filters=self._preset_filters if self._preset_filters else None,
+            query_builder_panels=self._query_builder_panels,
+            existing_query_panels=self._existing_query_panels,
+            slo_panels=self._slo_panels,
+            text_panels=self._text_panels,
         )
-
-    def get_panels(self) -> list[BoardPanel]:
-        """Get board panels for inspection.
-
-        Returns:
-            List of BoardPanel objects
-        """
-        return self._panels

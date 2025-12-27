@@ -3,12 +3,11 @@
 from .api_keys import ApiKey, ApiKeyCreate, ApiKeyType
 from .board_builder import (
     BoardBuilder,
-    BoardPanel,
-    BoardPanelPosition,
-    BoardPanelType,
-    BoardQueryPanel,
-    BoardSLOPanel,
-    BoardTextPanel,
+    BoardBundle,
+    ExistingQueryPanel,
+    QueryBuilderPanel,
+    SLOPanel,
+    TextPanel,
 )
 from .boards import Board, BoardCreate
 from .burn_alerts import BurnAlert, BurnAlertCreate, BurnAlertRecipient, BurnAlertType
@@ -90,6 +89,7 @@ __all__ = [
     # Boards
     "Board",
     "BoardBuilder",
+    "BoardBundle",
     "BoardCreate",
     "BoardPanel",
     "BoardPanelPosition",
@@ -97,6 +97,10 @@ __all__ = [
     "BoardQueryPanel",
     "BoardSLOPanel",
     "BoardTextPanel",
+    "ExistingQueryPanel",
+    "QueryBuilderPanel",
+    "SLOPanel",
+    "TextPanel",
     # Queries
     "Query",
     "QuerySpec",

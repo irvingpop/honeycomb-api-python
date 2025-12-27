@@ -46,9 +46,9 @@ Boards are visualization dashboards in Honeycomb. They organize multiple queries
 
 ## Creating Boards with BoardBuilder
 
-`BoardBuilder` provides a fluent interface for creating boards with query panels, SLO panels, and text panels. It supports both auto-layout and manual positioning, along with tags, preset filters, and advanced visualization settings.
+`BoardBuilder` provides a fluent interface for creating boards with inline `QueryBuilder` instances or existing query IDs. Single fluent call creates queries, annotations, and boards automatically.
 
-### Simple Example - Multiple Queries with Auto-Layout
+### Simple Example - Inline QueryBuilder with Auto-Layout
 
 ```python
 {%
@@ -58,11 +58,14 @@ Boards are visualization dashboards in Honeycomb. They organize multiple queries
 %}
 ```
 
+**Key Points:**
+- Use `QueryBuilder` instances directly in `.query()` calls - no need to create queries separately
+- Requires `.name()` on each QueryBuilder (becomes the annotation name)
+- `create_from_bundle_async()` handles query creation + annotation + board in one call
+
 ### Complex Example - Full Featured Dashboard
 
-This example demonstrates all BoardBuilder capabilities including queries, SLOs, text panels, visualization settings, preset filters, and manual layout.
-
-**Note:** This example creates queries programmatically and accesses `query_annotation_id` from the API response. In practice, you'll typically create queries via the UI or separately, then reference them by ID when building boards.
+This example demonstrates all capabilities: inline QueryBuilder instances, SLO panels, text panels, visualization settings, preset filters, and manual layout with tuple positioning.
 
 ```python
 {%
@@ -85,7 +88,8 @@ This example demonstrates all BoardBuilder capabilities including queries, SLOs,
 
 | Method | Description |
 |--------|-------------|
-| `.query(query_id, annotation_id, ...)` | Add a saved query panel |
+| `.query(QueryBuilder, ...)` | Add query panel with inline QueryBuilder instance |
+| `.query(query_id, annotation_id, ...)` | Add query panel from existing query ID |
 | `.slo(slo_id, ...)` | Add an SLO panel |
 | `.text(content, ...)` | Add a text panel with markdown content |
 
@@ -93,23 +97,31 @@ This example demonstrates all BoardBuilder capabilities including queries, SLOs,
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `position` | `BoardPanelPosition \| None` | Optional position and size |
+| `query` | `QueryBuilder \| str` | QueryBuilder instance with `.name()` OR existing query ID |
+| `annotation_id` | `str \| None` | Required only when using existing query ID |
+| `position` | `tuple[int, int, int, int] \| None` | Optional (x, y, width, height) for manual layout |
 | `style` | `"graph" \| "table" \| "combo"` | Display style (default: "graph") |
-| `dataset` | `str \| None` | Optional dataset name |
-| `visualization_settings` | `dict \| None` | Advanced visualization configuration |
+| `dataset` | `str \| None` | Override QueryBuilder's dataset (rare) |
+| `visualization` | `dict \| None` | Advanced visualization configuration |
 
-### BoardPanelPosition
+### Positioning for Manual Layout
 
-Create position objects for manual layout:
+For manual layout, use tuples `(x, y, width, height)`:
 
 ```python
-from honeycomb import BoardPanelPosition
+from honeycomb import BoardBuilder, QueryBuilder
 
-position = BoardPanelPosition(
-    x_coordinate=0,  # X position (grid-based)
-    y_coordinate=0,  # Y position (grid-based)
-    width=8,         # Width in grid units (0 = auto)
-    height=6,        # Height in grid units (0 = auto)
+# Position format: (x, y, width, height)
+bundle = (
+    BoardBuilder("Dashboard")
+    .manual_layout()
+    .query(
+        QueryBuilder().dataset("api-logs").last_1_hour().count().name("Requests"),
+        position=(0, 0, 9, 6),  # Top left, large
+    )
+    .slo("slo-id", position=(9, 0, 3, 6))  # Top right, small
+    .text("Notes", position=(0, 6, 12, 2))  # Bottom, full width
+    .build()
 )
 ```
 

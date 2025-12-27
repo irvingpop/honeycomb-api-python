@@ -467,10 +467,10 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
             baseline_details=baseline,
         )
 
-    def get_dataset(self) -> str | None:
+    def get_dataset(self) -> str:
         """Get the dataset this trigger is scoped to.
 
         Returns:
-            Dataset slug or None for environment-wide triggers.
+            Dataset slug or "__all__" for environment-wide triggers.
         """
-        return self._dataset
+        return self._dataset if self._dataset else "__all__"

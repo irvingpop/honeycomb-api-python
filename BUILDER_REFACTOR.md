@@ -2,1422 +2,853 @@
 
 ## Overview
 
-This document outlines a comprehensive refactor to create an integrated, elegant builder system for the Honeycomb Python client. The design prioritizes:
+This document outlines the comprehensive builder system for the Honeycomb Python client. The design prioritizes:
 
 1. **No duplicated capabilities** - Shared functionality lives in one place
 2. **Clean composition** - Builders compose smaller pieces rather than duplicate
 3. **Constraint enforcement** - Builders enforce API constraints at build time
 4. **Flexibility** - Support both simple and advanced use cases
+5. **Fluent integration** - Builders can be composed inline for single-call workflows
 
-## Architecture
+---
 
-### Shared Components
+## Implementation Status
 
+### ✅ Completed Phases
+
+#### Phase 1: RecipientMixin + RecipientBuilder
+- **RecipientMixin** - Shared recipient methods for triggers/burn alerts
+- **RecipientBuilder** - Factory for standalone recipient creation
+- Methods: `.email()`, `.slack()`, `.pagerduty()`, `.webhook()`, `.msteams()`, `.recipient_id()`
+
+#### Phase 2: TriggerBuilder
+- **TriggerBuilder** - Extends QueryBuilder + RecipientMixin
+- Enforces trigger constraints (single calc, time_range ≤ 3600s, no absolute time)
+- Threshold shortcuts: `.threshold_gt/gte/lt/lte()`
+- Frequency presets: `.every_minute/5_minutes/15_minutes/30_minutes/hour()`
+- Dataset scoping: `.dataset()` or `.environment_wide()`
+
+#### Phase 2.5: Enhanced TriggerBuilder
+- **TagsMixin** - Shared tag methods (max 10 tags, format validation)
+- Baseline threshold support
+- Frequency vs duration validation
+- Enhanced unit tests
+
+#### Phase 3: SLOBuilder + BurnAlertBuilder
+- **BurnAlertBuilder** - Extends RecipientMixin, supports EXHAUSTION_TIME and BUDGET_RATE
+- **SLOBuilder** - Creates SLOs with integrated burn alerts and derived columns
+- **SLOBundle** - Orchestration data structure
+- **client.slos.create_from_bundle_async()** - Automatic derived column + SLO + burn alert creation
+- Target helpers: `.target_percentage()`, `.target_nines()`, `.target_per_million()`
+- SLI configuration: `.sli(alias)` for existing or `.sli(alias, expression, description)` for new
+
+#### Phase 4: MarkerBuilder
+- **MarkerBuilder** - Point and duration markers
+- Time helpers: `.duration_minutes()`, `.duration_hours()`, `.start_time()`, `.end_time()`
+- Static helper: `MarkerBuilder.setting(type, color)`
+
+#### Phase 5: BoardBuilder (Basic)
+- **BoardCreate** - Enhanced with panels, layout_generation, tags, preset_filters
+- **BoardBuilder** - Creates boards with query/SLO/text panels
+- **QueryAnnotationsResource** - Full CRUD wrapper for query annotations
+- **QueryBuilder.annotate()** - Basic annotation support (to be replaced in Phase 5.5)
+- Panel types: query, SLO, text
+- Layout modes: auto, manual
+
+### 🚧 In Progress
+
+#### Phase 5.5: Enhanced BoardBuilder with QueryBuilder Integration
+
+**Goal:** Single fluent call for board creation with inline QueryBuilder instances, no separate query creation needed.
+
+---
+
+## Phase 5.5: Enhanced BoardBuilder Design
+
+### Problem
+
+Current board creation requires too much ceremony:
+```python
+# TOO MUCH CEREMONY
+from honeycomb import QueryBuilder
+
+q1 = QueryBuilder().last_1_hour().count().annotate("Requests")
+query1, annot1 = await client.queries.create_with_annotation_async("dataset", q1)
+
+q2 = QueryBuilder().last_1_hour().avg("duration_ms").annotate("Latency")
+query2, annot2 = await client.queries.create_with_annotation_async("dataset", q2)
+
+board = BoardBuilder("Dashboard").query(query1.id, annot1).query(query2.id, annot2).build()
+await client.boards.create_async(board)
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                        RecipientMixin                           │
-│  .email() .slack() .pagerduty() .webhook() .msteams()          │
-│  .recipient_id()                                                │
-└─────────────────────────────────────────────────────────────────┘
-                              ▲
-              ┌───────────────┼───────────────┐
-              │               │               │
-      TriggerBuilder    BurnAlertBuilder    (future)
 
-┌─────────────────────────────────────────────────────────────────┐
-│                        QueryBuilder                             │
-│  Time: .last_1_hour() .time_range() .start_time() .end_time()  │
-│  Calcs: .count() .avg() .p99() .sum() .max() .min() ...        │
-│  Filters: .eq() .gte() .contains() .exists() .filter_with()    │
-│  Grouping: .group_by() .order_by() .limit()                    │
-└─────────────────────────────────────────────────────────────────┘
-                              ▲
-                              │ (extends with restrictions)
-                              │
-                      TriggerBuilder
-```
+### Solution
 
-### File Structure
-
-```
-src/honeycomb/models/
-├── query_builder.py          # QueryBuilder (refactored)
-├── trigger_builder.py        # TriggerBuilder
-├── recipient_builder.py      # RecipientBuilder + RecipientMixin
-├── slo_builder.py            # SLOBuilder + SLOBundle
-├── burn_alert_builder.py     # BurnAlertBuilder (uses RecipientMixin)
-├── marker_builder.py         # MarkerBuilder
-├── board_builder.py          # BoardBuilder + BoardItem types
-├── derived_column_builder.py # DerivedColumnBuilder (new resource wrapper)
-└── __init__.py               # Export all builders
+Single fluent call with inline QueryBuilder:
+```python
+# SINGLE FLUENT CALL
+board = await client.boards.create_from_bundle_async(
+    BoardBuilder("Dashboard")
+        .auto_layout()
+        .query(
+            QueryBuilder()
+                .dataset("api-logs")
+                .last_1_hour()
+                .count()
+                .group_by("service")
+                .name("Request Count")
+        )
+        .query(
+            QueryBuilder()
+                .dataset("api-logs")
+                .last_1_hour()
+                .avg("duration_ms")
+                .name("Latency"),
+            style="table"
+        )
+        .build()
+)
 ```
 
 ---
 
-## 1. RecipientMixin + RecipientBuilder
+## QueryBuilder Enhancements (Phase 5.5a)
 
-### RecipientMixin (for embedding in other builders)
-
-```python
-class RecipientMixin:
-    """Mixin providing recipient creation methods."""
-
-    def __init__(self):
-        self._recipients: list[dict] = []           # Existing recipient IDs
-        self._new_recipients: list[dict] = []       # Inline-created recipients
-
-    def email(self, address: str) -> Self:
-        """Add an email recipient."""
-        self._new_recipients.append({
-            "type": "email",
-            "target": address,
-        })
-        return self
-
-    def slack(self, channel: str) -> Self:
-        """Add a Slack recipient."""
-        self._new_recipients.append({
-            "type": "slack",
-            "target": channel,
-        })
-        return self
-
-    def pagerduty(
-        self,
-        routing_key: str,
-        severity: Literal["info", "warning", "error", "critical"] = "critical"
-    ) -> Self:
-        """Add a PagerDuty recipient."""
-        self._new_recipients.append({
-            "type": "pagerduty",
-            "target": routing_key,
-            "details": {"severity": severity},
-        })
-        return self
-
-    def webhook(self, url: str, secret: str | None = None) -> Self:
-        """Add a webhook recipient."""
-        details = {"url": url}
-        if secret:
-            details["secret"] = secret
-        self._new_recipients.append({
-            "type": "webhook",
-            "target": url,
-            "details": details,
-        })
-        return self
-
-    def msteams(self, workflow_url: str) -> Self:
-        """Add an MS Teams workflow recipient."""
-        self._new_recipients.append({
-            "type": "msteams_workflow",
-            "target": workflow_url,
-        })
-        return self
-
-    def recipient_id(self, recipient_id: str) -> Self:
-        """Reference an existing recipient by ID."""
-        self._recipients.append({"id": recipient_id})
-        return self
-
-    def _get_all_recipients(self) -> list[dict]:
-        """Get combined list of recipients for API."""
-        return self._recipients + self._new_recipients
-```
-
-### RecipientBuilder (standalone factory)
+### Add Dataset Scoping
 
 ```python
-class RecipientBuilder:
-    """Factory for creating standalone RecipientCreate objects."""
-
-    @staticmethod
-    def email(address: str) -> RecipientCreate:
-        return RecipientCreate(
-            type=RecipientType.EMAIL,
-            details={"address": address}
-        )
-
-    @staticmethod
-    def slack(channel: str) -> RecipientCreate:
-        return RecipientCreate(
-            type=RecipientType.SLACK,
-            details={"channel": channel}
-        )
-
-    @staticmethod
-    def pagerduty(
-        routing_key: str,
-        severity: Literal["info", "warning", "error", "critical"] = "critical"
-    ) -> RecipientCreate:
-        return RecipientCreate(
-            type=RecipientType.PAGERDUTY,
-            details={"routing_key": routing_key, "severity": severity}
-        )
-
-    @staticmethod
-    def webhook(url: str, secret: str | None = None) -> RecipientCreate:
-        details = {"url": url}
-        if secret:
-            details["secret"] = secret
-        return RecipientCreate(type=RecipientType.WEBHOOK, details=details)
-
-    @staticmethod
-    def msteams(workflow_url: str) -> RecipientCreate:
-        return RecipientCreate(
-            type=RecipientType.MSTEAMS_WORKFLOW,
-            details={"url": workflow_url}
-        )
-```
-
----
-
-## 2. TriggerBuilder
-
-### Key Constraints (enforced at build time)
-- **Single calculation only** - Triggers can only have one calculation
-- **Time range max 3600 seconds** - Trigger queries limited to 1 hour
-- **No absolute time** - Triggers use relative time only
-- **Dataset optional** - Can be dataset-scoped or environment-wide
-
-### Design
-
-```python
-class TriggerBuilder(QueryBuilder, RecipientMixin):
-    """Fluent builder for triggers with integrated query building.
-
-    Extends QueryBuilder with trigger-specific constraints:
-    - Only one calculation allowed
-    - Time range limited to 3600 seconds (1 hour)
-    - No absolute time ranges (start_time/end_time)
-
-    Example:
-        trigger = (
-            TriggerBuilder("High Error Rate")
-            .dataset("my-dataset")           # Optional - omit for environment-wide
-            .last_30_minutes()
-            .count()                          # Single calculation only
-            .gte("status", 500)
-            .threshold_gt(100)
-            .every_5_minutes()
-            .email("oncall@example.com")
-            .slack("#alerts")
-            .build()
-        )
-    """
-
-    def __init__(self, name: str):
-        QueryBuilder.__init__(self)
-        RecipientMixin.__init__(self)
-        self._name = name
-        self._description: str | None = None
-        self._dataset: str | None = None      # None = environment-wide
-        self._threshold_op: TriggerThresholdOp | None = None
-        self._threshold_value: float | None = None
-        self._exceeded_limit: int | None = None
-        self._frequency: int = 900            # Default 15 minutes
-        self._alert_type: TriggerAlertType = TriggerAlertType.ON_CHANGE
-        self._disabled: bool = False
-
-    # -------------------------------------------------------------------------
-    # Scope
-    # -------------------------------------------------------------------------
-
-    def dataset(self, dataset_slug: str) -> TriggerBuilder:
-        """Scope trigger to a specific dataset.
-
-        If not called, trigger will be environment-wide.
-        """
+class QueryBuilder:
+    def dataset(self, dataset_slug: str) -> QueryBuilder:
+        """Set dataset scope for this query."""
         self._dataset = dataset_slug
         return self
 
-    def environment_wide(self) -> TriggerBuilder:
-        """Explicitly mark trigger as environment-wide (no dataset)."""
-        self._dataset = None
+    def environment_wide(self) -> QueryBuilder:
+        """Mark query as environment-wide (all datasets)."""
+        self._dataset = "__all__"
         return self
 
-    # -------------------------------------------------------------------------
-    # Threshold shortcuts
-    # -------------------------------------------------------------------------
-
-    def threshold_gt(self, value: float) -> TriggerBuilder:
-        """Trigger when value > threshold."""
-        self._threshold_op = TriggerThresholdOp.GREATER_THAN
-        self._threshold_value = value
-        return self
-
-    def threshold_gte(self, value: float) -> TriggerBuilder:
-        """Trigger when value >= threshold."""
-        self._threshold_op = TriggerThresholdOp.GREATER_THAN_OR_EQUAL
-        self._threshold_value = value
-        return self
-
-    def threshold_lt(self, value: float) -> TriggerBuilder:
-        """Trigger when value < threshold."""
-        self._threshold_op = TriggerThresholdOp.LESS_THAN
-        self._threshold_value = value
-        return self
-
-    def threshold_lte(self, value: float) -> TriggerBuilder:
-        """Trigger when value <= threshold."""
-        self._threshold_op = TriggerThresholdOp.LESS_THAN_OR_EQUAL
-        self._threshold_value = value
-        return self
-
-    def exceeded_limit(self, times: int) -> TriggerBuilder:
-        """Require threshold to be exceeded N times before alerting."""
-        self._exceeded_limit = times
-        return self
-
-    # -------------------------------------------------------------------------
-    # Frequency presets
-    # -------------------------------------------------------------------------
-
-    def every_minute(self) -> TriggerBuilder:
-        self._frequency = 60
-        return self
-
-    def every_5_minutes(self) -> TriggerBuilder:
-        self._frequency = 300
-        return self
-
-    def every_15_minutes(self) -> TriggerBuilder:
-        self._frequency = 900
-        return self
-
-    def every_30_minutes(self) -> TriggerBuilder:
-        self._frequency = 1800
-        return self
-
-    def every_hour(self) -> TriggerBuilder:
-        self._frequency = 3600
-        return self
-
-    def frequency(self, seconds: int) -> TriggerBuilder:
-        """Set custom frequency in seconds (60-86400)."""
-        if not 60 <= seconds <= 86400:
-            raise ValueError("Frequency must be between 60 and 86400 seconds")
-        self._frequency = seconds
-        return self
-
-    # -------------------------------------------------------------------------
-    # Alert behavior
-    # -------------------------------------------------------------------------
-
-    def alert_on_change(self) -> TriggerBuilder:
-        """Alert only when state changes (default)."""
-        self._alert_type = TriggerAlertType.ON_CHANGE
-        return self
-
-    def alert_on_true(self) -> TriggerBuilder:
-        """Alert every time threshold is exceeded."""
-        self._alert_type = TriggerAlertType.ON_TRUE
-        return self
-
-    def disabled(self, is_disabled: bool = True) -> TriggerBuilder:
-        """Create trigger in disabled state."""
-        self._disabled = is_disabled
-        return self
-
-    # -------------------------------------------------------------------------
-    # Build
-    # -------------------------------------------------------------------------
-
-    def build(self) -> TriggerCreate:
-        """Build TriggerCreate with validation.
-
-        Raises:
-            ValueError: If constraints are violated:
-                - More than one calculation
-                - Time range > 3600 seconds
-                - Absolute time used
-                - Missing threshold
-        """
-        # Validate single calculation
-        if len(self._calculations) > 1:
-            raise ValueError(
-                f"Triggers can only have one calculation, got {len(self._calculations)}. "
-                "Use multiple triggers for multiple calculations."
-            )
-
-        # Validate no absolute time
-        if self._start_time is not None or self._end_time is not None:
-            raise ValueError(
-                "Triggers do not support absolute time ranges. "
-                "Use time_range() or time presets like last_30_minutes()."
-            )
-
-        # Validate time range
-        time_range = self._time_range or 3600  # Default 1 hour
-        if time_range > 3600:
-            raise ValueError(
-                f"Trigger time range must be <= 3600 seconds (1 hour), got {time_range}. "
-                "Use a shorter time preset like last_30_minutes()."
-            )
-
-        # Validate threshold
-        if self._threshold_op is None or self._threshold_value is None:
-            raise ValueError(
-                "Threshold is required. Use threshold_gt(), threshold_gte(), "
-                "threshold_lt(), or threshold_lte()."
-            )
-
-        # Build threshold
-        threshold = TriggerThreshold(
-            op=self._threshold_op,
-            value=self._threshold_value,
-            exceeded_limit=self._exceeded_limit,
-        )
-
-        # Build query
-        query = TriggerQuery(
-            time_range=time_range,
-            granularity=self._granularity,
-            calculations=self._calculations if self._calculations else None,
-            filters=self._filters if self._filters else None,
-            breakdowns=self._breakdowns if self._breakdowns else None,
-            filter_combination=self._filter_combination,
-        )
-
-        return TriggerCreate(
-            name=self._name,
-            description=self._description,
-            threshold=threshold,
-            frequency=self._frequency,
-            query=query,
-            disabled=self._disabled,
-            alert_type=self._alert_type,
-            recipients=self._get_all_recipients() if self._get_all_recipients() else None,
-        )
-
-    def get_dataset(self) -> str | None:
-        """Get the dataset this trigger is scoped to (None = environment-wide)."""
-        return self._dataset
+    def get_dataset(self) -> str:
+        """Get dataset scope (defaults to "__all__" if not set)."""
+        return self._dataset if self._dataset else "__all__"
 ```
 
-### Usage Examples
+### Replace .annotate() with .name() and .description()
+
+**Remove:**
+```python
+.annotate(name, description)  # DELETE THIS - no dead code
+```
+
+**Add:**
+```python
+def name(self, name: str) -> QueryBuilder:
+    """Set query name (required for board integration).
+
+    For boards: This becomes the query annotation name.
+    Outside boards: Optional, useful for documentation.
+    """
+    self._query_name = name
+    return self
+
+def description(self, desc: str) -> QueryBuilder:
+    """Set query description (optional).
+
+    For boards: This becomes the query annotation description.
+    """
+    self._query_description = desc
+    return self
+
+def has_name(self) -> bool:
+    """Check if query has name set."""
+    return self._query_name is not None
+
+def get_name(self) -> str | None:
+    """Get query name."""
+    return self._query_name
+
+def get_description(self) -> str | None:
+    """Get query description."""
+    return self._query_description
+```
+
+**Rationale:**
+- `.name()` is required for boards, `.description()` is optional
+- Outside of boards, neither is required
+- More explicit and clear than `.annotate()` which conflates two concerns
+
+---
+
+## BoardBundle Data Structures (Phase 5.5b)
 
 ```python
-# Dataset-scoped trigger
-trigger = (
-    TriggerBuilder("High Error Rate")
-    .dataset("api-logs")
-    .last_30_minutes()
-    .count()
-    .gte("status", 500)
-    .threshold_gt(100)
-    .every_5_minutes()
-    .email("oncall@example.com")
-    .build()
-)
-await client.triggers.create_async(trigger.get_dataset(), trigger)
+@dataclass
+class QueryBuilderPanel:
+    """Query panel from inline QueryBuilder (needs creation)."""
+    builder: QueryBuilder
+    position: tuple[int, int, int, int] | None  # (x, y, width, height)
+    style: Literal["graph", "table", "combo"]
+    visualization: dict[str, Any] | None
+    dataset_override: str | None
 
-# Environment-wide trigger (no dataset)
-trigger = (
-    TriggerBuilder("Global Error Spike")
-    .environment_wide()
-    .last_10_minutes()
-    .count()
-    .eq("level", "error")
-    .threshold_gt(1000)
-    .every_minute()
-    .pagerduty("routing-key-123", severity="critical")
-    .build()
-)
-await client.triggers.create_environment_wide_async(trigger)
+@dataclass
+class ExistingQueryPanel:
+    """Query panel from existing query ID."""
+    query_id: str
+    annotation_id: str
+    position: tuple[int, int, int, int] | None
+    style: Literal["graph", "table", "combo"]
+    visualization: dict[str, Any] | None
+    dataset: str | None
+
+@dataclass
+class SLOPanel:
+    """SLO panel."""
+    slo_id: str
+    position: tuple[int, int, int, int] | None
+
+@dataclass
+class TextPanel:
+    """Text panel."""
+    content: str
+    position: tuple[int, int, int, int] | None
+
+@dataclass
+class BoardBundle:
+    """Board creation bundle for orchestration.
+
+    Returned by BoardBuilder.build(), consumed by boards.create_from_bundle_async().
+    """
+    board_name: str
+    board_description: str | None
+    layout_generation: Literal["auto", "manual"]
+    tags: list[dict[str, str]] | None
+    preset_filters: list[dict[str, str]] | None
+    # Panels (in order added)
+    query_builder_panels: list[QueryBuilderPanel]
+    existing_query_panels: list[ExistingQueryPanel]
+    slo_panels: list[SLOPanel]
+    text_panels: list[TextPanel]
 ```
 
 ---
 
-## 3. SLOBuilder
+## Updated BoardBuilder API (Phase 5.5c)
 
-### Key Features
-- `.sli(alias, expression=None)` - Unified SLI definition
-  - If `expression` is None: uses existing derived column
-  - If `expression` is provided: creates new derived column
-- Dataset can be single or multiple
-- If multiple datasets: derived column must be environment-wide
-- Burn alerts have embedded recipients
-
-### Design
+### New Storage Structure
 
 ```python
-@dataclass
-class SLIDefinition:
-    """SLI definition - either references existing DC or creates new one."""
-    alias: str
-    expression: str | None = None  # None = use existing DC
-    description: str | None = None
-
-    def is_new_derived_column(self) -> bool:
-        return self.expression is not None
-
-
-@dataclass
-class BurnAlertDefinition:
-    """Burn alert definition with embedded recipients."""
-    alert_type: BurnAlertType
-    description: str | None = None
-    # Exhaustion time fields
-    exhaustion_minutes: int | None = None
-    # Budget rate fields
-    budget_rate_window_minutes: int | None = None
-    budget_rate_decrease_percent: float | None = None
-    # Recipients
-    recipients: list[dict] = field(default_factory=list)
-
-
-@dataclass
-class SLOBundle:
-    """Bundle containing SLO and related resources to create."""
-    slo: SLOCreate
-    datasets: list[str]                           # Single or multiple
-    derived_column: DerivedColumnCreate | None    # If SLI needs new DC
-    derived_column_environment_wide: bool         # True if multi-dataset
-    burn_alerts: list[BurnAlertDefinition]
-
-
-class BurnAlertBuilder(RecipientMixin):
-    """Builder for burn alerts with recipients."""
-
-    def __init__(self, alert_type: BurnAlertType):
-        RecipientMixin.__init__(self)
-        self._alert_type = alert_type
-        self._description: str | None = None
-        self._exhaustion_minutes: int | None = None
-        self._budget_rate_window_minutes: int | None = None
-        self._budget_rate_decrease_percent: float | None = None
-
-    def description(self, desc: str) -> BurnAlertBuilder:
-        self._description = desc
-        return self
-
-    # Exhaustion time config
-    def exhaustion_minutes(self, minutes: int) -> BurnAlertBuilder:
-        self._exhaustion_minutes = minutes
-        return self
-
-    # Budget rate config
-    def window_minutes(self, minutes: int) -> BurnAlertBuilder:
-        self._budget_rate_window_minutes = minutes
-        return self
-
-    def threshold_percent(self, percent: float) -> BurnAlertBuilder:
-        """Budget decrease threshold as percentage (e.g., 1.0 = 1%)."""
-        self._budget_rate_decrease_percent = percent
-        return self
-
-    def build(self) -> BurnAlertDefinition:
-        return BurnAlertDefinition(
-            alert_type=self._alert_type,
-            description=self._description,
-            exhaustion_minutes=self._exhaustion_minutes,
-            budget_rate_window_minutes=self._budget_rate_window_minutes,
-            budget_rate_decrease_percent=self._budget_rate_decrease_percent,
-            recipients=self._get_all_recipients(),
-        )
-
-
-class SLOBuilder:
-    """Fluent builder for SLOs with burn alerts and derived columns.
-
-    Example - Single dataset with existing derived column:
-        slo = (
-            SLOBuilder("API Availability")
-            .dataset("api-logs")
-            .target_percentage(99.9)
-            .time_period_days(30)
-            .sli(alias="api_success_rate")  # Uses existing DC
-            .exhaustion_alert(
-                BurnAlertBuilder(BurnAlertType.EXHAUSTION_TIME)
-                .exhaustion_minutes(60)
-                .email("oncall@example.com")
-            )
-            .build()
-        )
-
-    Example - Multiple datasets with new derived column:
-        slo = (
-            SLOBuilder("Cross-Service Availability")
-            .datasets(["api-logs", "web-logs", "worker-logs"])
-            .target_nines(3)  # 99.9%
-            .sli(
-                alias="service_success",
-                expression="IF(EQUALS($status, 200), 1, 0)",
-                description="1 for success, 0 for failure"
-            )
-            .budget_rate_alert(
-                BurnAlertBuilder(BurnAlertType.BUDGET_RATE)
-                .window_minutes(60)
-                .threshold_percent(1.0)
-                .pagerduty("routing-key", severity="critical")
-            )
-            .build()
-        )
-    """
-
+class BoardBuilder(TagsMixin):
     def __init__(self, name: str):
+        TagsMixin.__init__(self)
         self._name = name
         self._description: str | None = None
-        self._datasets: list[str] = []
-        self._target_per_million: int | None = None
-        self._time_period_days: int = 30
-        self._sli: SLIDefinition | None = None
-        self._burn_alerts: list[BurnAlertDefinition] = []
+        self._layout_generation: Literal["auto", "manual"] = "manual"
+        self._preset_filters: list[dict[str, str]] = []
+        # Panel storage (in order added)
+        self._query_builder_panels: list[QueryBuilderPanel] = []
+        self._existing_query_panels: list[ExistingQueryPanel] = []
+        self._slo_panels: list[SLOPanel] = []
+        self._text_panels: list[TextPanel] = []
+```
 
-    # -------------------------------------------------------------------------
-    # Dataset scope
-    # -------------------------------------------------------------------------
+### Updated .query() Method
 
-    def dataset(self, dataset_slug: str) -> SLOBuilder:
-        """Scope SLO to a single dataset."""
-        self._datasets = [dataset_slug]
-        return self
+```python
+def query(
+    self,
+    query: QueryBuilder | str,
+    annotation_id: str | None = None,
+    *,
+    position: tuple[int, int, int, int] | None = None,  # (x, y, width, height)
+    style: Literal["graph", "table", "combo"] = "graph",
+    visualization: dict[str, Any] | None = None,
+    dataset: str | None = None,
+) -> BoardBuilder:
+    """Add a query panel.
 
-    def datasets(self, dataset_slugs: list[str]) -> SLOBuilder:
-        """Scope SLO to multiple datasets.
+    Args:
+        query: QueryBuilder with .name() OR existing query_id string
+        annotation_id: Required only if query is string
+        position: (x, y, width, height) for manual layout
+        style: graph | table | combo
+        visualization: {"hide_markers": True, "utc_xaxis": True, ...}
+        dataset: Override QueryBuilder's dataset
 
-        Note: When using multiple datasets, any new derived column
-        will be created as environment-wide.
-        """
-        self._datasets = dataset_slugs
-        return self
+    Example - Inline QueryBuilder:
+        .query(
+            QueryBuilder()
+                .dataset("api-logs")
+                .last_24_hours()
+                .count()
+                .group_by("service")
+                .name("Request Count")
+                .description("Requests by service over 24h"),
+            position=(0, 0, 9, 6),
+            style="graph",
+            visualization={"hide_markers": True, "utc_xaxis": True}
+        )
 
-    # -------------------------------------------------------------------------
-    # Target configuration
-    # -------------------------------------------------------------------------
+    Example - Existing query:
+        .query("query-id-123", "annotation-id-456", style="table")
+    """
+    if isinstance(query, QueryBuilder):
+        if not query.has_name():
+            raise ValueError("QueryBuilder must have .name() set for board panels")
 
-    def target_percentage(self, percent: float) -> SLOBuilder:
-        """Set target as percentage (e.g., 99.9 -> 999000 per million)."""
-        self._target_per_million = int(percent * 10000)
-        return self
+        self._query_builder_panels.append(QueryBuilderPanel(
+            builder=query,
+            position=position,
+            style=style,
+            visualization=visualization,
+            dataset_override=dataset,
+        ))
+    else:
+        if not annotation_id:
+            raise ValueError("annotation_id required when using existing query ID")
 
-    def target_nines(self, nines: int) -> SLOBuilder:
-        """Set target by number of nines.
+        self._existing_query_panels.append(ExistingQueryPanel(
+            query_id=query,
+            annotation_id=annotation_id,
+            position=position,
+            style=style,
+            visualization=visualization,
+            dataset=dataset,
+        ))
+    return self
+```
 
-        Examples:
-            2 nines = 99%
-            3 nines = 99.9%
-            4 nines = 99.99%
-        """
-        percentage = 100 - (100 / (10 ** nines))
-        return self.target_percentage(percentage)
+### Updated .slo() and .text() Methods
 
-    def target_per_million(self, value: int) -> SLOBuilder:
-        """Set target directly as per-million value."""
-        self._target_per_million = value
-        return self
+```python
+def slo(
+    self,
+    slo_id: str,
+    *,
+    position: tuple[int, int, int, int] | None = None,
+) -> BoardBuilder:
+    """Add an SLO panel.
 
-    # -------------------------------------------------------------------------
-    # Time period
-    # -------------------------------------------------------------------------
+    Args:
+        slo_id: ID of the SLO
+        position: (x, y, width, height) for manual layout
+    """
+    self._slo_panels.append(SLOPanel(slo_id=slo_id, position=position))
+    return self
 
-    def time_period_days(self, days: int) -> SLOBuilder:
-        """Set SLO time period in days (1-90)."""
-        if not 1 <= days <= 90:
-            raise ValueError("Time period must be between 1 and 90 days")
-        self._time_period_days = days
-        return self
+def text(
+    self,
+    content: str,
+    *,
+    position: tuple[int, int, int, int] | None = None,
+) -> BoardBuilder:
+    """Add a text panel (supports markdown, max 10000 chars).
 
-    def time_period_weeks(self, weeks: int) -> SLOBuilder:
-        """Set SLO time period in weeks."""
-        return self.time_period_days(weeks * 7)
+    Args:
+        content: Markdown text content
+        position: (x, y, width, height) for manual layout
+    """
+    if len(content) > 10000:
+        raise ValueError(f"Text content must be <= 10000 characters, got {len(content)}")
+    self._text_panels.append(TextPanel(content=content, position=position))
+    return self
+```
 
-    # -------------------------------------------------------------------------
-    # SLI definition
-    # -------------------------------------------------------------------------
+### Updated .build() Method
 
-    def sli(
-        self,
-        alias: str,
-        expression: str | None = None,
-        description: str | None = None
-    ) -> SLOBuilder:
-        """Define the SLI (Service Level Indicator).
+```python
+def build(self) -> BoardBundle:
+    """Build BoardBundle for orchestration.
+
+    Returns:
+        BoardBundle (not BoardCreate) for client orchestration
+    """
+    # Validate manual layout requires all positions
+    if self._layout_generation == "manual":
+        all_panels = (
+            self._query_builder_panels +
+            self._existing_query_panels +
+            self._slo_panels +
+            self._text_panels
+        )
+        for i, panel in enumerate(all_panels):
+            if panel.position is None:
+                raise ValueError(
+                    f"Manual layout requires position for all panels. "
+                    f"Panel {i} missing position. Use position=(x, y, width, height)"
+                )
+
+    return BoardBundle(
+        board_name=self._name,
+        board_description=self._description,
+        layout_generation=self._layout_generation,
+        tags=self._get_all_tags(),
+        preset_filters=self._preset_filters if self._preset_filters else None,
+        query_builder_panels=self._query_builder_panels,
+        existing_query_panels=self._existing_query_panels,
+        slo_panels=self._slo_panels,
+        text_panels=self._text_panels,
+    )
+```
+
+---
+
+## Client Orchestration (Phase 5.5d)
+
+### boards.create_from_bundle_async()
+
+```python
+class BoardsResource:
+    async def create_from_bundle_async(self, bundle: BoardBundle) -> Board:
+        """Create board from BoardBundle with automatic query creation.
+
+        Orchestrates:
+        1. Create queries + annotations from QueryBuilder instances
+        2. Assemble all panel configurations
+        3. Create board with all panels
+
+        Panels are added to the board in the order they appear in the bundle:
+        - Auto-layout: Honeycomb arranges panels in this order
+        - Manual-layout: Respects explicit positions
 
         Args:
-            alias: Name of the derived column (existing or new)
-            expression: If provided, creates a new derived column.
-                        If None, uses an existing derived column.
-            description: Description for new derived column (ignored if using existing)
-
-        Examples:
-            # Use existing derived column
-            .sli(alias="api_success_rate")
-
-            # Create new derived column
-            .sli(
-                alias="request_success",
-                expression="IF(LT($status_code, 400), 1, 0)",
-                description="1 if request succeeded, 0 otherwise"
-            )
-        """
-        self._sli = SLIDefinition(
-            alias=alias,
-            expression=expression,
-            description=description,
-        )
-        return self
-
-    # -------------------------------------------------------------------------
-    # Burn alerts
-    # -------------------------------------------------------------------------
-
-    def exhaustion_alert(self, builder: BurnAlertBuilder) -> SLOBuilder:
-        """Add an exhaustion time burn alert.
-
-        Example:
-            .exhaustion_alert(
-                BurnAlertBuilder(BurnAlertType.EXHAUSTION_TIME)
-                .exhaustion_minutes(60)
-                .description("Alert when budget exhausts in 1 hour")
-                .email("oncall@example.com")
-            )
-        """
-        if builder._alert_type != BurnAlertType.EXHAUSTION_TIME:
-            raise ValueError("exhaustion_alert() requires EXHAUSTION_TIME alert type")
-        self._burn_alerts.append(builder.build())
-        return self
-
-    def budget_rate_alert(self, builder: BurnAlertBuilder) -> SLOBuilder:
-        """Add a budget rate burn alert.
-
-        Example:
-            .budget_rate_alert(
-                BurnAlertBuilder(BurnAlertType.BUDGET_RATE)
-                .window_minutes(60)
-                .threshold_percent(1.0)
-                .pagerduty("routing-key")
-            )
-        """
-        if builder._alert_type != BurnAlertType.BUDGET_RATE:
-            raise ValueError("budget_rate_alert() requires BUDGET_RATE alert type")
-        self._burn_alerts.append(builder.build())
-        return self
-
-    # -------------------------------------------------------------------------
-    # Build
-    # -------------------------------------------------------------------------
-
-    def build(self) -> SLOBundle:
-        """Build SLO bundle with validation.
+            bundle: BoardBundle from BoardBuilder.build()
 
         Returns:
-            SLOBundle containing:
-            - slo: The SLOCreate object
-            - datasets: List of dataset slugs
-            - derived_column: DerivedColumnCreate if SLI needs new DC
-            - derived_column_environment_wide: True if multi-dataset
-            - burn_alerts: List of burn alert definitions
-
-        Raises:
-            ValueError: If required fields are missing
+            Created Board object
         """
-        if not self._datasets:
-            raise ValueError("At least one dataset is required. Use dataset() or datasets().")
+        panels = []
 
-        if self._target_per_million is None:
-            raise ValueError("Target is required. Use target_percentage(), target_nines(), or target_per_million().")
-
-        if self._sli is None:
-            raise ValueError("SLI is required. Use sli(alias=...) to define it.")
-
-        # Determine if derived column should be environment-wide
-        is_multi_dataset = len(self._datasets) > 1
-
-        # Build derived column if needed
-        derived_column = None
-        if self._sli.is_new_derived_column():
-            derived_column = DerivedColumnCreate(
-                alias=self._sli.alias,
-                expression=self._sli.expression,
-                description=self._sli.description,
+        # Create query panels from QueryBuilder instances
+        for qb_panel in bundle.query_builder_panels:
+            dataset = qb_panel.dataset_override or qb_panel.builder.get_dataset()
+            query, annotation_id = await self._client.queries.create_with_annotation_async(
+                dataset, qb_panel.builder
             )
+            panels.append(self._build_query_panel_dict(
+                query.id, annotation_id, qb_panel.position,
+                qb_panel.style, qb_panel.visualization, dataset
+            ))
 
-        # Build SLO
-        slo = SLOCreate(
-            name=self._name,
-            description=self._description,
-            sli=SLI(alias=self._sli.alias),
-            time_period_days=self._time_period_days,
-            target_per_million=self._target_per_million,
+        # Add existing query panels
+        for existing in bundle.existing_query_panels:
+            panels.append(self._build_query_panel_dict(
+                existing.query_id, existing.annotation_id, existing.position,
+                existing.style, existing.visualization, existing.dataset
+            ))
+
+        # Add SLO panels
+        for slo in bundle.slo_panels:
+            panels.append(self._build_slo_panel_dict(slo.slo_id, slo.position))
+
+        # Add text panels
+        for text in bundle.text_panels:
+            panels.append(self._build_text_panel_dict(text.content, text.position))
+
+        # Create board
+        board_create = BoardCreate(
+            name=bundle.board_name,
+            description=bundle.board_description,
+            type="flexible",
+            panels=panels if panels else None,
+            layout_generation=bundle.layout_generation,
+            tags=bundle.tags,
+            preset_filters=bundle.preset_filters,
         )
 
-        return SLOBundle(
-            slo=slo,
-            datasets=self._datasets,
-            derived_column=derived_column,
-            derived_column_environment_wide=is_multi_dataset,
-            burn_alerts=self._burn_alerts,
-        )
-```
+        return await self.create_async(board_create)
 
----
-
-## 4. MarkerBuilder
-
-```python
-class MarkerBuilder:
-    """Fluent builder for markers.
-
-    Example - Point marker:
-        marker = (
-            MarkerBuilder("Deployed v1.2.3")
-            .type("deploy")
-            .url("https://github.com/org/repo/releases/v1.2.3")
-            .build()
-        )
-
-    Example - Duration marker:
-        marker = (
-            MarkerBuilder("Maintenance window")
-            .type("maintenance")
-            .start_time(1703980800)
-            .end_time(1703984400)
-            .build()
-        )
-
-    Example - Duration from now:
-        marker = (
-            MarkerBuilder("Load test in progress")
-            .type("test")
-            .duration_minutes(30)
-            .build()
-        )
-    """
-
-    def __init__(self, message: str):
-        self._message = message
-        self._type: str | None = None
-        self._start_time: int | None = None
-        self._end_time: int | None = None
-        self._url: str | None = None
-
-    def type(self, marker_type: str) -> MarkerBuilder:
-        """Set marker type (groups similar markers)."""
-        self._type = marker_type
-        return self
-
-    def url(self, url: str) -> MarkerBuilder:
-        """Set target URL for the marker."""
-        self._url = url
-        return self
-
-    def start_time(self, timestamp: int) -> MarkerBuilder:
-        """Set start time as Unix timestamp."""
-        self._start_time = timestamp
-        return self
-
-    def end_time(self, timestamp: int) -> MarkerBuilder:
-        """Set end time as Unix timestamp (for duration markers)."""
-        self._end_time = timestamp
-        return self
-
-    def duration_minutes(self, minutes: int) -> MarkerBuilder:
-        """Set duration from now."""
-        import time
-        now = int(time.time())
-        self._start_time = now
-        self._end_time = now + (minutes * 60)
-        return self
-
-    def duration_hours(self, hours: int) -> MarkerBuilder:
-        """Set duration from now in hours."""
-        return self.duration_minutes(hours * 60)
-
-    @staticmethod
-    def setting(marker_type: str, color: str) -> MarkerSettingCreate:
-        """Create a marker setting (color configuration).
-
-        Args:
-            marker_type: Type of marker to configure
-            color: Hex color code (e.g., '#F96E11')
-        """
-        return MarkerSettingCreate(type=marker_type, color=color)
-
-    def build(self) -> MarkerCreate:
-        """Build MarkerCreate with validation."""
-        if not self._type:
-            raise ValueError("Marker type is required. Use type().")
-
-        return MarkerCreate(
-            message=self._message,
-            type=self._type,
-            start_time=self._start_time,
-            end_time=self._end_time,
-            url=self._url,
-        )
-```
-
----
-
-## 5. BoardBuilder
-
-### Key Features
-- Add queries with position/size or auto-layout
-- Add SLO references
-- Add text boxes
-- Layout options: multi-column, single-column
-- Style options: visual (graphs), list
-
-### Design
-
-```python
-@dataclass
-class BoardPosition:
-    """Position and size of a board item."""
-    x: int = 0       # Column position (0-based)
-    y: int = 0       # Row position (0-based)
-    width: int = 1   # Width in columns
-    height: int = 1  # Height in rows
-
-
-class BoardItemType(str, Enum):
-    QUERY = "query"
-    SLO = "slo"
-    TEXT = "text"
-
-
-@dataclass
-class BoardItem:
-    """An item on a board (query, SLO, or text)."""
-    item_type: BoardItemType
-    # Query-specific
-    query_spec: QuerySpec | None = None
-    query_id: str | None = None
-    query_style: str = "graph"  # "graph", "table", "combo"
-    # SLO-specific
-    slo_id: str | None = None
-    # Text-specific
-    text_content: str | None = None
-    # Common
-    caption: str | None = None
-    position: BoardPosition | None = None  # None = auto-layout
-
-
-class BoardBuilder:
-    """Fluent builder for boards with queries, SLOs, and text.
-
-    Example - Auto-layout:
-        board = (
-            BoardBuilder("Service Dashboard")
-            .description("Overview of API health")
-            .query(
-                QueryBuilder()
-                .last_1_hour()
-                .count()
-                .group_by("service"),
-                caption="Requests by Service"
-            )
-            .query(
-                QueryBuilder()
-                .last_1_hour()
-                .p99("duration_ms")
-                .group_by("endpoint"),
-                caption="P99 Latency"
-            )
-            .slo("slo-id-123", caption="API Availability")
-            .text("## Notes\nMonitor during peak hours")
-            .build()
-        )
-
-    Example - Manual layout:
-        board = (
-            BoardBuilder("Custom Layout")
-            .layout_multi()
-            .query(
-                QueryBuilder().last_1_hour().count(),
-                caption="Total Requests",
-                position=BoardPosition(x=0, y=0, width=2, height=1)
-            )
-            .query(
-                QueryBuilder().last_1_hour().avg("duration_ms"),
-                caption="Avg Latency",
-                position=BoardPosition(x=0, y=1, width=1, height=1)
-            )
-            .slo(
-                "slo-123",
-                caption="SLO Status",
-                position=BoardPosition(x=1, y=1, width=1, height=1)
-            )
-            .build()
-        )
-    """
-
-    def __init__(self, name: str):
-        self._name = name
-        self._description: str | None = None
-        self._column_layout: str = "multi"
-        self._style: str = "visual"
-        self._items: list[BoardItem] = []
-        self._auto_layout: bool = True
-
-    def description(self, desc: str) -> BoardBuilder:
-        self._description = desc
-        return self
-
-    # -------------------------------------------------------------------------
-    # Layout configuration
-    # -------------------------------------------------------------------------
-
-    def layout_multi(self) -> BoardBuilder:
-        """Use multi-column layout (default)."""
-        self._column_layout = "multi"
-        return self
-
-    def layout_single(self) -> BoardBuilder:
-        """Use single-column layout."""
-        self._column_layout = "single"
-        return self
-
-    def style_visual(self) -> BoardBuilder:
-        """Use visual/graph style (default)."""
-        self._style = "visual"
-        return self
-
-    def style_list(self) -> BoardBuilder:
-        """Use list style."""
-        self._style = "list"
-        return self
-
-    def auto_layout(self) -> BoardBuilder:
-        """Use automatic layout positioning (default)."""
-        self._auto_layout = True
-        return self
-
-    def manual_layout(self) -> BoardBuilder:
-        """Use manual layout - positions must be specified."""
-        self._auto_layout = False
-        return self
-
-    # -------------------------------------------------------------------------
-    # Add items
-    # -------------------------------------------------------------------------
-
-    def query(
-        self,
-        query: QueryBuilder,
-        caption: str | None = None,
-        position: BoardPosition | None = None,
-        style: Literal["graph", "table", "combo"] = "graph"
-    ) -> BoardBuilder:
-        """Add a query to the board.
-
-        Args:
-            query: QueryBuilder instance (will call .build() automatically)
-            caption: Display caption for the query
-            position: Manual position/size (None for auto-layout)
-            style: Display style - "graph", "table", or "combo"
-        """
-        self._items.append(BoardItem(
-            item_type=BoardItemType.QUERY,
-            query_spec=query.build(),
-            caption=caption,
-            position=position,
-            query_style=style,
-        ))
-        return self
-
-    def query_id(
+    def _build_query_panel_dict(
         self,
         query_id: str,
-        caption: str | None = None,
-        position: BoardPosition | None = None,
-        style: Literal["graph", "table", "combo"] = "graph"
-    ) -> BoardBuilder:
-        """Add an existing saved query by ID."""
-        self._items.append(BoardItem(
-            item_type=BoardItemType.QUERY,
-            query_id=query_id,
-            caption=caption,
-            position=position,
-            query_style=style,
-        ))
-        return self
+        annotation_id: str,
+        position: tuple[int, int, int, int] | None,
+        style: str,
+        visualization: dict[str, Any] | None,
+        dataset: str | None,
+    ) -> dict[str, Any]:
+        """Build query panel dictionary for API."""
+        panel = {
+            "type": "query",
+            "query_panel": {
+                "query_id": query_id,
+                "query_annotation_id": annotation_id,
+                "query_style": style,
+            }
+        }
+        if dataset and dataset != "__all__":
+            panel["query_panel"]["dataset"] = dataset
+        if visualization:
+            panel["query_panel"]["visualization_settings"] = visualization
+        if position:
+            panel["position"] = {
+                "x_coordinate": position[0],
+                "y_coordinate": position[1],
+                "width": position[2],
+                "height": position[3],
+            }
+        return panel
 
-    def slo(
+    def _build_slo_panel_dict(
         self,
         slo_id: str,
-        caption: str | None = None,
-        position: BoardPosition | None = None
-    ) -> BoardBuilder:
-        """Add an SLO to the board."""
-        self._items.append(BoardItem(
-            item_type=BoardItemType.SLO,
-            slo_id=slo_id,
-            caption=caption,
-            position=position,
-        ))
-        return self
+        position: tuple[int, int, int, int] | None,
+    ) -> dict[str, Any]:
+        """Build SLO panel dictionary for API."""
+        panel = {
+            "type": "slo",
+            "slo_panel": {"slo_id": slo_id}
+        }
+        if position:
+            panel["position"] = {
+                "x_coordinate": position[0],
+                "y_coordinate": position[1],
+                "width": position[2],
+                "height": position[3],
+            }
+        return panel
 
-    def text(
+    def _build_text_panel_dict(
         self,
         content: str,
-        position: BoardPosition | None = None
-    ) -> BoardBuilder:
-        """Add a text box to the board (supports markdown)."""
-        self._items.append(BoardItem(
-            item_type=BoardItemType.TEXT,
-            text_content=content,
-            position=position,
-        ))
-        return self
-
-    # -------------------------------------------------------------------------
-    # Build
-    # -------------------------------------------------------------------------
-
-    def build(self) -> BoardCreate:
-        """Build BoardCreate with items.
-
-        Note: The actual query/SLO creation and board assembly
-        may need to happen in multiple API calls. This returns
-        the board definition; the client handles orchestration.
-        """
-        if not self._auto_layout:
-            # Validate all items have positions
-            for i, item in enumerate(self._items):
-                if item.position is None:
-                    raise ValueError(
-                        f"Manual layout requires position for all items. "
-                        f"Item {i} ({item.item_type.value}) has no position."
-                    )
-
-        # Build board create object
-        # Note: queries list format depends on Honeycomb API structure
-        queries = []
-        for item in self._items:
-            query_data = {}
-            if item.query_spec:
-                query_data["query"] = item.query_spec.model_dump_for_api()
-            if item.query_id:
-                query_data["query_id"] = item.query_id
-            if item.slo_id:
-                query_data["slo_id"] = item.slo_id
-            if item.text_content:
-                query_data["text"] = item.text_content
-            if item.caption:
-                query_data["caption"] = item.caption
-            if item.position:
-                query_data["position"] = {
-                    "x": item.position.x,
-                    "y": item.position.y,
-                    "width": item.position.width,
-                    "height": item.position.height,
-                }
-            if item.query_style:
-                query_data["graph_settings"] = {"style": item.query_style}
-            queries.append(query_data)
-
-        return BoardCreate(
-            name=self._name,
-            description=self._description,
-            column_layout=self._column_layout,
-            style=self._style,
-            # Note: queries field may need adjustment based on actual API
-        )
-
-    def get_items(self) -> list[BoardItem]:
-        """Get board items for client-side orchestration."""
-        return self._items
+        position: tuple[int, int, int, int] | None,
+    ) -> dict[str, Any]:
+        """Build text panel dictionary for API."""
+        panel = {
+            "type": "text",
+            "text_panel": {"content": content}
+        }
+        if position:
+            panel["position"] = {
+                "x_coordinate": position[0],
+                "y_coordinate": position[1],
+                "width": position[2],
+                "height": position[3],
+            }
+        return panel
 ```
 
 ---
 
-## 6. DerivedColumnBuilder (New Resource)
+## Panel Layout Behavior
 
-Need to add wrapper for Calculated Fields (Derived Columns) API.
+### Manual Layout
+- **Single unified section** - queries, SLOs, and text panels can be mixed in any position
+- User explicitly sets `position=(x, y, width, height)` for every panel
+- No automatic sectioning or offsetting
+- Full control over placement
+- **All panel types are equal** - no special SLO section
+
+### Auto Layout
+- **Panels arranged in order added** to the builder
+- Order matters: panels flow in the sequence of `.query()`, `.slo()`, `.text()` calls
+- No positions needed - Honeycomb calculates layout
+- **All panel types are equal** - arranged in a single flow
+
+### Examples
+
+**Manual layout mixing all types:**
+```python
+BoardBuilder("Dashboard")
+    .manual_layout()
+    .slo("slo-1", position=(0, 0, 4, 6))      # Top left
+    .query(qb1, position=(4, 0, 8, 6))        # Top right
+    .text("Notes", position=(0, 6, 6, 4))     # Bottom left
+    .query(qb2, position=(6, 6, 6, 4))        # Bottom right
+    # All types mixed together - no sections
+```
+
+**Auto layout respects order:**
+```python
+BoardBuilder("Dashboard")
+    .auto_layout()
+    .query(qb1)    # Appears first
+    .query(qb2)    # Appears second
+    .slo("slo-1")  # Appears third
+    .text("Notes") # Appears fourth
+    # Honeycomb arranges in this exact order
+```
+
+---
+
+## Usage Examples
+
+### Simple Auto-Layout Board
 
 ```python
-class DerivedColumnCreate(BaseModel):
-    """Model for creating a derived column (calculated field)."""
-    alias: str = Field(description="Name of the derived column")
-    expression: str = Field(description="Expression to calculate the value")
-    description: str | None = Field(default=None, description="Human-readable description")
-
-    def model_dump_for_api(self) -> dict:
-        data = {"alias": self.alias, "expression": self.expression}
-        if self.description:
-            data["description"] = self.description
-        return data
-
-
-class DerivedColumn(BaseModel):
-    """A derived column (calculated field) response model."""
-    id: str
-    alias: str
-    expression: str
-    description: str | None = None
-    created_at: datetime | None = None
-    updated_at: datetime | None = None
-
-
-class DerivedColumnBuilder:
-    """Builder for derived columns.
-
-    Example:
-        dc = (
-            DerivedColumnBuilder("request_success")
-            .expression("IF(LT($status_code, 400), 1, 0)")
-            .description("1 if request succeeded, 0 otherwise")
-            .build()
+board = await client.boards.create_from_bundle_async(
+    BoardBuilder("Service Dashboard")
+        .description("Request metrics and latency tracking")
+        .auto_layout()
+        .tag("team", "platform")
+        .query(
+            QueryBuilder()
+                .dataset("api-logs")
+                .last_24_hours()
+                .count()
+                .group_by("service")
+                .name("Request Count"),
+            style="graph"
         )
-    """
-
-    def __init__(self, alias: str):
-        self._alias = alias
-        self._expression: str | None = None
-        self._description: str | None = None
-
-    def expression(self, expr: str) -> DerivedColumnBuilder:
-        """Set the expression for the derived column."""
-        self._expression = expr
-        return self
-
-    def description(self, desc: str) -> DerivedColumnBuilder:
-        """Set the description."""
-        self._description = desc
-        return self
-
-    def build(self) -> DerivedColumnCreate:
-        if not self._expression:
-            raise ValueError("Expression is required")
-        return DerivedColumnCreate(
-            alias=self._alias,
-            expression=self._expression,
-            description=self._description,
+        .query(
+            QueryBuilder()
+                .dataset("api-logs")
+                .last_1_hour()
+                .avg("duration_ms")
+                .group_by("endpoint")
+                .limit(10)
+                .name("Avg Latency"),
+            style="table"
         )
-```
-
----
-
-## Implementation Order
-
-1. **Phase 1: Foundation** ✅
-   - [x] RecipientMixin + RecipientBuilder
-   - [x] DerivedColumnCreate model + DerivedColumns resource wrapper
-
-2. **Phase 2: TriggerBuilder** ✅
-   - [x] TriggerBuilder extending QueryBuilder
-   - [x] Update triggers.md docs
-   - [x] Add unit tests
-
-2.5. **Phase 2.5: Enhanced TriggerBuilder + TagsMixin** ✅
-   - [x] Add TagsMixin (for Triggers, Boards, SLOs)
-   - [x] Add tags support to TriggerBuilder
-   - [x] Add baseline threshold support to TriggerBuilder
-   - [x] Add frequency vs duration validation
-   - [x] Add exceeded_limit range validation (1-5)
-   - [x] Add tests for tags, baseline, and validation
-   - [x] Update triggers.md docs
-
-3. **Phase 3: SLOBuilder**
-   - [x] BurnAlertBuilder
-   - [x] SLOBuilder + SLOBundle
-   - [x] Client methods for creating SLO bundles
-   - [x] Update slos.md docs
-
-4. **Phase 4: MarkerBuilder**
-   - [x] MarkerBuilder
-   - [x] Update markers.md docs
-
-5. **Phase 5: BoardBuilder**
-   - [ ] BoardBuilder + BoardItem types
-   - [ ] Client orchestration for board creation
-   - [ ] Update boards.md docs
-
-6. **Phase 6: Cleanup**
-   - [ ] Update all example code
-   - [ ] Update README.md
-   - [ ] Run full CI
-
----
-
-## Documentation Guidelines for Builders
-
-Based on lessons learned from TriggerBuilder documentation:
-
-### 1. Use Async/Sync Tabs
-
-Use Material for MkDocs tab syntax for all code examples:
-
-```markdown
-=== "Async"
-
-    ```python
-    async with HoneycombClient(api_key="...") as client:
-        result = await client.resource.method_async(...)
-    ```
-
-=== "Sync"
-
-    ```python
-    with HoneycombClient(api_key="...", sync=True) as client:
-        result = client.resource.method(...)
-    ```
-```
-
-### 2. Progressive Complexity Examples
-
-Show 3 examples that build in complexity:
-
-**Simple** - Minimal viable example (5-7 lines)
-- Single filter
-- Basic threshold/configuration
-- One recipient
-- Purpose: Show the quickest path to success
-
-**Moderate** - Real-world usage (10-15 lines)
-- Multiple filters or grouping
-- Advanced configuration (exceeded_limit, custom frequency, etc.)
-- 2-3 recipients
-- Purpose: Show common production patterns
-
-**High Complexity** - Full feature showcase (15-25 lines)
-- All/most builder features used
-- Multiple recipients of different types
-- Advanced options (alert_on_true, environment-wide, etc.)
-- Purpose: Demonstrate full capabilities
-
-### 3. Reference Tables Not Code Dumps
-
-**DON'T** show every option in code:
-```python
-# Bad - showing all threshold methods in one code block
-.threshold_gt(100)
-.threshold_gte(100)
-.threshold_lt(100)
-.threshold_lte(100)
-```
-
-**DO** use tables for comprehensive reference:
-
-| Method | Description |
-|--------|-------------|
-| `.threshold_gt(value)` | Trigger when result > value |
-| `.threshold_gte(value)` | Trigger when result >= value |
-| `.threshold_lt(value)` | Trigger when result < value |
-| `.threshold_lte(value)` | Trigger when result <= value |
-
-### 4. Concise Composition Explanations
-
-**DON'T** use marketing language:
-> "Key Benefits: Amazing fluent interface! Convenient shortcuts! Super powerful!"
-
-**DO** explain technical composition concisely:
-> "`TriggerBuilder` composes `QueryBuilder` (for query specification) and `RecipientMixin` (for notification management) into a single fluent interface, allowing you to define queries, thresholds, and recipients in one expression without separately constructing each component."
-
-### 5. Include Advanced Usage Section
-
-Always provide non-builder alternatives in an "Advanced Usage" section:
-
-- **Manual construction** - Building with separate components
-- **Alternative APIs** - Other ways to achieve the same result (e.g., saved queries)
-- **Low-level APIs** - Direct model construction when needed
-
-This shows users:
-- The builder is optional, not mandatory
-- How to work around builder limitations
-- The underlying API structure
-
-### 6. Document Structure Template
-
-```markdown
-# Working with [Resource]
-
-Brief overview of what the resource does.
-
-## Basic Operations
-
-### List [Resources]
-=== "Async" / === "Sync" examples
-
-### Get a Specific [Resource]
-Simple async example
-
-### Delete a [Resource]
-Simple async example
-
-## Creating [Resources] with [Builder]
-
-One sentence explaining what the builder composes.
-
-### Simple Example
-=== "Async" / === "Sync" tabs
-
-### Moderate Complexity
-=== "Async" / === "Sync" tabs
-
-### High Complexity
-=== "Async" / === "Sync" tabs
-
-## [Builder] Reference
-
-### [Category] Methods
-Table of methods
-
-### [Category] Methods (from Parent)
-Brief summary + link to full parent docs + inline highlights
-
-## Important Constraints
-
-### [Constraint Name]
-Code example showing valid + invalid with error messages
-
-## Advanced Usage
-
-### Building Without [Builder]
-=== "Async" / === "Sync" tabs showing manual construction
-
-### [Alternative Approach]
-Alternative patterns (saved queries, direct models, etc.)
-
-## Updating [Resources]
-=== "Async" / === "Sync" update examples
-
-## See Also
-- Links to API reference
-- Links to related guides
-```
-
-### 7. Validation Requirements
-
-All documentation code examples must pass `make validate-docs` which:
-- Compiles all code blocks for syntax errors
-- Ensures imports are correct
-- Validates examples work with current API
-
----
-
-## Breaking Changes
-
-Since this client isn't shipped yet, we can make breaking changes freely:
-
-1. **TriggerCreate** - Will still work, but TriggerBuilder is preferred
-2. **QueryBuilder.build_for_trigger()** - Keep for backwards compat, but TriggerBuilder is preferred
-3. **RecipientCreate** - Will still work, RecipientBuilder is a convenience
-
----
-
-## Export Updates
-
-```python
-# src/honeycomb/__init__.py
-from honeycomb.models.query_builder import (
-    QueryBuilder,
-    Calculation,
-    Filter,
-    Order,
-    Having,
-    CalcOp,
-    FilterOp,
-    OrderDirection,
-    FilterCombination,
+        .build()
 )
-from honeycomb.models.trigger_builder import TriggerBuilder
-from honeycomb.models.recipient_builder import RecipientBuilder, RecipientMixin
-from honeycomb.models.slo_builder import SLOBuilder, SLOBundle, BurnAlertBuilder
-from honeycomb.models.marker_builder import MarkerBuilder
-from honeycomb.models.board_builder import BoardBuilder, BoardPosition, BoardItem
-from honeycomb.models.derived_column_builder import DerivedColumnBuilder, DerivedColumnCreate
 ```
+
+### Complex Manual-Layout Board
+
+```python
+board = await client.boards.create_from_bundle_async(
+    BoardBuilder("Production Dashboard")
+        .description("Complete service health monitoring")
+        .manual_layout()
+        .tag("team", "platform")
+        .tag("environment", "production")
+        .preset_filter("service", "Service")
+        .preset_filter("environment", "Environment")
+        # Top left - large graph with visualization settings
+        .query(
+            QueryBuilder()
+                .dataset("api-logs")
+                .last_24_hours()
+                .count()
+                .group_by("service")
+                .name("Request Count")
+                .description("Total requests by service over 24h"),
+            position=(0, 0, 9, 6),
+            style="graph",
+            visualization={"hide_markers": True, "utc_xaxis": True}
+        )
+        # Top right - SLO panel
+        .slo("slo-id-123", position=(9, 0, 3, 6))
+        # Middle left - table view
+        .query(
+            QueryBuilder()
+                .dataset("api-logs")
+                .last_1_hour()
+                .avg("duration_ms")
+                .group_by("endpoint")
+                .limit(10)
+                .name("Latency"),
+            position=(0, 6, 6, 5),
+            style="table"
+        )
+        # Middle right - combo view
+        .query(
+            QueryBuilder()
+                .dataset("api-logs")
+                .last_2_hours()
+                .count()
+                .gte("status_code", 400)
+                .group_by("status_code")
+                .name("Errors"),
+            position=(6, 6, 6, 5),
+            style="combo"
+        )
+        # Bottom - text panel (full width)
+        .text(
+            "## Monitoring Guidelines\n\n- Watch for latency > 500ms\n- Error rate should stay < 1%",
+            position=(0, 11, 12, 3)
+        )
+        .build()
+)
+```
+
+### Using Existing Queries
+
+```python
+board = await client.boards.create_from_bundle_async(
+    BoardBuilder("Dashboard")
+        .auto_layout()
+        .query("existing-query-id", "existing-annotation-id", style="graph")
+        .query("another-query-id", "another-annotation-id", style="table")
+        .build()
+)
+```
+
+---
+
+## Implementation Checklist
+
+### Phase 5.5a: Enhance QueryBuilder
+- [ ] Add `self._dataset: str | None = None` to `__init__()`
+- [ ] Add `.dataset(dataset_slug)`, `.environment_wide()`, `.get_dataset()`
+- [ ] Add `self._query_name`, `self._query_description` to `__init__()`
+- [ ] Add `.name(name)`, `.description(desc)`, `.has_name()`, `.get_name()`, `.get_description()`
+- [ ] Remove `.annotate()` method and related code
+- [ ] Update `create_with_annotation_async()` to use `.get_name()` and `.get_description()`
+- [ ] Add unit tests for all new methods
+
+### Phase 5.5b: BoardBundle Structures
+- [ ] Create `QueryBuilderPanel` dataclass in `board_builder.py`
+- [ ] Create `ExistingQueryPanel` dataclass in `board_builder.py`
+- [ ] Update `SLOPanel` dataclass (change position to tuple)
+- [ ] Update `TextPanel` dataclass (change position to tuple)
+- [ ] Create `BoardBundle` dataclass in `board_builder.py`
+- [ ] Add all to `models/__init__.py` exports
+- [ ] Add all to `__init__.py` exports
+
+### Phase 5.5c: Update BoardBuilder
+- [ ] Update `__init__()` to use typed panel lists
+- [ ] Update `.query()` signature and implementation
+- [ ] Update `.slo()` to use tuple position
+- [ ] Update `.text()` to use tuple position
+- [ ] Update `.build()` to return `BoardBundle` instead of `BoardCreate`
+- [ ] Remove old `BoardPanel`, `BoardQueryPanel`, `BoardSLOPanel`, `BoardTextPanel` classes
+- [ ] Remove `BoardPanelPosition` class (or deprecate)
+- [ ] Update manual layout validation
+
+### Phase 5.5d: Client Orchestration
+- [ ] Implement `boards.create_from_bundle_async(bundle: BoardBundle)` in `boards.py`
+- [ ] Implement `boards.create_from_bundle(bundle: BoardBundle)` (sync wrapper)
+- [ ] Add `_build_query_panel_dict()` helper method
+- [ ] Add `_build_slo_panel_dict()` helper method
+- [ ] Add `_build_text_panel_dict()` helper method
+- [ ] Keep existing `boards.create_async(BoardCreate)` for backward compatibility
+
+### Phase 5.5e: Update Examples
+- [ ] Update `docs/examples/boards/builder_board.py` simple example
+- [ ] Update `docs/examples/boards/builder_board.py` complex example
+- [ ] Remove QueryBuilder imports (use inline only)
+- [ ] Update `docs/usage/boards.md` to explain new pattern
+- [ ] Add note about `.name()` requirement for board queries
+
+### Phase 5.5f: Update Tests
+- [ ] Add QueryBuilder unit tests: `.dataset()`, `.name()`, `.description()`
+- [ ] Update BoardBuilder unit tests for tuple positions
+- [ ] Update BoardBuilder unit tests for QueryBuilder acceptance
+- [ ] Update integration tests to use `create_from_bundle_async()`
+- [ ] Test visualization dict configurations
+- [ ] Test both QueryBuilder and existing query ID patterns
+
+---
+
+## Breaking Changes (Phase 5.5)
+
+Acceptable since library hasn't shipped:
+
+1. **BoardBuilder.build() return type**: `BoardCreate` → `BoardBundle`
+2. **Board creation method**: `boards.create_async(builder.build())` → `boards.create_from_bundle_async(builder.build())`
+3. **Position type**: `BoardPanelPosition(x_coordinate=0, ...)` → `position=(0, 0, 9, 6)`
+4. **Panel parameter**: `visualization_settings` → `visualization`
+5. **QueryBuilder**: Remove `.annotate()`, use `.name()` + `.description()`
+
+---
+
+## Future Phases
+
+### Phase 6: SLOBuilder Integration into BoardBuilder (Future)
+
+Allow inline SLOBuilder in BoardBuilder:
+
+```python
+BoardBuilder("Dashboard")
+    .slo(
+        SLOBuilder("API Availability")
+            .dataset("api-logs")
+            .target_nines(3)
+            .sli(alias="success_rate"),
+        position=(9, 0, 3, 6)
+    )
+```
+
+Orchestration creates SLO from builder, uses returned ID for panel.
+
+### Phase 7: Final Cleanup
+- [ ] Update README.md with builder examples
+- [ ] Update all documentation for consistency
+- [ ] Run full CI
+- [ ] Final review and polish
+
+---
+
+## Key Design Principles
+
+### Builder Pattern Purity
+- `.build()` returns data structures, never makes API calls
+- Client orchestration methods handle API calls
+- Consistent pattern: Builder → Bundle → `create_from_bundle_async()`
+
+### Composition Over Duplication
+- RecipientMixin shared by TriggerBuilder and BurnAlertBuilder
+- TagsMixin shared by TriggerBuilder and BoardBuilder
+- QueryBuilder embedded in BoardBuilder (no imports needed)
+
+### Ergonomic APIs
+- Single fluent call for complex operations
+- Sensible defaults (environment-wide dataset, auto-layout, graph style)
+- Support both simple and advanced use cases
+- Clear method names (`.name()` not `.annotate()`)
+
+### Validation at Build Time
+- Triggers: single calc, time_range ≤ 3600s, no absolute time
+- SLOs: require dataset, target, SLI
+- Boards (manual): all panels need positions
+- Boards (QueryBuilder): requires `.name()` for annotation
+
+---
+
+## File Structure
+
+```
+src/honeycomb/models/
+├── query_builder.py          # QueryBuilder with .dataset(), .name(), .description()
+├── query_annotations.py      # QueryAnnotation, QueryAnnotationCreate
+├── trigger_builder.py        # TriggerBuilder (extends QueryBuilder + RecipientMixin)
+├── recipient_builder.py      # RecipientBuilder + RecipientMixin
+├── slo_builder.py            # SLOBuilder, BurnAlertBuilder, SLOBundle
+├── marker_builder.py         # MarkerBuilder
+├── board_builder.py          # BoardBuilder, BoardBundle, panel dataclasses
+├── tags_mixin.py             # TagsMixin
+└── __init__.py               # Export all builders
+
+src/honeycomb/resources/
+├── queries.py                # create_with_annotation_async()
+├── query_annotations.py      # QueryAnnotationsResource (full CRUD)
+├── boards.py                 # create_from_bundle_async()
+├── slos.py                   # create_from_bundle_async()
+└── ...
+```
+
+---
+
+## Test Coverage
+
+### Unit Tests: 481 passing
+- QueryBuilder: 110+ tests
+- SLOBuilder + BurnAlertBuilder: 44 tests
+- MarkerBuilder: 11 tests
+- BoardBuilder: 26 tests
+- RecipientBuilder, DerivedColumnBuilder, etc.
+
+### Integration Tests: 46 passing (100%)
+- All documentation examples tested against live API
+- Full CRUD lifecycles for all resources
+- Builder patterns validated end-to-end
+
+---
+
+## Documentation Standards
+
+### Progressive Complexity Examples
+- **Simple** - 5-10 lines, minimal config, single feature
+- **Moderate** - 15-20 lines, realistic usage, 2-3 features
+- **Complex** - 25-35 lines, full feature showcase
+
+### All Examples Must Be Integration Tested
+Examples live in `docs/examples/*.py`, tests in `tests/integration/test_doc_examples.py`.
+
+### Use Reference Tables
+Tables for method listings, not code dumps showing every option.
+
+### Include "Advanced Usage" Sections
+Show non-builder alternatives for fine-grained control.

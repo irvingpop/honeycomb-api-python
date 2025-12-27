@@ -2,12 +2,7 @@
 
 from __future__ import annotations
 
-from honeycomb import (
-    Board,
-    BoardBuilder,
-    BoardPanelPosition,
-    HoneycombClient,
-)
+from honeycomb import Board, HoneycombClient
 
 
 # start_example:create_with_builder
@@ -15,52 +10,48 @@ async def create_board_with_builder(
     client: HoneycombClient,
     dataset: str,
 ) -> str:
-    """Create a service dashboard with query panels using BoardBuilder.
+    """Create a service dashboard with inline QueryBuilder instances.
 
     This example demonstrates:
-    - Creating queries with annotations using QueryBuilder.annotate()
+    - Inline QueryBuilder instances with .name() and .description()
+    - Automatic query + annotation creation via create_from_bundle_async()
     - Multiple query panels with different visualization styles
     - Auto-layout for automatic panel arrangement
     - Tags for board organization
     """
-    from honeycomb import QueryBuilder
+    from honeycomb import BoardBuilder, QueryBuilder
 
-    # Create queries with annotations (name + description)
-    # Query 1: Request count (graph style)
-    count_builder = (
-        QueryBuilder()
-        .last_24_hours()
-        .count()
-        .group_by("service")
-        .annotate("Request Count", "Total requests by service over 24 hours")
-    )
-    q1, q1_annotation = await client.queries.create_with_annotation_async(dataset, count_builder)
-
-    # Query 2: Average latency (table style)
-    latency_builder = (
-        QueryBuilder()
-        .last_1_hour()
-        .avg("duration_ms")
-        .group_by("endpoint")
-        .limit(10)
-        .annotate("Avg Latency", "Top 10 endpoints by average latency")
-    )
-    q2, q2_annotation = await client.queries.create_with_annotation_async(dataset, latency_builder)
-
-    # Build board with query panels
-    board = (
+    # Single fluent call with inline QueryBuilder instances
+    created = await client.boards.create_from_bundle_async(
         BoardBuilder("Service Health Dashboard")
         .description("Request metrics and latency tracking")
         .auto_layout()
         .tag("team", "platform")
         .tag("service", "api")
-        # Add query panels with different styles
-        .query(q1.id, q1_annotation, style="graph")
-        .query(q2.id, q2_annotation, style="table")
+        # Query panels with inline QueryBuilder
+        .query(
+            QueryBuilder()
+            .dataset(dataset)
+            .last_24_hours()
+            .count()
+            .group_by("service")
+            .name("Request Count")
+            .description("Total requests by service over 24 hours"),
+            style="graph",
+        )
+        .query(
+            QueryBuilder()
+            .dataset(dataset)
+            .last_1_hour()
+            .avg("duration_ms")
+            .group_by("endpoint")
+            .limit(10)
+            .name("Avg Latency")
+            .description("Top 10 endpoints by average latency"),
+            style="table",
+        )
         .build()
     )
-
-    created = await client.boards.create_async(board)
     return created.id
 # end_example:create_with_builder
 
@@ -74,50 +65,18 @@ async def create_complex_board(
     """Create a comprehensive dashboard with all panel types and advanced features.
 
     This example demonstrates:
+    - Inline QueryBuilder instances with automatic query creation
     - Multiple query panels with different styles (graph, table, combo)
     - SLO panel for availability tracking
     - Text panel for notes
     - Advanced visualization settings (hiding markers, UTC time)
     - Preset filters for dynamic filtering
-    - Manual layout with precise positioning
+    - Manual layout with precise positioning using tuples
     """
-    from honeycomb import QueryBuilder
+    from honeycomb import BoardBuilder, QueryBuilder
 
-    # Create multiple queries with annotations
-    # Query 1: Request count over time (graph with visualization settings)
-    count_builder = (
-        QueryBuilder()
-        .last_24_hours()
-        .count()
-        .group_by("service")
-        .annotate("Request Count", "Total requests by service over 24 hours")
-    )
-    q1, q1_annotation = await client.queries.create_with_annotation_async(dataset, count_builder)
-
-    # Query 2: Average duration (table)
-    latency_builder = (
-        QueryBuilder()
-        .last_1_hour()
-        .avg("duration_ms")
-        .group_by("endpoint")
-        .limit(10)
-        .annotate("Avg Latency", "Top 10 endpoints by average latency")
-    )
-    q2, q2_annotation = await client.queries.create_with_annotation_async(dataset, latency_builder)
-
-    # Query 3: Error rate (combo - graph + table)
-    error_builder = (
-        QueryBuilder()
-        .last_2_hours()
-        .count()
-        .gte("status_code", 400)
-        .group_by("status_code")
-        .annotate("Error Rate", "HTTP errors by status code")
-    )
-    q3, q3_annotation = await client.queries.create_with_annotation_async(dataset, error_builder)
-
-    # Build comprehensive board with manual layout
-    board = (
+    # Single fluent call with inline QueryBuilder and manual positioning
+    created = await client.boards.create_from_bundle_async(
         BoardBuilder("Production Monitoring Dashboard")
         .description("Complete service health monitoring with queries, SLOs, and notes")
         .manual_layout()
@@ -128,40 +87,52 @@ async def create_complex_board(
         .preset_filter("environment", "Environment")
         # Top row: Request count (large graph with advanced settings)
         .query(
-            q1.id,
-            q1_annotation,
-            position=BoardPanelPosition(x_coordinate=0, y_coordinate=0, width=9, height=6),
+            QueryBuilder()
+            .dataset(dataset)
+            .last_24_hours()
+            .count()
+            .group_by("service")
+            .name("Request Count")
+            .description("Total requests by service over 24 hours"),
+            position=(0, 0, 9, 6),
             style="graph",
-            visualization_settings={"hide_markers": True, "utc_xaxis": True},
+            visualization={"hide_markers": True, "utc_xaxis": True},
         )
         # Top right: SLO status
-        .slo(
-            slo_id,
-            position=BoardPanelPosition(x_coordinate=9, y_coordinate=0, width=3, height=6),
-        )
+        .slo(slo_id, position=(9, 0, 3, 6))
         # Middle left: Latency table
         .query(
-            q2.id,
-            q2_annotation,
-            position=BoardPanelPosition(x_coordinate=0, y_coordinate=6, width=6, height=5),
+            QueryBuilder()
+            .dataset(dataset)
+            .last_1_hour()
+            .avg("duration_ms")
+            .group_by("endpoint")
+            .limit(10)
+            .name("Avg Latency")
+            .description("Top 10 endpoints by average latency"),
+            position=(0, 6, 6, 5),
             style="table",
         )
         # Middle right: Error rate combo view
         .query(
-            q3.id,
-            q3_annotation,
-            position=BoardPanelPosition(x_coordinate=6, y_coordinate=6, width=6, height=5),
+            QueryBuilder()
+            .dataset(dataset)
+            .last_2_hours()
+            .count()
+            .gte("status_code", 400)
+            .group_by("status_code")
+            .name("Error Rate")
+            .description("HTTP errors by status code"),
+            position=(6, 6, 6, 5),
             style="combo",
         )
         # Bottom: Notes panel (full width)
         .text(
             "## Monitoring Guidelines\n\n- Watch for latency > 500ms\n- Error rate should stay < 1%\n- Check SLO during peak hours",
-            position=BoardPanelPosition(x_coordinate=0, y_coordinate=11, width=12, height=3),
+            position=(0, 11, 12, 3),
         )
         .build()
     )
-
-    created = await client.boards.create_async(board)
     return created.id
 # end_example:create_complex
 
@@ -181,19 +152,20 @@ async def get_board(client: HoneycombClient, board_id: str) -> Board:
 
 
 # start_example:update
-async def update_board(client: HoneycombClient, board_id: str) -> Board:
+async def update_board(client: HoneycombClient, board_id: str, dataset: str) -> Board:
     """Update a board's name and description."""
-    existing = await client.boards.get_async(board_id)
+    from honeycomb import BoardCreate
 
-    # Use BoardBuilder to recreate with updates
-    board = (
-        BoardBuilder("Updated Service Health Dashboard")
-        .description("Updated: Comprehensive monitoring for API service")
-        .auto_layout()
-        .build()
+    # For updates, we need to use BoardCreate directly (not BoardBundle)
+    # since we're not creating new queries
+    board_create = BoardCreate(
+        name="Updated Service Health Dashboard",
+        description="Updated: Comprehensive monitoring for API service",
+        type="flexible",
+        layout_generation="auto",
     )
 
-    return await client.boards.update_async(board_id, board)
+    return await client.boards.update_async(board_id, board_create)
 # end_example:update
 
 

@@ -89,25 +89,26 @@ class QueriesResource(BaseResource):
         """Create a query and annotation together from QueryBuilder (async).
 
         This is a convenience method for QueryBuilder instances that have
-        annotation metadata (.annotate() was called). It creates both the
-        query and its annotation in one call.
+        query names (.name() was called). It creates both the query and
+        its annotation in one call.
 
         Args:
             dataset: The dataset slug.
-            builder: QueryBuilder with .annotate() called
+            builder: QueryBuilder with .name() called
 
         Returns:
             Tuple of (Query object, annotation_id)
 
         Raises:
-            ValueError: If the QueryBuilder doesn't have annotation metadata
+            ValueError: If the QueryBuilder doesn't have a name
 
         Example:
             >>> query_builder = (
             ...     QueryBuilder()
             ...     .last_1_hour()
             ...     .count()
-            ...     .annotate("Error Count", "Tracks errors over time")
+            ...     .name("Error Count")
+            ...     .description("Tracks errors over time")
             ... )
             >>> query, annotation_id = await client.queries.create_with_annotation_async(
             ...     "my-dataset", query_builder
@@ -116,10 +117,10 @@ class QueriesResource(BaseResource):
         """
         from ..models.query_annotations import QueryAnnotationCreate
 
-        # Check if this has annotation metadata
-        if not hasattr(builder, "has_annotation") or not builder.has_annotation():
+        # Check if this has a name
+        if not hasattr(builder, "has_name") or not builder.has_name():
             raise ValueError(
-                "create_with_annotation requires a QueryBuilder with .annotate() called. "
+                "create_with_annotation requires a QueryBuilder with .name() called. "
                 "Use create_async() for plain QuerySpec objects."
             )
 
@@ -128,9 +129,9 @@ class QueriesResource(BaseResource):
 
         # Create the annotation
         annotation = QueryAnnotationCreate(
-            name=builder.get_annotation_name() or "",
+            name=builder.get_name() or "",
             query_id=query.id,
-            description=builder.get_annotation_description(),
+            description=builder.get_description(),
         )
         created_annotation = await self._client.query_annotations.create_async(dataset, annotation)
 
