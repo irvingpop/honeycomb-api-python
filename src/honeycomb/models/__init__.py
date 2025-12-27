@@ -8,6 +8,7 @@ from .datasets import Dataset, DatasetCreate
 from .derived_columns import DerivedColumn, DerivedColumnBuilder, DerivedColumnCreate
 from .environments import Environment, EnvironmentColor, EnvironmentCreate, EnvironmentUpdate
 from .events import BatchEvent, BatchEventResult
+from .marker_builder import MarkerBuilder
 from .markers import Marker, MarkerCreate, MarkerSetting, MarkerSettingCreate
 from .queries import Query, QueryResult, QueryResultData, QuerySpec
 from .query_builder import (
@@ -94,6 +95,7 @@ __all__ = [
     "DerivedColumnBuilder",
     # Markers
     "Marker",
+    "MarkerBuilder",
     "MarkerCreate",
     "MarkerSetting",
     "MarkerSettingCreate",

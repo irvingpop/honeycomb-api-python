@@ -34,7 +34,55 @@ Markers annotate your data with events like deployments, configuration changes, 
 %}
 ```
 
-## Creating Markers
+## Creating Markers with MarkerBuilder
+
+`MarkerBuilder` provides a fluent interface for creating markers with convenient helpers for time configuration and common patterns.
+
+```python
+{%
+   include "../examples/markers/builder_marker.py"
+   start="# start_example:create_with_builder"
+   end="# end_example:create_with_builder"
+%}
+```
+
+## MarkerBuilder Reference
+
+### Basic Configuration
+
+| Method | Description |
+|--------|-------------|
+| `.type(marker_type)` | Set marker type (required) - groups similar markers |
+| `.url(url)` | Set target URL (optional) - link to PR, build, incident |
+
+### Time Configuration
+
+| Method | Description |
+|--------|-------------|
+| `.start_time(timestamp)` | Set start time as Unix timestamp |
+| `.end_time(timestamp)` | Set end time as Unix timestamp (for duration markers) |
+| `.duration_minutes(minutes)` | Set duration from now in minutes |
+| `.duration_hours(hours)` | Set duration from now in hours |
+
+### Static Methods
+
+| Method | Description |
+|--------|-------------|
+| `MarkerBuilder.setting(type, color)` | Create marker setting (color configuration) |
+
+### Marker Types
+
+Common marker type conventions:
+
+- `deploy` - Deployments and releases
+- `maintenance` - Planned maintenance windows
+- `incident` - Incidents and outages
+- `config-change` - Configuration changes
+- `feature-flag` - Feature flag toggles
+
+## Creating Markers Manually
+
+For simple cases or when you need fine-grained control:
 
 ```python
 {%

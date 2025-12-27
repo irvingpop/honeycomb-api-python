@@ -50,6 +50,7 @@ from .models import (
     FilterOp,
     Having,
     Marker,
+    MarkerBuilder,
     MarkerCreate,
     MarkerSetting,
     MarkerSettingCreate,
@@ -151,6 +152,7 @@ __all__ = [
     "DerivedColumnBuilder",
     # Models - Markers
     "Marker",
+    "MarkerBuilder",
     "MarkerCreate",
     "MarkerSetting",
     "MarkerSettingCreate",

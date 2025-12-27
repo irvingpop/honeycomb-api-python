@@ -1218,8 +1218,8 @@ class DerivedColumnBuilder:
    - [x] Update slos.md docs
 
 4. **Phase 4: MarkerBuilder**
-   - [ ] MarkerBuilder
-   - [ ] Update markers.md docs
+   - [x] MarkerBuilder
+   - [x] Update markers.md docs
 
 5. **Phase 5: BoardBuilder**
    - [ ] BoardBuilder + BoardItem types

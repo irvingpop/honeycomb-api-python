@@ -635,6 +635,21 @@ class TestMarkerExamples:
         markers = await list_markers(client, ensure_dataset)
         await test_list_markers(markers)
 
+    @pytest.mark.asyncio
+    async def test_builder_marker(self, client: HoneycombClient, ensure_dataset: str) -> None:
+        """Test marker creation with MarkerBuilder."""
+        from docs.examples.markers.builder_marker import (
+            cleanup,
+            create_marker_with_builder,
+            test_lifecycle,
+        )
+
+        marker_id = await create_marker_with_builder(client, ensure_dataset)
+        try:
+            await test_lifecycle(client, ensure_dataset, marker_id)
+        finally:
+            await cleanup(client, ensure_dataset, marker_id)
+
 
 class TestSLOExamples:
     """Test SLO examples from docs/examples/slos/.
