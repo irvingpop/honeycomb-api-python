@@ -147,4 +147,11 @@ async def test_update_dataset(dataset: Dataset) -> None:
 # CLEANUP
 async def cleanup(client: HoneycombClient, dataset_slug: str) -> None:
     """Clean up resources created by example."""
-    await client.datasets.delete_async(dataset_slug)
+    from honeycomb import HoneycombAPIError
+
+    try:
+        await client.datasets.delete_async(dataset_slug)
+    except HoneycombAPIError as e:
+        # Datasets have delete protection by default - ignore 409 errors
+        if e.status_code != 409:
+            raise

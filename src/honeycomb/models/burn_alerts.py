@@ -17,11 +17,15 @@ class BurnAlertType(str, Enum):
 
 
 class BurnAlertRecipient(BaseModel):
-    """A recipient for burn alert notifications."""
+    """A recipient for burn alert notifications.
 
-    id: str = Field(description="ID of the recipient")
+    Either id (recommended) OR type+target (deprecated) must be provided.
+    """
+
+    id: str | None = Field(default=None, description="ID of the recipient")
     type: str | None = Field(default=None, description="Type of recipient (email, slack, etc)")
     target: str | None = Field(default=None, description="Target address (for backwards compat)")
+    details: dict[str, Any] | None = Field(default=None, description="Additional details")
 
 
 class BurnAlertCreate(BaseModel):
@@ -52,13 +56,29 @@ class BurnAlertCreate(BaseModel):
 
     def model_dump_for_api(self) -> dict[str, Any]:
         """Serialize for API request."""
+        # Build recipient list - support both id-based and inline (type+target) formats
+        recipients_data = []
+        for r in self.recipients:
+            recipient_dict: dict[str, Any] = {}
+            if r.id:
+                # ID-based recipient (recommended)
+                recipient_dict["id"] = r.id
+                if r.type:
+                    recipient_dict["type"] = r.type
+            else:
+                # Inline recipient (deprecated but still supported)
+                if r.type:
+                    recipient_dict["type"] = r.type
+                if r.target:
+                    recipient_dict["target"] = r.target
+                if r.details:
+                    recipient_dict["details"] = r.details
+            recipients_data.append(recipient_dict)
+
         data: dict[str, Any] = {
             "alert_type": self.alert_type.value,
             "slo": {"id": self.slo_id},
-            "recipients": [
-                {"id": r.id, **({"type": r.type} if r.type else {})}
-                for r in self.recipients
-            ],
+            "recipients": recipients_data,
         }
 
         if self.description:

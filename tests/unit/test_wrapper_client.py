@@ -168,12 +168,12 @@ class TestPydanticModels:
         """Test BoardCreate model serialization."""
         board = BoardCreate(
             name="Test Board",
-            column_layout="multi",
-            style="visual",
+            description="A test board",
         )
         data = board.model_dump_for_api()
         assert data["name"] == "Test Board"
-        assert data["column_layout"] == "multi"
+        assert data["description"] == "A test board"
+        assert data["type"] == "flexible"
 
 
 # -------------------------------------------------------------------------

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from ..models.burn_alerts import BurnAlertCreate, BurnAlertRecipient
 from ..models.slos import SLO, SLOCreate
 from .base import BaseResource
 
 if TYPE_CHECKING:
     from ..client import HoneycombClient
+    from ..models.slo_builder import SLOBundle
 
 
 class SLOsResource(BaseResource):
@@ -105,6 +107,82 @@ class SLOsResource(BaseResource):
         await self._delete_async(self._build_path(dataset, slo_id))
 
     # -------------------------------------------------------------------------
+    # SLO Bundle creation helpers (async)
+    # -------------------------------------------------------------------------
+
+    async def create_from_bundle_async(self, bundle: SLOBundle) -> dict[str, SLO]:
+        """Create SLO(s) from an SLOBundle with automatic orchestration (async).
+
+        This method handles the full orchestration of creating an SLO bundle:
+        1. Creates derived column if needed (environment-wide or dataset-scoped)
+        2. Creates SLO in each specified dataset
+        3. Creates burn alerts for each SLO (if configured)
+
+        Args:
+            bundle: SLOBundle from SLOBuilder.build()
+
+        Returns:
+            Dictionary mapping dataset slugs to created SLO objects
+
+        Example:
+            >>> bundle = (
+            ...     SLOBuilder("API Availability")
+            ...     .dataset("api-logs")
+            ...     .target_nines(3)
+            ...     .sli(alias="success_rate", expression="IF(LT($status, 400), 1, 0)")
+            ...     .exhaustion_alert(
+            ...         BurnAlertBuilder(BurnAlertType.EXHAUSTION_TIME)
+            ...         .exhaustion_minutes(60)
+            ...         .email("oncall@example.com")
+            ...     )
+            ...     .build()
+            ... )
+            >>> slos = await client.slos.create_from_bundle_async(bundle)
+            >>> api_slo = slos["api-logs"]
+        """
+        created_slos: dict[str, SLO] = {}
+
+        # Step 1: Create derived column if needed
+        if bundle.derived_column:
+            if bundle.derived_column_environment_wide:
+                # Create as environment-wide derived column (use "__all__" dataset)
+                await self._client.derived_columns.create_async("__all__", bundle.derived_column)
+            else:
+                # Create in first dataset (single-dataset SLO)
+                await self._client.derived_columns.create_async(
+                    bundle.datasets[0], bundle.derived_column
+                )
+
+        # Step 2: Create SLO in each dataset
+        for dataset in bundle.datasets:
+            slo = await self.create_async(dataset, bundle.slo)
+            created_slos[dataset] = slo
+
+            # Step 3: Create burn alerts for this SLO
+            for alert_def in bundle.burn_alerts:
+                # Convert recipients to BurnAlertRecipient format
+                recipients = [BurnAlertRecipient(**recipient) for recipient in alert_def.recipients]
+
+                # Convert budget rate percent to per-million if needed
+                budget_rate_threshold = None
+                if alert_def.budget_rate_decrease_percent is not None:
+                    budget_rate_threshold = int(alert_def.budget_rate_decrease_percent * 10000)
+
+                burn_alert = BurnAlertCreate(
+                    alert_type=alert_def.alert_type,
+                    slo_id=slo.id,
+                    description=alert_def.description,
+                    exhaustion_minutes=alert_def.exhaustion_minutes,
+                    budget_rate_window_minutes=alert_def.budget_rate_window_minutes,
+                    budget_rate_decrease_threshold_per_million=budget_rate_threshold,
+                    recipients=recipients if recipients else [],
+                )
+
+                await self._client.burn_alerts.create_async(dataset, burn_alert)
+
+        return created_slos
+
+    # -------------------------------------------------------------------------
     # Sync methods
     # -------------------------------------------------------------------------
 
@@ -178,3 +256,82 @@ class SLOsResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use delete_async() for async mode, or pass sync=True to client")
         self._delete_sync(self._build_path(dataset, slo_id))
+
+    # -------------------------------------------------------------------------
+    # SLO Bundle creation helpers (sync)
+    # -------------------------------------------------------------------------
+
+    def create_from_bundle(self, bundle: SLOBundle) -> dict[str, SLO]:
+        """Create SLO(s) from an SLOBundle with automatic orchestration.
+
+        This method handles the full orchestration of creating an SLO bundle:
+        1. Creates derived column if needed (environment-wide or dataset-scoped)
+        2. Creates SLO in each specified dataset
+        3. Creates burn alerts for each SLO (if configured)
+
+        Args:
+            bundle: SLOBundle from SLOBuilder.build()
+
+        Returns:
+            Dictionary mapping dataset slugs to created SLO objects
+
+        Example:
+            >>> bundle = (
+            ...     SLOBuilder("API Availability")
+            ...     .dataset("api-logs")
+            ...     .target_nines(3)
+            ...     .sli(alias="success_rate", expression="IF(LT($status, 400), 1, 0)")
+            ...     .exhaustion_alert(
+            ...         BurnAlertBuilder(BurnAlertType.EXHAUSTION_TIME)
+            ...         .exhaustion_minutes(60)
+            ...         .email("oncall@example.com")
+            ...     )
+            ...     .build()
+            ... )
+            >>> slos = client.slos.create_from_bundle(bundle)
+            >>> api_slo = slos["api-logs"]
+        """
+        if not self._client.is_sync:
+            raise RuntimeError(
+                "Use create_from_bundle_async() for async mode, or pass sync=True to client"
+            )
+
+        created_slos: dict[str, SLO] = {}
+
+        # Step 1: Create derived column if needed
+        if bundle.derived_column:
+            if bundle.derived_column_environment_wide:
+                # Create as environment-wide derived column (use "__all__" dataset)
+                self._client.derived_columns.create("__all__", bundle.derived_column)
+            else:
+                # Create in first dataset (single-dataset SLO)
+                self._client.derived_columns.create(bundle.datasets[0], bundle.derived_column)
+
+        # Step 2: Create SLO in each dataset
+        for dataset in bundle.datasets:
+            slo = self.create(dataset, bundle.slo)
+            created_slos[dataset] = slo
+
+            # Step 3: Create burn alerts for this SLO
+            for alert_def in bundle.burn_alerts:
+                # Convert recipients to BurnAlertRecipient format
+                recipients = [BurnAlertRecipient(**recipient) for recipient in alert_def.recipients]
+
+                # Convert budget rate percent to per-million if needed
+                budget_rate_threshold = None
+                if alert_def.budget_rate_decrease_percent is not None:
+                    budget_rate_threshold = int(alert_def.budget_rate_decrease_percent * 10000)
+
+                burn_alert = BurnAlertCreate(
+                    alert_type=alert_def.alert_type,
+                    slo_id=slo.id,
+                    description=alert_def.description,
+                    exhaustion_minutes=alert_def.exhaustion_minutes,
+                    budget_rate_window_minutes=alert_def.budget_rate_window_minutes,
+                    budget_rate_decrease_threshold_per_million=budget_rate_threshold,
+                    recipients=recipients if recipients else [],
+                )
+
+                self._client.burn_alerts.create(dataset, burn_alert)
+
+        return created_slos

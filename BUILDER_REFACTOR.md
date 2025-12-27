@@ -1212,10 +1212,10 @@ class DerivedColumnBuilder:
    - [x] Update triggers.md docs
 
 3. **Phase 3: SLOBuilder**
-   - [ ] BurnAlertBuilder
-   - [ ] SLOBuilder + SLOBundle
-   - [ ] Client methods for creating SLO bundles
-   - [ ] Update slos.md docs
+   - [x] BurnAlertBuilder
+   - [x] SLOBuilder + SLOBundle
+   - [x] Client methods for creating SLO bundles
+   - [x] Update slos.md docs
 
 4. **Phase 4: MarkerBuilder**
    - [ ] MarkerBuilder

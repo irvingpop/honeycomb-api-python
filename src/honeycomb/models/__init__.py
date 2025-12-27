@@ -32,6 +32,7 @@ from .service_map_dependencies import (
     ServiceMapNode,
     ServiceMapNodeType,
 )
+from .slo_builder import BurnAlertBuilder, BurnAlertDefinition, SLIDefinition, SLOBuilder, SLOBundle
 from .slos import SLI, SLO, SLOCreate
 from .tags_mixin import TagsMixin
 from .trigger_builder import TriggerBuilder
@@ -67,6 +68,11 @@ __all__ = [
     "SLO",
     "SLOCreate",
     "SLI",
+    "SLOBuilder",
+    "SLOBundle",
+    "SLIDefinition",
+    "BurnAlertBuilder",
+    "BurnAlertDefinition",
     # Datasets
     "Dataset",
     "DatasetCreate",

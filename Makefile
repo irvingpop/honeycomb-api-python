@@ -84,7 +84,7 @@ test:
 	poetry run pytest tests/ -s -q --tb=short --disable-warnings
 
 test-unit:
-	poetry run pytest tests/unit/ -v
+	poetry run pytest tests/unit/ -s -q --tb=short --disable-warnings
 
 test-cov:
 	poetry run pytest tests/ -v --cov=honeycomb --cov-report=term-missing --cov-report=html

@@ -190,7 +190,9 @@ async def ensure_columns(client: HoneycombClient, ensure_dataset: str) -> list[s
 
 @pytest.fixture
 async def ensure_sli(
-    client: HoneycombClient, ensure_dataset: str, ensure_columns: list[str]  # noqa: ARG001
+    client: HoneycombClient,
+    ensure_dataset: str,
+    ensure_columns: list[str],  # noqa: ARG001
 ) -> str:
     """Create a derived column to use as an SLI for SLO testing.
 
@@ -283,7 +285,9 @@ async def ensure_slo(
 
 @pytest.fixture
 async def create_unique_sli(
-    client: HoneycombClient, ensure_dataset: str, ensure_columns: list[str]  # noqa: ARG001
+    client: HoneycombClient,
+    ensure_dataset: str,
+    ensure_columns: list[str],  # noqa: ARG001
 ) -> str:
     """Create a unique derived column to use as an SLI for SLO CRUD testing.
 
@@ -409,7 +413,7 @@ def team_slug(management_credentials: tuple[str, str]) -> str:
 
 @pytest.fixture
 async def management_client(
-    management_credentials: tuple[str, str]
+    management_credentials: tuple[str, str],
 ) -> AsyncGenerator[HoneycombClient, None]:
     """Create HoneycombClient with management key for testing.
 

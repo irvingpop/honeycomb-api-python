@@ -11,6 +11,8 @@ This is part of the "Executable Documentation" approach where:
 
 from __future__ import annotations
 
+import contextlib
+
 import pytest
 
 from honeycomb import HoneycombClient
@@ -108,12 +110,15 @@ class TestDerivedColumnExamples:
         from docs.examples.derived_columns.basic_derived_column import (
             cleanup,
             create_if_expression_column,
-            test_assertions,
         )
 
         dc_id = await create_if_expression_column(client, ensure_dataset)
         try:
-            await test_assertions(client, ensure_dataset, dc_id, "request_success")
+            # Get the actual alias (it's timestamped)
+            dc = await client.derived_columns.get_async(ensure_dataset, dc_id)
+            assert dc.id == dc_id
+            assert "request_success" in dc.alias  # Timestamped alias
+            assert dc.expression == "IF(LT($status_code, 400), 1, 0)"
         finally:
             await cleanup(client, ensure_dataset, dc_id)
 
@@ -209,13 +214,12 @@ class TestEventExamples:
     @pytest.mark.asyncio
     async def test_verify_events(self, client: HoneycombClient, ensure_dataset: str) -> None:
         """Test verifying events via query."""
+        # Send some events first
         from docs.examples.events.basic_event import (
+            send_batch,
             test_verify_events,
             verify_events,
         )
-
-        # Send some events first
-        from docs.examples.events.basic_event import send_batch
 
         await send_batch(client, ensure_dataset)
 
@@ -574,9 +578,7 @@ class TestMarkerExamples:
     """Test marker examples from docs/examples/markers/."""
 
     @pytest.mark.asyncio
-    async def test_marker_lifecycle(
-        self, client: HoneycombClient, ensure_dataset: str
-    ) -> None:
+    async def test_marker_lifecycle(self, client: HoneycombClient, ensure_dataset: str) -> None:
         """Test full marker CRUD lifecycle: list -> create -> update -> delete."""
         from docs.examples.markers.basic_marker import (
             create_deploy_marker,
@@ -732,9 +734,7 @@ class TestSLOExamples:
             await cleanup(client, ensure_dataset, slo_id)
 
     @pytest.mark.asyncio
-    async def test_list_slos(
-        self, client: HoneycombClient, ensure_dataset: str
-    ) -> None:
+    async def test_list_slos(self, client: HoneycombClient, ensure_dataset: str) -> None:
         """Test listing SLOs."""
         from docs.examples.slos.basic_slo import (
             list_slos,
@@ -743,6 +743,91 @@ class TestSLOExamples:
 
         slos = await list_slos(client, ensure_dataset)
         await test_list_slos(slos)
+
+    @pytest.mark.asyncio
+    async def test_builder_simple(
+        self, client: HoneycombClient, ensure_dataset: str, create_unique_sli: str
+    ) -> None:
+        """Test simple SLO creation with SLOBuilder."""
+        from docs.examples.slos.builder_slo import (
+            cleanup,
+            create_simple_slo,
+            test_lifecycle,
+        )
+
+        slo_id = await create_simple_slo(client, ensure_dataset, create_unique_sli)
+        try:
+            await test_lifecycle(client, ensure_dataset, slo_id, create_unique_sli)
+        finally:
+            await cleanup(client, ensure_dataset, slo_id)
+
+    @pytest.mark.asyncio
+    async def test_builder_with_new_column(
+        self, client: HoneycombClient, ensure_dataset: str
+    ) -> None:
+        """Test SLO creation with new derived column using SLOBuilder."""
+        from docs.examples.slos.builder_slo import (
+            cleanup,
+            create_slo_with_new_column,
+        )
+
+        slo_id = await create_slo_with_new_column(client, ensure_dataset)
+        try:
+            # Verify SLO was created
+            slo = await client.slos.get_async(ensure_dataset, slo_id)
+            assert slo.id == slo_id
+            # sli is dict, not SLI object
+            assert "request_success" in slo.sli["alias"]  # Timestamped alias
+            assert slo.target_per_million == 995000  # 99.5%
+
+            # Store alias for cleanup
+            sli_alias = slo.sli["alias"]
+        finally:
+            await cleanup(client, ensure_dataset, slo_id)
+            # Also clean up the derived column (with timestamp)
+            with contextlib.suppress(Exception):
+                await client.derived_columns.delete_async(ensure_dataset, sli_alias)
+
+    @pytest.mark.asyncio
+    async def test_builder_with_burn_alerts(
+        self,
+        client: HoneycombClient,
+        ensure_dataset: str,
+        create_unique_sli: str,
+        ensure_recipient: str,
+    ) -> None:
+        """Test SLO creation with burn alerts using SLOBuilder.
+
+        Note: This test creates an SLO with both exhaustion and budget rate alerts.
+        The builder handles creating all resources in the correct order.
+        """
+        from docs.examples.slos.builder_slo import (
+            cleanup,
+            create_slo_with_burn_alerts,
+        )
+
+        slo_id = await create_slo_with_burn_alerts(
+            client, ensure_dataset, create_unique_sli, ensure_recipient
+        )
+        try:
+            # Verify SLO was created
+            slo = await client.slos.get_async(ensure_dataset, slo_id)
+            assert slo.id == slo_id
+            assert slo.name == "Critical API SLO"
+            assert slo.target_per_million == 999900  # 99.99%
+
+            # Verify burn alerts were created
+            burn_alerts = await client.burn_alerts.list_async(ensure_dataset, slo_id)
+            assert len(burn_alerts) == 2
+
+            # Check we have both types
+            alert_types = {alert.alert_type for alert in burn_alerts}
+            from honeycomb import BurnAlertType
+
+            assert BurnAlertType.EXHAUSTION_TIME in alert_types
+            assert BurnAlertType.BUDGET_RATE in alert_types
+        finally:
+            await cleanup(client, ensure_dataset, slo_id)
 
 
 class TestBurnAlertExamples:
@@ -790,9 +875,7 @@ class TestBurnAlertExamples:
             assert alert.exhaustion_minutes == 120
 
             # Update
-            updated = await update_burn_alert(
-                client, ensure_dataset, alert_id, ensure_recipient
-            )
+            updated = await update_burn_alert(client, ensure_dataset, alert_id, ensure_recipient)
             assert updated.id == alert_id
             assert updated.exhaustion_minutes == 60  # Updated from 120 to 60
             assert "Updated:" in updated.description
@@ -844,9 +927,7 @@ class TestBurnAlertExamples:
         )
 
         slo_id, _ = ensure_slo
-        alert_id = await create_budget_rate_alert(
-            client, ensure_dataset, slo_id, ensure_recipient
-        )
+        alert_id = await create_budget_rate_alert(client, ensure_dataset, slo_id, ensure_recipient)
         try:
             await test_budget_rate_alert(client, ensure_dataset, alert_id)
         finally:
@@ -878,12 +959,12 @@ class TestServiceMapExamples:
     @pytest.mark.asyncio
     async def test_create_request(self, client: HoneycombClient) -> None:
         """Test creating a service map dependency request."""
-        from honeycomb import HoneycombNotFoundError
-
         from docs.examples.service_map.basic_service_map import (
             create_service_map_request,
             test_create_request,
         )
+
+        from honeycomb import HoneycombNotFoundError
 
         try:
             request_id = await create_service_map_request(client)
@@ -896,13 +977,13 @@ class TestServiceMapExamples:
     @pytest.mark.asyncio
     async def test_poll_result(self, client: HoneycombClient) -> None:
         """Test polling for service map result."""
-        from honeycomb import HoneycombNotFoundError
-
         from docs.examples.service_map.basic_service_map import (
             create_service_map_request,
             poll_service_map_result,
             test_poll_result,
         )
+
+        from honeycomb import HoneycombNotFoundError
 
         try:
             # Create request first
@@ -919,12 +1000,12 @@ class TestServiceMapExamples:
     @pytest.mark.asyncio
     async def test_get_service_map(self, client: HoneycombClient) -> None:
         """Test the convenience method that creates and polls in one call."""
-        from honeycomb import HoneycombNotFoundError
-
         from docs.examples.service_map.basic_service_map import (
             get_service_map,
             test_get_service_map,
         )
+
+        from honeycomb import HoneycombNotFoundError
 
         try:
             result = await get_service_map(client)

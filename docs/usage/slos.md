@@ -44,7 +44,149 @@ Service Level Objectives (SLOs) help you track reliability targets for your serv
 %}
 ```
 
-## Creating SLOs
+## Creating SLOs with SLOBuilder
+
+`SLOBuilder` provides a fluent interface for creating SLOs with integrated burn alerts and automatic derived column management. It handles the complete orchestration of creating an SLO with all its dependencies.
+
+### Simple Example - Using Existing Derived Column
+
+```python
+{%
+   include "../examples/slos/builder_slo.py"
+   start="# start_example:create_simple"
+   end="# end_example:create_simple"
+%}
+```
+
+### Moderate Complexity - Creating New Derived Column
+
+When you need to create both a derived column and an SLO together:
+
+```python
+{%
+   include "../examples/slos/builder_slo.py"
+   start="# start_example:create_with_new_column"
+   end="# end_example:create_with_new_column"
+%}
+```
+
+### High Complexity - SLO with Burn Alerts
+
+Create an SLO with both exhaustion time and budget rate burn alerts:
+
+```python
+{%
+   include "../examples/slos/builder_slo.py"
+   start="# start_example:create_with_burn_alerts"
+   end="# end_example:create_with_burn_alerts"
+%}
+```
+
+### Multi-Dataset SLOs
+
+Create an SLO across multiple datasets with an environment-wide derived column:
+
+```python
+{%
+   include "../examples/slos/builder_slo.py"
+   start="# start_example:create_multi_dataset"
+   end="# end_example:create_multi_dataset"
+%}
+```
+
+## SLOBuilder Reference
+
+### Target Configuration Methods
+
+| Method | Description |
+|--------|-------------|
+| `.target_percentage(percent)` | Set target as percentage (e.g., 99.9) |
+| `.target_nines(nines)` | Set target by number of nines (2-5) |
+| `.target_per_million(value)` | Set target directly as per-million value |
+
+### Time Period Methods
+
+| Method | Description |
+|--------|-------------|
+| `.time_period_days(days)` | Set time period in days (1-90) |
+| `.time_period_weeks(weeks)` | Set time period in weeks |
+
+### SLI Definition Methods
+
+| Method | Description |
+|--------|-------------|
+| `.sli(alias)` | Use existing derived column |
+| `.sli(alias, expression, description)` | Create new derived column |
+
+### Dataset Scoping
+
+| Method | Description |
+|--------|-------------|
+| `.dataset(slug)` | Scope SLO to single dataset |
+| `.datasets([slug1, slug2])` | Scope SLO to multiple datasets (creates environment-wide DC) |
+
+### Burn Alert Methods
+
+| Method | Description |
+|--------|-------------|
+| `.exhaustion_alert(builder)` | Add exhaustion time burn alert |
+| `.budget_rate_alert(builder)` | Add budget rate burn alert |
+
+## BurnAlertBuilder Reference
+
+`BurnAlertBuilder` is used within `SLOBuilder` to configure burn alerts with recipients. It composes `RecipientMixin` for notification management.
+
+### Alert Type Configuration
+
+| Alert Type | Required Methods | Description |
+|------------|------------------|-------------|
+| `EXHAUSTION_TIME` | `.exhaustion_minutes(minutes)` | Alert when budget will be exhausted within timeframe |
+| `BUDGET_RATE` | `.window_minutes(minutes)` + `.threshold_percent(percent)` | Alert when burn rate exceeds threshold |
+
+### Recipient Methods (from RecipientMixin)
+
+See [Recipients documentation](recipients.md#recipient-methods-reference) for full details on available recipient methods:
+- `.email(address)` - Email notification
+- `.slack(channel)` - Slack notification
+- `.pagerduty(routing_key, severity)` - PagerDuty notification
+- `.webhook(url, secret)` - Webhook notification
+- `.msteams(workflow_url)` - MS Teams notification
+- `.recipient_id(id)` - Reference existing recipient by ID
+
+### Example: Exhaustion Time Alert
+
+```python
+from honeycomb import BurnAlertBuilder, BurnAlertType
+
+alert = (
+    BurnAlertBuilder(BurnAlertType.EXHAUSTION_TIME)
+    .exhaustion_minutes(60)
+    .description("Alert when budget exhausts in 1 hour")
+    .recipient_id("recipient-id-123")  # Reference existing recipient
+    .build()
+)
+```
+
+### Example: Budget Rate Alert
+
+```python
+from honeycomb import BurnAlertBuilder, BurnAlertType
+
+alert = (
+    BurnAlertBuilder(BurnAlertType.BUDGET_RATE)
+    .window_minutes(60)
+    .threshold_percent(2.0)
+    .description("Alert when burn rate exceeds 2% per hour")
+    .recipient_id("recipient-id-456")  # Reference existing recipient
+    .build()
+)
+```
+
+**Note**: For integration testing, use `.recipient_id()` to reference recipients configured in Honeycomb. Email, Slack, PagerDuty, and webhook recipients must be set up in Honeycomb first via the Recipients API or UI.
+
+## Creating SLOs Manually
+
+For simple cases or when you need fine-grained control, you can create SLOs directly:
 
 ```python
 {%

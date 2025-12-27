@@ -44,8 +44,11 @@ async def create_if_expression_column(client: HoneycombClient, dataset: str) -> 
     Returns:
         The created derived column ID
     """
+    import time
+
+    # Use timestamp to ensure unique column names across test runs
     dc = (
-        DerivedColumnBuilder("request_success")
+        DerivedColumnBuilder(f"request_success_{int(time.time())}")
         .expression("IF(LT($status_code, 400), 1, 0)")
         .description("1 if request succeeded, 0 otherwise")
         .build()

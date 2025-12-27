@@ -11,55 +11,72 @@ class TestRecipientBuilder:
         recipient = RecipientBuilder.email("oncall@example.com")
         assert isinstance(recipient, RecipientCreate)
         assert recipient.type == RecipientType.EMAIL
-        assert recipient.details == {"address": "oncall@example.com"}
+        assert recipient.details == {"email_address": "oncall@example.com"}
 
     def test_slack(self):
         """Test creating Slack recipient."""
         recipient = RecipientBuilder.slack("#alerts")
         assert recipient.type == RecipientType.SLACK
-        assert recipient.details == {"channel": "#alerts"}
+        assert recipient.details == {"slack_channel": "#alerts"}
 
     def test_pagerduty_default_severity(self):
-        """Test creating PagerDuty recipient with default severity."""
+        """Test creating PagerDuty recipient with default integration name."""
         recipient = RecipientBuilder.pagerduty("routing-key-123")
         assert recipient.type == RecipientType.PAGERDUTY
-        assert recipient.details == {"routing_key": "routing-key-123", "severity": "critical"}
+        assert recipient.details == {
+            "pagerduty_integration_key": "routing-key-123",
+            "pagerduty_integration_name": "PagerDuty Integration",
+        }
 
-    def test_pagerduty_custom_severity(self):
-        """Test creating PagerDuty recipient with custom severity."""
-        recipient = RecipientBuilder.pagerduty("routing-key-123", severity="warning")
+    def test_pagerduty_custom_name(self):
+        """Test creating PagerDuty recipient with custom integration name."""
+        recipient = RecipientBuilder.pagerduty("routing-key-123", integration_name="My PD")
         assert recipient.type == RecipientType.PAGERDUTY
-        assert recipient.details == {"routing_key": "routing-key-123", "severity": "warning"}
+        assert recipient.details == {
+            "pagerduty_integration_key": "routing-key-123",
+            "pagerduty_integration_name": "My PD",
+        }
 
     def test_pagerduty_all_severities(self):
-        """Test PagerDuty recipient with all severity levels."""
-        for severity in ["info", "warning", "error", "critical"]:
-            recipient = RecipientBuilder.pagerduty("key", severity=severity)
-            assert recipient.details["severity"] == severity
+        """Test PagerDuty recipient preserves integration key length requirement."""
+        # PagerDuty integration keys must be exactly 32 characters
+        key_32_chars = "a" * 32
+        recipient = RecipientBuilder.pagerduty(key_32_chars)
+        assert recipient.details["pagerduty_integration_key"] == key_32_chars
 
     def test_webhook_without_secret(self):
         """Test creating webhook recipient without secret."""
         recipient = RecipientBuilder.webhook("https://example.com/webhook")
         assert recipient.type == RecipientType.WEBHOOK
-        assert recipient.details == {"url": "https://example.com/webhook"}
+        assert recipient.details == {
+            "webhook_url": "https://example.com/webhook",
+            "webhook_name": "Webhook",
+        }
 
     def test_webhook_with_secret(self):
         """Test creating webhook recipient with secret."""
         recipient = RecipientBuilder.webhook("https://example.com/webhook", secret="secret123")
         assert recipient.type == RecipientType.WEBHOOK
-        assert recipient.details == {"url": "https://example.com/webhook", "secret": "secret123"}
+        assert recipient.details == {
+            "webhook_url": "https://example.com/webhook",
+            "webhook_name": "Webhook",
+            "webhook_secret": "secret123",
+        }
 
     def test_msteams(self):
         """Test creating MS Teams workflow recipient."""
         recipient = RecipientBuilder.msteams("https://outlook.office.com/webhook/...")
         assert recipient.type == RecipientType.MSTEAMS_WORKFLOW
-        assert recipient.details == {"url": "https://outlook.office.com/webhook/..."}
+        assert recipient.details == {
+            "webhook_url": "https://outlook.office.com/webhook/...",
+            "webhook_name": "MS Teams",
+        }
 
     def test_model_dump_for_api(self):
         """Test that RecipientCreate serializes correctly for API."""
         recipient = RecipientBuilder.email("test@example.com")
         data = recipient.model_dump_for_api()
-        assert data == {"type": "email", "details": {"address": "test@example.com"}}
+        assert data == {"type": "email", "details": {"email_address": "test@example.com"}}
 
 
 class TestRecipientMixin:
