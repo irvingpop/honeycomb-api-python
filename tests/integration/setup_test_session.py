@@ -202,9 +202,7 @@ async def main() -> int:
         env = await find_or_create_test_environment(http, headers, team_slug)
 
         # Create API key (needs environment ID, not slug)
-        api_key, api_key_id = await create_api_key(
-            http, headers, team_slug, env["id"]
-        )
+        api_key, api_key_id = await create_api_key(http, headers, team_slug, env["id"])
 
         # Save session
         save_session(

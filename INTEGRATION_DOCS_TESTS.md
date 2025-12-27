@@ -1,921 +1,453 @@
-# Integration Tests and Documentation Sync Plan
+# Integration Tests and Documentation Sync
 
-This document outlines the design for keeping integration tests and documentation examples in sync, ensuring that all code examples in docs are tested against the real Honeycomb API.
+This document describes how documentation examples are kept in sync with integration tests, ensuring all code examples in docs are tested against the real Honeycomb API.
 
 ## Problem Statement
 
-Currently we have:
-- **Documentation** (`docs/usage/*.md`) with code examples that may drift from reality
-- **Unit tests** (`tests/unit/`) that mock the API but don't verify real behavior
-- **Integration tests** (`tests/integration/`) that test against real API but duplicate doc examples
-
-This leads to:
+Documentation code examples that aren't tested will drift from reality over time, leading to:
 - Doc examples that don't actually work
 - Duplicated maintenance burden
 - No guarantee docs stay current with API changes
 
 ## Solution: Executable Documentation Examples
 
-### Architecture Overview
+We use **mkdocs-include-markdown-plugin** to extract code sections from tested Python files into documentation. This creates a single source of truth where:
+
+1. Code examples live in `docs/examples/*.py` with named sections
+2. Documentation includes these sections via the plugin
+3. Integration tests (`tests/integration/test_doc_examples.py`) run the examples
+
+## Core Principles
+
+### 1. Async-First Documentation
+
+All documentation examples use async patterns only. Sync equivalents are auto-generated (future phase) to avoid duplication and drift.
+
+**Rationale**: The sync methods are thin wrappers around async. Testing async validates the core logic; sync wrappers are mechanical.
+
+### 2. Full Lifecycle Testing
+
+Every integration test covers the complete resource lifecycle (5 actions):
+
+```
+list -> create -> get -> update -> delete
+```
+
+This ensures all CRUD operations work and prevents orphaned test resources.
+
+### 3. No Illustrative Error Handling
+
+Error handling examples are removed from resource documentation. If needed, create a single dedicated "Error Handling" guide with tested examples.
+
+**Rationale**: Error handling patterns are generic across resources. Duplicating try/except blocks in every resource doc adds noise without value.
+
+### 4. Resource Dependencies
+
+Tests follow the dependency hierarchy from [DEPENDENCIES.md](.claude/skills/live-test/DEPENDENCIES.md):
+
+```
+Level 0: Environment, Dataset
+Level 1: Columns (requires Dataset)
+Level 2: Events (requires Dataset) -> can be queried
+Level 3: Queries/QueryResults, Recipients
+Level 4: Triggers, Boards, SLOs, Markers
+Level 5: Burn Alerts (requires SLO)
+Level 6: Service Map Dependencies (requires trace data)
+```
+
+## Architecture
 
 ```
 docs/
 ├── usage/
 │   ├── triggers.md           # Human-readable docs, includes snippets
 │   ├── recipients.md
+│   ├── derived_columns.md
 │   └── ...
-└── examples/                  # NEW: Standalone executable snippets
+└── examples/                  # Standalone executable snippets
     ├── __init__.py
-    ├── triggers/
-    │   ├── __init__.py
-    │   ├── basic_trigger.py
-    │   ├── trigger_with_filter.py
-    │   ├── trigger_with_recipients.py
-    │   └── trigger_crud.py
     ├── recipients/
     │   ├── __init__.py
-    │   ├── email_recipient.py
-    │   └── webhook_recipient.py
-    ├── derived_columns/
+    │   └── basic_recipient.py    # Full CRUD lifecycle
+    ├── triggers/
     │   ├── __init__.py
-    │   └── basic_derived_column.py
-    └── queries/
-        ├── __init__.py
-        └── query_builder.py
+    │   └── basic_trigger.py      # Full CRUD lifecycle
+    └── ...
 
 tests/
 ├── unit/                      # Existing unit tests (unchanged)
 └── integration/
-    ├── conftest.py            # Shared fixtures (dataset, columns, events)
-    ├── test_doc_examples.py   # NEW: Runs all docs/examples/**/*.py
+    ├── conftest.py            # Shared fixtures (dataset, columns, events, sli, slo)
+    ├── test_doc_examples.py   # Runs all docs/examples/**/*.py
     └── test_*.py              # Additional integration tests
 ```
 
-### Example File Format
+## Example File Format
 
-Each example file follows a standard structure:
+Each example file covers the **full CRUD lifecycle** (5 actions) with named sections:
 
 ```python
 # docs/examples/triggers/basic_trigger.py
-"""Basic trigger creation example.
-
-This example demonstrates creating a simple count-based trigger
-using the TriggerBuilder pattern.
-"""
+"""Trigger CRUD examples."""
 from __future__ import annotations
 
-from honeycomb import HoneycombClient, TriggerBuilder
+from honeycomb import HoneycombClient, TriggerBuilder, Trigger, TriggerCreate, TriggerThreshold
 
-# EXAMPLE: basic_trigger_create
-async def create_basic_trigger(client: HoneycombClient, dataset: str) -> str:
-    """Create a simple count-based trigger.
+# start_example:list
+async def list_triggers(client: HoneycombClient, dataset: str) -> list[Trigger]:
+    """List all triggers in a dataset."""
+    return await client.triggers.list_async(dataset)
+# end_example:list
 
-    Args:
-        client: Authenticated HoneycombClient
-        dataset: Dataset slug to create trigger in
 
-    Returns:
-        The created trigger ID
-    """
+# start_example:create
+async def create_trigger(client: HoneycombClient, dataset: str) -> str:
+    """Create a trigger using TriggerBuilder."""
     trigger = (
-        TriggerBuilder("High Request Count")
+        TriggerBuilder("High Error Rate")
         .dataset(dataset)
         .last_30_minutes()
         .count()
-        .threshold_gt(1000)
+        .threshold_gt(100)
         .every_15_minutes()
-        .disabled()  # Start disabled for safety
+        .disabled()
         .build()
     )
-
     created = await client.triggers.create_async(dataset, trigger)
     return created.id
-# END_EXAMPLE
+# end_example:create
 
 
-# TEST_ASSERTIONS (not included in docs)
-async def test_assertions(client: HoneycombClient, dataset: str, trigger_id: str):
-    """Verify the example worked correctly."""
+# start_example:get
+async def get_trigger(client: HoneycombClient, dataset: str, trigger_id: str) -> Trigger:
+    """Get a trigger by ID."""
+    return await client.triggers.get_async(dataset, trigger_id)
+# end_example:get
+
+
+# start_example:update
+async def update_trigger(
+    client: HoneycombClient, dataset: str, trigger_id: str
+) -> Trigger:
+    """Update a trigger's threshold."""
+    existing = await client.triggers.get_async(dataset, trigger_id)
+    updated = TriggerCreate(
+        name=existing.name,
+        threshold=TriggerThreshold(op=existing.threshold.op, value=200.0),
+        frequency=existing.frequency,
+        query=existing.query,
+    )
+    return await client.triggers.update_async(dataset, trigger_id, updated)
+# end_example:update
+
+
+# start_example:delete
+async def delete_trigger(client: HoneycombClient, dataset: str, trigger_id: str) -> None:
+    """Delete a trigger."""
+    await client.triggers.delete_async(dataset, trigger_id)
+# end_example:delete
+
+
+# TEST_ASSERTIONS
+async def test_lifecycle(client: HoneycombClient, dataset: str, trigger_id: str) -> None:
+    """Verify the full lifecycle worked."""
     trigger = await client.triggers.get_async(dataset, trigger_id)
-    assert trigger.name == "High Request Count"
-    assert trigger.threshold.value == 1000
+    assert trigger.id == trigger_id
     assert trigger.disabled is True
 
 
 # CLEANUP
-async def cleanup(client: HoneycombClient, dataset: str, trigger_id: str):
-    """Clean up resources created by example."""
-    await client.triggers.delete_async(dataset, trigger_id)
+async def cleanup(client: HoneycombClient, dataset: str, trigger_id: str) -> None:
+    """Clean up resources (called even on test failure)."""
+    try:
+        await client.triggers.delete_async(dataset, trigger_id)
+    except Exception:
+        pass  # Already deleted or doesn't exist
 ```
 
-### Documentation Inclusion
+## Integration Test Pattern
 
-Docs reference examples using a custom include syntax:
-
-```markdown
-<!-- docs/usage/triggers.md -->
-
-## Creating a Basic Trigger
-
-Use the `TriggerBuilder` for a fluent API:
-
-```python
-{!examples/triggers/basic_trigger.py:basic_trigger_create!}
-```
-
-This creates a trigger that fires when the count exceeds 1000.
-```
-
-A preprocessor extracts the marked section at build time.
-
-## Example Extraction Mechanism
-
-### How It Works
-
-The extraction happens during the MkDocs build process. There are three viable approaches:
-
-### Option A: mkdocs-include-markdown-plugin (Recommended)
-
-This existing MkDocs plugin supports extracting sections between markers.
-
-**Installation:**
-```bash
-poetry add mkdocs-include-markdown-plugin --group dev
-```
-
-**mkdocs.yml:**
-```yaml
-plugins:
-  - include-markdown:
-      opening_tag: "{!"
-      closing_tag: "!}"
-```
-
-**Example file markers:**
-```python
-# docs/examples/triggers/basic_trigger.py
-
-# <!-- include: basic_trigger_create -->
-trigger = (
-    TriggerBuilder("High Request Count")
-    .dataset(dataset)
-    .last_30_minutes()
-    .count()
-    .threshold_gt(1000)
-    .every_15_minutes()
-    .build()
-)
-# <!-- end_include -->
-```
-
-**In markdown:**
-```markdown
-```python
-{%
-   include "../examples/triggers/basic_trigger.py"
-   start="<!-- include: basic_trigger_create -->"
-   end="<!-- end_include -->"
-%}
-```
-
-### Option B: Custom Preprocessor Script (More Control)
-
-A custom script that runs before MkDocs build, providing full control over extraction.
-
-**scripts/extract_examples.py:**
-```python
-#!/usr/bin/env python3
-"""Extract code examples from Python files into markdown snippets."""
-from __future__ import annotations
-
-import re
-from pathlib import Path
-
-EXAMPLES_DIR = Path("docs/examples")
-SNIPPETS_DIR = Path("docs/_snippets")  # Generated, gitignored
-
-# Pattern matches: # EXAMPLE: example_name ... # END_EXAMPLE
-EXAMPLE_PATTERN = re.compile(
-    r"# EXAMPLE: (\w+)\n(.*?)# END_EXAMPLE",
-    re.DOTALL
-)
-
-
-def extract_examples(source_file: Path) -> dict[str, str]:
-    """Extract all named examples from a Python file."""
-    content = source_file.read_text()
-    examples = {}
-
-    for match in EXAMPLE_PATTERN.finditer(content):
-        name = match.group(1)
-        code = match.group(2)
-
-        # Clean up the code:
-        # - Remove leading/trailing blank lines
-        # - Dedent to minimum indentation
-        lines = code.strip().split("\n")
-        if lines:
-            # Find minimum indentation (excluding empty lines)
-            min_indent = min(
-                len(line) - len(line.lstrip())
-                for line in lines if line.strip()
-            )
-            # Dedent all lines
-            lines = [line[min_indent:] if len(line) > min_indent else line
-                     for line in lines]
-
-        examples[name] = "\n".join(lines)
-
-    return examples
-
-
-def process_all_examples():
-    """Process all example files and generate snippets."""
-    SNIPPETS_DIR.mkdir(parents=True, exist_ok=True)
-
-    for py_file in EXAMPLES_DIR.rglob("*.py"):
-        if py_file.name == "__init__.py":
-            continue
-
-        examples = extract_examples(py_file)
-
-        # Create snippet files
-        rel_path = py_file.relative_to(EXAMPLES_DIR)
-        for name, code in examples.items():
-            snippet_path = SNIPPETS_DIR / rel_path.parent / f"{py_file.stem}_{name}.md"
-            snippet_path.parent.mkdir(parents=True, exist_ok=True)
-            snippet_path.write_text(f"```python\n{code}\n```\n")
-            print(f"Generated: {snippet_path}")
-
-
-if __name__ == "__main__":
-    process_all_examples()
-```
-
-**In markdown (using standard include):**
-```markdown
-## Creating a Basic Trigger
-
-Use the `TriggerBuilder` for a fluent API:
-
---8<-- "docs/_snippets/triggers/basic_trigger_basic_trigger_create.md"
-
-This creates a trigger that fires when the count exceeds 1000.
-```
-
-**Build process:**
-```bash
-# Run before mkdocs build
-python scripts/extract_examples.py
-mkdocs build
-```
-
-### Option C: MkDocs Hook (Integrated)
-
-A MkDocs hook that processes includes during the build.
-
-**docs/hooks/example_include.py:**
-```python
-"""MkDocs hook for including example code snippets."""
-from __future__ import annotations
-
-import re
-from pathlib import Path
-
-INCLUDE_PATTERN = re.compile(r"\{!examples/([^:]+):(\w+)!\}")
-EXAMPLE_PATTERN = re.compile(r"# EXAMPLE: (\w+)\n(.*?)# END_EXAMPLE", re.DOTALL)
-
-_cache: dict[str, dict[str, str]] = {}
-
-
-def extract_from_file(filepath: Path) -> dict[str, str]:
-    """Extract all examples from a file, with caching."""
-    key = str(filepath)
-    if key not in _cache:
-        content = filepath.read_text()
-        _cache[key] = {}
-        for match in EXAMPLE_PATTERN.finditer(content):
-            name = match.group(1)
-            code = match.group(2).strip()
-            # Dedent
-            lines = code.split("\n")
-            if lines:
-                min_indent = min(
-                    (len(l) - len(l.lstrip()) for l in lines if l.strip()),
-                    default=0
-                )
-                code = "\n".join(l[min_indent:] for l in lines)
-            _cache[key][name] = code
-    return _cache[key]
-
-
-def on_page_markdown(markdown: str, page, config, files) -> str:
-    """Process example includes in markdown."""
-    docs_dir = Path(config["docs_dir"])
-
-    def replace_include(match):
-        filepath = docs_dir / "examples" / match.group(1)
-        example_name = match.group(2)
-
-        if not filepath.exists():
-            return f"**ERROR: File not found: {filepath}**"
-
-        examples = extract_from_file(filepath)
-        if example_name not in examples:
-            return f"**ERROR: Example '{example_name}' not found in {filepath}**"
-
-        return examples[example_name]
-
-    return INCLUDE_PATTERN.sub(replace_include, markdown)
-```
-
-**mkdocs.yml:**
-```yaml
-hooks:
-  - docs/hooks/example_include.py
-```
-
-**In markdown:**
-```markdown
-```python
-{!examples/triggers/basic_trigger.py:basic_trigger_create!}
-```
-
-### Option D: Sync Checker (Simplest)
-
-Instead of extracting code, keep examples duplicated in both docs and test files, with a CI check that verifies they match. This is the simplest approach with the least tooling.
-
-**How it works:**
-
-1. Documentation has code blocks as usual (easy to write and preview)
-2. Example files in `docs/examples/` have the same code with test harness
-3. A validation script compares them and fails if they drift
-
-**docs/usage/triggers.md (unchanged workflow):**
-```markdown
-## Creating a Basic Trigger
-
-Use the `TriggerBuilder` for a fluent API:
-
-```python
-trigger = (
-    TriggerBuilder("High Request Count")
-    .dataset(dataset)
-    .last_30_minutes()
-    .count()
-    .threshold_gt(1000)
-    .every_15_minutes()
-    .build()
-)
-
-created = await client.triggers.create_async(dataset, trigger)
-```
-```
-
-**docs/examples/triggers/basic_trigger.py:**
-```python
-"""Basic trigger example - tested against live API."""
-from honeycomb import HoneycombClient, TriggerBuilder
-
-# EXAMPLE: basic_trigger_create
-# DOCREF: docs/usage/triggers.md:35-47
-trigger = (
-    TriggerBuilder("High Request Count")
-    .dataset(dataset)
-    .last_30_minutes()
-    .count()
-    .threshold_gt(1000)
-    .every_15_minutes()
-    .build()
-)
-
-created = await client.triggers.create_async(dataset, trigger)
-# END_EXAMPLE
-
-
-async def run_example(client: HoneycombClient, dataset: str):
-    """Execute the example and return created resource."""
-    trigger = (
-        TriggerBuilder("High Request Count")
-        .dataset(dataset)
-        .last_30_minutes()
-        .count()
-        .threshold_gt(1000)
-        .every_15_minutes()
-        .disabled()  # Disabled for testing
-        .build()
-    )
-    return await client.triggers.create_async(dataset, trigger)
-
-
-async def cleanup(client: HoneycombClient, dataset: str, trigger_id: str):
-    await client.triggers.delete_async(dataset, trigger_id)
-```
-
-**scripts/validate_doc_sync.py:**
-```python
-#!/usr/bin/env python3
-"""Verify that code examples in docs match their tested counterparts."""
-from __future__ import annotations
-
-import re
-import sys
-from pathlib import Path
-
-EXAMPLE_PATTERN = re.compile(
-    r"# EXAMPLE: (\w+)\n# DOCREF: ([^\n]+)\n(.*?)# END_EXAMPLE",
-    re.DOTALL
-)
-
-
-def normalize_code(code: str) -> str:
-    """Normalize code for comparison (strip whitespace, comments)."""
-    lines = []
-    for line in code.strip().split("\n"):
-        # Remove trailing whitespace
-        line = line.rstrip()
-        # Skip empty lines and comments for comparison
-        stripped = line.lstrip()
-        if stripped and not stripped.startswith("#"):
-            lines.append(line)
-    return "\n".join(lines)
-
-
-def extract_markdown_code_block(md_path: Path, start_line: int, end_line: int) -> str:
-    """Extract code from a markdown file by line numbers."""
-    lines = md_path.read_text().split("\n")
-    # Adjust for 1-indexed line numbers, skip ```python and ```
-    code_lines = lines[start_line:end_line-1]
-    return "\n".join(code_lines)
-
-
-def validate_sync() -> list[str]:
-    """Check all examples match their doc references."""
-    errors = []
-    examples_dir = Path("docs/examples")
-
-    for py_file in examples_dir.rglob("*.py"):
-        if py_file.name == "__init__.py":
-            continue
-
-        content = py_file.read_text()
-
-        for match in EXAMPLE_PATTERN.finditer(content):
-            example_name = match.group(1)
-            docref = match.group(2)  # e.g., "docs/usage/triggers.md:35-47"
-            example_code = match.group(3)
-
-            # Parse docref
-            doc_path, line_range = docref.rsplit(":", 1)
-            start, end = map(int, line_range.split("-"))
-            doc_file = Path(doc_path)
-
-            if not doc_file.exists():
-                errors.append(f"{py_file}:{example_name} - Doc file not found: {doc_path}")
-                continue
-
-            doc_code = extract_markdown_code_block(doc_file, start, end)
-
-            # Compare normalized versions
-            if normalize_code(example_code) != normalize_code(doc_code):
-                errors.append(
-                    f"{py_file}:{example_name} - Code drift detected!\n"
-                    f"  Example file and {docref} don't match.\n"
-                    f"  Run: diff <(sed -n '{start},{end}p' {doc_path}) <(grep -A50 'EXAMPLE: {example_name}' {py_file})"
-                )
-
-    return errors
-
-
-if __name__ == "__main__":
-    errors = validate_sync()
-    if errors:
-        print("Code sync errors found:")
-        for e in errors:
-            print(f"\n{e}")
-        sys.exit(1)
-    print("All examples are in sync with documentation!")
-    sys.exit(0)
-```
-
-**Benefits of Option D:**
-
-1. **No tooling changes** - Docs are written normally with code blocks
-2. **Easy to preview** - `mkdocs serve` works without preprocessing
-3. **Explicit references** - `DOCREF:` makes the relationship clear
-4. **Line-based comparison** - Easy to debug when things drift
-5. **Gradual adoption** - Can add sync checking to existing docs incrementally
-
-**Trade-offs:**
-
-- Code is duplicated (but sync is enforced)
-- Need to update two places when changing examples
-- Line numbers in DOCREF can drift if docs are edited
-
-### Recommendation
-
-**Use Option D (Sync Checker)** for these reasons:
-
-1. **Simplest to implement** - No new MkDocs plugins or hooks needed
-2. **Familiar workflow** - Writers edit markdown normally, no special syntax
-3. **Easy to preview** - `mkdocs serve` works without any preprocessing
-4. **Gradual adoption** - Can add sync checking to existing docs one at a time
-5. **Clear failure messages** - When sync fails, you know exactly which lines drifted
-6. **Low maintenance** - No custom tooling to maintain beyond the sync checker script
-
-The trade-off of maintaining code in two places is acceptable because:
-- CI catches drift immediately
-- The duplication is explicit and intentional
-- Test files can have additional context (disabled flags, error handling) that shouldn't be in docs
-
-### Validation Script (for Options A-C)
-
-Regardless of approach, add validation to CI:
-
-**scripts/validate_example_includes.py:**
-```python
-#!/usr/bin/env python3
-"""Validate that all example includes resolve correctly."""
-from __future__ import annotations
-
-import re
-import sys
-from pathlib import Path
-
-DOCS_DIR = Path("docs")
-EXAMPLES_DIR = DOCS_DIR / "examples"
-INCLUDE_PATTERN = re.compile(r"\{!examples/([^:]+):(\w+)!\}")
-EXAMPLE_PATTERN = re.compile(r"# EXAMPLE: (\w+)")
-
-def get_available_examples() -> dict[str, set[str]]:
-    """Scan example files for available example names."""
-    available = {}
-    for py_file in EXAMPLES_DIR.rglob("*.py"):
-        if py_file.name == "__init__.py":
-            continue
-        rel_path = str(py_file.relative_to(EXAMPLES_DIR))
-        content = py_file.read_text()
-        examples = set(EXAMPLE_PATTERN.findall(content))
-        available[rel_path] = examples
-    return available
-
-
-def validate_includes() -> list[str]:
-    """Find all broken includes in markdown files."""
-    available = get_available_examples()
-    errors = []
-
-    for md_file in DOCS_DIR.rglob("*.md"):
-        content = md_file.read_text()
-        for match in INCLUDE_PATTERN.finditer(content):
-            filepath = match.group(1)
-            example_name = match.group(2)
-
-            if filepath not in available:
-                errors.append(f"{md_file}: File not found: examples/{filepath}")
-            elif example_name not in available[filepath]:
-                errors.append(
-                    f"{md_file}: Example '{example_name}' not found in {filepath}. "
-                    f"Available: {available[filepath]}"
-                )
-
-    return errors
-
-
-def find_orphaned_examples() -> list[str]:
-    """Find examples that are never included anywhere."""
-    available = get_available_examples()
-    used: set[tuple[str, str]] = set()
-
-    for md_file in DOCS_DIR.rglob("*.md"):
-        content = md_file.read_text()
-        for match in INCLUDE_PATTERN.finditer(content):
-            used.add((match.group(1), match.group(2)))
-
-    orphans = []
-    for filepath, examples in available.items():
-        for example in examples:
-            if (filepath, example) not in used:
-                orphans.append(f"examples/{filepath}:{example}")
-
-    return orphans
-
-
-if __name__ == "__main__":
-    errors = validate_includes()
-    orphans = find_orphaned_examples()
-
-    if errors:
-        print("Broken includes:")
-        for e in errors:
-            print(f"  - {e}")
-
-    if orphans:
-        print("\nOrphaned examples (not included anywhere):")
-        for o in orphans:
-            print(f"  - {o}")
-
-    if errors:
-        sys.exit(1)
-
-    print("All example includes are valid!")
-    sys.exit(0)
-```
-
-### Test Runner
+Tests import example functions and run the **full lifecycle** (5 actions):
 
 ```python
 # tests/integration/test_doc_examples.py
-"""Run all documentation examples as integration tests."""
-from __future__ import annotations
-
-import importlib
-import pkgutil
-from pathlib import Path
-
-import pytest
-
-# Discover all example modules
-EXAMPLES_PATH = Path(__file__).parent.parent.parent / "docs" / "examples"
-
-
-def discover_examples():
-    """Find all example modules with runnable functions."""
-    examples = []
-    for finder, name, ispkg in pkgutil.walk_packages([str(EXAMPLES_PATH)]):
-        if not ispkg:
-            examples.append(name)
-    return examples
-
-
-class TestDocExamples:
-    """Test all documentation examples against live API."""
+class TestTriggerExamples:
+    """Test trigger examples - full CRUD lifecycle."""
 
     @pytest.mark.asyncio
-    async def test_triggers_basic(self, client, ensure_dataset, ensure_columns):
-        """Test basic trigger example."""
-        from docs.examples.triggers import basic_trigger
+    async def test_trigger_lifecycle(self, client: HoneycombClient, ensure_dataset: str) -> None:
+        """Test list -> create -> get -> update -> delete lifecycle."""
+        from docs.examples.triggers.basic_trigger import (
+            list_triggers,
+            create_trigger,
+            get_trigger,
+            update_trigger,
+            delete_trigger,
+        )
 
-        trigger_id = await basic_trigger.create_basic_trigger(client, ensure_dataset)
+        # List (before create)
+        initial_triggers = await list_triggers(client, ensure_dataset)
+        initial_count = len(initial_triggers)
+
+        # Create
+        trigger_id = await create_trigger(client, ensure_dataset)
         try:
-            await basic_trigger.test_assertions(client, ensure_dataset, trigger_id)
+            # Get
+            trigger = await get_trigger(client, ensure_dataset, trigger_id)
+            assert trigger.id == trigger_id
+
+            # Update
+            updated = await update_trigger(client, ensure_dataset, trigger_id)
+            assert updated.threshold.value == 200.0
+
+            # List (after create - verify it appears)
+            triggers = await list_triggers(client, ensure_dataset)
+            assert len(triggers) == initial_count + 1
         finally:
-            await basic_trigger.cleanup(client, ensure_dataset, trigger_id)
-
-    @pytest.mark.asyncio
-    async def test_recipients_email(self, client):
-        """Test email recipient example."""
-        from docs.examples.recipients import email_recipient
-
-        recipient_id = await email_recipient.create_email_recipient(client)
-        try:
-            await email_recipient.test_assertions(client, recipient_id)
-        finally:
-            await email_recipient.cleanup(client, recipient_id)
-
-    # ... more tests for each example
+            # Delete (always, even on failure)
+            await delete_trigger(client, ensure_dataset, trigger_id)
 ```
 
-### Fixture Dependencies (conftest.py)
-
-Based on [DEPENDENCIES.md](.claude/skills/live-test/DEPENDENCIES.md), fixtures must be created in order:
+## Fixture Hierarchy
 
 ```python
 # tests/integration/conftest.py
-"""Shared fixtures for integration tests."""
-from __future__ import annotations
-
-import asyncio
-import os
-from pathlib import Path
-
-import pytest
-
-from honeycomb import HoneycombClient
-
 
 @pytest.fixture(scope="session")
-def api_key() -> str:
-    """Load API key from secrets."""
-    secrets_file = Path(__file__).parent.parent.parent / ".claude" / "secrets" / "test.env"
-    if secrets_file.exists():
-        for line in secrets_file.read_text().splitlines():
-            if line.startswith("export HONEYCOMB_API_KEY="):
-                return line.split("=", 1)[1].strip().strip('"')
+async def api_key() -> str:
+    """Load API key from environment."""
+    ...
 
-    key = os.environ.get("HONEYCOMB_API_KEY")
-    if not key:
-        pytest.skip("No API key available")
-    return key
-
-
-@pytest.fixture(scope="session")
-def test_dataset() -> str:
-    """Dataset name for integration tests."""
-    return os.environ.get("HONEYCOMB_TEST_DATASET", "integration-test")
-
-
-@pytest.fixture(scope="session")
-def client(api_key: str) -> HoneycombClient:
-    """Create async client for tests."""
-    return HoneycombClient(api_key=api_key)
-
-
-@pytest.fixture(scope="session")
-def sync_client(api_key: str) -> HoneycombClient:
-    """Create sync client for tests."""
-    return HoneycombClient(api_key=api_key)
-
-
-# Level 0: Dataset
-@pytest.fixture(scope="session")
-def ensure_dataset(client: HoneycombClient, test_dataset: str) -> str:
-    """Ensure test dataset exists (Level 0)."""
-    try:
-        client.datasets.get(test_dataset)
-    except Exception:
-        client.datasets.create({"name": test_dataset, "slug": test_dataset})
-    return test_dataset
-
-
-# Level 1: Columns
-@pytest.fixture(scope="session")
-def ensure_columns(client: HoneycombClient, ensure_dataset: str) -> list[str]:
-    """Create standard test columns (Level 1)."""
-    columns = [
-        {"key_name": "duration_ms", "type": "float"},
-        {"key_name": "status_code", "type": "integer"},
-        {"key_name": "service", "type": "string"},
-        {"key_name": "endpoint", "type": "string"},
-        {"key_name": "error", "type": "boolean"},
-        {"key_name": "trace.trace_id", "type": "string"},
-        {"key_name": "user_id", "type": "string"},
-    ]
-    created = []
-    for col in columns:
-        try:
-            client.columns.create(ensure_dataset, col)
-            created.append(col["key_name"])
-        except Exception:
-            pass  # Column may already exist
-    return created
-
-
-# Level 2: Events (with wait)
-@pytest.fixture(scope="session")
-def ensure_events(client: HoneycombClient, ensure_dataset: str, ensure_columns: list[str]) -> bool:
-    """Send test events and wait for ingestion (Level 2)."""
-    events = [
-        {"service": "api", "endpoint": "/users", "duration_ms": 45.0, "status_code": 200},
-        {"service": "api", "endpoint": "/users", "duration_ms": 120.0, "status_code": 200},
-        {"service": "api", "endpoint": "/orders", "duration_ms": 1200.0, "status_code": 500, "error": True},
-        {"service": "web", "endpoint": "/home", "duration_ms": 30.0, "status_code": 200},
-    ]
-
-    for event in events:
-        client.events.create(ensure_dataset, event)
-
-    # Wait for ingestion
-    import time
-    time.sleep(35)
-
-    return True
-
-
-# Fixture that requires data
 @pytest.fixture
-def with_data(ensure_events: bool) -> bool:
-    """Marker fixture for tests that need queryable data."""
-    return ensure_events
+async def client(api_key: str) -> AsyncIterator[HoneycombClient]:
+    """Create authenticated client."""
+    ...
+
+@pytest.fixture
+async def ensure_dataset(client: HoneycombClient) -> str:
+    """Create test dataset if needed."""
+    ...
+
+@pytest.fixture
+async def ensure_columns(client: HoneycombClient, ensure_dataset: str) -> list[str]:
+    """Send events to create columns used in examples."""
+    ...
+
+@pytest.fixture
+async def ensure_sli(client: HoneycombClient, ensure_dataset: str, ensure_columns: list[str]) -> str:
+    """Create derived column for SLI (required for SLO tests)."""
+    ...
+
+@pytest.fixture
+async def ensure_slo(client: HoneycombClient, ensure_dataset: str, ensure_sli: str) -> str:
+    """Create SLO (required for Burn Alert tests)."""
+    ...
+
+@pytest.fixture
+async def ensure_events_queryable(client: HoneycombClient, ensure_dataset: str) -> None:
+    """Send events and wait for them to be queryable (~30s)."""
+    ...
 ```
 
-## Implementation Plan
+## Resource Coverage Matrix
 
-### Phase 1: Fix Current Integration Tests (Immediate)
+### Target: 50%+ of code blocks tested
 
-1. **Update conftest.py** with proper fixture hierarchy:
-   - Add `ensure_columns` fixture
-   - Add `ensure_events` fixture with 35-second wait
-   - Update test dependencies
+| Resource | API Methods | Example File | Test Coverage | Status |
+|----------|-------------|--------------|---------------|--------|
+| **datasets** | list, get, create, update, delete | basic_dataset.py | Full CRUD | Done |
+| **columns** | list, get, create, update, delete | basic_column.py | Full CRUD | Done |
+| **events** | send, send_batch | basic_event.py | Send + Query | **TODO** |
+| **queries** | create, get, delete | basic_query.py | Full lifecycle | Partial |
+| **query_results** | create, get, run, create_and_run | basic_query.py | Run patterns | Partial |
+| **recipients** | list, get, create, update, delete | basic_recipient.py | Full CRUD | Done |
+| **triggers** | list, get, create, update, delete | basic_trigger.py | Full CRUD | Partial |
+| **boards** | list, get, create, update, delete | basic_board.py | Full CRUD | Partial |
+| **slos** | list, get, create, update, delete | basic_slo.py | Full CRUD | Partial |
+| **burn_alerts** | list, get, create, update, delete | basic_burn_alert.py | Full CRUD | Partial |
+| **markers** | list, create, update, delete + settings | basic_marker.py | Full CRUD | Partial |
+| **derived_columns** | list, get, create, update, delete | basic_derived_column.py | Full CRUD | Done |
+| **api_keys** | list, get, create, update, delete | basic_api_key.py | Full CRUD | **TODO** |
+| **environments** | list, get, create, update, delete | basic_environment.py | Full CRUD | **TODO** |
+| **service_map** | create, get, get_result | basic_service_map.py | Full lifecycle | **TODO** |
 
-2. **Fix failing tests**:
-   - Derived columns: Use expressions that reference created columns
-   - Triggers with filters: Reference columns from `ensure_columns`
+### Priority Order (by dependency level)
 
-3. **Verify all 23 tests pass**
+1. **Level 0**: datasets (done), environments (TODO - needs management key)
+2. **Level 1**: columns (done)
+3. **Level 2**: events (TODO - send + query validation)
+4. **Level 3**: queries (partial), recipients (done)
+5. **Level 4**: triggers, boards, slos, markers (all partial - need full CRUD)
+6. **Level 5**: burn_alerts (partial - need full CRUD)
+7. **Level 6**: service_map (TODO)
+8. **Management**: api_keys (TODO - needs management key)
 
-### Phase 2: Create Examples Directory Structure
+## Implementation Phases
 
-1. **Create `docs/examples/` directory structure**:
-   ```
-   docs/examples/
-   ├── __init__.py
-   ├── triggers/
-   ├── recipients/
-   ├── derived_columns/
-   ├── queries/
-   └── slos/
-   ```
+### Phase 1: Complete Existing Resources (Add update/delete)
 
-2. **Migrate one example** (triggers/basic_trigger.py) as proof of concept
+Expand existing example files to include full CRUD lifecycle:
 
-3. **Create test_doc_examples.py** to run example
+- [ ] `triggers/basic_trigger.py` - Add get, update examples
+- [ ] `boards/basic_board.py` - Add get, update, delete examples
+- [ ] `slos/basic_slo.py` - Add get, update, delete examples
+- [ ] `burn_alerts/basic_burn_alert.py` - Add get, update, delete examples
+- [ ] `markers/basic_marker.py` - Add get, update, delete, settings examples
+- [ ] `queries/basic_query.py` - Add get, delete examples
+- [ ] `columns/basic_column.py` - Add get, update, delete examples
 
-### Phase 3: Migrate All Examples
+### Phase 2: Add Missing Resources
 
-For each resource type:
+Create example files for resources with no coverage:
 
-1. Extract existing code examples from `docs/usage/*.md`
-2. Create corresponding `docs/examples/<resource>/*.py` files
-3. Add test methods to `test_doc_examples.py`
-4. Update markdown to include from example files
+- [ ] `events/basic_event.py` - send, send_batch, then query to verify
+- [ ] `api_keys/basic_api_key.py` - Full CRUD (requires management key fixture)
+- [ ] `environments/basic_environment.py` - Full CRUD (requires management key fixture)
+- [ ] `service_map/basic_service_map.py` - create request, poll for result, get
 
-**Priority order** (based on complexity and usage):
-1. Recipients (simple, no dataset dependency)
-2. Triggers (most commonly used)
-3. Derived Columns (new feature)
-4. Queries (complex, multiple patterns)
-5. SLOs (requires data)
-6. Boards (environment-scoped)
-7. Burn Alerts (requires SLO)
+### Phase 3: Update Documentation
 
-### Phase 4: Documentation Preprocessing
+For each resource doc (`docs/usage/*.md`):
 
-1. **Choose approach**:
-   - Option A: MkDocs plugin (mkdocs-include-markdown-plugin)
-   - Option B: Custom preprocessor script
-   - Option C: Jinja2 templates
+1. Remove sync usage sections (mark as "TODO: auto-generate")
+2. Remove error handling examples
+3. Replace inline code blocks with include directives
+4. Ensure all includes point to tested example files
 
-2. **Implement include syntax** for extracting example sections
+### Phase 4: Auto-generate Sync Examples (Future)
 
-3. **Update CI** to validate includes resolve correctly
+Create a script to generate sync equivalents from async examples:
 
-### Phase 5: Validation and CI Integration
+```python
+# scripts/generate_sync_examples.py
+# Transforms:
+#   async def create_trigger(...) -> str:
+#       ... await client.triggers.create_async(...)
+# Into:
+#   def create_trigger_sync(...) -> str:
+#       ... client.triggers.create(...)
+```
 
-1. **Add validation script** (`scripts/validate_example_includes.py`):
-   - Verify all `{!examples/...!}` references exist
-   - Verify all example files have test coverage
-   - Check for orphaned examples (not included anywhere)
+## Events Lifecycle Testing
 
-2. **Update CI pipeline**:
-   ```yaml
-   - name: Validate doc examples
-     run: poetry run python scripts/validate_example_includes.py
+Events are special - they can't be deleted, but they CAN be verified via queries:
 
-   - name: Run integration tests
-     run: poetry run pytest tests/integration/ -v
-     env:
-       HONEYCOMB_API_KEY: ${{ secrets.HONEYCOMB_TEST_API_KEY }}
-   ```
+```python
+# docs/examples/events/basic_event.py
+
+# start_example:send_single
+async def send_event(client: HoneycombClient, dataset: str) -> None:
+    """Send a single event."""
+    await client.events.send_async(
+        dataset,
+        data={"service": "api", "duration_ms": 45, "status": 200}
+    )
+# end_example:send_single
+
+
+# start_example:send_batch
+async def send_batch(client: HoneycombClient, dataset: str) -> None:
+    """Send multiple events in a batch."""
+    events = [
+        {"service": "api", "endpoint": "/users", "duration_ms": 45},
+        {"service": "api", "endpoint": "/orders", "duration_ms": 120},
+    ]
+    await client.events.send_batch_async(dataset, events)
+# end_example:send_batch
+
+
+# start_example:verify_via_query
+async def verify_events(client: HoneycombClient, dataset: str) -> QueryResult:
+    """Verify events were ingested by running a query."""
+    import asyncio
+    await asyncio.sleep(30)  # Wait for events to be queryable
+
+    query, result = await client.query_results.create_and_run_async(
+        dataset,
+        QueryBuilder().last_10_minutes().count().build()
+    )
+    assert result.data.rows[0]["COUNT"] > 0
+    return result
+# end_example:verify_via_query
+```
+
+## Service Map Dependencies Testing
+
+Service map requires trace data and async result polling:
+
+```python
+# docs/examples/service_map/basic_service_map.py
+
+# start_example:create_request
+async def create_service_map_request(
+    client: HoneycombClient, dataset: str
+) -> str:
+    """Create a service map dependency request."""
+    request_id = await client.service_map_dependencies.create_async(
+        dataset=dataset,
+        start_time=datetime.now() - timedelta(hours=1),
+        end_time=datetime.now(),
+    )
+    return request_id
+# end_example:create_request
+
+
+# start_example:poll_result
+async def get_service_map_result(
+    client: HoneycombClient, dataset: str, request_id: str
+) -> ServiceMapResult:
+    """Poll for service map result (async operation)."""
+    import asyncio
+
+    for _ in range(30):  # Poll for up to 30 seconds
+        result = await client.service_map_dependencies.get_result_async(
+            dataset, request_id
+        )
+        if result.complete:
+            return result
+        await asyncio.sleep(1)
+
+    raise TimeoutError("Service map request did not complete")
+# end_example:poll_result
+```
+
+## Running Tests
+
+```bash
+# Run all integration tests
+poetry run pytest tests/integration/ -v
+
+# Run only doc example tests
+poetry run pytest tests/integration/test_doc_examples.py -v
+
+# Run specific resource tests
+poetry run pytest tests/integration/test_doc_examples.py::TestTriggerExamples -v
+
+# Run with live API (requires credentials)
+HONEYCOMB_API_KEY=xxx poetry run pytest tests/integration/ -v
+```
+
+## Success Metrics
+
+| Metric | Current | Target |
+|--------|---------|--------|
+| Code blocks tested | 37/189 (19.6%) | 95/189 (50%+) |
+| Resources with full CRUD tests | 4/15 | 12/15 |
+| Inline code blocks (untested) | 152 | <80 |
+| Sync sections in docs | ~14 | 0 (removed) |
+| Error handling sections | ~2 | 0 (removed) |
 
 ## File Naming Conventions
 
 | Pattern | Purpose |
 |---------|---------|
-| `docs/examples/<resource>/<action>.py` | Main example file |
-| `EXAMPLE: <name>` / `END_EXAMPLE` | Extractable section markers |
-| `test_assertions()` | Verification function (not in docs) |
-| `cleanup()` | Resource cleanup function |
-
-## Testing Levels
-
-| Test Type | Location | Purpose | When to Run |
-|-----------|----------|---------|-------------|
-| Unit tests | `tests/unit/` | Fast, mocked, catches regressions | Every commit |
-| Doc validation | `scripts/validate_docs_examples.py` | Syntax check | Every commit |
-| Integration tests | `tests/integration/` | Real API verification | PR merge, nightly |
-| Example tests | `tests/integration/test_doc_examples.py` | Doc accuracy | PR merge, nightly |
-
-## Migration Checklist
-
-For each documentation page:
-
-- [ ] Identify all code examples
-- [ ] Create example files in `docs/examples/`
-- [ ] Add markers for extractable sections
-- [ ] Write test_assertions() and cleanup() functions
-- [ ] Add test to test_doc_examples.py
-- [ ] Update markdown to use include syntax
-- [ ] Verify rendering in docs preview
-- [ ] Run integration tests to verify
-
-## Success Criteria
-
-1. **All doc examples are tested** - Every code block in docs comes from a tested example file
-2. **Single source of truth** - No duplicate code between docs and tests
-3. **CI catches drift** - Broken examples fail the build
-4. **Fast feedback** - Unit tests still run in seconds; integration tests run separately
-5. **Easy maintenance** - Adding a new example is straightforward
-
-## Open Questions
-
-1. **Include syntax**: Use MkDocs plugin or custom solution?
-2. **Session vs function scope**: Should fixtures be session-scoped (faster) or function-scoped (isolated)?
-3. **Parallel execution**: Can integration tests run in parallel, or do they conflict?
-4. **Cost management**: How to minimize API calls during testing?
+| `docs/examples/<resource>/basic_<resource>.py` | Main CRUD example file |
+| `# start_example:<operation>` | Extractable section (list, create, get, update, delete) |
+| `test_lifecycle()` | Verification function |
+| `cleanup()` | Resource cleanup (idempotent) |
 
 ## References
 
 - [DEPENDENCIES.md](.claude/skills/live-test/DEPENDENCIES.md) - Resource dependency graph
-- [validate_docs_examples.py](scripts/validate_docs_examples.py) - Existing syntax validator
-- [MkDocs Include Plugin](https://github.com/mondeja/mkdocs-include-markdown-plugin) - Potential solution
+- [validate_docs_examples.py](scripts/validate_docs_examples.py) - Syntax validator
+- [MkDocs Include Plugin](https://github.com/mondeja/mkdocs-include-markdown-plugin) - Plugin documentation

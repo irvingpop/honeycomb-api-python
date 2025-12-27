@@ -49,6 +49,7 @@ nav:
           - Queries: usage/queries.md
       - Data Management:
           - Columns: usage/columns.md
+          - Derived Columns: usage/derived_columns.md
           - Markers: usage/markers.md
           - Recipients: usage/recipients.md
           - Burn Alerts: usage/burn_alerts.md
@@ -70,6 +71,7 @@ nav:
 
 plugins:
   - search
+  - include-markdown
   - mkdocstrings:
       handlers:
         python:

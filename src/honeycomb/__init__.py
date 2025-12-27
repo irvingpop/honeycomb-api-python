@@ -27,6 +27,7 @@ from .models import (
     BoardCreate,
     BurnAlert,
     BurnAlertCreate,
+    BurnAlertRecipient,
     BurnAlertType,
     CalcOp,
     Calculation,
@@ -149,6 +150,7 @@ __all__ = [
     # Models - Burn Alerts
     "BurnAlert",
     "BurnAlertCreate",
+    "BurnAlertRecipient",
     "BurnAlertType",
     # Models - Events
     "BatchEvent",

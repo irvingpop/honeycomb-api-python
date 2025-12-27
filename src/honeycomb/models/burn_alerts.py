@@ -16,12 +16,24 @@ class BurnAlertType(str, Enum):
     BUDGET_RATE = "budget_rate"
 
 
+class BurnAlertRecipient(BaseModel):
+    """A recipient for burn alert notifications."""
+
+    id: str = Field(description="ID of the recipient")
+    type: str | None = Field(default=None, description="Type of recipient (email, slack, etc)")
+    target: str | None = Field(default=None, description="Target address (for backwards compat)")
+
+
 class BurnAlertCreate(BaseModel):
     """Model for creating a new burn alert."""
 
     alert_type: BurnAlertType = Field(description="Type of burn alert")
     slo_id: str = Field(description="ID of the SLO to monitor")
     description: str | None = Field(default=None, description="Description of the burn alert")
+    recipients: list[BurnAlertRecipient] = Field(
+        default_factory=list,
+        description="List of recipients to notify when alert fires",
+    )
 
     # Exhaustion time fields (required when alert_type=exhaustion_time)
     exhaustion_minutes: int | None = Field(
@@ -40,7 +52,14 @@ class BurnAlertCreate(BaseModel):
 
     def model_dump_for_api(self) -> dict[str, Any]:
         """Serialize for API request."""
-        data: dict[str, Any] = {"alert_type": self.alert_type.value, "slo_id": self.slo_id}
+        data: dict[str, Any] = {
+            "alert_type": self.alert_type.value,
+            "slo": {"id": self.slo_id},
+            "recipients": [
+                {"id": r.id, **({"type": r.type} if r.type else {})}
+                for r in self.recipients
+            ],
+        }
 
         if self.description:
             data["description"] = self.description
@@ -75,6 +94,9 @@ class BurnAlert(BaseModel):
     budget_rate_decrease_threshold_per_million: int | None = Field(
         default=None, description="Budget decrease threshold"
     )
+
+    recipients: list[dict] | None = Field(default=None, description="List of recipients")
+    slo: dict | None = Field(default=None, description="SLO details")
 
     created_at: datetime | None = Field(default=None, description="Creation timestamp")
     updated_at: datetime | None = Field(default=None, description="Last update timestamp")

@@ -5,53 +5,41 @@ Datasets are collections of events in Honeycomb. This guide shows how to manage 
 ## Listing Datasets
 
 ```python
-from honeycomb import HoneycombClient
-
-async with HoneycombClient(api_key="...") as client:
-    datasets = await client.datasets.list_async()
-    
-    for dataset in datasets:
-        print(f"Name: {dataset.name}")
-        print(f"Slug: {dataset.slug}")
-        print(f"Columns: {dataset.regular_columns_count}")
+{%
+   include "../examples/datasets/basic_dataset.py"
+   start="# start_example:list_datasets"
+   end="# end_example:list_datasets"
+%}
 ```
 
 ## Getting a Dataset
 
 ```python
-async with HoneycombClient(api_key="...") as client:
-    dataset = await client.datasets.get_async("my-dataset-slug")
-    print(f"Created: {dataset.created_at}")
-    print(f"Last written: {dataset.last_written_at}")
+{%
+   include "../examples/datasets/basic_dataset.py"
+   start="# start_example:get_dataset"
+   end="# end_example:get_dataset"
+%}
 ```
 
 ## Creating a Dataset
 
 ```python
-from honeycomb import HoneycombClient, DatasetCreate
-
-async with HoneycombClient(api_key="...") as client:
-    dataset = await client.datasets.create_async(
-        DatasetCreate(
-            name="My New Dataset",
-            description="For production logs",
-            expand_json_depth=2,
-        )
-    )
-    print(f"Created dataset: {dataset.slug}")
+{%
+   include "../examples/datasets/basic_dataset.py"
+   start="# start_example:create_dataset"
+   end="# end_example:create_dataset"
+%}
 ```
 
 ## Updating a Dataset
 
 ```python
-async with HoneycombClient(api_key="...") as client:
-    updated = await client.datasets.update_async(
-        "my-dataset",
-        DatasetCreate(
-            name="Updated Name",
-            description="Updated description",
-        )
-    )
+{%
+   include "../examples/datasets/basic_dataset.py"
+   start="# start_example:update_dataset"
+   end="# end_example:update_dataset"
+%}
 ```
 
 ## Deleting a Dataset

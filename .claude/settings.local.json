@@ -19,7 +19,9 @@
       "Skill(ci:*)",
       "Bash(poetry run ruff format:*)",
       "Skill(live-test)",
-      "Skill(live-test:*)"
+      "Skill(live-test:*)",
+      "Skill(check)",
+      "Skill(check:*)"
     ]
   }
 }

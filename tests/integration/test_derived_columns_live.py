@@ -15,8 +15,12 @@ from honeycomb import (
 )
 
 
+@pytest.mark.usefixtures("ensure_columns")
 class TestDerivedColumnBuilder:
-    """Test DerivedColumnBuilder against live API."""
+    """Test DerivedColumnBuilder against live API.
+
+    Note: ensure_columns fixture creates the columns used in expressions.
+    """
 
     @pytest.mark.asyncio
     async def test_simple_derived_column(
@@ -25,7 +29,6 @@ class TestDerivedColumnBuilder:
         """Test creating a simple derived column with builder."""
         dataset = ensure_dataset
 
-        # Use expression that doesn't depend on existing columns
         dc = (
             DerivedColumnBuilder("test_has_trace")
             .expression("EXISTS($trace.trace_id)")
@@ -48,7 +51,6 @@ class TestDerivedColumnBuilder:
         """Test derived column with IF expression."""
         dataset = ensure_dataset
 
-        # Use IF with EXISTS which doesn't require pre-existing columns
         dc = (
             DerivedColumnBuilder("test_trace_indicator")
             .expression("IF(EXISTS($trace.trace_id), 1, 0)")
@@ -70,7 +72,7 @@ class TestDerivedColumnBuilder:
         """Test full CRUD cycle for derived columns."""
         dataset = ensure_dataset
 
-        # CREATE - use simple expression that doesn't require existing columns
+        # CREATE
         dc = (
             DerivedColumnBuilder("test_crud_column")
             .expression("EXISTS($trace.span_id)")
@@ -103,6 +105,7 @@ class TestDerivedColumnBuilder:
             await client.derived_columns.get_async(dataset, dc_id)
 
 
+@pytest.mark.usefixtures("ensure_columns")
 class TestDerivedColumnManualConstruction:
     """Test derived columns created without builder."""
 
@@ -113,7 +116,6 @@ class TestDerivedColumnManualConstruction:
         """Test creating derived column with manual construction."""
         dataset = ensure_dataset
 
-        # Use expression that doesn't require existing columns
         dc = DerivedColumnCreate(
             alias="test_manual_column",
             expression="EXISTS($trace.trace_id)",
@@ -131,9 +133,7 @@ class TestDerivedColumnList:
     """Test listing derived columns."""
 
     @pytest.mark.asyncio
-    async def test_list_derived_columns(
-        self, client: HoneycombClient, ensure_dataset: str
-    ) -> None:
+    async def test_list_derived_columns(self, client: HoneycombClient, ensure_dataset: str) -> None:
         """Test listing derived columns in a dataset."""
         dataset = ensure_dataset
         columns = await client.derived_columns.list_async(dataset)
@@ -152,18 +152,15 @@ class TestEnvironmentWideDerivedColumns:
     """Test environment-wide derived columns."""
 
     @pytest.mark.asyncio
-    async def test_list_environment_wide_columns(
-        self, client: HoneycombClient
-    ) -> None:
+    async def test_list_environment_wide_columns(self, client: HoneycombClient) -> None:
         """Test listing environment-wide derived columns."""
         # Use __all__ for environment-wide
         columns = await client.derived_columns.list_async("__all__")
         assert isinstance(columns, list)
 
     @pytest.mark.asyncio
-    async def test_create_environment_wide_column(
-        self, client: HoneycombClient
-    ) -> None:
+    @pytest.mark.usefixtures("ensure_columns")
+    async def test_create_environment_wide_column(self, client: HoneycombClient) -> None:
         """Test creating an environment-wide derived column."""
         dc = (
             DerivedColumnBuilder("test_env_wide_column")

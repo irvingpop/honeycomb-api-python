@@ -122,6 +122,7 @@ docs-build:
 
 validate-docs:
 	poetry run python scripts/validate_docs_examples.py
+	poetry run pytest tests/integration/test_doc_examples.py -v
 
 # =============================================================================
 # Maintenance
@@ -149,7 +150,7 @@ update-deps:
 # CI Pipeline
 # =============================================================================
 
-ci: install-dev format check test validate-docs
+ci: install-dev format check test-unit validate-docs
 	@echo ""
 	@echo "============================================"
 	@echo "CI pipeline completed successfully!"

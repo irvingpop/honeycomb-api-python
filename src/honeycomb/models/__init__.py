@@ -2,7 +2,7 @@
 
 from .api_keys import ApiKey, ApiKeyCreate, ApiKeyType
 from .boards import Board, BoardCreate
-from .burn_alerts import BurnAlert, BurnAlertCreate, BurnAlertType
+from .burn_alerts import BurnAlert, BurnAlertCreate, BurnAlertRecipient, BurnAlertType
 from .columns import Column, ColumnCreate, ColumnType
 from .datasets import Dataset, DatasetCreate
 from .derived_columns import DerivedColumn, DerivedColumnBuilder, DerivedColumnCreate
@@ -102,6 +102,7 @@ __all__ = [
     # Burn Alerts
     "BurnAlert",
     "BurnAlertCreate",
+    "BurnAlertRecipient",
     "BurnAlertType",
     # Events
     "BatchEvent",

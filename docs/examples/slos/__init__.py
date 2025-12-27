@@ -1,0 +1,1 @@
+"""SLO examples for documentation."""

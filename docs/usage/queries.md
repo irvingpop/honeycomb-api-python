@@ -49,28 +49,11 @@ spec = QuerySpec.builder().last_24_hours().count().avg("duration_ms").build()
 Create a saved query, then run it:
 
 ```python
-from honeycomb import HoneycombClient, QueryBuilder
-
-async with HoneycombClient(api_key="...") as client:
-    # Step 1: Create and save the query
-    query = await client.queries.create_async(
-        "my-dataset",
-        QueryBuilder()
-            .last_1_hour()
-            .p99("duration_ms")
-            .group_by("service")
-            .build()
-    )
-    print(f"Saved query: {query.id}")
-
-    # Step 2: Run the saved query
-    result = await client.query_results.run_async(
-        "my-dataset",
-        query_id=query.id,
-    )
-
-    for row in result.data.rows:
-        print(row)
+{%
+   include "../examples/queries/basic_query.py"
+   start="# start_example:save_then_run"
+   end="# end_example:save_then_run"
+%}
 ```
 
 **Use when:** You want to keep the query for future reuse
@@ -80,26 +63,28 @@ async with HoneycombClient(api_key="...") as client:
 Save a query AND get immediate results in one call:
 
 ```python
-from honeycomb import HoneycombClient, QueryBuilder
-
-async with HoneycombClient(api_key="...") as client:
-    query, result = await client.query_results.create_and_run_async(
-        "my-dataset",
-        QueryBuilder()
-            .last_2_hours()
-            .avg("duration_ms")
-            .count()
-            .gte("status", 500)
-            .build(),
-        poll_interval=1.0,
-        timeout=60.0,
-    )
-
-    print(f"Saved as query {query.id}")
-    print(f"Found {len(result.data.rows)} rows")
+{%
+   include "../examples/queries/basic_query.py"
+   start="# start_example:create_and_run"
+   end="# end_example:create_and_run"
+%}
 ```
 
 **Use when:** You want results now AND want to reuse the query later
+
+### 3. Get a Saved Query
+
+Retrieve a previously saved query by its ID:
+
+```python
+{%
+   include "../examples/queries/basic_query.py"
+   start="# start_example:get"
+   end="# end_example:get"
+%}
+```
+
+**Note:** The Honeycomb API does not support listing or deleting saved queries. Once created, queries persist in the dataset to maintain query history and references from triggers/SLOs.
 
 ## Result Limits and Pagination
 
@@ -186,268 +171,56 @@ print(f"Total: {len(rows)} traces")
 | 1,000 - 10,000 | `run_async()` or `create_and_run_async()` | 10,000 | Fastest, no pagination (disable_series=True) |
 | > 10,000 | `run_all_async()` | 100,000 default | Automatic pagination, be patient |
 
-## Query Specifications
+## QueryBuilder
 
-### Using the Builder (Recommended)
+`QueryBuilder` provides a fluent interface for building query specifications. See tested examples in [basic_query.py](../examples/queries/basic_query.py).
 
-```python
-from honeycomb import QueryBuilder, CalcOp, FilterOp
+**Key features:**
+- Time presets (`.last_1_hour()`, `.last_24_hours()`, etc.)
+- Calculations (`.count()`, `.avg()`, `.p99()`, etc.)
+- Filters (`.eq()`, `.gte()`, `.contains()`, etc.)
+- Grouping (`.group_by()`)
+- Ordering (`.order_by_count()`, `.order_by()`)
 
-# Simple query
-spec = QueryBuilder().last_1_hour().count().build()
-
-# With multiple calculations
-spec = (
-    QueryBuilder()
-    .last_1_hour()
-    .count()
-    .avg("duration_ms")
-    .p99("duration_ms")
-    .sum("bytes_sent")
-    .build()
-)
-
-# With filters (using shortcuts)
-spec = (
-    QueryBuilder()
-    .last_1_hour()
-    .count()
-    .eq("status", "500")
-    .eq("service", "api")
-    .filter_with("AND")
-    .build()
-)
-
-# With grouping
-spec = (
-    QueryBuilder()
-    .last_1_hour()
-    .count()
-    .group_by("endpoint", "status")
-    .build()
-)
-```
-
-### Using Dict Syntax (Alternative)
-
-You can also use dict syntax for calculations and filters:
-
-```python
-from honeycomb import QuerySpec
-
-spec = QuerySpec(
-    time_range=3600,
-    calculations=[
-        {"op": "COUNT"},
-        {"op": "AVG", "column": "duration_ms"},
-        {"op": "P99", "column": "duration_ms"},
-    ],
-    filters=[
-        {"column": "status", "op": "=", "value": "500"},
-    ],
-    breakdowns=["endpoint", "status"],
-)
-```
-
-### Using Typed Models
-
-For full type safety, use the typed model classes:
-
-```python
-from honeycomb import QuerySpec, Calculation, CalcOp, Filter, FilterOp
-
-spec = QuerySpec(
-    time_range=3600,
-    calculations=[
-        Calculation(op=CalcOp.COUNT),
-        Calculation(op=CalcOp.AVG, column="duration_ms"),
-        Calculation(op=CalcOp.P99, column="duration_ms"),
-    ],
-    filters=[
-        Filter(column="status", op=FilterOp.EQUALS, value="500"),
-    ],
-    breakdowns=["endpoint", "status"],
-)
-```
-
-### Complete Example
-
-```python
-from honeycomb import QueryBuilder
-
-spec = (
-    QueryBuilder()
-    .last_2_hours()
-    .granularity(300)  # 5-minute buckets
-    .count()
-    .avg("duration_ms")
-    .p99("duration_ms")
-    .eq("service", "api")
-    .gte("status", 400)
-    .filter_with("AND")
-    .group_by("endpoint")
-    .order_by_count()
-    .limit(100)
-    .build()
-)
-```
+Alternative approaches: dict syntax (`{"op": "COUNT"}`) or typed models (`Calculation(op=CalcOp.COUNT)`).
 
 ## Polling for Results
 
-When you run a query, it executes asynchronously on Honeycomb's servers. The client handles polling automatically:
-
-### Automatic Polling (Recommended)
-
-```python
-# run_async() polls automatically until complete or timeout
-result = await client.query_results.run_async(
-    "my-dataset",
-    query_id=saved_query_id,
-    poll_interval=1.0,  # Check every second
-    timeout=60.0,       # Give up after 60 seconds
-)
-```
-
-### Manual Polling (Advanced)
-
-```python
-import asyncio
-
-# Start query execution
-result_id = await client.query_results.create_async(
-    "my-dataset",
-    query_id=saved_query_id
-)
-
-# Poll manually
-while True:
-    result = await client.query_results.get_async("my-dataset", result_id)
-
-    if result.data is not None:
-        # Query complete!
-        break
-
-    # Wait before polling again
-    await asyncio.sleep(1.0)
-
-print(f"Got {len(result.data.results)} rows")
-```
+Query execution is async on Honeycomb's servers. The client handles polling automatically with configurable `poll_interval` and `timeout` parameters on `run_async()` and `create_and_run_async()`.
 
 ## Working with Query Results
 
-### Processing Results
+Results are returned as `QueryResult` objects:
 
 ```python
-query, result = await client.query_results.create_and_run_async(
-    "my-dataset",
-    spec=spec
-)
+query, result = await client.query_results.create_and_run_async("my-dataset", spec)
 
-# Result is a QueryResult object
-print(f"Rows: {len(result.data.rows)}")
-
-# Each row is a dict
+# Each row is a dict with calculated values (uppercase) and breakdown values
 for row in result.data.rows:
-    # Access calculated values (uppercase: COUNT, AVG, P99, etc.)
     count = row.get("COUNT", 0)
-    avg = row.get("AVG", 0)  # or use alias if you set one
-
-    # Access breakdown values (as specified in breakdowns)
+    avg = row.get("AVG", 0)
     endpoint = row.get("endpoint", "unknown")
-
     print(f"{endpoint}: {count} requests, avg {avg}ms")
 ```
 
-### Advanced: Paginating Large Result Sets (> 10K rows)
+## Sync Usage
 
-For queries returning > 10,000 rows, use `run_all_async()`:
-
-```python
-# Example: Get all slow traces in last 24 hours
-rows = await client.query_results.run_all_async(
-    "my-dataset",
-    spec=QuerySpec(
-        time_range=86400,
-        calculations=[{"op": "AVG", "column": "duration_ms", "alias": "avg_duration"}],
-        filters=[
-            {"column": "duration_ms", "op": ">", "value": 1000}  # > 1 second
-        ],
-        breakdowns=["trace.trace_id", "name"],
-    ),
-    sort_field="avg_duration",  # Sort by average duration (auto-default)
-    sort_order="descending",     # Slowest first (default)
-    max_results=50_000,          # Limit to 50K rows
-    on_page=lambda page, total: print(f"Fetched page {page}: {total} rows total"),
-)
-
-# Process all results
-slow_traces = [
-    (row["trace.trace_id"], row["name"], row["avg_duration"])
-    for row in rows
-]
-print(f"Found {len(slow_traces)} slow traces")
-```
-
-**Important Notes:**
-- Rate limit: 10 queries/minute (50K rows = ~5 queries = ~30 seconds)
-- Smart stopping: Stops if > 50% duplicate rows detected (long tail)
-- Automatic deduplication by composite key (breakdowns + calculations)
-- Don't set `spec.orders` - managed automatically
-- Progress callback recommended for visibility
-- **Each page creates a new saved query** that persists in Honeycomb
-
-## Common Query Patterns
-
-### Error Rate by Endpoint
+All query operations have sync equivalents:
 
 ```python
-from honeycomb import QueryBuilder
+with HoneycombClient(api_key="...", sync=True) as client:
+    # Create and run query
+    query, result = client.query_results.create_and_run(
+        "my-dataset",
+        QueryBuilder().last_1_hour().count().build()
+    )
 
-spec = (
-    QueryBuilder()
-    .last_1_hour()
-    .count()
-    .gte("status", 500)
-    .group_by("endpoint")
-    .order_by_count()
-    .limit(10)
-    .build()
-)
+    # Create saved query
+    query = client.queries.create("my-dataset", spec)
+
+    # Run saved query
+    result = client.query_results.run("my-dataset", query_id=query.id)
+
+    # Get saved query
+    query = client.queries.get("my-dataset", query_id)
 ```
-
-### Latency Percentiles
-
-```python
-from honeycomb import QueryBuilder
-
-spec = (
-    QueryBuilder()
-    .last_1_hour()
-    .p50("duration_ms")
-    .p95("duration_ms")
-    .p99("duration_ms")
-    .group_by("service")
-    .build()
-)
-```
-
-### Time Series Data
-
-```python
-from honeycomb import QueryBuilder
-
-spec = (
-    QueryBuilder()
-    .last_24_hours()
-    .granularity(3600)  # 1-hour buckets
-    .count()
-    .avg("duration_ms")
-    .build()
-)
-```
-
-## See Also
-
-- [Queries API Reference](../api/resources.md#queries) - Full API documentation
-- [QuerySpec Model](../api/models.md#query-models) - All query options
-- [Triggers Guide](triggers.md) - Queries are used in triggers

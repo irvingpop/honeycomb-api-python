@@ -1,0 +1,1 @@
+"""Board examples for documentation."""

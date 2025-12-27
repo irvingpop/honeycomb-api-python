@@ -2,14 +2,32 @@
 """Validate that documentation examples are syntactically correct."""
 
 import ast
+import re
 import sys
 from pathlib import Path
 
+# Pattern to detect mkdocs-include-markdown-plugin directives
+INCLUDE_PATTERN = re.compile(r"^\s*\{%\s*include", re.MULTILINE)
 
-def extract_python_code_blocks(markdown_file: Path) -> list[tuple[int, str]]:
+
+def is_include_block(code: str) -> bool:
+    """Check if code block contains mkdocs-include-markdown-plugin directive.
+
+    These blocks use Jinja template syntax like:
+        {% include "../examples/file.py" start="..." end="..." %}
+
+    They are not Python code - they get replaced during mkdocs build.
+    """
+    return bool(INCLUDE_PATTERN.search(code))
+
+
+def extract_python_code_blocks(markdown_file: Path) -> list[tuple[int, str, bool]]:
     """Extract Python code blocks from markdown file.
 
     Handles both regular code blocks and Material tabbed code blocks.
+
+    Returns:
+        List of tuples: (line_number, code, is_include_directive)
     """
     code_blocks = []
     in_code_block = False
@@ -37,7 +55,9 @@ def extract_python_code_blocks(markdown_file: Path) -> list[tuple[int, str]]:
                             dedented.append("")
                         else:
                             dedented.append(code_line)
-                    code_blocks.append((block_start_line, "\n".join(dedented)))
+                    code = "\n".join(dedented)
+                    is_include = is_include_block(code)
+                    code_blocks.append((block_start_line, code, is_include))
             elif in_code_block:
                 current_block.append(line.rstrip())
 
@@ -61,11 +81,12 @@ def main():
     docs_dir = Path("docs")
 
     if not docs_dir.exists():
-        print("❌ docs/ directory not found")
+        print("docs/ directory not found")
         return 1
 
     errors = 0
     total_blocks = 0
+    skipped_includes = 0
 
     for md_file in docs_dir.rglob("*.md"):
         code_blocks = extract_python_code_blocks(md_file)
@@ -73,22 +94,29 @@ def main():
         if not code_blocks:
             continue
 
-        print(f"\n📄 Checking {md_file.relative_to(docs_dir)}...")
+        print(f"\nChecking {md_file.relative_to(docs_dir)}...")
 
-        for line_num, code in code_blocks:
+        for line_num, code, is_include in code_blocks:
+            if is_include:
+                skipped_includes += 1
+                print(f"   ~ Include directive at line {line_num} (validated via source file)")
+                continue
+
             total_blocks += 1
             if not validate_syntax(code, md_file, line_num):
                 errors += 1
                 print(f"   Code block starting at line {line_num}")
             else:
-                print(f"   ✓ Code block at line {line_num}")
+                print(f"   OK Code block at line {line_num}")
 
     print(f"\n{'=' * 60}")
+    if skipped_includes > 0:
+        print(f"Skipped {skipped_includes} include directive(s) (validated via source files)")
     if errors == 0:
-        print(f"✅ All {total_blocks} code blocks have valid syntax!")
+        print(f"All {total_blocks} code blocks have valid syntax!")
         return 0
     else:
-        print(f"❌ Found {errors} syntax errors in {total_blocks} code blocks")
+        print(f"Found {errors} syntax errors in {total_blocks} code blocks")
         return 1
 
 
