@@ -146,8 +146,9 @@ __all__ = [
     "BoardBundle",
     "BoardCreate",
     "ExistingQueryPanel",
+    "ExistingSLOPanel",
     "QueryBuilderPanel",
-    "SLOPanel",
+    "SLOBuilderPanel",
     "TextPanel",
     # Models - Queries
     "Query",

@@ -125,11 +125,11 @@ class TestBoardBuilderSLOPanels:
     """Tests for SLO panel configuration."""
 
     def test_slo_panel_minimal(self):
-        """Test adding minimal SLO panel."""
+        """Test adding minimal SLO panel (existing SLO ID)."""
         bundle = BoardBuilder("Test").auto_layout().slo("slo-id-1").build()
 
-        assert len(bundle.slo_panels) == 1
-        panel = bundle.slo_panels[0]
+        assert len(bundle.existing_slo_panels) == 1
+        panel = bundle.existing_slo_panels[0]
         assert panel.slo_id == "slo-id-1"
         assert panel.position is None
 
@@ -138,7 +138,7 @@ class TestBoardBuilderSLOPanels:
         position = (8, 0, 4, 6)
         bundle = BoardBuilder("Test").manual_layout().slo("slo-id-1", position=position).build()
 
-        assert bundle.slo_panels[0].position == position
+        assert bundle.existing_slo_panels[0].position == position
 
 
 class TestBoardBuilderTextPanels:
@@ -185,7 +185,7 @@ class TestBoardBuilderMixedPanels:
         )
 
         assert len(bundle.existing_query_panels) == 1
-        assert len(bundle.slo_panels) == 1
+        assert len(bundle.existing_slo_panels) == 1
         assert len(bundle.text_panels) == 1
 
     def test_board_with_multiple_queries(self):
@@ -279,7 +279,7 @@ class TestBoardBuilderValidation:
 
         assert bundle.layout_generation == "auto"
         assert len(bundle.existing_query_panels) == 1
-        assert len(bundle.slo_panels) == 1
+        assert len(bundle.existing_slo_panels) == 1
 
 
 class TestBoardBuilderComplexScenarios:
@@ -304,7 +304,7 @@ class TestBoardBuilderComplexScenarios:
         assert bundle.board_description == "Comprehensive service monitoring"
         assert bundle.layout_generation == "auto"
         assert len(bundle.existing_query_panels) == 2
-        assert len(bundle.slo_panels) == 1
+        assert len(bundle.existing_slo_panels) == 1
         assert len(bundle.text_panels) == 1
         assert bundle.tags is not None
         assert len(bundle.tags) == 2
@@ -324,10 +324,10 @@ class TestBoardBuilderComplexScenarios:
         assert bundle.board_name == "Custom Layout"
         assert bundle.layout_generation == "manual"
         assert len(bundle.existing_query_panels) == 1
-        assert len(bundle.slo_panels) == 1
+        assert len(bundle.existing_slo_panels) == 1
         assert len(bundle.text_panels) == 1
 
         # Verify all panels have positions
         assert bundle.existing_query_panels[0].position == (0, 0, 8, 6)
-        assert bundle.slo_panels[0].position == (8, 0, 4, 6)
+        assert bundle.existing_slo_panels[0].position == (8, 0, 4, 6)
         assert bundle.text_panels[0].position == (0, 6, 12, 2)

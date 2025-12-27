@@ -53,23 +53,22 @@ async def create_board_with_builder(client: HoneycombClient, dataset: str = "int
 
 
 # start_example:create_complex
-async def create_complex_board(
-    client: HoneycombClient, slo_id: str, dataset: str = "integration-test"
-) -> str:
+async def create_complex_board(client: HoneycombClient, dataset: str = "my-dataset") -> str:
     """Create a comprehensive dashboard with all panel types and advanced features.
 
     This example demonstrates:
-    - Inline QueryBuilder with name in constructor
+    - Inline QueryBuilder and SLOBuilder instances
+    - Automatic creation of queries, SLOs, and board
     - Multiple query panels with different styles (graph, table, combo)
-    - SLO panel for availability tracking
+    - Inline SLO panel creation
     - Text panel for notes
     - Advanced visualization settings (hiding markers, UTC time)
     - Preset filters for dynamic filtering
     - Manual layout with precise positioning using tuples
     """
-    from honeycomb import BoardBuilder, QueryBuilder
+    from honeycomb import BoardBuilder, QueryBuilder, SLOBuilder
 
-    # Single fluent call with inline QueryBuilder and manual positioning
+    # Single fluent call with inline builders and manual positioning
     created = await client.boards.create_from_bundle_async(
         BoardBuilder("Production Monitoring Dashboard")
         .description("Complete service health monitoring with queries, SLOs, and notes")
@@ -91,8 +90,19 @@ async def create_complex_board(
             style="graph",
             visualization={"hide_markers": True, "utc_xaxis": True},
         )
-        # Top right: SLO status
-        .slo(slo_id, position=(9, 0, 3, 6))
+        # Top right: Inline SLO creation with new derived column
+        .slo(
+            SLOBuilder("API Availability")
+            .dataset(dataset)
+            .target_nines(3)
+            .sli(
+                alias="board_sli_success",
+                expression="IF(LT($status_code, 400), 1, 0)",
+                description="Success rate: 1 if status < 400, 0 otherwise",
+            )
+            .description("API success rate SLO"),
+            position=(9, 0, 3, 6),
+        )
         # Middle left: Latency table (environment-wide)
         .query(
             QueryBuilder("Avg Latency")
@@ -177,9 +187,11 @@ async def test_lifecycle(client: HoneycombClient, board_id: str, expected_name: 
 
 
 # CLEANUP
-async def cleanup(client: HoneycombClient, board_id: str) -> None:
+async def cleanup(client: HoneycombClient, board_id: str, dataset: str = "my-dataset") -> None:
     """Clean up resources (called even on test failure)."""
+    # Delete board
     try:
-        await client.boards.delete_async(board_id)
+        if board_id:
+            await client.boards.delete_async(board_id)
     except Exception:
         pass  # Already deleted or doesn't exist

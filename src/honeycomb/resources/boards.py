@@ -157,9 +157,17 @@ class BoardsResource(BaseResource):
                 )
             )
 
-        # Add SLO panels
-        for slo in bundle.slo_panels:
-            panels.append(self._build_slo_panel_dict(slo.slo_id, slo.position))
+        # Create SLOs from SLOBuilder instances
+        for slo_panel in bundle.slo_builder_panels:
+            # Create SLO using existing orchestration
+            slo_dict = await self._client.slos.create_from_bundle_async(slo_panel.builder.build())
+            # Get first SLO (should only be one dataset for board usage)
+            slo = next(iter(slo_dict.values()))
+            panels.append(self._build_slo_panel_dict(slo.id, slo_panel.position))
+
+        # Add existing SLO panels
+        for slo_existing in bundle.existing_slo_panels:
+            panels.append(self._build_slo_panel_dict(slo_existing.slo_id, slo_existing.position))
 
         # Add text panels
         for text in bundle.text_panels:

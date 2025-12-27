@@ -5,8 +5,9 @@ from .board_builder import (
     BoardBuilder,
     BoardBundle,
     ExistingQueryPanel,
+    ExistingSLOPanel,
     QueryBuilderPanel,
-    SLOPanel,
+    SLOBuilderPanel,
     TextPanel,
 )
 from .boards import Board, BoardCreate
@@ -91,15 +92,10 @@ __all__ = [
     "BoardBuilder",
     "BoardBundle",
     "BoardCreate",
-    "BoardPanel",
-    "BoardPanelPosition",
-    "BoardPanelType",
-    "BoardQueryPanel",
-    "BoardSLOPanel",
-    "BoardTextPanel",
     "ExistingQueryPanel",
+    "ExistingSLOPanel",
     "QueryBuilderPanel",
-    "SLOPanel",
+    "SLOBuilderPanel",
     "TextPanel",
     # Queries
     "Query",

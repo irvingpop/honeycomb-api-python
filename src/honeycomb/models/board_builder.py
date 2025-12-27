@@ -9,6 +9,7 @@ from honeycomb.models.tags_mixin import TagsMixin
 
 if TYPE_CHECKING:
     from honeycomb.models.query_builder import QueryBuilder
+    from honeycomb.models.slo_builder import SLOBuilder
 
 
 # =============================================================================
@@ -57,8 +58,21 @@ class ExistingQueryPanel:
 
 
 @dataclass
-class SLOPanel:
-    """SLO panel.
+class SLOBuilderPanel:
+    """SLO panel from inline SLOBuilder (needs creation).
+
+    Attributes:
+        builder: SLOBuilder instance
+        position: Optional (x, y, width, height) for manual layout
+    """
+
+    builder: SLOBuilder
+    position: tuple[int, int, int, int] | None
+
+
+@dataclass
+class ExistingSLOPanel:
+    """SLO panel from existing SLO ID.
 
     Attributes:
         slo_id: ID of the SLO
@@ -108,7 +122,8 @@ class BoardBundle:
     # Panels (in order added)
     query_builder_panels: list[QueryBuilderPanel]
     existing_query_panels: list[ExistingQueryPanel]
-    slo_panels: list[SLOPanel]
+    slo_builder_panels: list[SLOBuilderPanel]
+    existing_slo_panels: list[ExistingSLOPanel]
     text_panels: list[TextPanel]
 
 
@@ -153,7 +168,8 @@ class BoardBuilder(TagsMixin):
         # Panel storage (in order added)
         self._query_builder_panels: list[QueryBuilderPanel] = []
         self._existing_query_panels: list[ExistingQueryPanel] = []
-        self._slo_panels: list[SLOPanel] = []
+        self._slo_builder_panels: list[SLOBuilderPanel] = []
+        self._existing_slo_panels: list[ExistingSLOPanel] = []
         self._text_panels: list[TextPanel] = []
 
     def description(self, desc: str) -> BoardBuilder:
@@ -278,20 +294,34 @@ class BoardBuilder(TagsMixin):
 
     def slo(
         self,
-        slo_id: str,
+        slo: SLOBuilder | str,
         *,
         position: tuple[int, int, int, int] | None = None,
     ) -> BoardBuilder:
         """Add an SLO panel.
 
         Args:
-            slo_id: ID of the SLO
+            slo: SLOBuilder instance OR existing SLO ID string
             position: (x, y, width, height) for manual layout
 
-        Example:
+        Example - Inline SLOBuilder:
+            .slo(
+                SLOBuilder("API Availability")
+                    .dataset("api-logs")
+                    .target_nines(3)
+                    .sli(alias="success_rate"),
+                position=(9, 0, 3, 6)
+            )
+
+        Example - Existing SLO:
             .slo("slo-id-123", position=(8, 0, 4, 6))
         """
-        self._slo_panels.append(SLOPanel(slo_id=slo_id, position=position))
+        from honeycomb.models.slo_builder import SLOBuilder
+
+        if isinstance(slo, SLOBuilder):
+            self._slo_builder_panels.append(SLOBuilderPanel(builder=slo, position=position))
+        else:
+            self._existing_slo_panels.append(ExistingSLOPanel(slo_id=slo, position=position))
         return self
 
     def text(
@@ -332,7 +362,8 @@ class BoardBuilder(TagsMixin):
             all_panels = (
                 self._query_builder_panels
                 + self._existing_query_panels
-                + self._slo_panels
+                + self._slo_builder_panels
+                + self._existing_slo_panels
                 + self._text_panels
             )
             for i, panel in enumerate(all_panels):
@@ -350,6 +381,7 @@ class BoardBuilder(TagsMixin):
             preset_filters=self._preset_filters if self._preset_filters else None,
             query_builder_panels=self._query_builder_panels,
             existing_query_panels=self._existing_query_panels,
-            slo_panels=self._slo_panels,
+            slo_builder_panels=self._slo_builder_panels,
+            existing_slo_panels=self._existing_slo_panels,
             text_panels=self._text_panels,
         )

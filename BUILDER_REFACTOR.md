@@ -16,6 +16,8 @@ This document outlines the comprehensive builder system for the Honeycomb Python
 
 ### ✅ Completed Phases
 
+**Test Status:** 481 unit tests + 46 integration tests passing (100%)
+
 #### Phase 1: RecipientMixin + RecipientBuilder
 - **RecipientMixin** - Shared recipient methods for triggers/burn alerts
 - **RecipientBuilder** - Factory for standalone recipient creation
@@ -51,15 +53,20 @@ This document outlines the comprehensive builder system for the Honeycomb Python
 - **BoardCreate** - Enhanced with panels, layout_generation, tags, preset_filters
 - **BoardBuilder** - Creates boards with query/SLO/text panels
 - **QueryAnnotationsResource** - Full CRUD wrapper for query annotations
-- **QueryBuilder.annotate()** - Basic annotation support (to be replaced in Phase 5.5)
 - Panel types: query, SLO, text
 - Layout modes: auto, manual
 
-### 🚧 In Progress
-
-#### Phase 5.5: Enhanced BoardBuilder with QueryBuilder Integration
+#### Phase 5.5: Enhanced BoardBuilder with QueryBuilder Integration ✅
 
 **Goal:** Single fluent call for board creation with inline QueryBuilder instances, no separate query creation needed.
+
+**Status:** Complete - All tests passing (481 unit + 46 integration)
+
+#### Phase 6: SLOBuilder Integration into BoardBuilder ✅
+
+**Goal:** Allow inline SLOBuilder instances in BoardBuilder, matching QueryBuilder pattern.
+
+**Status:** Complete - All tests passing (481 unit + 46 integration)
 
 ---
 
@@ -680,88 +687,279 @@ board = await client.boards.create_from_bundle_async(
 ## Implementation Checklist
 
 ### Phase 5.5a: Enhance QueryBuilder
-- [ ] Add `self._dataset: str | None = None` to `__init__()`
-- [ ] Add `.dataset(dataset_slug)`, `.environment_wide()`, `.get_dataset()`
-- [ ] Add `self._query_name`, `self._query_description` to `__init__()`
-- [ ] Add `.name(name)`, `.description(desc)`, `.has_name()`, `.get_name()`, `.get_description()`
-- [ ] Remove `.annotate()` method and related code
-- [ ] Update `create_with_annotation_async()` to use `.get_name()` and `.get_description()`
-- [ ] Add unit tests for all new methods
+- [x] Add `name` parameter to `__init__()` (optional, defaults to None)
+- [x] Add `.dataset(dataset_slug)`, `.environment_wide()`, `.get_dataset()`
+- [x] Add `self._query_name`, `self._query_description` to `__init__()`
+- [x] Remove `.annotate()` method (replaced with name in constructor)
+- [x] Keep `.description(desc)`, `.has_name()`, `.get_name()`, `.get_description()`
+- [x] Update `create_with_annotation_async()` to use `.get_name()` and `.get_description()`
+- [x] All unit tests passing (481 tests)
 
 ### Phase 5.5b: BoardBundle Structures
-- [ ] Create `QueryBuilderPanel` dataclass in `board_builder.py`
-- [ ] Create `ExistingQueryPanel` dataclass in `board_builder.py`
-- [ ] Update `SLOPanel` dataclass (change position to tuple)
-- [ ] Update `TextPanel` dataclass (change position to tuple)
-- [ ] Create `BoardBundle` dataclass in `board_builder.py`
-- [ ] Add all to `models/__init__.py` exports
-- [ ] Add all to `__init__.py` exports
+- [x] Create `QueryBuilderPanel` dataclass in `board_builder.py`
+- [x] Create `ExistingQueryPanel` dataclass in `board_builder.py`
+- [x] Create `SLOPanel` dataclass (with tuple position)
+- [x] Create `TextPanel` dataclass (with tuple position)
+- [x] Create `BoardBundle` dataclass in `board_builder.py`
+- [x] Add all to `models/__init__.py` exports
+- [x] Add all to `__init__.py` exports
 
 ### Phase 5.5c: Update BoardBuilder
-- [ ] Update `__init__()` to use typed panel lists
-- [ ] Update `.query()` signature and implementation
-- [ ] Update `.slo()` to use tuple position
-- [ ] Update `.text()` to use tuple position
-- [ ] Update `.build()` to return `BoardBundle` instead of `BoardCreate`
-- [ ] Remove old `BoardPanel`, `BoardQueryPanel`, `BoardSLOPanel`, `BoardTextPanel` classes
-- [ ] Remove `BoardPanelPosition` class (or deprecate)
-- [ ] Update manual layout validation
+- [x] Update `__init__()` to use typed panel lists
+- [x] Update `.query()` to accept `QueryBuilder | str`
+- [x] Update `.slo()` to use tuple position
+- [x] Update `.text()` to use tuple position
+- [x] Update `.build()` to return `BoardBundle` instead of `BoardCreate`
+- [x] Remove old `BoardPanel`, `BoardQueryPanel`, `BoardSLOPanel`, `BoardTextPanel` classes
+- [x] Remove `BoardPanelPosition`, `BoardPanelType` from public API
+- [x] Update manual layout validation for all panel types
 
 ### Phase 5.5d: Client Orchestration
-- [ ] Implement `boards.create_from_bundle_async(bundle: BoardBundle)` in `boards.py`
-- [ ] Implement `boards.create_from_bundle(bundle: BoardBundle)` (sync wrapper)
-- [ ] Add `_build_query_panel_dict()` helper method
-- [ ] Add `_build_slo_panel_dict()` helper method
-- [ ] Add `_build_text_panel_dict()` helper method
-- [ ] Keep existing `boards.create_async(BoardCreate)` for backward compatibility
+- [x] Implement `boards.create_from_bundle_async(bundle: BoardBundle)` in `boards.py`
+- [x] Implement `boards.create_from_bundle(bundle: BoardBundle)` (sync wrapper)
+- [x] Add `_build_query_panel_dict()` helper method
+- [x] Add `_build_slo_panel_dict()` helper method
+- [x] Add `_build_text_panel_dict()` helper method
+- [x] Keep existing `boards.create_async(BoardCreate)` for non-builder usage
 
 ### Phase 5.5e: Update Examples
-- [ ] Update `docs/examples/boards/builder_board.py` simple example
-- [ ] Update `docs/examples/boards/builder_board.py` complex example
-- [ ] Remove QueryBuilder imports (use inline only)
-- [ ] Update `docs/usage/boards.md` to explain new pattern
-- [ ] Add note about `.name()` requirement for board queries
+- [x] Update `docs/examples/boards/builder_board.py` simple example
+- [x] Update `docs/examples/boards/builder_board.py` complex example
+- [x] Move imports inside functions for copy-paste compatibility
+- [x] Update `docs/usage/boards.md` to explain new pattern
+- [x] Update `docs/usage/queries.md` to clarify when names are needed
+- [x] Show dataset-scoped vs environment-wide query patterns
 
 ### Phase 5.5f: Update Tests
-- [ ] Add QueryBuilder unit tests: `.dataset()`, `.name()`, `.description()`
-- [ ] Update BoardBuilder unit tests for tuple positions
-- [ ] Update BoardBuilder unit tests for QueryBuilder acceptance
-- [ ] Update integration tests to use `create_from_bundle_async()`
-- [ ] Test visualization dict configurations
-- [ ] Test both QueryBuilder and existing query ID patterns
+- [x] QueryBuilder unit tests passing with new constructor
+- [x] Update BoardBuilder unit tests for tuple positions
+- [x] Update BoardBuilder unit tests for QueryBuilder acceptance
+- [x] Update integration tests to use `create_from_bundle_async()`
+- [x] Test visualization dict configurations
+- [x] Test both QueryBuilder and existing query ID patterns
+- [x] All integration tests passing against live API (46 tests)
 
 ---
 
 ## Breaking Changes (Phase 5.5)
 
-Acceptable since library hasn't shipped:
+All implemented (library not yet shipped):
 
-1. **BoardBuilder.build() return type**: `BoardCreate` → `BoardBundle`
-2. **Board creation method**: `boards.create_async(builder.build())` → `boards.create_from_bundle_async(builder.build())`
-3. **Position type**: `BoardPanelPosition(x_coordinate=0, ...)` → `position=(0, 0, 9, 6)`
-4. **Panel parameter**: `visualization_settings` → `visualization`
-5. **QueryBuilder**: Remove `.annotate()`, use `.name()` + `.description()`
+1. **QueryBuilder constructor**: Added optional `name` parameter - `QueryBuilder("Query Name")`
+2. **QueryBuilder.annotate()**: Removed - use name in constructor + `.description()`
+3. **BoardBuilder.build() return type**: `BoardCreate` → `BoardBundle`
+4. **Board creation method**: `boards.create_from_bundle_async(builder.build())`
+5. **Position type**: `BoardPanelPosition(...)` → `position=(0, 0, 9, 6)` tuples
+6. **Panel parameter**: `visualization_settings` → `visualization`
+7. **Removed classes**: `BoardPanel`, `BoardPanelPosition`, `BoardPanelType`, `BoardQueryPanel`, `BoardSLOPanel`, `BoardTextPanel`
+8. **Dataset in panels**: Never included (query knows its scope)
 
 ---
 
-## Future Phases
+## Phase 6: SLOBuilder Integration into BoardBuilder
 
-### Phase 6: SLOBuilder Integration into BoardBuilder (Future)
+**Goal:** Allow inline SLOBuilder instances in BoardBuilder, matching QueryBuilder pattern.
 
-Allow inline SLOBuilder in BoardBuilder:
+### Current Limitation
 
 ```python
-BoardBuilder("Dashboard")
-    .slo(
-        SLOBuilder("API Availability")
-            .dataset("api-logs")
-            .target_nines(3)
-            .sli(alias="success_rate"),
-        position=(9, 0, 3, 6)
-    )
+# Must pre-create SLO and reference by ID
+slo = await client.slos.create_from_bundle_async(
+    SLOBuilder("API Availability")
+        .dataset("api-logs")
+        .target_nines(3)
+        .sli(alias="success_rate")
+        .build()
+)
+
+board = await client.boards.create_from_bundle_async(
+    BoardBuilder("Dashboard")
+        .slo(slo.id, position=(9, 0, 3, 6))  # Must use ID
+        .build()
+)
 ```
 
-Orchestration creates SLO from builder, uses returned ID for panel.
+### Target API
+
+Single fluent call with inline SLOBuilder:
+
+```python
+board = await client.boards.create_from_bundle_async(
+    BoardBuilder("Dashboard")
+        .auto_layout()
+        .query(
+            QueryBuilder("Requests")
+                .dataset("api-logs")
+                .last_1_hour()
+                .count()
+        )
+        .slo(
+            SLOBuilder("API Availability")
+                .dataset("api-logs")
+                .target_nines(3)
+                .sli(alias="success_rate"),
+            position=(9, 0, 3, 6)
+        )
+        .build()
+)
+```
+
+### Implementation Plan
+
+#### Phase 6a: SLOBuilder Panel Support
+
+Update BoardBuilder to accept SLOBuilder instances:
+
+```python
+@dataclass
+class SLOBuilderPanel:
+    """SLO panel from inline SLOBuilder (needs creation)."""
+    builder: SLOBuilder
+    position: tuple[int, int, int, int] | None
+
+
+@dataclass
+class ExistingSLOPanel:
+    """SLO panel from existing SLO ID."""
+    slo_id: str
+    position: tuple[int, int, int, int] | None
+```
+
+Rename current `SLOPanel` → `ExistingSLOPanel`, add `SLOBuilderPanel`.
+
+#### Phase 6b: BoardBuilder Updates
+
+```python
+class BoardBuilder:
+    def __init__(self, name: str):
+        ...
+        self._slo_builder_panels: list[SLOBuilderPanel] = []
+        self._existing_slo_panels: list[ExistingSLOPanel] = []
+
+    def slo(
+        self,
+        slo: SLOBuilder | str,
+        *,
+        position: tuple[int, int, int, int] | None = None,
+    ) -> BoardBuilder:
+        """Add an SLO panel.
+
+        Args:
+            slo: SLOBuilder instance OR existing SLO ID string
+            position: (x, y, width, height) for manual layout
+
+        Example - Inline SLOBuilder:
+            .slo(
+                SLOBuilder("Availability")
+                    .dataset("api-logs")
+                    .target_nines(3)
+                    .sli(alias="success_rate"),
+                position=(9, 0, 3, 6)
+            )
+
+        Example - Existing SLO:
+            .slo("slo-id-123", position=(9, 0, 3, 6))
+        """
+        if isinstance(slo, SLOBuilder):
+            self._slo_builder_panels.append(
+                SLOBuilderPanel(builder=slo, position=position)
+            )
+        else:
+            self._existing_slo_panels.append(
+                ExistingSLOPanel(slo_id=slo, position=position)
+            )
+        return self
+```
+
+#### Phase 6c: BoardBundle Updates
+
+```python
+@dataclass
+class BoardBundle:
+    ...
+    # Panels (in order added)
+    query_builder_panels: list[QueryBuilderPanel]
+    existing_query_panels: list[ExistingQueryPanel]
+    slo_builder_panels: list[SLOBuilderPanel]      # NEW
+    existing_slo_panels: list[ExistingSLOPanel]    # RENAMED from slo_panels
+    text_panels: list[TextPanel]
+```
+
+#### Phase 6d: Orchestration
+
+```python
+class BoardsResource:
+    async def create_from_bundle_async(self, bundle: BoardBundle) -> Board:
+        panels = []
+
+        # Create queries from QueryBuilder instances
+        for qb_panel in bundle.query_builder_panels:
+            ...
+
+        # Create SLOs from SLOBuilder instances (NEW)
+        for slo_panel in bundle.slo_builder_panels:
+            # Create SLO using existing orchestration
+            slo = await self._client.slos.create_from_bundle_async(slo_panel.builder.build())
+            panels.append(self._build_slo_panel_dict(slo.id, slo_panel.position))
+
+        # Add existing SLO panels
+        for existing in bundle.existing_slo_panels:
+            panels.append(self._build_slo_panel_dict(existing.slo_id, existing.position))
+
+        ...
+```
+
+### Considerations
+
+**Pros:**
+- Consistent with QueryBuilder integration
+- True single-call board creation
+- No need to pre-create SLOs
+
+**Cons:**
+- SLO creation is slower than query creation (involves derived column creation)
+- Creates resources even if board creation fails (need cleanup strategy)
+- More complex error handling
+
+**Decision Points:**
+1. Should we support inline DerivedColumnBuilder too? (probably not - SLIs can be aliases)
+2. Cleanup strategy if board creation fails after SLO creation?
+3. Should inline SLOs support burn alerts? (probably yes, via SLOBuilder)
+
+### Phase 6 Implementation Checklist ✅
+
+#### Phase 6a: SLO Panel Data Structures
+- [x] Create `SLOBuilderPanel` dataclass
+- [x] Create `ExistingSLOPanel` dataclass (renamed from `SLOPanel`)
+- [x] Update exports in `models/__init__.py`
+- [x] Update exports in `__init__.py`
+
+#### Phase 6b: BoardBuilder SLO Support
+- [x] Update `__init__()` with `_slo_builder_panels` and `_existing_slo_panels` lists
+- [x] Update `.slo()` to accept `SLOBuilder | str`
+- [x] Update `.build()` to include both SLO panel types in BoardBundle
+- [x] Update manual layout validation for SLO builder panels
+
+#### Phase 6c: BoardBundle Updates
+- [x] Add `slo_builder_panels: list[SLOBuilderPanel]` field
+- [x] Rename `slo_panels` → `existing_slo_panels`
+- [x] Update BoardBundle dataclass
+
+#### Phase 6d: Orchestration
+- [x] Update `boards.create_from_bundle_async()` to create SLOs from builders
+- [x] Handle dict return from `slos.create_from_bundle_async()` (extract first SLO)
+- [x] Maintain panel ordering (builders + existing)
+
+#### Phase 6e: Examples & Documentation
+- [x] Add example with inline SLOBuilder to `builder_board.py`
+- [x] Complex example demonstrates inline SLO with derived column creation
+
+#### Phase 6f: Tests
+- [x] Updated unit tests for new SLO panel types (`existing_slo_panels`)
+- [x] Integration test passing with inline SLO creation
+- [x] All tests passing (481 unit + 46 integration)
+
+---
 
 ### Phase 7: Final Cleanup
 - [ ] Update README.md with builder examples
