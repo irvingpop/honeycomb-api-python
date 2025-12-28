@@ -1,5 +1,5 @@
 # Honeycomb API Python Client - Development Makefile
-.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs ci update-deps
+.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs generate-tools validate-tools ci update-deps
 
 # Default target
 help:
@@ -31,6 +31,10 @@ help:
 	@echo "  make docs-serve     Serve docs locally with live reload"
 	@echo "  make docs-build     Build static docs site"
 	@echo "  make validate-docs  Validate all documentation code examples"
+	@echo ""
+	@echo "Claude Tools:"
+	@echo "  make generate-tools Generate Claude tool definitions (JSON)"
+	@echo "  make validate-tools Validate generated tool definitions"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean          Remove build artifacts and cache files"
@@ -123,6 +127,22 @@ docs-build:
 validate-docs:
 	poetry run python scripts/validate_docs_examples.py
 	poetry run pytest tests/integration/test_doc_examples.py -v
+
+# =============================================================================
+# Claude Tools
+# =============================================================================
+
+generate-tools:
+	@mkdir -p tools
+	poetry run python -m honeycomb.tools generate --output tools/honeycomb_tools.json
+	@echo "Generated: tools/honeycomb_tools.json"
+
+validate-tools:
+	@if [ ! -f tools/honeycomb_tools.json ]; then \
+		echo "Error: tools/honeycomb_tools.json not found. Run 'make generate-tools' first."; \
+		exit 1; \
+	fi
+	poetry run python -m honeycomb.tools validate tools/honeycomb_tools.json
 
 # =============================================================================
 # Maintenance

@@ -2,6 +2,7 @@
 
 __version__ = "0.1.0"
 
+from . import tools
 from .auth import APIKeyAuth, AuthStrategy, ManagementKeyAuth, create_auth
 from .client import HoneycombClient, RateLimitInfo, RetryConfig
 from .exceptions import (
@@ -97,6 +98,8 @@ __all__ = [
     "HoneycombClient",
     "RetryConfig",
     "RateLimitInfo",
+    # Tools (Claude API)
+    "tools",
     # Auth
     "AuthStrategy",
     "APIKeyAuth",

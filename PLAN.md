@@ -848,106 +848,893 @@ async def create(self, dataset: str, trigger: TriggerCreate) -> Trigger:
 
 1. **GitHub Actions CI/CD** - Automate testing and docs deployment
 2. **PyPI Publishing** - Make package publicly available
-3. **Optional Enhancements** - CLI tool (Phase 12), JSON schema export (Phase 11)
+3. **Claude Tool Definitions** - Generate LLM tool definitions for agent workflows (Phase 11)
+4. **CLI Tool** - Command-line interface for CRUD operations (Phase 12)
 
 ---
 
-## Phase 11: JSON Schema Export
+## Phase 11: Claude Tool Definition Generator
 
-**Purpose:** Export Pydantic model schemas as JSON Schema files for validation in external tools and improved AI understanding of the API structure.
+**Purpose:** Generate Claude-compatible tool definitions from the `honeycomb-api-python` library, enabling LLMs to create and manage Honeycomb resources (triggers, SLOs, boards, queries) via structured tool calls.
+
+**Specification:** See [HONEYCOMB_API_TOOL_GENERATOR_SPEC.md](HONEYCOMB_API_TOOL_GENERATOR_SPEC.md) for detailed requirements.
 
 ### 11.1 Use Cases
 
-- **External validation**: Use JSON Schema validators in other languages/tools
-- **AI context**: Provide schema files to Claude/other LLMs for better API understanding
-- **Documentation**: Machine-readable API contract documentation
-- **Code generation**: Enable client generation in other languages
+- **LLM Tool Calls**: Enable Claude to create/manage Honeycomb resources via structured output
+- **Datadog Migration**: Power automated translation of Datadog monitors to Honeycomb triggers
+- **Agent Workflows**: Build autonomous agents that manage observability infrastructure
+- **API Integration**: Direct usage with Anthropic SDK's `tools` parameter
 
-### 11.2 Implementation
+### 11.2 Output Format (Claude Tool Schema)
+
+```json
+{
+  "name": "honeycomb_create_trigger",
+  "description": "Creates a new trigger (alert) in Honeycomb that fires when query results cross a threshold...",
+  "input_schema": {
+    "type": "object",
+    "properties": { ... },
+    "required": [ ... ]
+  },
+  "input_examples": [ ... ]
+}
+```
+
+### 11.3 Tool Naming Convention
+
+| Resource | Operation | Tool Name |
+|----------|-----------|-----------|
+| Trigger | Create | `honeycomb_create_trigger` |
+| Trigger | List | `honeycomb_list_triggers` |
+| Trigger | Get | `honeycomb_get_trigger` |
+| Trigger | Update | `honeycomb_update_trigger` |
+| Trigger | Delete | `honeycomb_delete_trigger` |
+| SLO | Create | `honeycomb_create_slo` |
+| SLO | List | `honeycomb_list_slos` |
+| SLO | Get | `honeycomb_get_slo` |
+| SLO | Update | `honeycomb_update_slo` |
+| SLO | Delete | `honeycomb_delete_slo` |
+| Burn Alert | Create | `honeycomb_create_burn_alert` |
+| Burn Alert | List | `honeycomb_list_burn_alerts` |
+| Burn Alert | Get | `honeycomb_get_burn_alert` |
+| Burn Alert | Update | `honeycomb_update_burn_alert` |
+| Burn Alert | Delete | `honeycomb_delete_burn_alert` |
+| Board | Create | `honeycomb_create_board` |
+| Board | List | `honeycomb_list_boards` |
+| Board | Get | `honeycomb_get_board` |
+| Board | Update | `honeycomb_update_board` |
+| Board | Delete | `honeycomb_delete_board` |
+| Query | Create | `honeycomb_create_query` |
+| Query | Get | `honeycomb_get_query` |
+| Query | Run | `honeycomb_run_query` |
+| Query | Get Results | `honeycomb_get_query_results` |
+| Dataset | Create | `honeycomb_create_dataset` |
+| Dataset | List | `honeycomb_list_datasets` |
+| Dataset | Get | `honeycomb_get_dataset` |
+| Dataset | Update | `honeycomb_update_dataset` |
+| Dataset | Delete | `honeycomb_delete_dataset` |
+| Column | List | `honeycomb_list_columns` |
+| Column | Get | `honeycomb_get_column` |
+| Column | Create | `honeycomb_create_column` |
+| Column | Update | `honeycomb_update_column` |
+| Column | Delete | `honeycomb_delete_column` |
+| Derived Column | Create | `honeycomb_create_derived_column` |
+| Derived Column | List | `honeycomb_list_derived_columns` |
+| Derived Column | Get | `honeycomb_get_derived_column` |
+| Derived Column | Update | `honeycomb_update_derived_column` |
+| Derived Column | Delete | `honeycomb_delete_derived_column` |
+| Recipient | Create | `honeycomb_create_recipient` |
+| Recipient | List | `honeycomb_list_recipients` |
+| Recipient | Get | `honeycomb_get_recipient` |
+| Recipient | Update | `honeycomb_update_recipient` |
+| Recipient | Delete | `honeycomb_delete_recipient` |
+| Marker | Create | `honeycomb_create_marker` |
+| Marker | List | `honeycomb_list_markers` |
+| Marker | Update | `honeycomb_update_marker` |
+| Marker | Delete | `honeycomb_delete_marker` |
+| Marker Setting | Create | `honeycomb_create_marker_setting` |
+| Marker Setting | List | `honeycomb_list_marker_settings` |
+| Marker Setting | Get | `honeycomb_get_marker_setting` |
+| Marker Setting | Update | `honeycomb_update_marker_setting` |
+| Marker Setting | Delete | `honeycomb_delete_marker_setting` |
+| Query Annotation | Create | `honeycomb_create_query_annotation` |
+| Query Annotation | List | `honeycomb_list_query_annotations` |
+| Query Annotation | Get | `honeycomb_get_query_annotation` |
+| Query Annotation | Update | `honeycomb_update_query_annotation` |
+| Query Annotation | Delete | `honeycomb_delete_query_annotation` |
+| Event | Send | `honeycomb_send_event` |
+| Event | Send Batch | `honeycomb_send_events_batch` |
+
+**Constraints:** Prefix `honeycomb_`, snake_case, max 64 chars, `[a-zA-Z0-9_-]` only
+
+### 11.4 Description Quality Requirements
+
+Each tool description MUST include:
+1. **What it does** (1 sentence)
+2. **When to use it** (1 sentence)
+3. **Key parameters explained** (1-2 sentences)
+4. **Important caveats/limitations** (if any)
+
+**Good example:**
+```
+Creates a new trigger (alert) in Honeycomb that fires when query results cross a threshold.
+Use this when migrating Datadog monitors or creating new alerting rules.
+Requires a dataset, query specification with calculations/filters, threshold operator and value,
+and frequency (how often to evaluate). Note: Recipients must already exist in Honeycomb.
+```
+
+### 11.5 Input Schema Generation
+
+Generate JSON Schema from Pydantic models with:
+
+| Python Type | JSON Schema |
+|-------------|-------------|
+| `str` | `{"type": "string"}` |
+| `int` | `{"type": "integer"}` |
+| `float` | `{"type": "number"}` |
+| `bool` | `{"type": "boolean"}` |
+| `list[T]` | `{"type": "array", "items": {...}}` |
+| `Optional[T]` | Include in properties, exclude from required |
+| `Literal["a", "b"]` | `{"type": "string", "enum": ["a", "b"]}` |
+| `Enum` | `{"type": "string", "enum": [...values...]}` |
+
+**Every field MUST have a description** extracted from Pydantic `Field(description=...)` or docstrings.
+
+### 11.6 Input Examples
+
+Generate 2-3 examples per tool:
+1. Minimal required fields only
+2. Common use case with optional fields
+3. Complex/advanced usage (if applicable)
+
+```json
+"input_examples": [
+  {
+    "dataset": "api-logs",
+    "name": "High Error Rate",
+    "query": {
+      "calculations": [{"op": "COUNT"}],
+      "filters": [{"column": "status_code", "op": ">=", "value": 500}],
+      "time_range": 900
+    },
+    "threshold": {"op": ">", "value": 100},
+    "frequency": 900
+  }
+]
+```
+
+### 11.7 Resources Priority
+
+**Priority 1 (Migration Critical):**
+- Triggers: create, list, get, update, delete
+- SLOs: create, list, get, update, delete
+- Burn Alerts: create, list, get, update, delete
+
+**Priority 2 (Observability Infrastructure):**
+- Boards: create, list, get, update, delete
+- Queries: create, get, run, get_results
+- Derived Columns: create, list, get, update, delete
+- Recipients: create, list, get, update, delete
+
+**Priority 3 (Full Coverage):**
+- Datasets: create, list, get, update, delete
+- Columns: list, get, create, update, delete
+- Markers: create, list, update, delete
+- Marker Settings: create, list, get, update, delete
+- Query Annotations: create, list, get, update, delete
+- Events: send, send_batch
+
+### 11.8 Output Formats
+
+**JSON File:**
+```json
+{
+  "tools": [...],
+  "version": "0.1.0",
+  "generated_at": "2025-12-27T12:00:00Z"
+}
+```
+
+**Python Module:**
+```python
+# src/honeycomb/tools/__init__.py
+HONEYCOMB_TOOLS: list[dict[str, Any]] = [...]
+
+def get_tool(name: str) -> dict[str, Any] | None: ...
+def get_all_tools() -> list[dict[str, Any]]: ...
+```
+
+### 11.9 Generator CLI
+
+```bash
+# Generate all tools
+poetry run python -m honeycomb.tools generate --output tools.json
+
+# Generate specific resource
+poetry run python -m honeycomb.tools generate --resource triggers --output triggers.json
+
+# Validate existing definitions
+poetry run python -m honeycomb.tools validate tools.json
+
+# Generate Python module
+poetry run python -m honeycomb.tools generate --format python --output src/honeycomb/tools/definitions.py
+```
+
+### 11.10 Implementation Approach
+
+Use **Introspection from Pydantic Models + Manual Description Override**:
 
 ```python
-# scripts/export_schemas.py
-from honeycomb.models import (
-    Trigger, TriggerCreate, SLO, SLOCreate, Board, BoardCreate,
-    Query, QuerySpec, Dataset, DatasetCreate, # ... all models
-)
-import json
-from pathlib import Path
+# src/honeycomb/tools/generator.py
 
-MODELS = [
-    Trigger, TriggerCreate, TriggerUpdate,
-    SLO, SLOCreate, SLOUpdate,
-    Board, BoardCreate, BoardUpdate,
-    Query, QuerySpec, QueryResult,
-    Dataset, DatasetCreate, DatasetUpdate,
-    # ... all public models
-]
+from pydantic import BaseModel
+from typing import Callable, Any
 
-def export_schemas(output_dir: Path):
-    """Export all model schemas to JSON files."""
-    output_dir.mkdir(parents=True, exist_ok=True)
+def generate_tool_from_method(
+    resource_name: str,
+    method_name: str,
+    method: Callable,
+    input_model: type[BaseModel] | None = None,
+    description_override: str | None = None,
+) -> dict[str, Any]:
+    """Generate a Claude tool definition from an API client method."""
 
-    # Individual model schemas
-    for model in MODELS:
-        schema = model.model_json_schema()
-        schema_file = output_dir / f"{model.__name__}.json"
-        schema_file.write_text(json.dumps(schema, indent=2))
+    # Extract schema from Pydantic model
+    if input_model:
+        schema = input_model.model_json_schema()
+    else:
+        schema = _schema_from_signature(method)
 
-    # Combined schema with all models
-    combined = {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Honeycomb API Models",
-        "definitions": {
-            model.__name__: model.model_json_schema()
-            for model in MODELS
-        }
-    }
-    (output_dir / "honeycomb-models.json").write_text(
-        json.dumps(combined, indent=2)
+    # Use override or build from docstring
+    description = description_override or _build_description(
+        method.__doc__, resource_name, method_name
     )
 
-if __name__ == "__main__":
-    export_schemas(Path("schemas"))
+    return {
+        "name": f"honeycomb_{method_name}_{resource_name}",
+        "description": description,
+        "input_schema": schema,
+    }
 ```
 
-### 11.3 Package Integration
+### 11.11 Builder Integration Strategy
+
+For complex resources (Boards, SLOs, Triggers, Queries), tool schemas accept nested structures that map directly to our Builder pattern. This enables **single-call creation** of resources that would otherwise require multiple sequential API calls.
+
+**Builder-Enabled Resources:**
+
+| Resource | Builder | Orchestration Method | Creates Automatically |
+|----------|---------|---------------------|----------------------|
+| Board | `BoardBuilder` | `boards.create_from_bundle_async()` | Queries, Annotations, SLOs, Derived Columns |
+| SLO | `SLOBuilder` | `slos.create_from_bundle_async()` | Derived Columns, Burn Alerts |
+| Trigger | `TriggerBuilder` | `triggers.create_async()` | Embedded Query Spec |
+| Query | `QueryBuilder` | `queries.create_async()` | Query with dataset scope |
+
+**Benefits:**
+- **Single tool call** - LLM says "create board with these charts" not "create query, then board"
+- **No ID management** - LLM doesn't track intermediate query/annotation IDs
+- **Hidden complexity** - Derived columns, query annotations created automatically
+- **Matches mental model** - LLMs think hierarchically, not in sequential API calls
+
+**Example: Board with Inline Queries and SLOs**
+
+Tool input from LLM:
+```json
+{
+  "name": "Service Dashboard",
+  "layout": "auto",
+  "panels": [
+    {
+      "type": "query",
+      "name": "Request Count",
+      "dataset": "api-logs",
+      "calculations": [{"op": "COUNT"}],
+      "group_by": ["service"],
+      "time_range": 3600
+    },
+    {
+      "type": "slo",
+      "name": "API Availability",
+      "dataset": "api-logs",
+      "target_percentage": 99.9,
+      "sli": {"alias": "success", "expression": "IF(LT($status_code, 500), 1, 0)"}
+    }
+  ]
+}
+```
+
+Executor converts to Builder pattern internally (see 11.12).
+
+**Example: SLO with Burn Alerts**
+
+Tool input from LLM:
+```json
+{
+  "name": "API Availability",
+  "dataset": "api-logs",
+  "target_percentage": 99.9,
+  "time_period_days": 30,
+  "sli": {
+    "alias": "success_rate",
+    "expression": "IF(LT($status_code, 500), 1, 0)"
+  },
+  "burn_alerts": [
+    {
+      "type": "exhaustion_time",
+      "threshold_minutes": 60,
+      "recipients": [{"type": "email", "target": "oncall@example.com"}]
+    }
+  ]
+}
+```
+
+**Example: Trigger with Inline Query**
+
+Tool input from LLM:
+```json
+{
+  "name": "High Error Rate",
+  "dataset": "api-logs",
+  "query": {
+    "calculations": [{"op": "COUNT"}],
+    "filters": [{"column": "status_code", "op": ">=", "value": 500}],
+    "time_range": 900
+  },
+  "threshold": {"op": ">", "value": 100},
+  "frequency": 900,
+  "recipients": [{"type": "email", "target": "oncall@example.com"}]
+}
+```
+
+### 11.12 Tool Execution Handler
+
+```python
+# src/honeycomb/tools/executor.py
+
+from honeycomb import (
+    HoneycombClient, QueryBuilder, BoardBuilder, SLOBuilder, TriggerBuilder
+)
+
+async def execute_tool(
+    client: HoneycombClient,
+    tool_name: str,
+    tool_input: dict,
+) -> str:
+    """Execute a Honeycomb tool and return the result as JSON string."""
+
+    # === BUILDER-ENABLED RESOURCES (single-call complex creation) ===
+
+    if tool_name == "honeycomb_create_board":
+        builder = BoardBuilder(tool_input["name"])
+        if tool_input.get("layout") == "auto":
+            builder.auto_layout()
+
+        for panel in tool_input.get("panels", []):
+            if panel["type"] == "query":
+                qb = _build_query(panel)
+                builder.query(qb, style=panel.get("style", "graph"))
+            elif panel["type"] == "slo":
+                sb = _build_slo(panel)
+                builder.slo(sb)
+            elif panel["type"] == "text":
+                builder.text(panel["content"])
+
+        result = await client.boards.create_from_bundle_async(builder.build())
+        return json.dumps(result.model_dump())
+
+    elif tool_name == "honeycomb_create_slo":
+        builder = _build_slo(tool_input)
+        result = await client.slos.create_from_bundle_async(builder.build())
+        # Returns dict of created SLOs (main + any from burn alerts)
+        return json.dumps({k: v.model_dump() for k, v in result.items()})
+
+    elif tool_name == "honeycomb_create_trigger":
+        builder = _build_trigger(tool_input)
+        result = await client.triggers.create_async(
+            dataset=tool_input["dataset"],
+            trigger=builder.build()
+        )
+        return json.dumps(result.model_dump())
+
+    elif tool_name == "honeycomb_run_query":
+        builder = _build_query(tool_input)
+        result = await client.query_results.create_and_run_async(builder)
+        return json.dumps(result.model_dump())
+
+    # === SIMPLE CRUD OPERATIONS ===
+
+    elif tool_name == "honeycomb_list_triggers":
+        result = await client.triggers.list_async(dataset=tool_input["dataset"])
+        return json.dumps([t.model_dump() for t in result])
+
+    elif tool_name == "honeycomb_get_trigger":
+        result = await client.triggers.get_async(
+            dataset=tool_input["dataset"],
+            trigger_id=tool_input["trigger_id"]
+        )
+        return json.dumps(result.model_dump())
+
+    # ... other tools
+
+    raise ValueError(f"Unknown tool: {tool_name}")
+
+
+def _build_query(data: dict) -> QueryBuilder:
+    """Convert tool input to QueryBuilder."""
+    qb = QueryBuilder(data.get("name", "Query"))
+    qb.dataset(data["dataset"])
+
+    if "time_range" in data:
+        qb.time_range(data["time_range"])
+
+    for calc in data.get("calculations", []):
+        op = calc["op"].lower()
+        col = calc.get("column")
+        if op == "count":
+            qb.count()
+        elif op == "avg":
+            qb.avg(col)
+        elif op == "sum":
+            qb.sum(col)
+        elif op == "max":
+            qb.max(col)
+        elif op == "min":
+            qb.min(col)
+        elif op.startswith("p"):
+            qb.percentile(col, int(op[1:]))
+        # ... other ops
+
+    for f in data.get("filters", []):
+        qb.filter(f["column"], f["op"], f.get("value"))
+
+    for col in data.get("group_by", []):
+        qb.group_by(col)
+
+    return qb
+
+
+def _build_slo(data: dict) -> SLOBuilder:
+    """Convert tool input to SLOBuilder."""
+    builder = SLOBuilder(data["name"]).dataset(data["dataset"])
+
+    if "target_percentage" in data:
+        builder.target_percentage(data["target_percentage"])
+    elif "target_per_million" in data:
+        builder.target_per_million(data["target_per_million"])
+
+    if "time_period_days" in data:
+        builder.time_period(data["time_period_days"])
+
+    sli = data["sli"]
+    if "expression" in sli:
+        builder.sli(sli["alias"], sli["expression"], sli.get("description"))
+    else:
+        builder.sli(sli["alias"])  # Existing derived column
+
+    for ba in data.get("burn_alerts", []):
+        if ba["type"] == "exhaustion_time":
+            builder.exhaustion_time_alert(ba["threshold_minutes"])
+        elif ba["type"] == "budget_rate":
+            builder.budget_rate_alert(ba["threshold_percent"], ba["window_minutes"])
+        # Add recipients to the burn alert
+        for r in ba.get("recipients", []):
+            if r["type"] == "email":
+                builder.email(r["target"])
+            elif r["type"] == "slack":
+                builder.slack(r["target"])
+            # ... other recipient types
+
+    return builder
+
+
+def _build_trigger(data: dict) -> TriggerBuilder:
+    """Convert tool input to TriggerBuilder."""
+    builder = TriggerBuilder(data["name"]).dataset(data["dataset"])
+
+    query = data["query"]
+    if "time_range" in query:
+        builder.time_range(query["time_range"])
+
+    for calc in query.get("calculations", []):
+        op = calc["op"].lower()
+        col = calc.get("column")
+        if op == "count":
+            builder.count()
+        elif op == "avg":
+            builder.avg(col)
+        # ... single calculation only for triggers
+
+    for f in query.get("filters", []):
+        builder.filter(f["column"], f["op"], f.get("value"))
+
+    threshold = data["threshold"]
+    if threshold["op"] == ">":
+        builder.threshold_gt(threshold["value"])
+    elif threshold["op"] == ">=":
+        builder.threshold_gte(threshold["value"])
+    elif threshold["op"] == "<":
+        builder.threshold_lt(threshold["value"])
+    elif threshold["op"] == "<=":
+        builder.threshold_lte(threshold["value"])
+
+    if "frequency" in data:
+        builder.frequency(data["frequency"])
+
+    for r in data.get("recipients", []):
+        if r["type"] == "email":
+            builder.email(r["target"])
+        elif r["type"] == "slack":
+            builder.slack(r["target"])
+        elif r["type"] == "pagerduty":
+            builder.pagerduty(r["target"])
+        # ... other recipient types
+
+    return builder
+```
+
+### 11.13 Anthropic SDK Integration
+
+```python
+from anthropic import Anthropic
+from honeycomb.tools import HONEYCOMB_TOOLS, execute_tool
+from honeycomb import HoneycombClient
+
+anthropic = Anthropic()
+honeycomb = HoneycombClient(api_key="...")
+
+response = anthropic.messages.create(
+    model="claude-sonnet-4-5-20250929",
+    max_tokens=4096,
+    tools=HONEYCOMB_TOOLS,  # Direct usage
+    messages=[
+        {"role": "user", "content": "Create a trigger for high error rates in api-logs"}
+    ]
+)
+
+# Execute tool calls
+for block in response.content:
+    if block.type == "tool_use":
+        result = await execute_tool(honeycomb, block.name, block.input)
+```
+
+### 11.14 Package Structure
+
+```
+src/honeycomb/
+├── tools/
+│   ├── __init__.py           # Exports HONEYCOMB_TOOLS, get_tool(), get_all_tools()
+│   ├── generator.py          # Tool definition generator
+│   ├── executor.py           # Tool execution handler (with Builder integration)
+│   ├── validator.py          # Schema validation
+│   ├── descriptions.py       # Hand-crafted description overrides
+│   ├── builders.py           # _build_query(), _build_slo(), _build_trigger() helpers
+│   └── definitions/          # Generated tool definitions (optional)
+│       ├── triggers.py
+│       ├── slos.py
+│       ├── boards.py
+│       └── ...
+```
+
+### 11.15 Validation Requirements
+
+The generator MUST validate:
+1. Tool names match `^[a-zA-Z0-9_-]{1,64}$`
+2. Descriptions are non-empty and >= 50 characters
+3. Input schemas are valid JSON Schema draft-07
+4. Required fields are listed in `required` array
+5. Examples validate against the schema (if provided)
+
+### 11.16 Claude API Integration Tests (Eval Suite with DeepEval)
+
+Reference implementation using [DeepEval](https://github.com/confident-ai/deepeval) to validate tool definitions against the real Claude API. DeepEval runs fully standalone without any SaaS requirement.
+
+**Why DeepEval:**
+- Pytest-native integration (fits with our existing 481 tests)
+- `ToolCorrectnessMetric` validates tool selection accuracy
+- `ArgumentCorrectnessMetric` validates parameter quality
+- Apache 2.0 open source, runs locally without cloud dependency
+- Can use Claude or local LLMs (Ollama) as the evaluation judge
+
+**Optional Dependencies:**
 
 ```toml
-# pyproject.toml addition
-[project.scripts]
-honeycomb-export-schemas = "honeycomb.cli.schemas:main"
+# pyproject.toml
+[project.optional-dependencies]
+evals = [
+    "deepeval>=1.0",
+    "anthropic>=0.40.0",
+]
 ```
 
-### 11.4 Makefile Target
+**Test Categories:**
 
-```makefile
-export-schemas:
-    poetry run python scripts/export_schemas.py
-    @echo "Schemas exported to schemas/"
+| Category | DeepEval Metric | What It Validates |
+|----------|-----------------|------------------|
+| Tool Selection | `ToolCorrectnessMetric` | Claude picks the correct tool |
+| Parameter Quality | `ArgumentCorrectnessMetric` | Claude generates valid parameters |
+| Schema Acceptance | Manual assertion | Claude parses tool definitions |
+| End-to-End | Custom + Honeycomb API | Full loop execution |
+
+**Test Structure:**
+
+```python
+# tests/integration/test_claude_tools_eval.py
+
+import os
+import json
+import pytest
+from anthropic import Anthropic
+from deepeval import assert_test
+from deepeval.test_case import LLMTestCase, ToolCall
+from deepeval.metrics import ToolCorrectnessMetric, ArgumentCorrectnessMetric
+
+from honeycomb import HoneycombClient
+from honeycomb.tools import HONEYCOMB_TOOLS, execute_tool
+
+pytestmark = [
+    pytest.mark.evals,   # Requires ANTHROPIC_API_KEY
+    pytest.mark.live,    # Requires HONEYCOMB_API_KEY (for E2E tests)
+]
+
+
+# ============================================================================
+# Fixtures
+# ============================================================================
+
+@pytest.fixture
+def anthropic_client():
+    return Anthropic()  # Uses ANTHROPIC_API_KEY env var
+
+
+@pytest.fixture
+async def honeycomb_client():
+    async with HoneycombClient(api_key=os.environ["HONEYCOMB_API_KEY"]) as client:
+        yield client
+
+
+def call_claude_with_tools(client: Anthropic, prompt: str) -> dict:
+    """Call Claude with Honeycomb tools, return parsed response."""
+    response = client.messages.create(
+        model="claude-sonnet-4-5-20250929",
+        max_tokens=1024,
+        tools=HONEYCOMB_TOOLS,
+        messages=[{"role": "user", "content": prompt}]
+    )
+    tool_calls = [b for b in response.content if b.type == "tool_use"]
+    text_content = " ".join(b.text for b in response.content if hasattr(b, "text"))
+    return {
+        "tool_calls": tool_calls,
+        "text": text_content,
+        "stop_reason": response.stop_reason,
+    }
+
+
+# ============================================================================
+# Schema Acceptance Tests
+# ============================================================================
+
+class TestToolSchemaAcceptance:
+    """Verify Claude accepts our tool definitions without error."""
+
+    def test_all_tools_accepted(self, anthropic_client):
+        """Claude should parse all tool definitions successfully."""
+        result = call_claude_with_tools(anthropic_client, "What tools do you have?")
+        assert result["stop_reason"] in ("end_turn", "tool_use")
+
+
+# ============================================================================
+# Tool Selection Tests (DeepEval ToolCorrectnessMetric)
+# ============================================================================
+
+class TestToolSelection:
+    """Verify Claude selects appropriate tools using DeepEval metrics."""
+
+    @pytest.mark.parametrize("prompt,expected_tool", [
+        ("Create a trigger for high error rates in api-logs", "honeycomb_create_trigger"),
+        ("List all SLOs in the production dataset", "honeycomb_list_slos"),
+        ("Create a dashboard showing request counts and latency", "honeycomb_create_board"),
+        ("Run a query to count errors in the last hour", "honeycomb_run_query"),
+        ("Delete the trigger with ID abc123 from my-dataset", "honeycomb_delete_trigger"),
+        ("Get details about the SLO slo-456 in production", "honeycomb_get_slo"),
+    ])
+    def test_tool_selection(self, anthropic_client, prompt, expected_tool):
+        """Claude should select the correct tool for each prompt."""
+        result = call_claude_with_tools(anthropic_client, prompt)
+
+        # Build DeepEval test case
+        tools_called = [
+            ToolCall(name=tc.name, input_parameters=tc.input)
+            for tc in result["tool_calls"]
+        ]
+
+        test_case = LLMTestCase(
+            input=prompt,
+            actual_output=result["text"] or f"Tool call: {result['tool_calls'][0].name}",
+            tools_called=tools_called,
+            expected_tools=[ToolCall(name=expected_tool)],
+        )
+
+        # Evaluate with DeepEval
+        metric = ToolCorrectnessMetric(threshold=0.9)
+        assert_test(test_case, [metric])
+
+
+# ============================================================================
+# Parameter Quality Tests (DeepEval ArgumentCorrectnessMetric)
+# ============================================================================
+
+class TestParameterQuality:
+    """Verify Claude generates valid parameters using DeepEval metrics."""
+
+    def test_trigger_params_complete(self, anthropic_client):
+        """Trigger parameters should include all required fields."""
+        prompt = (
+            "Create a trigger named 'High Errors' in dataset 'api-logs' "
+            "that fires when error count > 100 in the last 15 minutes"
+        )
+        result = call_claude_with_tools(anthropic_client, prompt)
+        tool_call = result["tool_calls"][0]
+
+        # Build test case with expected parameter structure
+        test_case = LLMTestCase(
+            input=prompt,
+            actual_output=json.dumps(tool_call.input),
+            tools_called=[ToolCall(
+                name=tool_call.name,
+                input_parameters=tool_call.input,
+            )],
+            expected_tools=[ToolCall(
+                name="honeycomb_create_trigger",
+                input_parameters={
+                    "name": "High Errors",
+                    "dataset": "api-logs",
+                    "query": {"calculations": [{"op": "COUNT"}], "time_range": 900},
+                    "threshold": {"op": ">", "value": 100},
+                },
+            )],
+        )
+
+        # Use ArgumentCorrectnessMetric for parameter validation
+        metric = ArgumentCorrectnessMetric(threshold=0.8)
+        assert_test(test_case, [metric])
+
+    def test_slo_params_complete(self, anthropic_client):
+        """SLO parameters should include target and SLI."""
+        prompt = (
+            "Create an SLO named 'API Availability' in dataset 'api-logs' "
+            "with 99.9% target over 30 days, using success_rate as the SLI"
+        )
+        result = call_claude_with_tools(anthropic_client, prompt)
+        tool_call = result["tool_calls"][0]
+
+        test_case = LLMTestCase(
+            input=prompt,
+            actual_output=json.dumps(tool_call.input),
+            tools_called=[ToolCall(
+                name=tool_call.name,
+                input_parameters=tool_call.input,
+            )],
+            expected_tools=[ToolCall(
+                name="honeycomb_create_slo",
+                input_parameters={
+                    "name": "API Availability",
+                    "dataset": "api-logs",
+                    "target_percentage": 99.9,
+                    "time_period_days": 30,
+                    "sli": {"alias": "success_rate"},
+                },
+            )],
+        )
+
+        metric = ArgumentCorrectnessMetric(threshold=0.8)
+        assert_test(test_case, [metric])
+
+
+# ============================================================================
+# End-to-End Tests (Claude → Executor → Honeycomb API)
+# ============================================================================
+
+class TestEndToEnd:
+    """Full integration: Claude → Executor → Honeycomb API."""
+
+    @pytest.mark.live
+    async def test_create_and_cleanup_trigger(self, anthropic_client, honeycomb_client):
+        """Create a trigger via Claude, verify in Honeycomb, then clean up."""
+        prompt = (
+            "Create a trigger named 'DeepEval Test Trigger' in dataset "
+            "'claude-tool-test' that alerts when COUNT > 50"
+        )
+        result = call_claude_with_tools(anthropic_client, prompt)
+        tool_call = result["tool_calls"][0]
+
+        # Verify correct tool selected
+        assert tool_call.name == "honeycomb_create_trigger"
+
+        # Execute via our handler
+        result_json = await execute_tool(
+            honeycomb_client,
+            tool_call.name,
+            tool_call.input
+        )
+        created = json.loads(result_json)
+
+        try:
+            # Verify trigger was created
+            assert "id" in created
+            assert created["name"] == "DeepEval Test Trigger"
+
+            # Verify it exists in Honeycomb
+            fetched = await honeycomb_client.triggers.get_async(
+                dataset="claude-tool-test",
+                trigger_id=created["id"]
+            )
+            assert fetched.name == "DeepEval Test Trigger"
+        finally:
+            # Clean up
+            await honeycomb_client.triggers.delete_async(
+                dataset="claude-tool-test",
+                trigger_id=created["id"]
+            )
 ```
 
-### 11.5 Output Structure
+**Running the Tests:**
 
+```bash
+# Install eval dependencies
+poetry install --extras evals
+
+# Run all eval tests (requires both API keys)
+ANTHROPIC_API_KEY=sk-ant-... HONEYCOMB_API_KEY=... \
+    poetry run pytest tests/integration/test_claude_tools_eval.py -v
+
+# Run just tool selection tests (no Honeycomb needed)
+ANTHROPIC_API_KEY=sk-ant-... \
+    poetry run pytest tests/integration/test_claude_tools_eval.py -v -k "TestToolSelection"
+
+# Run with DeepEval's enhanced output
+ANTHROPIC_API_KEY=sk-ant-... \
+    poetry run deepeval test run tests/integration/test_claude_tools_eval.py
+
+# Skip eval tests in regular CI
+poetry run pytest --ignore=tests/integration/test_claude_tools_eval.py
 ```
-schemas/
-├── honeycomb-models.json     # Combined schema with all models
-├── Trigger.json
-├── TriggerCreate.json
-├── SLO.json
-├── SLOCreate.json
-├── Board.json
-├── Query.json
-├── QuerySpec.json
-├── QueryResult.json
-└── ...
+
+**Using Local LLM as Judge (Fully Offline):**
+
+```python
+# For air-gapped environments, use Ollama as the evaluation judge
+from deepeval.models import OllamaModel
+
+local_judge = OllamaModel(model="llama3.2")
+metric = ToolCorrectnessMetric(model=local_judge, threshold=0.9)
 ```
 
-### 11.6 Deliverables
+**Credentials Management:**
 
-- [ ] Schema export script
-- [ ] Makefile target `make export-schemas`
-- [ ] CI step to regenerate schemas on model changes (optional)
-- [ ] Include schemas in package distribution (optional)
+```bash
+# .envrc (gitignored)
+export ANTHROPIC_API_KEY="sk-ant-..."
+export HONEYCOMB_API_KEY="..."
+```
+
+### 11.17 Deliverables
+
+- [ ] Tool definition generator (`src/honeycomb/tools/generator.py`)
+- [ ] Tool execution handler with Builder integration (`src/honeycomb/tools/executor.py`)
+- [ ] Builder helper functions (`_build_query`, `_build_slo`, `_build_trigger`)
+- [ ] Hand-crafted descriptions for Priority 1 resources
+- [ ] Generated tool definitions (JSON + Python module)
+- [ ] Generator CLI (`python -m honeycomb.tools`)
+- [ ] Makefile targets: `make generate-tools`, `make validate-tools`
+- [ ] Unit tests for generator and executor
+- [ ] DeepEval integration tests (`tests/integration/test_claude_tools_eval.py`)
+  - [ ] Tool selection tests with `ToolCorrectnessMetric`
+  - [ ] Parameter quality tests with `ArgumentCorrectnessMetric`
+  - [ ] End-to-end tests with Honeycomb API
+- [ ] Optional `evals` dependency group (deepeval, anthropic)
+- [ ] Documentation page in MkDocs
+- [ ] Example integration with Anthropic SDK
 
 ---
 
