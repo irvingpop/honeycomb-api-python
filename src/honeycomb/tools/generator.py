@@ -8,6 +8,8 @@ from typing import Any
 
 from honeycomb.models import (
     BurnAlertCreate,
+    ColumnCreate,
+    DatasetCreate,
     SLOCreate,
     TriggerCreate,
 )
@@ -656,35 +658,334 @@ def generate_delete_burn_alert_tool() -> dict[str, Any]:
 
 
 # ==============================================================================
+# Datasets Tool Definitions
+# ==============================================================================
+
+
+def generate_list_datasets_tool() -> dict[str, Any]:
+    """Generate honeycomb_list_datasets tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+
+    examples: list[dict[str, Any]] = [
+        {},  # List all datasets
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_list_datasets",
+        description=get_description("honeycomb_list_datasets"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_get_dataset_tool() -> dict[str, Any]:
+    """Generate honeycomb_get_dataset tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["slug"]}
+
+    add_parameter(schema, "slug", "string", "The dataset slug to retrieve", required=True)
+
+    examples: list[dict[str, Any]] = [
+        {"slug": "api-logs"},
+        {"slug": "production"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_get_dataset",
+        description=get_description("honeycomb_get_dataset"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_create_dataset_tool() -> dict[str, Any]:
+    """Generate honeycomb_create_dataset tool definition."""
+    # Start with DatasetCreate schema
+    base_schema = generate_schema_from_model(
+        DatasetCreate,
+        exclude_fields={"created_at", "last_written_at", "slug", "regular_columns_count"},
+    )
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    examples: list[dict[str, Any]] = [
+        # Minimal example
+        {"name": "api-logs"},
+        # With description
+        {
+            "name": "production-logs",
+            "description": "Production API logs from main services",
+        },
+        # With JSON expansion
+        {
+            "name": "trace-data",
+            "description": "Distributed traces with nested JSON",
+            "expand_json_depth": 3,
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_create_dataset",
+        description=get_description("honeycomb_create_dataset"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_update_dataset_tool() -> dict[str, Any]:
+    """Generate honeycomb_update_dataset tool definition."""
+    base_schema = generate_schema_from_model(
+        DatasetCreate,
+        exclude_fields={"created_at", "last_written_at", "slug", "regular_columns_count"},
+    )
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["slug"]}
+    add_parameter(schema, "slug", "string", "The dataset slug to update", required=True)
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    examples: list[dict[str, Any]] = [
+        {"slug": "api-logs", "name": "API Logs", "description": "Updated description"},
+        {"slug": "production", "name": "Production", "expand_json_depth": 5},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_update_dataset",
+        description=get_description("honeycomb_update_dataset"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_delete_dataset_tool() -> dict[str, Any]:
+    """Generate honeycomb_delete_dataset tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["slug"]}
+
+    add_parameter(schema, "slug", "string", "The dataset slug to delete", required=True)
+
+    examples: list[dict[str, Any]] = [
+        {"slug": "test-dataset"},
+        {"slug": "old-logs"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_delete_dataset",
+        description=get_description("honeycomb_delete_dataset"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
+# Columns Tool Definitions
+# ==============================================================================
+
+
+def generate_list_columns_tool() -> dict[str, Any]:
+    """Generate honeycomb_list_columns tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
+
+    add_parameter(schema, "dataset", "string", "The dataset slug to list columns from", required=True)
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs"},
+        {"dataset": "production"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_list_columns",
+        description=get_description("honeycomb_list_columns"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_get_column_tool() -> dict[str, Any]:
+    """Generate honeycomb_get_column tool definition."""
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {},
+        "required": ["dataset", "column_id"],
+    }
+
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(schema, "column_id", "string", "The column ID to retrieve", required=True)
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs", "column_id": "col-123"},
+        {"dataset": "production", "column_id": "col-456"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_get_column",
+        description=get_description("honeycomb_get_column"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_create_column_tool() -> dict[str, Any]:
+    """Generate honeycomb_create_column tool definition."""
+    base_schema = generate_schema_from_model(
+        ColumnCreate,
+        exclude_fields={"id", "created_at", "updated_at", "last_written"},
+    )
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    # Add definitions if present
+    if "$defs" in base_schema:
+        schema["$defs"] = base_schema["$defs"]
+
+    examples: list[dict[str, Any]] = [
+        # Minimal example (string column)
+        {"dataset": "api-logs", "key_name": "endpoint", "type": "string"},
+        # With description and type
+        {
+            "dataset": "api-logs",
+            "key_name": "duration_ms",
+            "type": "float",
+            "description": "Request duration in milliseconds",
+        },
+        # Hidden column
+        {
+            "dataset": "production",
+            "key_name": "internal_id",
+            "type": "integer",
+            "hidden": True,
+            "description": "Internal debugging ID",
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_create_column",
+        description=get_description("honeycomb_create_column"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_update_column_tool() -> dict[str, Any]:
+    """Generate honeycomb_update_column tool definition."""
+    base_schema = generate_schema_from_model(
+        ColumnCreate,
+        exclude_fields={"id", "created_at", "updated_at", "last_written"},
+    )
+
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {},
+        "required": ["dataset", "column_id"],
+    }
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(schema, "column_id", "string", "The column ID to update", required=True)
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    # Add definitions if present
+    if "$defs" in base_schema:
+        schema["$defs"] = base_schema["$defs"]
+
+    examples: list[dict[str, Any]] = [
+        {
+            "dataset": "api-logs",
+            "column_id": "col-123",
+            "key_name": "endpoint",
+            "type": "string",
+            "description": "API endpoint path",
+        },
+        {
+            "dataset": "production",
+            "column_id": "col-456",
+            "key_name": "status_code",
+            "type": "integer",
+            "hidden": False,
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_update_column",
+        description=get_description("honeycomb_update_column"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_delete_column_tool() -> dict[str, Any]:
+    """Generate honeycomb_delete_column tool definition."""
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {},
+        "required": ["dataset", "column_id"],
+    }
+
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(schema, "column_id", "string", "The column ID to delete", required=True)
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs", "column_id": "col-123"},
+        {"dataset": "production", "column_id": "col-456"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_delete_column",
+        description=get_description("honeycomb_delete_column"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
 # Generator Functions
 # ==============================================================================
 
 
 def generate_all_tools() -> list[dict[str, Any]]:
-    """Generate all Priority 1 tool definitions.
+    """Generate all tool definitions.
 
     Returns:
-        List of 15 tool definitions (Triggers: 5, SLOs: 5, Burn Alerts: 5)
+        List of 25 tool definitions:
+        - Priority 1: Triggers (5), SLOs (5), Burn Alerts (5) = 15 tools
+        - Batch 1: Datasets (5), Columns (5) = 10 tools
     """
     tools = [
-        # Triggers
+        # Priority 1: Triggers
         generate_list_triggers_tool(),
         generate_get_trigger_tool(),
         generate_create_trigger_tool(),
         generate_update_trigger_tool(),
         generate_delete_trigger_tool(),
-        # SLOs
+        # Priority 1: SLOs
         generate_list_slos_tool(),
         generate_get_slo_tool(),
         generate_create_slo_tool(),
         generate_update_slo_tool(),
         generate_delete_slo_tool(),
-        # Burn Alerts
+        # Priority 1: Burn Alerts
         generate_list_burn_alerts_tool(),
         generate_get_burn_alert_tool(),
         generate_create_burn_alert_tool(),
         generate_update_burn_alert_tool(),
         generate_delete_burn_alert_tool(),
+        # Batch 1: Datasets
+        generate_list_datasets_tool(),
+        generate_get_dataset_tool(),
+        generate_create_dataset_tool(),
+        generate_update_dataset_tool(),
+        generate_delete_dataset_tool(),
+        # Batch 1: Columns
+        generate_list_columns_tool(),
+        generate_get_column_tool(),
+        generate_create_column_tool(),
+        generate_update_column_tool(),
+        generate_delete_column_tool(),
     ]
 
     return tools
@@ -694,7 +995,7 @@ def generate_tools_for_resource(resource: str) -> list[dict[str, Any]]:
     """Generate tool definitions for a specific resource.
 
     Args:
-        resource: Resource name ("triggers", "slos", or "burn_alerts")
+        resource: Resource name (triggers, slos, burn_alerts, datasets, columns)
 
     Returns:
         List of tool definitions for that resource
@@ -723,6 +1024,20 @@ def generate_tools_for_resource(resource: str) -> list[dict[str, Any]]:
             generate_create_burn_alert_tool,
             generate_update_burn_alert_tool,
             generate_delete_burn_alert_tool,
+        ],
+        "datasets": [
+            generate_list_datasets_tool,
+            generate_get_dataset_tool,
+            generate_create_dataset_tool,
+            generate_update_dataset_tool,
+            generate_delete_dataset_tool,
+        ],
+        "columns": [
+            generate_list_columns_tool,
+            generate_get_column_tool,
+            generate_create_column_tool,
+            generate_update_column_tool,
+            generate_delete_column_tool,
         ],
     }
 

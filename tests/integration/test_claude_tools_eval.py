@@ -208,8 +208,14 @@ class TestArgumentCorrectness:
         tool_call = result["tool_calls"][0]
         params = tool_call.input
 
+        # Skip parameter validation for parameter-less operations
+        expected_params = test_case.get("expected_params", {})
+        if expected_params is None or expected_params == {}:
+            # For parameter-less operations, only verify tool selection (already done above)
+            return
+
         # Check expected parameters (partial match)
-        for key, expected_value in test_case.get("expected_params", {}).items():
+        for key, expected_value in expected_params.items():
             if "." in key:
                 # Nested field access (e.g., "threshold.op")
                 parts = key.split(".")
@@ -245,6 +251,12 @@ class TestArgumentCorrectness:
 
         assert len(result["tool_calls"]) >= 1
         tool_call = result["tool_calls"][0]
+
+        # Skip parameter validation for parameter-less operations
+        expected_params = test_case.get("expected_params", {})
+        if expected_params is None or expected_params == {}:
+            # For parameter-less operations, only verify tool selection (already done above)
+            return
 
         # Convert to DeepEval format
         test_case_obj = LLMTestCase(

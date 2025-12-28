@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Any
 from honeycomb.models import (
     BurnAlertCreate,
     BurnAlertRecipient,
+    ColumnCreate,
+    DatasetCreate,
     SLOCreate,
 )
 from honeycomb.tools.builders import _build_slo, _build_trigger
@@ -85,14 +87,32 @@ async def execute_tool(
         return await _execute_update_burn_alert(client, tool_input)
     elif tool_name == "honeycomb_delete_burn_alert":
         return await _execute_delete_burn_alert(client, tool_input)
+    # Datasets
+    elif tool_name == "honeycomb_list_datasets":
+        return await _execute_list_datasets(client, tool_input)
+    elif tool_name == "honeycomb_get_dataset":
+        return await _execute_get_dataset(client, tool_input)
+    elif tool_name == "honeycomb_create_dataset":
+        return await _execute_create_dataset(client, tool_input)
+    elif tool_name == "honeycomb_update_dataset":
+        return await _execute_update_dataset(client, tool_input)
+    elif tool_name == "honeycomb_delete_dataset":
+        return await _execute_delete_dataset(client, tool_input)
+    # Columns
+    elif tool_name == "honeycomb_list_columns":
+        return await _execute_list_columns(client, tool_input)
+    elif tool_name == "honeycomb_get_column":
+        return await _execute_get_column(client, tool_input)
+    elif tool_name == "honeycomb_create_column":
+        return await _execute_create_column(client, tool_input)
+    elif tool_name == "honeycomb_update_column":
+        return await _execute_update_column(client, tool_input)
+    elif tool_name == "honeycomb_delete_column":
+        return await _execute_delete_column(client, tool_input)
     else:
         raise ValueError(
             f"Unknown tool: {tool_name}. "
-            "Valid tools: honeycomb_list_triggers, honeycomb_get_trigger, honeycomb_create_trigger, "
-            "honeycomb_update_trigger, honeycomb_delete_trigger, honeycomb_list_slos, honeycomb_get_slo, "
-            "honeycomb_create_slo, honeycomb_update_slo, honeycomb_delete_slo, honeycomb_list_burn_alerts, "
-            "honeycomb_get_burn_alert, honeycomb_create_burn_alert, honeycomb_update_burn_alert, "
-            "honeycomb_delete_burn_alert"
+            "Valid tools: triggers (5), slos (5), burn_alerts (5), datasets (5), columns (5)"
         )
 
 
@@ -294,6 +314,96 @@ async def _execute_delete_burn_alert(client: "HoneycombClient", tool_input: dict
         burn_alert_id=tool_input["burn_alert_id"],
     )
     return json.dumps({"success": True, "message": "Burn alert deleted"})
+
+
+# ==============================================================================
+# Datasets
+# ==============================================================================
+
+
+async def _execute_list_datasets(
+    client: "HoneycombClient", tool_input: dict[str, Any]  # noqa: ARG001
+) -> str:
+    """Execute honeycomb_list_datasets."""
+    datasets = await client.datasets.list_async()
+    return json.dumps([d.model_dump() for d in datasets], default=str)
+
+
+async def _execute_get_dataset(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_get_dataset."""
+    dataset = await client.datasets.get_async(slug=tool_input["slug"])
+    return json.dumps(dataset.model_dump(), default=str)
+
+
+async def _execute_create_dataset(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_create_dataset."""
+    dataset = DatasetCreate(**tool_input)
+    created = await client.datasets.create_async(dataset=dataset)
+    return json.dumps(created.model_dump(), default=str)
+
+
+async def _execute_update_dataset(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_update_dataset."""
+    slug = tool_input.pop("slug")
+    dataset = DatasetCreate(**tool_input)
+    updated = await client.datasets.update_async(slug=slug, dataset=dataset)
+    return json.dumps(updated.model_dump(), default=str)
+
+
+async def _execute_delete_dataset(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_delete_dataset."""
+    await client.datasets.delete_async(slug=tool_input["slug"])
+    return json.dumps({"success": True, "message": "Dataset deleted"})
+
+
+# ==============================================================================
+# Columns
+# ==============================================================================
+
+
+async def _execute_list_columns(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_list_columns."""
+    columns = await client.columns.list_async(dataset=tool_input["dataset"])
+    return json.dumps([c.model_dump() for c in columns], default=str)
+
+
+async def _execute_get_column(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_get_column."""
+    column = await client.columns.get_async(
+        dataset=tool_input["dataset"],
+        column_id=tool_input["column_id"],
+    )
+    return json.dumps(column.model_dump(), default=str)
+
+
+async def _execute_create_column(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_create_column."""
+    dataset = tool_input.pop("dataset")
+    column = ColumnCreate(**tool_input)
+    created = await client.columns.create_async(dataset=dataset, column=column)
+    return json.dumps(created.model_dump(), default=str)
+
+
+async def _execute_update_column(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_update_column."""
+    dataset = tool_input.pop("dataset")
+    column_id = tool_input.pop("column_id")
+    column = ColumnCreate(**tool_input)
+    updated = await client.columns.update_async(
+        dataset=dataset,
+        column_id=column_id,
+        column=column,
+    )
+    return json.dumps(updated.model_dump(), default=str)
+
+
+async def _execute_delete_column(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_delete_column."""
+    await client.columns.delete_async(
+        dataset=tool_input["dataset"],
+        column_id=tool_input["column_id"],
+    )
+    return json.dumps({"success": True, "message": "Column deleted"})
 
 
 __all__ = [

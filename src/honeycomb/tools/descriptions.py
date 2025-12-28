@@ -124,11 +124,89 @@ BURN_ALERT_DESCRIPTIONS = {
     ),
 }
 
+# ==============================================================================
+# Datasets
+# ==============================================================================
+
+DATASET_DESCRIPTIONS = {
+    "honeycomb_list_datasets": (
+        "Lists all datasets in your Honeycomb environment (no parameters required). "
+        "Use this to discover existing datasets before creating new ones, when setting up observability for a new service, or when migrating data from another platform. "
+        "This operation requires no parameters - it automatically lists all datasets you have access to. "
+        "Returns a list of dataset objects including their slugs, names, descriptions, and metadata like creation timestamps and column counts."
+    ),
+    "honeycomb_get_dataset": (
+        "Retrieves detailed information about a specific dataset by its slug. "
+        "Use this to inspect a dataset's configuration including its name, description, JSON expansion settings, and usage statistics. "
+        "Requires the dataset slug parameter. "
+        "Returns the complete dataset configuration including creation timestamp, last written timestamp, and regular columns count."
+    ),
+    "honeycomb_create_dataset": (
+        "Creates a new dataset to store telemetry data in Honeycomb. "
+        "Use this when setting up observability for a new service, creating test environments, or segmenting data by application or team. "
+        "Requires a name parameter which will be converted to a URL-safe slug. "
+        "Optional parameters include description for documentation and expand_json_depth (0-10) to automatically expand nested JSON fields into separate columns. "
+        "The dataset slug will be automatically generated from the name and used for API operations."
+    ),
+    "honeycomb_update_dataset": (
+        "Updates an existing dataset's name, description, or JSON expansion settings. "
+        "Use this to correct dataset metadata, add documentation, or adjust JSON parsing behavior as your schema evolves. "
+        "Requires the dataset slug and the complete updated configuration. "
+        "Note: The slug itself cannot be changed. Changing expand_json_depth only affects new events, not existing data."
+    ),
+    "honeycomb_delete_dataset": (
+        "Permanently deletes a dataset and all its data from Honeycomb. "
+        "Use this when decommissioning services, cleaning up test datasets, or consolidating data storage. "
+        "Requires the dataset slug parameter. "
+        "Warning: This action cannot be undone. All events, columns, queries, triggers, and SLOs in this dataset will be permanently deleted."
+    ),
+}
+
+# ==============================================================================
+# Columns
+# ==============================================================================
+
+COLUMN_DESCRIPTIONS = {
+    "honeycomb_list_columns": (
+        "Lists all columns defined in a dataset's schema. "
+        "Use this to discover available fields for querying, understand your data structure, or validate that new columns are being sent correctly. "
+        "Requires the dataset slug parameter. "
+        "Returns a list of column objects including their IDs, key names, types (string, integer, float, boolean), descriptions, hidden status, and timestamps."
+    ),
+    "honeycomb_get_column": (
+        "Retrieves detailed information about a specific column by its ID. "
+        "Use this to inspect a column's configuration including its data type, visibility, description, and usage statistics. "
+        "Requires both the dataset slug and column ID parameters. "
+        "Returns the complete column configuration including creation timestamp, last update timestamp, and last written timestamp."
+    ),
+    "honeycomb_create_column": (
+        "Creates a new column in a dataset's schema. "
+        "Use this to pre-define columns before sending data, add metadata like descriptions, or create hidden columns for internal fields. "
+        "Requires the dataset slug and key_name (the column identifier). "
+        "Optional parameters include type (string, integer, float, boolean - defaults to string), description for documentation, and hidden flag to exclude from autocomplete. "
+        "Columns are automatically created when new fields appear in events, but pre-defining them allows you to set type and visibility."
+    ),
+    "honeycomb_update_column": (
+        "Updates an existing column's description, type, or visibility settings. "
+        "Use this to add documentation to columns, change data types, or hide internal debugging fields from query builders. "
+        "Requires the dataset slug, column ID, and the complete updated column configuration. "
+        "Note: Changing the type doesn't convert existing data, it only affects how the column is displayed and queried in the UI."
+    ),
+    "honeycomb_delete_column": (
+        "Permanently deletes a column from a dataset's schema. "
+        "Use this when cleaning up unused columns or removing fields that are no longer being sent. "
+        "Requires both the dataset slug and column ID parameters. "
+        "Warning: This action cannot be undone. The column definition will be removed, but existing event data containing this field is preserved."
+    ),
+}
+
 # Combined mapping of all descriptions
 ALL_DESCRIPTIONS = {
     **TRIGGER_DESCRIPTIONS,
     **SLO_DESCRIPTIONS,
     **BURN_ALERT_DESCRIPTIONS,
+    **DATASET_DESCRIPTIONS,
+    **COLUMN_DESCRIPTIONS,
 }
 
 

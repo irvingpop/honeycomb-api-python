@@ -50,6 +50,28 @@ tests/integration/
 }
 ```
 
+### Parameter-less Operations
+
+For operations that require no parameters (e.g., `honeycomb_list_datasets`), use empty `expected_params`:
+
+```python
+{
+    "id": "dataset_list",
+    "description": "List all datasets",
+    "prompt": "List all datasets",
+    "expected_tool": "honeycomb_list_datasets",
+    "expected_params": {},  # Empty = parameter-less operation
+    "assertion_checks": [],
+}
+```
+
+**Behavior:** When `expected_params` is `{}` or `None`, the test framework:
+- ✅ Validates tool selection (correct tool was called)
+- ⏭️ Skips parameter validation (avoids false positives from LLM evaluators)
+- ⏭️ Skips assertion checks
+
+This handles operations like list/get-all that legitimately take zero parameters.
+
 ## Adding New Test Cases
 
 ### Step 1: Add to eval_test_cases.py
