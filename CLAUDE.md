@@ -22,6 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - All builders follow pattern: Builder → Bundle → create_from_bundle_async() (except Marker/Recipient which are simple)
 - Breaking changes are acceptable before version 1.0
 - Don't leave dead code lying around - either clean it up or add comments for future cleanup tasks
+- Don't gratiuitously create summary and status documents.  But when you do need to create a document, write it to `.claude/docs/` and this is where you should look for references
 
 ## Agents
 
