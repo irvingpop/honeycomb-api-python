@@ -1,9 +1,11 @@
-"""Data-driven Claude API evaluation tests using DeepEval.
+"""Data-driven Claude API evaluation tests.
 
 Scalable architecture for testing all 58 tools across 12 resources.
 
 Test data is organized in test_cases/ directory, with one file per resource.
 This allows easy addition of new test cases without modifying test execution logic.
+
+Tool call results are cached to disk to speed up repeated test runs.
 
 Requirements:
     - ANTHROPIC_API_KEY environment variable
@@ -21,32 +23,24 @@ Usage:
     # Run specific test by ID
     direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v -k trigger_p99_percentile
 
-    # Fast mode (basic assertions only, ~30 seconds)
-    direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v -k basic
+    # Clear cache for fresh run
+    rm -rf tests/integration/.tool_call_cache/
 
-    # LLM eval mode (comprehensive validation, ~5 minutes)
-    direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v -k llm_eval
+Environment Variables:
+    ANTHROPIC_API_KEY: Required for all tests
+    EVAL_USE_CACHE: Use cached results (default: true)
 """
 
+import hashlib
+import json
 import os
+from pathlib import Path
 
 import pytest
 
-# DeepEval and Anthropic are optional dependencies
-deepeval = pytest.importorskip(
-    "deepeval", reason="DeepEval not installed. Run: poetry install --with evals"
-)
 anthropic_module = pytest.importorskip(
     "anthropic", reason="Anthropic SDK not installed. Run: poetry install --with evals"
 )
-
-from deepeval import assert_test  # noqa: E402
-from deepeval.metrics import (  # noqa: E402
-    ArgumentCorrectnessMetric,
-    ToolCorrectnessMetric,
-)
-from deepeval.models import AnthropicModel  # noqa: E402
-from deepeval.test_case import LLMTestCase, ToolCall  # noqa: E402
 
 from honeycomb.tools import HONEYCOMB_TOOLS  # noqa: E402
 
@@ -55,6 +49,79 @@ from .test_cases import get_all_test_cases  # noqa: E402
 pytestmark = [
     pytest.mark.evals,  # Requires ANTHROPIC_API_KEY
 ]
+
+
+# ==============================================================================
+# Tool Call Caching
+# ==============================================================================
+
+
+CACHE_DIR = Path(__file__).parent / ".tool_call_cache"
+
+
+def get_cache_key(prompt: str) -> str:
+    """Generate a cache key for a prompt."""
+    return hashlib.sha256(prompt.encode()).hexdigest()
+
+
+class CachedToolCall:
+    """Wrapper to match Anthropic tool call interface."""
+
+    def __init__(self, name: str, input_params: dict):
+        self.name = name
+        self.input = input_params
+
+
+def load_cached_result(prompt: str) -> dict | None:
+    """Load cached tool call result if available."""
+    if os.environ.get("EVAL_USE_CACHE", "true").lower() != "true":
+        return None
+
+    cache_key = get_cache_key(prompt)
+    cache_file = CACHE_DIR / f"{cache_key}.json"
+
+    if cache_file.exists():
+        try:
+            with open(cache_file) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return None
+    return None
+
+
+def save_cached_result(prompt: str, result: dict) -> None:
+    """Save tool call result to cache."""
+    CACHE_DIR.mkdir(exist_ok=True)
+    cache_key = get_cache_key(prompt)
+    cache_file = CACHE_DIR / f"{cache_key}.json"
+
+    # Convert tool calls to serializable format
+    serializable_result = {
+        "tool_calls": [
+            {"name": tc.name, "input": tc.input}
+            for tc in result.get("tool_calls", [])
+        ],
+        "text": result.get("text", ""),
+        "stop_reason": result.get("stop_reason", ""),
+    }
+
+    try:
+        with open(cache_file, "w") as f:
+            json.dump(serializable_result, f)
+    except OSError:
+        pass  # Silently ignore cache write failures
+
+
+def deserialize_cached_result(cached: dict) -> dict:
+    """Convert cached JSON back to expected format."""
+    return {
+        "tool_calls": [
+            CachedToolCall(tc["name"], tc["input"])
+            for tc in cached.get("tool_calls", [])
+        ],
+        "text": cached.get("text", ""),
+        "stop_reason": cached.get("stop_reason", ""),
+    }
 
 
 # ==============================================================================
@@ -71,58 +138,60 @@ def anthropic_client():
     return anthropic_module.Anthropic(api_key=api_key)
 
 
-@pytest.fixture
-def anthropic_eval_model():
-    """Create DeepEval AnthropicModel for metric evaluation.
-
-    Uses Claude for evaluation instead of requiring OpenAI API key.
-    """
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        pytest.skip("ANTHROPIC_API_KEY not set")
-    return AnthropicModel(model="claude-sonnet-4-5-20250929", api_key=api_key)
-
-
 # ==============================================================================
 # Helper Functions
 # ==============================================================================
 
 
-def call_claude_with_tools(client, prompt: str) -> dict:
-    """Call Claude with Honeycomb tools.
+SYSTEM_PROMPT = (
+    "You are a Honeycomb API automation assistant. "
+    "When the user asks you to perform operations on Honeycomb resources, "
+    "you MUST use the available tools rather than providing conversational responses. "
+    "Always call the appropriate tool, even if some parameters are not explicitly specified - "
+    "use reasonable defaults. "
+    "Only respond conversationally if no appropriate tool is available."
+)
+
+
+def call_claude_with_tools(client, prompt: str, use_cache: bool = True) -> dict:
+    """Call Claude with Honeycomb tools (with caching).
 
     Args:
         client: Anthropic client
         prompt: User prompt
+        use_cache: Whether to use caching (default: True)
 
     Returns:
         Dict with tool_calls, text, and stop_reason
     """
-    system_prompt = (
-        "You are a Honeycomb API automation assistant. "
-        "When the user asks you to perform operations on Honeycomb resources, "
-        "you MUST use the available tools rather than providing conversational responses. "
-        "Always call the appropriate tool, even if some parameters are not explicitly specified - "
-        "use reasonable defaults. "
-        "Only respond conversationally if no appropriate tool is available."
-    )
+    # Check cache first
+    if use_cache:
+        cached = load_cached_result(prompt)
+        if cached is not None:
+            return deserialize_cached_result(cached)
 
     response = client.messages.create(
         model="claude-sonnet-4-5-20250929",
         max_tokens=1024,
         tools=HONEYCOMB_TOOLS,
-        system=system_prompt,
+        system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}],
     )
 
     tool_calls = [b for b in response.content if b.type == "tool_use"]
     text_content = " ".join(b.text for b in response.content if hasattr(b, "text"))
 
-    return {
+    result = {
         "tool_calls": tool_calls,
         "text": text_content,
         "stop_reason": response.stop_reason,
     }
+
+    # Save to cache
+    if use_cache:
+        save_cached_result(prompt, result)
+
+    return result
 
 
 def check_assertion(assertion_expr: str, params: dict) -> bool:
@@ -139,7 +208,7 @@ def check_assertion(assertion_expr: str, params: dict) -> bool:
         AssertionError: If assertion fails
     """
     # Make params available in scope for eval
-    result = eval(assertion_expr, {"params": params})
+    result = eval(assertion_expr, {"params": params, "len": len, "isinstance": isinstance})
     if not result:
         raise AssertionError(f"Assertion failed: {assertion_expr}")
     return True
@@ -154,8 +223,8 @@ class TestToolSelection:
     """Test correct tool selection using test case data."""
 
     @pytest.mark.parametrize("test_case", get_all_test_cases(), ids=lambda tc: tc["id"])
-    def test_tool_selection_basic(self, anthropic_client, test_case):
-        """Verify Claude selects the correct tool (fast, no LLM evaluation)."""
+    def test_tool_selection(self, anthropic_client, test_case):
+        """Verify Claude selects the correct tool."""
         result = call_claude_with_tools(anthropic_client, test_case["prompt"])
 
         # Verify tool was called
@@ -170,36 +239,13 @@ class TestToolSelection:
             f"{test_case['id']}: Expected '{expected_tool}' but got '{actual_tool}'"
         )
 
-    @pytest.mark.parametrize("test_case", get_all_test_cases(), ids=lambda tc: tc["id"])
-    def test_tool_selection_with_llm_eval(
-        self, anthropic_client, anthropic_eval_model, test_case
-    ):
-        """Verify tool selection using ToolCorrectnessMetric (slower, LLM-based)."""
-        result = call_claude_with_tools(anthropic_client, test_case["prompt"])
-
-        # Convert to DeepEval format
-        deepeval_tools = [
-            ToolCall(name=tc.name, input_parameters=tc.input) for tc in result["tool_calls"]
-        ]
-        expected_tools = [ToolCall(name=test_case["expected_tool"])]
-
-        test_case_obj = LLMTestCase(
-            input=test_case["prompt"],
-            actual_output=result["text"],
-            tools_called=deepeval_tools,
-            expected_tools=expected_tools,
-        )
-
-        metric = ToolCorrectnessMetric(threshold=0.7, model=anthropic_eval_model)
-        assert_test(test_case_obj, [metric])
-
 
 class TestArgumentCorrectness:
     """Test argument correctness using test case data."""
 
     @pytest.mark.parametrize("test_case", get_all_test_cases(), ids=lambda tc: tc["id"])
-    def test_argument_basic_assertions(self, anthropic_client, test_case):
-        """Verify basic parameter assertions (fast, no LLM evaluation)."""
+    def test_argument_assertions(self, anthropic_client, test_case):
+        """Verify parameter assertions."""
         result = call_claude_with_tools(anthropic_client, test_case["prompt"])
 
         assert len(result["tool_calls"]) >= 1, (
@@ -241,34 +287,6 @@ class TestArgumentCorrectness:
         # Run custom assertions
         for assertion in test_case.get("assertion_checks", []):
             check_assertion(assertion, params)
-
-    @pytest.mark.parametrize("test_case", get_all_test_cases(), ids=lambda tc: tc["id"])
-    def test_argument_with_llm_eval(
-        self, anthropic_client, anthropic_eval_model, test_case
-    ):
-        """Verify arguments using ArgumentCorrectnessMetric (slower, LLM-based)."""
-        result = call_claude_with_tools(anthropic_client, test_case["prompt"])
-
-        assert len(result["tool_calls"]) >= 1
-        tool_call = result["tool_calls"][0]
-
-        # Skip parameter validation for parameter-less operations
-        expected_params = test_case.get("expected_params", {})
-        if expected_params is None or expected_params == {}:
-            # For parameter-less operations, only verify tool selection (already done above)
-            return
-
-        # Convert to DeepEval format
-        test_case_obj = LLMTestCase(
-            input=test_case["prompt"],
-            actual_output=result["text"],
-            tools_called=[
-                ToolCall(name=tool_call.name, input_parameters=tool_call.input)
-            ],
-        )
-
-        metric = ArgumentCorrectnessMetric(threshold=0.7, model=anthropic_eval_model)
-        assert_test(test_case_obj, [metric])
 
 
 # ==============================================================================

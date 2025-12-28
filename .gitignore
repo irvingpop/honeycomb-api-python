@@ -99,5 +99,6 @@ Thumbs.db
 # Generated tool definitions (root level only, not src/honeycomb/tools/)
 /tools/
 
-# DeepEval telemetry
+# DeepEval telemetry and caches
 .deepeval/
+tests/integration/.tool_call_cache/

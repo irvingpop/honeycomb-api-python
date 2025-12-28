@@ -21,6 +21,8 @@ help:
 	@echo "  make test-cov       Run tests with coverage report"
 	@echo "  make test-live      Run live API tests (requires HONEYCOMB_API_KEY)"
 	@echo "  make test-unit      Run only unit tests"
+	@echo "  make test-eval      Run evaluation tests" (requires ANTHROPIC_API_KEY)
+	@echo "  make test-eval-debug Run evaluation tests with no cache or parallelism" (requires ANTHROPIC_API_KEY)
 	@echo ""
 	@echo "Build & Publish:"
 	@echo "  make build          Build distribution packages"
@@ -100,6 +102,12 @@ test-live:
 		exit 1; \
 	fi
 	poetry run python scripts/test_live_api.py
+
+test-eval:
+	poetry run pytest tests/integration/test_claude_tools_eval.py -v -n 10
+
+test-eval-debug:
+	EVAL_USE_CACHE=false poetry run pytest tests/integration/test_claude_tools_eval.py -v
 
 # =============================================================================
 # Build & Publish
