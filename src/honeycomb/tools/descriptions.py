@@ -282,6 +282,33 @@ DERIVED_COLUMN_DESCRIPTIONS = {
     ),
 }
 
+# ==============================================================================
+# Queries
+# ==============================================================================
+
+QUERY_DESCRIPTIONS = {
+    "honeycomb_create_query": (
+        "Creates a new saved query in a dataset that can be reused in boards, analysis, or referenced by ID. "
+        "Use this to save frequently-used queries, create queries for dashboard panels, or prepare queries for trigger definitions. "
+        "Requires the dataset slug and query specification including time_range and calculations. "
+        "Optional annotation_name parameter creates the query with a display name for easier identification in the UI. "
+        "The query specification supports multiple calculations (unlike triggers which allow only one), filters, breakdowns, orders, havings, and limits for comprehensive data analysis."
+    ),
+    "honeycomb_get_query": (
+        "Retrieves a saved query's configuration by its ID. "
+        "Use this to inspect an existing query's calculations, filters, time range, and other settings before modifying it or using it as a template. "
+        "Requires both the dataset slug and query ID parameters. "
+        "Returns the complete query specification including all calculation definitions, filter conditions, breakdown fields, and ordering rules."
+    ),
+    "honeycomb_run_query": (
+        "Creates a saved query, executes it, and returns results with automatic polling until completion. "
+        "Use this for ad-hoc data analysis, investigating issues, or when you want both a saved query and immediate results in one operation. "
+        "Requires the dataset slug (or '__all__' for environment-wide queries) and query specification (time_range, calculations, optional filters/breakdowns/orders/havings/limit). "
+        "This tool performs two operations: first creates a permanent saved query, then executes it with polling and returns the query results including data rows and metadata. "
+        "Supports all query features including multiple calculations (COUNT, AVG, SUM, MIN, MAX, P50-P99, HEATMAP, RATE_*), complex filters, breakdowns, ordering, HAVING clauses, and result limits."
+    ),
+}
+
 # Combined mapping of all descriptions
 ALL_DESCRIPTIONS = {
     **TRIGGER_DESCRIPTIONS,
@@ -291,6 +318,7 @@ ALL_DESCRIPTIONS = {
     **COLUMN_DESCRIPTIONS,
     **RECIPIENT_DESCRIPTIONS,
     **DERIVED_COLUMN_DESCRIPTIONS,
+    **QUERY_DESCRIPTIONS,
 }
 
 

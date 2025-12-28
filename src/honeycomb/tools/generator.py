@@ -11,6 +11,7 @@ from honeycomb.models import (
     ColumnCreate,
     DatasetCreate,
     DerivedColumnCreate,
+    QuerySpec,
     RecipientCreate,
     SLOCreate,
     TriggerCreate,
@@ -1286,6 +1287,147 @@ def generate_delete_derived_column_tool() -> dict[str, Any]:
 
 
 # ==============================================================================
+# Queries Tool Definitions
+# ==============================================================================
+
+
+def generate_create_query_tool() -> dict[str, Any]:
+    """Generate honeycomb_create_query tool definition."""
+    base_schema = generate_schema_from_model(
+        QuerySpec,
+        exclude_fields={"id", "created_at", "updated_at"},
+    )
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+
+    # Add optional annotation_name parameter
+    add_parameter(
+        schema,
+        "annotation_name",
+        "string",
+        "Optional name for the query annotation (saves query with a display name)",
+        required=False,
+    )
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    # Add definitions if present
+    if "$defs" in base_schema:
+        schema["$defs"] = base_schema["$defs"]
+
+    examples: list[dict[str, Any]] = [
+        # Simple COUNT query
+        {
+            "dataset": "api-logs",
+            "time_range": 3600,
+            "calculations": [{"op": "COUNT"}],
+        },
+        # P99 with filters
+        {
+            "dataset": "api-logs",
+            "time_range": 3600,
+            "calculations": [{"op": "P99", "column": "duration_ms"}],
+            "filters": [{"column": "status_code", "op": ">=", "value": 200}],
+        },
+        # With annotation name
+        {
+            "dataset": "api-logs",
+            "annotation_name": "Error Rate Dashboard",
+            "time_range": 7200,
+            "calculations": [{"op": "COUNT"}],
+            "filters": [{"column": "status_code", "op": ">=", "value": 500}],
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_create_query",
+        description=get_description("honeycomb_create_query"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_get_query_tool() -> dict[str, Any]:
+    """Generate honeycomb_get_query tool definition."""
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {},
+        "required": ["dataset", "query_id"],
+    }
+
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(schema, "query_id", "string", "The query ID to retrieve", required=True)
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs", "query_id": "q-123"},
+        {"dataset": "production", "query_id": "q-456"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_get_query",
+        description=get_description("honeycomb_get_query"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_run_query_tool() -> dict[str, Any]:
+    """Generate honeycomb_run_query tool definition."""
+    base_schema = generate_schema_from_model(
+        QuerySpec,
+        exclude_fields={"id", "created_at", "updated_at"},
+    )
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    # Add definitions if present
+    if "$defs" in base_schema:
+        schema["$defs"] = base_schema["$defs"]
+
+    examples: list[dict[str, Any]] = [
+        # Count in last hour
+        {
+            "dataset": "api-logs",
+            "time_range": 3600,
+            "calculations": [{"op": "COUNT"}],
+        },
+        # P99 with breakdowns
+        {
+            "dataset": "api-logs",
+            "time_range": 7200,
+            "calculations": [{"op": "P99", "column": "duration_ms"}],
+            "breakdowns": ["endpoint"],
+        },
+        # Multiple calculations with filters and ordering
+        {
+            "dataset": "api-logs",
+            "time_range": 3600,
+            "calculations": [
+                {"op": "COUNT"},
+                {"op": "AVG", "column": "duration_ms"},
+                {"op": "P99", "column": "duration_ms"},
+            ],
+            "filters": [{"column": "status_code", "op": ">=", "value": 500}],
+            "orders": [{"column": "COUNT", "order": "descending"}],
+            "limit": 100,
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_run_query",
+        description=get_description("honeycomb_run_query"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
 # Generator Functions
 # ==============================================================================
 
@@ -1294,10 +1436,11 @@ def generate_all_tools() -> list[dict[str, Any]]:
     """Generate all tool definitions.
 
     Returns:
-        List of 36 tool definitions:
+        List of 39 tool definitions:
         - Priority 1: Triggers (5), SLOs (5), Burn Alerts (5) = 15 tools
         - Batch 1: Datasets (5), Columns (5) = 10 tools
         - Batch 2: Recipients (6), Derived Columns (5) = 11 tools
+        - Batch 3a: Queries (3) = 3 tools
     """
     tools = [
         # Priority 1: Triggers
@@ -1343,6 +1486,10 @@ def generate_all_tools() -> list[dict[str, Any]]:
         generate_create_derived_column_tool(),
         generate_update_derived_column_tool(),
         generate_delete_derived_column_tool(),
+        # Batch 3a: Queries
+        generate_create_query_tool(),
+        generate_get_query_tool(),
+        generate_run_query_tool(),
     ]
 
     return tools
@@ -1352,7 +1499,7 @@ def generate_tools_for_resource(resource: str) -> list[dict[str, Any]]:
     """Generate tool definitions for a specific resource.
 
     Args:
-        resource: Resource name (triggers, slos, burn_alerts, datasets, columns, recipients, derived_columns)
+        resource: Resource name (triggers, slos, burn_alerts, datasets, columns, recipients, derived_columns, queries)
 
     Returns:
         List of tool definitions for that resource
@@ -1410,6 +1557,11 @@ def generate_tools_for_resource(resource: str) -> list[dict[str, Any]]:
             generate_create_derived_column_tool,
             generate_update_derived_column_tool,
             generate_delete_derived_column_tool,
+        ],
+        "queries": [
+            generate_create_query_tool,
+            generate_get_query_tool,
+            generate_run_query_tool,
         ],
     }
 

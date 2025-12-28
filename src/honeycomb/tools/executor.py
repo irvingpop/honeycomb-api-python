@@ -13,6 +13,7 @@ from honeycomb.models import (
     ColumnCreate,
     DatasetCreate,
     DerivedColumnCreate,
+    QuerySpec,
     RecipientCreate,
     SLOCreate,
 )
@@ -135,11 +136,18 @@ async def execute_tool(
         return await _execute_update_derived_column(client, tool_input)
     elif tool_name == "honeycomb_delete_derived_column":
         return await _execute_delete_derived_column(client, tool_input)
+    # Queries
+    elif tool_name == "honeycomb_create_query":
+        return await _execute_create_query(client, tool_input)
+    elif tool_name == "honeycomb_get_query":
+        return await _execute_get_query(client, tool_input)
+    elif tool_name == "honeycomb_run_query":
+        return await _execute_run_query(client, tool_input)
     else:
         raise ValueError(
             f"Unknown tool: {tool_name}. "
             "Valid tools: triggers (5), slos (5), burn_alerts (5), datasets (5), columns (5), "
-            "recipients (6), derived_columns (5)"
+            "recipients (6), derived_columns (5), queries (3)"
         )
 
 
@@ -539,6 +547,53 @@ async def _execute_delete_derived_column(
         column_id=tool_input["derived_column_id"],
     )
     return json.dumps({"success": True, "message": "Derived column deleted"})
+
+
+# ==============================================================================
+# Queries
+# ==============================================================================
+
+
+async def _execute_create_query(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_create_query.
+
+    Note: annotation_name parameter is accepted but currently ignored.
+    QueryBuilder integration required for full annotation support.
+    """
+    dataset = tool_input.pop("dataset")
+    tool_input.pop("annotation_name", None)  # Remove if present, not yet supported
+
+    query_spec = QuerySpec(**tool_input)
+    query = await client.queries.create_async(spec=query_spec, dataset=dataset)
+
+    return json.dumps(query.model_dump(), default=str)
+
+
+async def _execute_get_query(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_get_query."""
+    query = await client.queries.get_async(
+        dataset=tool_input["dataset"],
+        query_id=tool_input["query_id"],
+    )
+    return json.dumps(query.model_dump(), default=str)
+
+
+async def _execute_run_query(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_run_query.
+
+    Runs ephemeral query with automatic polling.
+    Returns the QueryResult (not the tuple).
+    """
+    dataset = tool_input.pop("dataset")
+    query_spec = QuerySpec(**tool_input)
+
+    # Run query with polling - returns (Query, QueryResult) tuple
+    _, result = await client.query_results.create_and_run_async(
+        spec=query_spec,
+        dataset=dataset,
+    )
+
+    return json.dumps(result.model_dump(), default=str)
 
 
 __all__ = [
