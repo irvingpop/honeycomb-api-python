@@ -200,6 +200,88 @@ COLUMN_DESCRIPTIONS = {
     ),
 }
 
+# ==============================================================================
+# Recipients
+# ==============================================================================
+
+RECIPIENT_DESCRIPTIONS = {
+    "honeycomb_list_recipients": (
+        "Lists all notification recipients configured in your Honeycomb environment (no parameters required). "
+        "Use this to discover existing notification targets before creating triggers, avoid duplicate recipients, or audit alerting destinations. "
+        "This operation requires no parameters - it automatically lists all recipients across all types (email, Slack, PagerDuty, webhooks, MS Teams). "
+        "Returns a list of recipient objects including their IDs, types, and configuration details."
+    ),
+    "honeycomb_get_recipient": (
+        "Retrieves detailed configuration for a specific recipient by ID. "
+        "Use this to inspect a recipient's type and delivery details before updating it or when troubleshooting notification issues. "
+        "Requires the recipient ID parameter. "
+        "Returns the complete recipient configuration including type-specific details like email addresses, Slack channels, or webhook URLs."
+    ),
+    "honeycomb_create_recipient": (
+        "Creates a new notification recipient for alert delivery. "
+        "Use this when setting up alerting for triggers or burn alerts, adding new on-call notification channels, or migrating alert destinations from another platform. "
+        "Requires a type (email, slack, pagerduty, webhook, msteams) and type-specific details object. "
+        "For email: provide 'email_address'. For Slack: provide 'channel'. For PagerDuty: provide 'routing_key'. For webhooks: provide 'url' and optionally 'secret'. "
+        "Recipients can be referenced by ID when creating or updating triggers and burn alerts."
+    ),
+    "honeycomb_update_recipient": (
+        "Updates an existing recipient's configuration including its type or delivery details. "
+        "Use this to change notification destinations, update Slack channels, rotate webhook secrets, or fix incorrect email addresses. "
+        "Requires the recipient ID and the complete updated recipient configuration. "
+        "Note: This replaces the entire recipient configuration, so include all fields you want to preserve."
+    ),
+    "honeycomb_delete_recipient": (
+        "Permanently deletes a recipient from Honeycomb. "
+        "Use this when removing unused notification channels, cleaning up test recipients, or decommissioning alert destinations. "
+        "Requires the recipient ID parameter. "
+        "Warning: This action cannot be undone. Any triggers or burn alerts using this recipient will have it removed from their notification list."
+    ),
+    "honeycomb_get_recipient_triggers": (
+        "Retrieves all triggers that are configured to send notifications to a specific recipient. "
+        "Use this before deleting a recipient to understand impact, when auditing alert routing, or troubleshooting why notifications aren't being sent. "
+        "Requires the recipient ID parameter. "
+        "Returns a list of trigger objects that reference this recipient, showing which datasets and alerts would be affected by changes."
+    ),
+}
+
+# ==============================================================================
+# Derived Columns
+# ==============================================================================
+
+DERIVED_COLUMN_DESCRIPTIONS = {
+    "honeycomb_list_derived_columns": (
+        "Lists all derived columns (calculated fields) in a dataset. "
+        "Use this to discover existing calculated fields before creating new ones, understand available computed metrics, or audit data transformations. "
+        "Requires the dataset slug parameter (use '__all__' to list environment-wide derived columns). "
+        "Returns a list of derived column objects including their IDs, aliases, expressions, and descriptions."
+    ),
+    "honeycomb_get_derived_column": (
+        "Retrieves detailed configuration for a specific derived column by ID. "
+        "Use this to inspect a derived column's expression syntax, alias, and description before modifying it. "
+        "Requires both the dataset slug and derived column ID parameters. "
+        "Returns the complete derived column configuration including the calculation expression and metadata."
+    ),
+    "honeycomb_create_derived_column": (
+        "Creates a new derived column that calculates values from event fields using expressions. "
+        "Use this to create computed metrics (e.g., success rate from status codes), normalize data formats, or prepare fields for SLI calculations. "
+        "Requires the dataset slug (use '__all__' for environment-wide), an alias (the column name), and an expression using Honeycomb's query language. "
+        "Common expression functions include IF() for conditionals, EQUALS/LT/GT for comparisons, and field references with $ prefix (e.g., $status_code). "
+        "Optional description parameter documents the column's purpose for team members."
+    ),
+    "honeycomb_update_derived_column": (
+        "Updates an existing derived column's alias, expression, or description. "
+        "Use this to fix calculation logic, rename computed fields, or improve documentation as your understanding evolves. "
+        "Requires the dataset slug, derived column ID, and the complete updated configuration. "
+        "Note: Changing the expression only affects new queries - existing query results are not recalculated."
+    ),
+    "honeycomb_delete_derived_column": (
+        "Permanently deletes a derived column from a dataset. "
+        "Use this when removing unused calculated fields or cleaning up temporary analysis columns. "
+        "Requires both the dataset slug and derived column ID parameters. "
+        "Warning: This action cannot be undone. SLOs, triggers, or queries using this derived column may break if they reference it."
+    ),
+}
+
 # Combined mapping of all descriptions
 ALL_DESCRIPTIONS = {
     **TRIGGER_DESCRIPTIONS,
@@ -207,6 +289,8 @@ ALL_DESCRIPTIONS = {
     **BURN_ALERT_DESCRIPTIONS,
     **DATASET_DESCRIPTIONS,
     **COLUMN_DESCRIPTIONS,
+    **RECIPIENT_DESCRIPTIONS,
+    **DERIVED_COLUMN_DESCRIPTIONS,
 }
 
 

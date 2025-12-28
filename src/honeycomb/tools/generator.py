@@ -10,6 +10,8 @@ from honeycomb.models import (
     BurnAlertCreate,
     ColumnCreate,
     DatasetCreate,
+    DerivedColumnCreate,
+    RecipientCreate,
     SLOCreate,
     TriggerCreate,
 )
@@ -943,6 +945,347 @@ def generate_delete_column_tool() -> dict[str, Any]:
 
 
 # ==============================================================================
+# Recipients Tool Definitions
+# ==============================================================================
+
+
+def generate_list_recipients_tool() -> dict[str, Any]:
+    """Generate honeycomb_list_recipients tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+
+    examples: list[dict[str, Any]] = [
+        {},  # List all recipients
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_list_recipients",
+        description=get_description("honeycomb_list_recipients"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_get_recipient_tool() -> dict[str, Any]:
+    """Generate honeycomb_get_recipient tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["recipient_id"]}
+
+    add_parameter(schema, "recipient_id", "string", "The recipient ID to retrieve", required=True)
+
+    examples: list[dict[str, Any]] = [
+        {"recipient_id": "rec-123"},
+        {"recipient_id": "rec-456"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_get_recipient",
+        description=get_description("honeycomb_get_recipient"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_create_recipient_tool() -> dict[str, Any]:
+    """Generate honeycomb_create_recipient tool definition."""
+    base_schema = generate_schema_from_model(
+        RecipientCreate,
+        exclude_fields={"id", "created_at", "updated_at"},
+    )
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    # Add definitions if present
+    if "$defs" in base_schema:
+        schema["$defs"] = base_schema["$defs"]
+
+    examples: list[dict[str, Any]] = [
+        # Email recipient
+        {
+            "type": "email",
+            "details": {"email_address": "alerts@example.com"},
+        },
+        # Slack channel
+        {
+            "type": "slack",
+            "details": {"channel": "#alerts"},
+        },
+        # PagerDuty
+        {
+            "type": "pagerduty",
+            "details": {"routing_key": "abc123def456"},
+        },
+        # Webhook
+        {
+            "type": "webhook",
+            "details": {
+                "url": "https://hooks.example.com/alerts",
+                "secret": "webhook-secret-key",
+            },
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_create_recipient",
+        description=get_description("honeycomb_create_recipient"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_update_recipient_tool() -> dict[str, Any]:
+    """Generate honeycomb_update_recipient tool definition."""
+    base_schema = generate_schema_from_model(
+        RecipientCreate,
+        exclude_fields={"id", "created_at", "updated_at"},
+    )
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["recipient_id"]}
+    add_parameter(schema, "recipient_id", "string", "The recipient ID to update", required=True)
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    # Add definitions if present
+    if "$defs" in base_schema:
+        schema["$defs"] = base_schema["$defs"]
+
+    examples: list[dict[str, Any]] = [
+        {
+            "recipient_id": "rec-123",
+            "type": "email",
+            "details": {"email_address": "new-alerts@example.com"},
+        },
+        {
+            "recipient_id": "rec-456",
+            "type": "slack",
+            "details": {"channel": "#new-alerts"},
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_update_recipient",
+        description=get_description("honeycomb_update_recipient"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_delete_recipient_tool() -> dict[str, Any]:
+    """Generate honeycomb_delete_recipient tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["recipient_id"]}
+
+    add_parameter(schema, "recipient_id", "string", "The recipient ID to delete", required=True)
+
+    examples: list[dict[str, Any]] = [
+        {"recipient_id": "rec-123"},
+        {"recipient_id": "rec-456"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_delete_recipient",
+        description=get_description("honeycomb_delete_recipient"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_get_recipient_triggers_tool() -> dict[str, Any]:
+    """Generate honeycomb_get_recipient_triggers tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["recipient_id"]}
+
+    add_parameter(
+        schema,
+        "recipient_id",
+        "string",
+        "The recipient ID to get associated triggers for",
+        required=True,
+    )
+
+    examples: list[dict[str, Any]] = [
+        {"recipient_id": "rec-123"},
+        {"recipient_id": "rec-456"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_get_recipient_triggers",
+        description=get_description("honeycomb_get_recipient_triggers"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
+# Derived Columns Tool Definitions
+# ==============================================================================
+
+
+def generate_list_derived_columns_tool() -> dict[str, Any]:
+    """Generate honeycomb_list_derived_columns tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
+
+    add_parameter(
+        schema,
+        "dataset",
+        "string",
+        "The dataset slug to list derived columns from (use '__all__' for environment-wide)",
+        required=True,
+    )
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs"},
+        {"dataset": "__all__"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_list_derived_columns",
+        description=get_description("honeycomb_list_derived_columns"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_get_derived_column_tool() -> dict[str, Any]:
+    """Generate honeycomb_get_derived_column tool definition."""
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {},
+        "required": ["dataset", "derived_column_id"],
+    }
+
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(
+        schema, "derived_column_id", "string", "The derived column ID to retrieve", required=True
+    )
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs", "derived_column_id": "dc-123"},
+        {"dataset": "__all__", "derived_column_id": "dc-456"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_get_derived_column",
+        description=get_description("honeycomb_get_derived_column"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_create_derived_column_tool() -> dict[str, Any]:
+    """Generate honeycomb_create_derived_column tool definition."""
+    base_schema = generate_schema_from_model(
+        DerivedColumnCreate,
+        exclude_fields={"id", "created_at", "updated_at"},
+    )
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
+    add_parameter(
+        schema,
+        "dataset",
+        "string",
+        "The dataset slug (use '__all__' for environment-wide)",
+        required=True,
+    )
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    examples: list[dict[str, Any]] = [
+        # Boolean flag
+        {
+            "dataset": "api-logs",
+            "alias": "is_error",
+            "expression": "IF(GTE($status_code, 500), 1, 0)",
+            "description": "1 if error, 0 otherwise",
+        },
+        # Categorization
+        {
+            "dataset": "api-logs",
+            "alias": "status_category",
+            "expression": "IF(LT($status_code, 400), 'success', IF(LT($status_code, 500), 'client_error', 'server_error'))",
+        },
+        # Environment-wide
+        {
+            "dataset": "__all__",
+            "alias": "request_success",
+            "expression": "IF(LT($status_code, 400), 1, 0)",
+            "description": "Success indicator for all datasets",
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_create_derived_column",
+        description=get_description("honeycomb_create_derived_column"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_update_derived_column_tool() -> dict[str, Any]:
+    """Generate honeycomb_update_derived_column tool definition."""
+    base_schema = generate_schema_from_model(
+        DerivedColumnCreate,
+        exclude_fields={"id", "created_at", "updated_at"},
+    )
+
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {},
+        "required": ["dataset", "derived_column_id"],
+    }
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(
+        schema, "derived_column_id", "string", "The derived column ID to update", required=True
+    )
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    examples: list[dict[str, Any]] = [
+        {
+            "dataset": "api-logs",
+            "derived_column_id": "dc-123",
+            "alias": "is_error",
+            "expression": "IF(GTE($status_code, 500), 1, 0)",
+            "description": "Updated error flag",
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_update_derived_column",
+        description=get_description("honeycomb_update_derived_column"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_delete_derived_column_tool() -> dict[str, Any]:
+    """Generate honeycomb_delete_derived_column tool definition."""
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {},
+        "required": ["dataset", "derived_column_id"],
+    }
+
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(
+        schema, "derived_column_id", "string", "The derived column ID to delete", required=True
+    )
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs", "derived_column_id": "dc-123"},
+        {"dataset": "__all__", "derived_column_id": "dc-456"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_delete_derived_column",
+        description=get_description("honeycomb_delete_derived_column"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
 # Generator Functions
 # ==============================================================================
 
@@ -951,9 +1294,10 @@ def generate_all_tools() -> list[dict[str, Any]]:
     """Generate all tool definitions.
 
     Returns:
-        List of 25 tool definitions:
+        List of 36 tool definitions:
         - Priority 1: Triggers (5), SLOs (5), Burn Alerts (5) = 15 tools
         - Batch 1: Datasets (5), Columns (5) = 10 tools
+        - Batch 2: Recipients (6), Derived Columns (5) = 11 tools
     """
     tools = [
         # Priority 1: Triggers
@@ -986,6 +1330,19 @@ def generate_all_tools() -> list[dict[str, Any]]:
         generate_create_column_tool(),
         generate_update_column_tool(),
         generate_delete_column_tool(),
+        # Batch 2: Recipients
+        generate_list_recipients_tool(),
+        generate_get_recipient_tool(),
+        generate_create_recipient_tool(),
+        generate_update_recipient_tool(),
+        generate_delete_recipient_tool(),
+        generate_get_recipient_triggers_tool(),
+        # Batch 2: Derived Columns
+        generate_list_derived_columns_tool(),
+        generate_get_derived_column_tool(),
+        generate_create_derived_column_tool(),
+        generate_update_derived_column_tool(),
+        generate_delete_derived_column_tool(),
     ]
 
     return tools
@@ -995,7 +1352,7 @@ def generate_tools_for_resource(resource: str) -> list[dict[str, Any]]:
     """Generate tool definitions for a specific resource.
 
     Args:
-        resource: Resource name (triggers, slos, burn_alerts, datasets, columns)
+        resource: Resource name (triggers, slos, burn_alerts, datasets, columns, recipients, derived_columns)
 
     Returns:
         List of tool definitions for that resource
@@ -1038,6 +1395,21 @@ def generate_tools_for_resource(resource: str) -> list[dict[str, Any]]:
             generate_create_column_tool,
             generate_update_column_tool,
             generate_delete_column_tool,
+        ],
+        "recipients": [
+            generate_list_recipients_tool,
+            generate_get_recipient_tool,
+            generate_create_recipient_tool,
+            generate_update_recipient_tool,
+            generate_delete_recipient_tool,
+            generate_get_recipient_triggers_tool,
+        ],
+        "derived_columns": [
+            generate_list_derived_columns_tool,
+            generate_get_derived_column_tool,
+            generate_create_derived_column_tool,
+            generate_update_derived_column_tool,
+            generate_delete_derived_column_tool,
         ],
     }
 

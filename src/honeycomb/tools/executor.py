@@ -12,6 +12,8 @@ from honeycomb.models import (
     BurnAlertRecipient,
     ColumnCreate,
     DatasetCreate,
+    DerivedColumnCreate,
+    RecipientCreate,
     SLOCreate,
 )
 from honeycomb.tools.builders import _build_slo, _build_trigger
@@ -109,10 +111,35 @@ async def execute_tool(
         return await _execute_update_column(client, tool_input)
     elif tool_name == "honeycomb_delete_column":
         return await _execute_delete_column(client, tool_input)
+    # Recipients
+    elif tool_name == "honeycomb_list_recipients":
+        return await _execute_list_recipients(client, tool_input)
+    elif tool_name == "honeycomb_get_recipient":
+        return await _execute_get_recipient(client, tool_input)
+    elif tool_name == "honeycomb_create_recipient":
+        return await _execute_create_recipient(client, tool_input)
+    elif tool_name == "honeycomb_update_recipient":
+        return await _execute_update_recipient(client, tool_input)
+    elif tool_name == "honeycomb_delete_recipient":
+        return await _execute_delete_recipient(client, tool_input)
+    elif tool_name == "honeycomb_get_recipient_triggers":
+        return await _execute_get_recipient_triggers(client, tool_input)
+    # Derived Columns
+    elif tool_name == "honeycomb_list_derived_columns":
+        return await _execute_list_derived_columns(client, tool_input)
+    elif tool_name == "honeycomb_get_derived_column":
+        return await _execute_get_derived_column(client, tool_input)
+    elif tool_name == "honeycomb_create_derived_column":
+        return await _execute_create_derived_column(client, tool_input)
+    elif tool_name == "honeycomb_update_derived_column":
+        return await _execute_update_derived_column(client, tool_input)
+    elif tool_name == "honeycomb_delete_derived_column":
+        return await _execute_delete_derived_column(client, tool_input)
     else:
         raise ValueError(
             f"Unknown tool: {tool_name}. "
-            "Valid tools: triggers (5), slos (5), burn_alerts (5), datasets (5), columns (5)"
+            "Valid tools: triggers (5), slos (5), burn_alerts (5), datasets (5), columns (5), "
+            "recipients (6), derived_columns (5)"
         )
 
 
@@ -404,6 +431,114 @@ async def _execute_delete_column(client: "HoneycombClient", tool_input: dict[str
         column_id=tool_input["column_id"],
     )
     return json.dumps({"success": True, "message": "Column deleted"})
+
+
+# ==============================================================================
+# Recipients
+# ==============================================================================
+
+
+async def _execute_list_recipients(
+    client: "HoneycombClient", tool_input: dict[str, Any]  # noqa: ARG001
+) -> str:
+    """Execute honeycomb_list_recipients."""
+    recipients = await client.recipients.list_async()
+    return json.dumps([r.model_dump() for r in recipients], default=str)
+
+
+async def _execute_get_recipient(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_get_recipient."""
+    recipient = await client.recipients.get_async(recipient_id=tool_input["recipient_id"])
+    return json.dumps(recipient.model_dump(), default=str)
+
+
+async def _execute_create_recipient(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_create_recipient."""
+    recipient = RecipientCreate(**tool_input)
+    created = await client.recipients.create_async(recipient=recipient)
+    return json.dumps(created.model_dump(), default=str)
+
+
+async def _execute_update_recipient(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_update_recipient."""
+    recipient_id = tool_input.pop("recipient_id")
+    recipient = RecipientCreate(**tool_input)
+    updated = await client.recipients.update_async(recipient_id=recipient_id, recipient=recipient)
+    return json.dumps(updated.model_dump(), default=str)
+
+
+async def _execute_delete_recipient(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_delete_recipient."""
+    await client.recipients.delete_async(recipient_id=tool_input["recipient_id"])
+    return json.dumps({"success": True, "message": "Recipient deleted"})
+
+
+async def _execute_get_recipient_triggers(
+    client: "HoneycombClient", tool_input: dict[str, Any]
+) -> str:
+    """Execute honeycomb_get_recipient_triggers."""
+    triggers = await client.recipients.get_triggers_async(recipient_id=tool_input["recipient_id"])
+    return json.dumps(triggers, default=str)
+
+
+# ==============================================================================
+# Derived Columns
+# ==============================================================================
+
+
+async def _execute_list_derived_columns(
+    client: "HoneycombClient", tool_input: dict[str, Any]
+) -> str:
+    """Execute honeycomb_list_derived_columns."""
+    derived_columns = await client.derived_columns.list_async(dataset=tool_input["dataset"])
+    return json.dumps([dc.model_dump() for dc in derived_columns], default=str)
+
+
+async def _execute_get_derived_column(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_get_derived_column."""
+    derived_column = await client.derived_columns.get_async(
+        dataset=tool_input["dataset"],
+        column_id=tool_input["derived_column_id"],
+    )
+    return json.dumps(derived_column.model_dump(), default=str)
+
+
+async def _execute_create_derived_column(
+    client: "HoneycombClient", tool_input: dict[str, Any]
+) -> str:
+    """Execute honeycomb_create_derived_column."""
+    dataset = tool_input.pop("dataset")
+    derived_column = DerivedColumnCreate(**tool_input)
+    created = await client.derived_columns.create_async(
+        dataset=dataset, derived_column=derived_column
+    )
+    return json.dumps(created.model_dump(), default=str)
+
+
+async def _execute_update_derived_column(
+    client: "HoneycombClient", tool_input: dict[str, Any]
+) -> str:
+    """Execute honeycomb_update_derived_column."""
+    dataset = tool_input.pop("dataset")
+    column_id = tool_input.pop("derived_column_id")
+    derived_column = DerivedColumnCreate(**tool_input)
+    updated = await client.derived_columns.update_async(
+        dataset=dataset,
+        column_id=column_id,
+        derived_column=derived_column,
+    )
+    return json.dumps(updated.model_dump(), default=str)
+
+
+async def _execute_delete_derived_column(
+    client: "HoneycombClient", tool_input: dict[str, Any]
+) -> str:
+    """Execute honeycomb_delete_derived_column."""
+    await client.derived_columns.delete_async(
+        dataset=tool_input["dataset"],
+        column_id=tool_input["derived_column_id"],
+    )
+    return json.dumps({"success": True, "message": "Derived column deleted"})
 
 
 __all__ = [

@@ -172,9 +172,9 @@ class TestGenerateAllTools:
     """Test generating all tool definitions."""
 
     def test_generates_15_tools(self):
-        """Should generate exactly 25 tools (Priority 1 + Batch 1)."""
+        """Should generate exactly 36 tools (Priority 1 + Batch 1 + Batch 2)."""
         tools = generate_all_tools()
-        assert len(tools) == 25  # 15 Priority 1 + 10 Batch 1
+        assert len(tools) == 36  # 15 Priority 1 + 10 Batch 1 + 11 Batch 2
 
     def test_all_tools_have_required_fields(self):
         """All tools must have name, description, and input_schema."""
@@ -255,8 +255,8 @@ class TestExportFunctions:
             assert "version" in data
             assert "generated_at" in data
             assert "count" in data
-            assert data["count"] == 25
-            assert len(data["tools"]) == 25
+            assert data["count"] == 36
+            assert len(data["tools"]) == 36
         finally:
             Path(output_path).unlink()
 
