@@ -348,6 +348,96 @@ BOARD_DESCRIPTIONS = {
     ),
 }
 
+# ==============================================================================
+# Markers
+# ==============================================================================
+
+MARKER_DESCRIPTIONS = {
+    "honeycomb_list_markers": (
+        "Lists all markers (event annotations) in a dataset. "
+        "Use this to view deployment history, configuration changes, incidents, or other significant events marked on your data. "
+        "Requires the dataset slug parameter. "
+        "Returns a list of marker objects including their IDs, messages, types, timestamps, colors, and URLs."
+    ),
+    "honeycomb_create_marker": (
+        "Creates a new marker to annotate your data with significant events like deployments, configuration changes, or incidents. "
+        "Use this to track deployments, mark maintenance windows, document configuration changes, or flag incidents for correlation with metrics. "
+        "Requires dataset slug (or '__all__' for environment-wide), message, and type parameters. "
+        "Optional color parameter (hex code like '#FF5733') can be provided for visual customization - if the marker setting for that type doesn't exist, it should be created first. "
+        "Optional start_time and end_time (Unix timestamps) create time-range markers, otherwise defaults to current time as a point marker."
+    ),
+    "honeycomb_update_marker": (
+        "Updates an existing marker's message, type, timestamps, or URL. "
+        "Use this to correct marker details, update deployment notes, or adjust time ranges for maintenance windows. "
+        "Requires the dataset slug, marker ID, and updated marker configuration. "
+        "Note: Colors are controlled by marker settings, not directly on markers."
+    ),
+    "honeycomb_delete_marker": (
+        "Permanently deletes a marker from a dataset. "
+        "Use this when removing incorrect markers, cleaning up test annotations, or removing outdated event tracking. "
+        "Requires both the dataset slug and marker ID parameters. "
+        "Warning: This action cannot be undone. The marker will be removed from all visualizations."
+    ),
+}
+
+# ==============================================================================
+# Marker Settings
+# ==============================================================================
+
+MARKER_SETTING_DESCRIPTIONS = {
+    "honeycomb_list_marker_settings": (
+        "Lists all marker type-to-color mappings for a dataset. "
+        "Use this as the primary way to view all marker settings, see which marker types have custom colors, or audit marker visualization configuration. "
+        "Requires the dataset slug parameter (or '__all__' for environment-wide settings). "
+        "Returns a list of all marker settings showing type names (e.g., 'deploy', 'incident') and their associated hex color codes."
+    ),
+    "honeycomb_get_marker_setting": (
+        "Retrieves a specific marker setting by its ID. "
+        "Use this rarely when you need a specific setting by ID - prefer list_marker_settings to view all settings. "
+        "Requires both the dataset slug and setting ID parameters. "
+        "Returns the marker setting configuration including type name and color code."
+    ),
+    "honeycomb_create_marker_setting": (
+        "Creates a new marker type-to-color mapping. "
+        "Use this to assign colors to marker types for visual consistency (e.g., deployments in green, incidents in red). "
+        "Requires the dataset slug (or '__all__' for environment-wide), marker type name, and hex color code (e.g., '#00FF00'). "
+        "Once created, all markers of this type will display in the specified color on graphs and timelines."
+    ),
+    "honeycomb_update_marker_setting": (
+        "Updates an existing marker setting's type or color. "
+        "Use this to change marker colors for better visual distinction or rename marker types. "
+        "Requires the dataset slug, setting ID, and updated configuration (type and color). "
+        "The color change applies immediately to all existing and future markers of this type."
+    ),
+    "honeycomb_delete_marker_setting": (
+        "Permanently deletes a marker setting. "
+        "Use this when removing unused marker types or resetting color customizations. "
+        "Requires both the dataset slug and setting ID parameters. "
+        "Warning: Existing markers of this type will lose their custom color and revert to default visualization."
+    ),
+}
+
+# ==============================================================================
+# Events
+# ==============================================================================
+
+EVENT_DESCRIPTIONS = {
+    "honeycomb_send_event": (
+        "Sends a single telemetry event to a Honeycomb dataset for ingestion and analysis. "
+        "Use this for testing data ingestion, sending critical one-off events, or when batch sending isn't feasible. "
+        "Requires the dataset slug and data object (key-value pairs representing the event fields). "
+        "Optional timestamp (Unix seconds) and samplerate parameters control event timing and sampling. "
+        "Note: For production use, prefer send_batch_events for better performance and efficiency."
+    ),
+    "honeycomb_send_batch_events": (
+        "Sends multiple telemetry events to a Honeycomb dataset in a single API call (highly preferred over single events). "
+        "Use this for efficient data ingestion, sending application logs, traces, or metrics in bulk. "
+        "Requires the dataset slug and events array, where each event has a data object (key-value pairs) and optional timestamp/samplerate. "
+        "Batch sending reduces API overhead, improves throughput, and is the recommended approach for production telemetry. "
+        "Returns status for each event, allowing you to identify and retry failed events."
+    ),
+}
+
 # Combined mapping of all descriptions
 ALL_DESCRIPTIONS = {
     **TRIGGER_DESCRIPTIONS,
@@ -359,6 +449,9 @@ ALL_DESCRIPTIONS = {
     **DERIVED_COLUMN_DESCRIPTIONS,
     **QUERY_DESCRIPTIONS,
     **BOARD_DESCRIPTIONS,
+    **MARKER_DESCRIPTIONS,
+    **MARKER_SETTING_DESCRIPTIONS,
+    **EVENT_DESCRIPTIONS,
 }
 
 

@@ -8,11 +8,14 @@ import json
 from typing import TYPE_CHECKING, Any
 
 from honeycomb.models import (
+    BatchEvent,
     BurnAlertCreate,
     BurnAlertRecipient,
     ColumnCreate,
     DatasetCreate,
     DerivedColumnCreate,
+    MarkerCreate,
+    MarkerSettingCreate,
     QuerySpec,
     RecipientCreate,
     SLOCreate,
@@ -154,11 +157,37 @@ async def execute_tool(
         return await _execute_update_board(client, tool_input)
     elif tool_name == "honeycomb_delete_board":
         return await _execute_delete_board(client, tool_input)
+    # Markers
+    elif tool_name == "honeycomb_list_markers":
+        return await _execute_list_markers(client, tool_input)
+    elif tool_name == "honeycomb_create_marker":
+        return await _execute_create_marker(client, tool_input)
+    elif tool_name == "honeycomb_update_marker":
+        return await _execute_update_marker(client, tool_input)
+    elif tool_name == "honeycomb_delete_marker":
+        return await _execute_delete_marker(client, tool_input)
+    # Marker Settings
+    elif tool_name == "honeycomb_list_marker_settings":
+        return await _execute_list_marker_settings(client, tool_input)
+    elif tool_name == "honeycomb_get_marker_setting":
+        return await _execute_get_marker_setting(client, tool_input)
+    elif tool_name == "honeycomb_create_marker_setting":
+        return await _execute_create_marker_setting(client, tool_input)
+    elif tool_name == "honeycomb_update_marker_setting":
+        return await _execute_update_marker_setting(client, tool_input)
+    elif tool_name == "honeycomb_delete_marker_setting":
+        return await _execute_delete_marker_setting(client, tool_input)
+    # Events
+    elif tool_name == "honeycomb_send_event":
+        return await _execute_send_event(client, tool_input)
+    elif tool_name == "honeycomb_send_batch_events":
+        return await _execute_send_batch_events(client, tool_input)
     else:
         raise ValueError(
             f"Unknown tool: {tool_name}. "
             "Valid tools: triggers (5), slos (5), burn_alerts (5), datasets (5), columns (5), "
-            "recipients (6), derived_columns (5), queries (3), boards (5)"
+            "recipients (6), derived_columns (5), queries (3), boards (5), markers (4), "
+            "marker_settings (5), events (2)"
         )
 
 
@@ -658,6 +687,121 @@ async def _execute_delete_board(client: "HoneycombClient", tool_input: dict[str,
     """Execute honeycomb_delete_board."""
     await client.boards.delete_async(board_id=tool_input["board_id"])
     return json.dumps({"success": True, "message": "Board deleted"})
+
+
+# ==============================================================================
+# Markers
+# ==============================================================================
+
+
+async def _execute_list_markers(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_list_markers."""
+    markers = await client.markers.list_async(dataset=tool_input["dataset"])
+    return json.dumps([m.model_dump() for m in markers], default=str)
+
+
+async def _execute_create_marker(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_create_marker."""
+    dataset = tool_input.pop("dataset")
+    tool_input.pop("color", None)  # Color handled by marker settings, not markers directly
+
+    marker = MarkerCreate(**tool_input)
+    created = await client.markers.create_async(dataset=dataset, marker=marker)
+    return json.dumps(created.model_dump(), default=str)
+
+
+async def _execute_update_marker(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_update_marker."""
+    dataset = tool_input.pop("dataset")
+    marker_id = tool_input.pop("marker_id")
+
+    marker = MarkerCreate(**tool_input)
+    updated = await client.markers.update_async(dataset=dataset, marker_id=marker_id, marker=marker)
+    return json.dumps(updated.model_dump(), default=str)
+
+
+async def _execute_delete_marker(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_delete_marker."""
+    await client.markers.delete_async(dataset=tool_input["dataset"], marker_id=tool_input["marker_id"])
+    return json.dumps({"success": True, "message": "Marker deleted"})
+
+
+# ==============================================================================
+# Marker Settings
+# ==============================================================================
+
+
+async def _execute_list_marker_settings(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_list_marker_settings."""
+    settings = await client.markers.list_settings_async(dataset=tool_input["dataset"])
+    return json.dumps([s.model_dump() for s in settings], default=str)
+
+
+async def _execute_get_marker_setting(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_get_marker_setting."""
+    setting = await client.markers.get_setting_async(
+        dataset=tool_input["dataset"],
+        setting_id=tool_input["setting_id"],
+    )
+    return json.dumps(setting.model_dump(), default=str)
+
+
+async def _execute_create_marker_setting(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_create_marker_setting."""
+    dataset = tool_input.pop("dataset")
+    setting = MarkerSettingCreate(**tool_input)
+    created = await client.markers.create_setting_async(dataset=dataset, setting=setting)
+    return json.dumps(created.model_dump(), default=str)
+
+
+async def _execute_update_marker_setting(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_update_marker_setting."""
+    dataset = tool_input.pop("dataset")
+    setting_id = tool_input.pop("setting_id")
+    setting = MarkerSettingCreate(**tool_input)
+    updated = await client.markers.update_setting_async(
+        dataset=dataset,
+        setting_id=setting_id,
+        setting=setting,
+    )
+    return json.dumps(updated.model_dump(), default=str)
+
+
+async def _execute_delete_marker_setting(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_delete_marker_setting."""
+    await client.markers.delete_setting_async(
+        dataset=tool_input["dataset"],
+        setting_id=tool_input["setting_id"],
+    )
+    return json.dumps({"success": True, "message": "Marker setting deleted"})
+
+
+# ==============================================================================
+# Events
+# ==============================================================================
+
+
+async def _execute_send_event(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_send_event."""
+    dataset = tool_input.pop("dataset")
+    data = tool_input.pop("data")
+    timestamp = tool_input.pop("timestamp", None)
+    samplerate = tool_input.pop("samplerate", None)
+
+    await client.events.send_async(dataset=dataset, data=data, timestamp=timestamp, samplerate=samplerate)
+    return json.dumps({"success": True, "message": "Event sent"})
+
+
+async def _execute_send_batch_events(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_send_batch_events."""
+    dataset = tool_input.pop("dataset")
+    events_data = tool_input.pop("events")
+
+    # Convert to BatchEvent objects
+    events = [BatchEvent(**event) for event in events_data]
+
+    results = await client.events.send_batch_async(dataset=dataset, events=events)
+    return json.dumps([r.model_dump() for r in results], default=str)
 
 
 __all__ = [

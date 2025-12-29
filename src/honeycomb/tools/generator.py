@@ -12,6 +12,8 @@ from honeycomb.models import (
     ColumnCreate,
     DatasetCreate,
     DerivedColumnCreate,
+    MarkerCreate,
+    MarkerSettingCreate,
     QuerySpec,
     RecipientCreate,
     SLOCreate,
@@ -1735,6 +1737,246 @@ def generate_run_query_tool() -> dict[str, Any]:
 
 
 # ==============================================================================
+# Markers Tool Definitions
+# ==============================================================================
+
+
+def generate_list_markers_tool() -> dict[str, Any]:
+    """Generate honeycomb_list_markers tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+
+    examples: list[dict[str, Any]] = [{"dataset": "api-logs"}, {"dataset": "production"}]
+
+    return create_tool_definition(
+        name="honeycomb_list_markers",
+        description=get_description("honeycomb_list_markers"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_create_marker_tool() -> dict[str, Any]:
+    """Generate honeycomb_create_marker tool definition."""
+    base_schema = generate_schema_from_model(MarkerCreate, exclude_fields={"id", "created_at", "updated_at", "color"})
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug (or '__all__' for environment-wide)", required=True)
+    add_parameter(schema, "color", "string", "Optional hex color (e.g., '#FF5733')", required=False)
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs", "message": "deploy v1.2.3", "type": "deploy"},
+        {"dataset": "__all__", "message": "maintenance window", "type": "maintenance", "start_time": 1640000000, "end_time": 1640003600},
+        {"dataset": "production", "message": "config change", "type": "config", "color": "#FF5733"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_create_marker",
+        description=get_description("honeycomb_create_marker"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_update_marker_tool() -> dict[str, Any]:
+    """Generate honeycomb_update_marker tool definition."""
+    base_schema = generate_schema_from_model(MarkerCreate, exclude_fields={"id", "created_at", "updated_at", "color"})
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset", "marker_id"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(schema, "marker_id", "string", "The marker ID to update", required=True)
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs", "marker_id": "abc123", "message": "updated deploy v1.2.4", "type": "deploy"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_update_marker",
+        description=get_description("honeycomb_update_marker"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_delete_marker_tool() -> dict[str, Any]:
+    """Generate honeycomb_delete_marker tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset", "marker_id"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(schema, "marker_id", "string", "The marker ID to delete", required=True)
+
+    examples: list[dict[str, Any]] = [{"dataset": "api-logs", "marker_id": "abc123"}]
+
+    return create_tool_definition(
+        name="honeycomb_delete_marker",
+        description=get_description("honeycomb_delete_marker"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_list_marker_settings_tool() -> dict[str, Any]:
+    """Generate honeycomb_list_marker_settings tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug (or '__all__' for environment-wide)", required=True)
+
+    examples: list[dict[str, Any]] = [{"dataset": "api-logs"}, {"dataset": "__all__"}]
+
+    return create_tool_definition(
+        name="honeycomb_list_marker_settings",
+        description=get_description("honeycomb_list_marker_settings"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_get_marker_setting_tool() -> dict[str, Any]:
+    """Generate honeycomb_get_marker_setting tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset", "setting_id"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(schema, "setting_id", "string", "The marker setting ID", required=True)
+
+    examples: list[dict[str, Any]] = [{"dataset": "api-logs", "setting_id": "set-123"}]
+
+    return create_tool_definition(
+        name="honeycomb_get_marker_setting",
+        description=get_description("honeycomb_get_marker_setting"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_create_marker_setting_tool() -> dict[str, Any]:
+    """Generate honeycomb_create_marker_setting tool definition."""
+    base_schema = generate_schema_from_model(MarkerSettingCreate, exclude_fields={"id", "created_at", "updated_at"})
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug (or '__all__' for environment-wide)", required=True)
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs", "type": "deploy", "color": "#00FF00"},
+        {"dataset": "__all__", "type": "incident", "color": "#FF0000"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_create_marker_setting",
+        description=get_description("honeycomb_create_marker_setting"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_update_marker_setting_tool() -> dict[str, Any]:
+    """Generate honeycomb_update_marker_setting tool definition."""
+    base_schema = generate_schema_from_model(MarkerSettingCreate, exclude_fields={"id", "created_at", "updated_at"})
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset", "setting_id"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(schema, "setting_id", "string", "The marker setting ID to update", required=True)
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs", "setting_id": "set-123", "type": "deploy", "color": "#0000FF"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_update_marker_setting",
+        description=get_description("honeycomb_update_marker_setting"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_delete_marker_setting_tool() -> dict[str, Any]:
+    """Generate honeycomb_delete_marker_setting tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset", "setting_id"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(schema, "setting_id", "string", "The marker setting ID to delete", required=True)
+
+    examples: list[dict[str, Any]] = [{"dataset": "api-logs", "setting_id": "set-123"}]
+
+    return create_tool_definition(
+        name="honeycomb_delete_marker_setting",
+        description=get_description("honeycomb_delete_marker_setting"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
+# Events Tool Definitions
+# ==============================================================================
+
+
+def generate_send_event_tool() -> dict[str, Any]:
+    """Generate honeycomb_send_event tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset", "data"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+    add_parameter(schema, "data", "object", "Event data as key-value pairs", required=True)
+    add_parameter(schema, "timestamp", "integer", "Unix timestamp for the event", required=False)
+    add_parameter(schema, "samplerate", "integer", "Sample rate (default: 1)", required=False)
+
+    examples: list[dict[str, Any]] = [
+        {"dataset": "api-logs", "data": {"endpoint": "/api/users", "duration_ms": 42, "status_code": 200}},
+        {"dataset": "production", "data": {"service": "auth", "latency": 15}, "timestamp": 1640000000},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_send_event",
+        description=get_description("honeycomb_send_event"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_send_batch_events_tool() -> dict[str, Any]:
+    """Generate honeycomb_send_batch_events tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset", "events"]}
+    add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
+
+    schema["properties"]["events"] = {
+        "type": "array",
+        "description": "Array of events to send",
+        "items": {
+            "type": "object",
+            "properties": {
+                "data": {"type": "object", "description": "Event data as key-value pairs"},
+                "timestamp": {"type": "integer", "description": "Unix timestamp"},
+                "samplerate": {"type": "integer", "description": "Sample rate"},
+            },
+            "required": ["data"],
+        },
+    }
+
+    examples: list[dict[str, Any]] = [
+        {
+            "dataset": "api-logs",
+            "events": [
+                {"data": {"endpoint": "/api/users", "duration_ms": 42, "status_code": 200}},
+                {"data": {"endpoint": "/api/posts", "duration_ms": 18, "status_code": 201}},
+            ],
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_send_batch_events",
+        description=get_description("honeycomb_send_batch_events"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
 # Generator Functions
 # ==============================================================================
 
@@ -1743,12 +1985,13 @@ def generate_all_tools() -> list[dict[str, Any]]:
     """Generate all tool definitions.
 
     Returns:
-        List of 44 tool definitions:
+        List of 55 tool definitions:
         - Priority 1: Triggers (5), SLOs (5), Burn Alerts (5) = 15 tools
         - Batch 1: Datasets (5), Columns (5) = 10 tools
         - Batch 2: Recipients (6), Derived Columns (5) = 11 tools
         - Batch 3a: Queries (3) = 3 tools
         - Batch 3b: Boards (5) = 5 tools
+        - Batch 4: Markers (4), Marker Settings (5), Events (2) = 11 tools
     """
     tools = [
         # Priority 1: Triggers
@@ -1804,6 +2047,20 @@ def generate_all_tools() -> list[dict[str, Any]]:
         generate_create_board_tool(),
         generate_update_board_tool(),
         generate_delete_board_tool(),
+        # Batch 4: Markers
+        generate_list_markers_tool(),
+        generate_create_marker_tool(),
+        generate_update_marker_tool(),
+        generate_delete_marker_tool(),
+        # Batch 4: Marker Settings
+        generate_list_marker_settings_tool(),
+        generate_get_marker_setting_tool(),
+        generate_create_marker_setting_tool(),
+        generate_update_marker_setting_tool(),
+        generate_delete_marker_setting_tool(),
+        # Batch 4: Events
+        generate_send_event_tool(),
+        generate_send_batch_events_tool(),
     ]
 
     return tools
@@ -1883,6 +2140,23 @@ def generate_tools_for_resource(resource: str) -> list[dict[str, Any]]:
             generate_create_board_tool,
             generate_update_board_tool,
             generate_delete_board_tool,
+        ],
+        "markers": [
+            generate_list_markers_tool,
+            generate_create_marker_tool,
+            generate_update_marker_tool,
+            generate_delete_marker_tool,
+        ],
+        "marker_settings": [
+            generate_list_marker_settings_tool,
+            generate_get_marker_setting_tool,
+            generate_create_marker_setting_tool,
+            generate_update_marker_setting_tool,
+            generate_delete_marker_setting_tool,
+        ],
+        "events": [
+            generate_send_event_tool,
+            generate_send_batch_events_tool,
         ],
     }
 
