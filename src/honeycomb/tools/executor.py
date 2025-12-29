@@ -17,7 +17,7 @@ from honeycomb.models import (
     RecipientCreate,
     SLOCreate,
 )
-from honeycomb.tools.builders import _build_slo, _build_trigger
+from honeycomb.tools.builders import _build_board, _build_slo, _build_trigger
 
 if TYPE_CHECKING:
     from honeycomb import HoneycombClient
@@ -143,11 +143,22 @@ async def execute_tool(
         return await _execute_get_query(client, tool_input)
     elif tool_name == "honeycomb_run_query":
         return await _execute_run_query(client, tool_input)
+    # Boards
+    elif tool_name == "honeycomb_list_boards":
+        return await _execute_list_boards(client, tool_input)
+    elif tool_name == "honeycomb_get_board":
+        return await _execute_get_board(client, tool_input)
+    elif tool_name == "honeycomb_create_board":
+        return await _execute_create_board(client, tool_input)
+    elif tool_name == "honeycomb_update_board":
+        return await _execute_update_board(client, tool_input)
+    elif tool_name == "honeycomb_delete_board":
+        return await _execute_delete_board(client, tool_input)
     else:
         raise ValueError(
             f"Unknown tool: {tool_name}. "
             "Valid tools: triggers (5), slos (5), burn_alerts (5), datasets (5), columns (5), "
-            "recipients (6), derived_columns (5), queries (3)"
+            "recipients (6), derived_columns (5), queries (3), boards (5)"
         )
 
 
@@ -594,6 +605,59 @@ async def _execute_run_query(client: "HoneycombClient", tool_input: dict[str, An
     )
 
     return json.dumps(result.model_dump(), default=str)
+
+
+# ==============================================================================
+# Boards
+# ==============================================================================
+
+
+async def _execute_list_boards(
+    client: "HoneycombClient", tool_input: dict[str, Any]  # noqa: ARG001
+) -> str:
+    """Execute honeycomb_list_boards."""
+    boards = await client.boards.list_async()
+    return json.dumps([b.model_dump() for b in boards], default=str)
+
+
+async def _execute_get_board(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_get_board."""
+    board = await client.boards.get_async(board_id=tool_input["board_id"])
+    return json.dumps(board.model_dump(), default=str)
+
+
+async def _execute_create_board(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_create_board.
+
+    Uses BoardBundle orchestration for inline panel creation.
+    """
+    # Build BoardBuilder and get bundle
+    board_builder = _build_board(tool_input)
+    bundle = board_builder.build()
+
+    # Create board with orchestration (creates inline queries, assembles panels)
+    board = await client.boards.create_from_bundle_async(bundle)
+
+    return json.dumps(board.model_dump(), default=str)
+
+
+async def _execute_update_board(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_update_board."""
+    board_id = tool_input.pop("board_id")
+
+    # Simple update (no bundle orchestration for updates)
+    from honeycomb.models import BoardCreate
+
+    board = BoardCreate(**tool_input)
+    updated = await client.boards.update_async(board_id=board_id, board=board)
+
+    return json.dumps(updated.model_dump(), default=str)
+
+
+async def _execute_delete_board(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_delete_board."""
+    await client.boards.delete_async(board_id=tool_input["board_id"])
+    return json.dumps({"success": True, "message": "Board deleted"})
 
 
 __all__ = [

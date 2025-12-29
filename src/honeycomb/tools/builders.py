@@ -7,6 +7,7 @@ enabling single-call resource creation with nested structures.
 from typing import Any
 
 from honeycomb.models import (
+    BoardBuilder,
     BurnAlertBuilder,
     BurnAlertType,
     SLOBuilder,
@@ -324,7 +325,174 @@ def _build_slo(data: dict[str, Any]) -> SLOBuilder:
     return builder
 
 
+def _build_board(data: dict[str, Any]) -> BoardBuilder:
+    """Convert tool input to BoardBuilder with inline panel creation.
+
+    Args:
+        data: Tool input dict from Claude (includes name, inline_query_panels, etc.)
+
+    Returns:
+        Configured BoardBuilder instance ready to build()
+
+    Example:
+        >>> data = {
+        ...     "name": "API Dashboard",
+        ...     "layout_generation": "auto",
+        ...     "inline_query_panels": [
+        ...         {
+        ...             "name": "Error Count",
+        ...             "dataset": "api-logs",
+        ...             "time_range": 3600,
+        ...             "calculations": [{"op": "COUNT"}]
+        ...         }
+        ...     ],
+        ...     "text_panels": [{"content": "## Notes"}]
+        ... }
+        >>> builder = _build_board(data)
+        >>> bundle = builder.build()
+    """
+    from honeycomb.models.query_builder import QueryBuilder
+
+    builder = BoardBuilder(data["name"])
+
+    # Description
+    if "description" in data:
+        builder.description(data["description"])
+
+    # Layout generation
+    layout = data.get("layout_generation", "auto")
+    if layout == "auto":
+        builder.auto_layout()
+    else:
+        builder.manual_layout()
+
+    # Inline query panels (create QueryBuilder instances)
+    for query_panel in data.get("inline_query_panels", []):
+        # Build QueryBuilder from panel data
+        qb = QueryBuilder(query_panel["name"])
+
+        if "description" in query_panel:
+            qb.description(query_panel["description"])
+
+        # Dataset - optional for environment-wide queries
+        if "dataset" in query_panel:
+            qb.dataset(query_panel["dataset"])
+        else:
+            qb.environment_wide()  # Default to environment-wide
+
+        # Time range
+        if "time_range" in query_panel:
+            qb.time_range(query_panel["time_range"])
+
+        # Calculations - directly append to _calculations
+        from honeycomb.models.query_builder import Calculation
+
+        for calc in query_panel.get("calculations", []):
+            qb._calculations.append(Calculation(**calc))
+
+        # Filters
+        for filt in query_panel.get("filters", []):
+            qb.filter(filt["column"], filt["op"], filt.get("value"))
+
+        # Breakdowns
+        for breakdown in query_panel.get("breakdowns", []):
+            qb.group_by(breakdown)
+
+        # Orders
+        for order in query_panel.get("orders", []):
+            qb.order_by(order.get("column", order.get("op", "COUNT")), order.get("order", "descending"))
+
+        # Limit
+        if "limit" in query_panel:
+            qb.limit(query_panel["limit"])
+
+        # Add to board with position and style
+        builder.query(
+            qb,
+            position=tuple(query_panel["position"]) if "position" in query_panel else None,
+            style=query_panel.get("style", "graph"),
+            visualization=query_panel.get("visualization"),
+        )
+
+    # Text panels
+    for text_panel in data.get("text_panels", []):
+        content = text_panel["content"] if isinstance(text_panel, dict) else text_panel
+        position = text_panel.get("position") if isinstance(text_panel, dict) else None
+        builder.text(content, position=tuple(position) if position else None)
+
+    # Existing query panels (by ID)
+    for existing in data.get("existing_query_panels", []):
+        builder.query(
+            existing["query_id"],
+            existing["annotation_id"],
+            position=tuple(existing["position"]) if "position" in existing else None,
+            style=existing.get("style", "graph"),
+        )
+
+    # Inline SLO panels (create SLOBuilder instances)
+    for slo_panel in data.get("inline_slo_panels", []):
+        # Build SLOBuilder from panel data
+        from honeycomb.models import SLOBuilder
+
+        slo_builder = SLOBuilder(slo_panel["name"])
+
+        if "description" in slo_panel:
+            slo_builder.description(slo_panel["description"])
+
+        # Dataset
+        slo_builder.dataset(slo_panel["dataset"])
+
+        # SLI
+        sli = slo_panel["sli"]
+        alias = sli["alias"]
+        if "expression" in sli:
+            # Inline derived column
+            slo_builder.sli(alias, sli["expression"], sli.get("description"))
+        else:
+            # Existing derived column
+            slo_builder.sli(alias)
+
+        # Target
+        if "target_per_million" in slo_panel:
+            slo_builder.target_per_million(slo_panel["target_per_million"])
+        elif "target_percentage" in slo_panel:
+            slo_builder.target_percentage(slo_panel["target_percentage"])
+        elif "target_nines" in slo_panel:
+            slo_builder.target_nines(slo_panel["target_nines"])
+
+        # Time period
+        if "time_period_days" in slo_panel:
+            slo_builder.time_period_days(slo_panel["time_period_days"])
+        elif "time_period_weeks" in slo_panel:
+            slo_builder.time_period_weeks(slo_panel["time_period_weeks"])
+        else:
+            slo_builder.time_period_days(30)  # Default
+
+        # Add to board
+        builder.slo(
+            slo_builder,
+            position=tuple(slo_panel["position"]) if "position" in slo_panel else None,
+        )
+
+    # Existing SLO panels (by ID)
+    for slo in data.get("slo_panels", []):
+        if isinstance(slo, dict) and "slo_id" in slo:
+            builder.slo(
+                slo["slo_id"],
+                position=tuple(slo["position"]) if "position" in slo else None,
+            )
+        else:
+            builder.slo(slo)  # Just an ID string
+
+    # Tags
+    for tag in data.get("tags", []):
+        builder.tag(tag["key"], tag["value"])
+
+    return builder
+
+
 __all__ = [
     "_build_trigger",
     "_build_slo",
+    "_build_board",
 ]

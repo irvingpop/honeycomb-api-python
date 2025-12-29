@@ -7,6 +7,7 @@ import json
 from typing import Any
 
 from honeycomb.models import (
+    BoardCreate,
     BurnAlertCreate,
     ColumnCreate,
     DatasetCreate,
@@ -1287,6 +1288,312 @@ def generate_delete_derived_column_tool() -> dict[str, Any]:
 
 
 # ==============================================================================
+# Boards Tool Definitions
+# ==============================================================================
+
+
+def generate_list_boards_tool() -> dict[str, Any]:
+    """Generate honeycomb_list_boards tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+
+    examples: list[dict[str, Any]] = [
+        {},  # List all boards
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_list_boards",
+        description=get_description("honeycomb_list_boards"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_get_board_tool() -> dict[str, Any]:
+    """Generate honeycomb_get_board tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["board_id"]}
+
+    add_parameter(schema, "board_id", "string", "The board ID to retrieve", required=True)
+
+    examples: list[dict[str, Any]] = [
+        {"board_id": "board-123"},
+        {"board_id": "board-456"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_get_board",
+        description=get_description("honeycomb_get_board"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_create_board_tool() -> dict[str, Any]:
+    """Generate honeycomb_create_board tool definition."""
+    # Build schema manually for complex nested structure
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {},
+        "required": ["name"],
+    }
+
+    add_parameter(schema, "name", "string", "Board name", required=True)
+    add_parameter(schema, "description", "string", "Board description", required=False)
+    add_parameter(
+        schema,
+        "layout_generation",
+        "string",
+        "Layout mode: 'auto' or 'manual' (default: auto)",
+        required=False,
+    )
+
+    # Inline query panels array
+    schema["properties"]["inline_query_panels"] = {
+        "type": "array",
+        "description": "Array of query panels to create inline (each creates a new query)",
+        "items": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Panel/query name"},
+                "dataset": {"type": "string", "description": "Dataset slug"},
+                "time_range": {"type": "integer", "description": "Time range in seconds"},
+                "calculations": {
+                    "type": "array",
+                    "description": "Array of calculation objects",
+                    "items": {"type": "object"},
+                },
+                "filters": {
+                    "type": "array",
+                    "description": "Array of filter objects",
+                    "items": {"type": "object"},
+                },
+                "breakdowns": {
+                    "type": "array",
+                    "description": "Fields to group by",
+                    "items": {"type": "string"},
+                },
+                "orders": {
+                    "type": "array",
+                    "description": "Ordering specifications",
+                    "items": {"type": "object"},
+                },
+                "limit": {"type": "integer", "description": "Result limit"},
+                "style": {
+                    "type": "string",
+                    "description": "Panel style: graph, table, or combo",
+                },
+            },
+            "required": ["name"],  # dataset is optional (defaults to environment-wide)
+        },
+    }
+
+    # Inline SLO panels array
+    schema["properties"]["inline_slo_panels"] = {
+        "type": "array",
+        "description": "Array of SLO definitions to create inline",
+        "items": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "SLO name"},
+                "dataset": {"type": "string", "description": "Dataset slug"},
+                "sli": {
+                    "type": "object",
+                    "description": "SLI definition (alias + optional expression for inline creation)",
+                    "properties": {
+                        "alias": {"type": "string", "description": "Derived column alias"},
+                        "expression": {"type": "string", "description": "Optional expression (creates derived column inline)"},
+                        "description": {"type": "string"},
+                    },
+                    "required": ["alias"],
+                },
+                "target_per_million": {"type": "integer"},
+                "target_percentage": {"type": "number"},
+                "target_nines": {"type": "integer"},
+                "time_period_days": {"type": "integer"},
+                "time_period_weeks": {"type": "integer"},
+                "description": {"type": "string"},
+            },
+            "required": ["name", "dataset", "sli"],
+        },
+    }
+
+    # Text panels array
+    schema["properties"]["text_panels"] = {
+        "type": "array",
+        "description": "Array of markdown text panels",
+        "items": {
+            "type": "object",
+            "properties": {
+                "content": {"type": "string", "description": "Markdown text content"},
+            },
+            "required": ["content"],
+        },
+    }
+
+    # SLO panels array (IDs)
+    schema["properties"]["slo_panels"] = {
+        "type": "array",
+        "description": "Array of existing SLO IDs to display as panels",
+        "items": {"type": "string"},
+    }
+
+    # Tags
+    schema["properties"]["tags"] = {
+        "type": "array",
+        "description": "Array of tag objects",
+        "items": {
+            "type": "object",
+            "properties": {
+                "key": {"type": "string"},
+                "value": {"type": "string"},
+            },
+        },
+    }
+
+    examples: list[dict[str, Any]] = [
+        # Simple: inline query panels with auto-layout
+        {
+            "name": "API Dashboard",
+            "layout_generation": "auto",
+            "inline_query_panels": [
+                {
+                    "name": "Error Count",
+                    "dataset": "api-logs",
+                    "time_range": 3600,
+                    "calculations": [{"op": "COUNT"}],
+                    "filters": [{"column": "status_code", "op": ">=", "value": 500}],
+                },
+                {
+                    "name": "P99 Latency",
+                    "dataset": "api-logs",
+                    "time_range": 3600,
+                    "calculations": [{"op": "P99", "column": "duration_ms"}],
+                },
+            ],
+        },
+        # With text panel
+        {
+            "name": "Service Overview",
+            "description": "Main service health dashboard",
+            "layout_generation": "auto",
+            "inline_query_panels": [
+                {
+                    "name": "Request Rate",
+                    "dataset": "production",
+                    "time_range": 7200,
+                    "calculations": [{"op": "COUNT"}],
+                    "breakdowns": ["endpoint"],
+                }
+            ],
+            "text_panels": [{"content": "## Service Status\nMonitor during peak hours"}],
+        },
+        # Complex: with existing SLO ID
+        {
+            "name": "SRE Dashboard",
+            "layout_generation": "auto",
+            "inline_query_panels": [
+                {
+                    "name": "Error Rate",
+                    "dataset": "api-logs",
+                    "time_range": 3600,
+                    "calculations": [{"op": "COUNT"}],
+                    "filters": [{"column": "status_code", "op": ">=", "value": 500}],
+                    "breakdowns": ["service"],
+                    "orders": [{"op": "COUNT", "order": "descending"}],
+                    "limit": 20,
+                }
+            ],
+            "slo_panels": ["slo-123"],
+            "text_panels": [{"content": "## Alerts\nCheck PagerDuty for incidents"}],
+            "tags": [{"key": "team", "value": "platform"}],
+        },
+        # Advanced: inline SLO creation with derived column
+        {
+            "name": "Production Monitoring",
+            "layout_generation": "auto",
+            "inline_query_panels": [
+                {
+                    "name": "Request Count",
+                    "dataset": "production",
+                    "time_range": 86400,
+                    "calculations": [{"op": "COUNT"}],
+                    "breakdowns": ["service"],
+                }
+            ],
+            "inline_slo_panels": [
+                {
+                    "name": "API Availability",
+                    "dataset": "api-logs",
+                    "sli": {
+                        "alias": "success_rate",
+                        "expression": "IF(LT($status_code, 400), 1, 0)",
+                        "description": "1 if successful, 0 if error",
+                    },
+                    "target_nines": 3,
+                    "time_period_days": 30,
+                    "description": "99.9% availability target",
+                }
+            ],
+            "text_panels": [{"content": "## SLO Policy\nReview weekly"}],
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_create_board",
+        description=get_description("honeycomb_create_board"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_update_board_tool() -> dict[str, Any]:
+    """Generate honeycomb_update_board tool definition."""
+    base_schema = generate_schema_from_model(
+        BoardCreate,
+        exclude_fields={"id", "links"},
+    )
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["board_id"]}
+    add_parameter(schema, "board_id", "string", "The board ID to update", required=True)
+
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    examples: list[dict[str, Any]] = [
+        {
+            "board_id": "board-123",
+            "name": "Updated Dashboard",
+            "description": "New description",
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_update_board",
+        description=get_description("honeycomb_update_board"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_delete_board_tool() -> dict[str, Any]:
+    """Generate honeycomb_delete_board tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["board_id"]}
+
+    add_parameter(schema, "board_id", "string", "The board ID to delete", required=True)
+
+    examples: list[dict[str, Any]] = [
+        {"board_id": "board-123"},
+        {"board_id": "board-456"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_delete_board",
+        description=get_description("honeycomb_delete_board"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
 # Queries Tool Definitions
 # ==============================================================================
 
@@ -1436,11 +1743,12 @@ def generate_all_tools() -> list[dict[str, Any]]:
     """Generate all tool definitions.
 
     Returns:
-        List of 39 tool definitions:
+        List of 44 tool definitions:
         - Priority 1: Triggers (5), SLOs (5), Burn Alerts (5) = 15 tools
         - Batch 1: Datasets (5), Columns (5) = 10 tools
         - Batch 2: Recipients (6), Derived Columns (5) = 11 tools
         - Batch 3a: Queries (3) = 3 tools
+        - Batch 3b: Boards (5) = 5 tools
     """
     tools = [
         # Priority 1: Triggers
@@ -1490,6 +1798,12 @@ def generate_all_tools() -> list[dict[str, Any]]:
         generate_create_query_tool(),
         generate_get_query_tool(),
         generate_run_query_tool(),
+        # Batch 3b: Boards
+        generate_list_boards_tool(),
+        generate_get_board_tool(),
+        generate_create_board_tool(),
+        generate_update_board_tool(),
+        generate_delete_board_tool(),
     ]
 
     return tools
@@ -1499,7 +1813,7 @@ def generate_tools_for_resource(resource: str) -> list[dict[str, Any]]:
     """Generate tool definitions for a specific resource.
 
     Args:
-        resource: Resource name (triggers, slos, burn_alerts, datasets, columns, recipients, derived_columns, queries)
+        resource: Resource name (triggers, slos, burn_alerts, datasets, columns, recipients, derived_columns, queries, boards)
 
     Returns:
         List of tool definitions for that resource
@@ -1562,6 +1876,13 @@ def generate_tools_for_resource(resource: str) -> list[dict[str, Any]]:
             generate_create_query_tool,
             generate_get_query_tool,
             generate_run_query_tool,
+        ],
+        "boards": [
+            generate_list_boards_tool,
+            generate_get_board_tool,
+            generate_create_board_tool,
+            generate_update_board_tool,
+            generate_delete_board_tool,
         ],
     }
 

@@ -309,6 +309,45 @@ QUERY_DESCRIPTIONS = {
     ),
 }
 
+# ==============================================================================
+# Boards
+# ==============================================================================
+
+BOARD_DESCRIPTIONS = {
+    "honeycomb_list_boards": (
+        "Lists all boards (dashboards) in your Honeycomb environment (no parameters required). "
+        "Use this to discover existing dashboards before creating new ones, audit dashboard organization, or find boards to update. "
+        "This operation requires no parameters - it automatically lists all boards you have access to. "
+        "Returns a list of board objects including their IDs, names, descriptions, panel configurations, and layout settings."
+    ),
+    "honeycomb_get_board": (
+        "Retrieves detailed configuration for a specific board by its ID. "
+        "Use this to inspect a board's panel layout, query configurations, SLO displays, and text content before modifying it. "
+        "Requires the board ID parameter. "
+        "Returns the complete board configuration including all panel definitions, layout mode (auto or manual), tags, and links to visualizations."
+    ),
+    "honeycomb_create_board": (
+        "Creates a new board (dashboard) with inline query panels, SLO panels, and text panels in a single operation. "
+        "Use this to build comprehensive dashboards for service monitoring, create SRE views, or consolidate related visualizations. "
+        "Requires a name and supports inline_query_panels (array of query definitions that will be created automatically), text_panels (markdown content), and slo_panels (SLO IDs). "
+        "Each inline query panel needs a name, dataset, time_range, and calculations - optionally include filters, breakdowns, orders, and limit. "
+        "Layout defaults to auto-layout (Honeycomb arranges panels) but supports manual layout with explicit positioning. "
+        "The tool orchestrates: creating all inline queries with annotations, assembling panel configurations, and creating the board with all panels in one API call."
+    ),
+    "honeycomb_update_board": (
+        "Updates an existing board's name, description, or panel configuration. "
+        "Use this to add new panels, reorder visualizations, update board metadata, or reorganize dashboards as monitoring needs evolve. "
+        "Requires the board ID and the complete updated board configuration. "
+        "Note: This replaces the entire board configuration, so include all panels you want to preserve."
+    ),
+    "honeycomb_delete_board": (
+        "Permanently deletes a board from Honeycomb. "
+        "Use this when removing outdated dashboards, cleaning up test boards, or consolidating overlapping views. "
+        "Requires the board ID parameter. "
+        "Warning: This action cannot be undone. The board and its panel configurations will be permanently deleted, but the underlying queries and SLOs are preserved."
+    ),
+}
+
 # Combined mapping of all descriptions
 ALL_DESCRIPTIONS = {
     **TRIGGER_DESCRIPTIONS,
@@ -319,6 +358,7 @@ ALL_DESCRIPTIONS = {
     **RECIPIENT_DESCRIPTIONS,
     **DERIVED_COLUMN_DESCRIPTIONS,
     **QUERY_DESCRIPTIONS,
+    **BOARD_DESCRIPTIONS,
 }
 
 
