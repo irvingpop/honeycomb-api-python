@@ -1,5 +1,5 @@
 # Honeycomb API Python Client - Development Makefile
-.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs generate-tools validate-tools ci update-deps
+.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs generate-tools validate-tools ci update-deps release-patch release-minor release-major changelog
 
 # Default target
 help:
@@ -28,6 +28,12 @@ help:
 	@echo "  make build          Build distribution packages"
 	@echo "  make publish        Publish to PyPI (requires credentials)"
 	@echo "  make publish-test   Publish to Test PyPI"
+	@echo ""
+	@echo "Release Management:"
+	@echo "  make release-patch  Bump patch version, update changelog, commit & tag"
+	@echo "  make release-minor  Bump minor version, update changelog, commit & tag"
+	@echo "  make release-major  Bump major version, update changelog, commit & tag"
+	@echo "  make changelog      Generate/update CHANGELOG.md"
 	@echo ""
 	@echo "Documentation:"
 	@echo "  make docs-serve     Serve docs locally with live reload"
@@ -121,6 +127,29 @@ publish: build
 
 publish-test: build
 	poetry publish -r testpypi
+
+# =============================================================================
+# Release Management
+# =============================================================================
+
+release-patch:
+	@bash scripts/release.sh patch
+
+release-minor:
+	@bash scripts/release.sh minor
+
+release-major:
+	@bash scripts/release.sh major
+
+changelog:
+	@if ! command -v git-cliff &> /dev/null; then \
+		echo "Error: git-cliff is not installed"; \
+		echo "Install with: brew install git-cliff (macOS)"; \
+		echo "Or see: https://git-cliff.org/docs/installation"; \
+		exit 1; \
+	fi
+	git-cliff --output CHANGELOG.md
+	@echo "CHANGELOG.md updated"
 
 # =============================================================================
 # Documentation
