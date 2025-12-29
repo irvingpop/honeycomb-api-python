@@ -70,6 +70,9 @@ class TestExecuteTriggerTools:
 
     async def test_execute_create_trigger(self, client: HoneycombClient, respx_mock: MockRouter):
         """Can execute create_trigger tool with inline query."""
+        # Mock recipients list (for idempotent recipient handling)
+        respx_mock.get("https://api.honeycomb.io/1/recipients").respond(json=[])
+
         respx_mock.post("https://api.honeycomb.io/1/triggers/test-dataset").respond(
             json={
                 "id": "new-trigger",
@@ -97,6 +100,64 @@ class TestExecuteTriggerTools:
         result = json.loads(result_json)
         assert result["id"] == "new-trigger"
         assert result["name"] == "High Error Rate"
+
+    async def test_execute_create_trigger_with_inline_recipients(
+        self, client: HoneycombClient, respx_mock: MockRouter
+    ):
+        """Can execute create_trigger with inline recipient creation (idempotent)."""
+        # Mock recipients list (returns existing email recipient)
+        respx_mock.get("https://api.honeycomb.io/1/recipients").respond(
+            json=[
+                {
+                    "id": "existing-email",
+                    "type": "email",
+                    "details": {"email_address": "ops@example.com"},
+                }
+            ]
+        )
+
+        # Mock webhook recipient creation (new)
+        respx_mock.post("https://api.honeycomb.io/1/recipients").respond(
+            json={
+                "id": "new-webhook",
+                "type": "webhook",
+                "details": {"webhook_url": "https://example.com/webhook", "webhook_name": "Webhook"},
+            }
+        )
+
+        # Mock trigger creation
+        respx_mock.post("https://api.honeycomb.io/1/triggers/test-dataset").respond(
+            json={
+                "id": "new-trigger",
+                "name": "Test",
+                "dataset_slug": "test-dataset",
+                "threshold": {"op": ">", "value": 10},
+                "frequency": 900,
+                "recipients": [
+                    {"id": "existing-email", "type": "email"},
+                    {"id": "new-webhook", "type": "webhook"},
+                ],
+            }
+        )
+
+        tool_input = {
+            "dataset": "test-dataset",
+            "name": "Test",
+            "query": {"time_range": 900, "calculations": [{"op": "COUNT"}]},
+            "threshold": {"op": ">", "value": 10},
+            "frequency": 900,
+            "recipients": [
+                {"type": "email", "target": "ops@example.com"},  # Existing - should reuse
+                {"type": "webhook", "target": "https://example.com/webhook"},  # New - should create
+            ],
+        }
+
+        result_json = await execute_tool(client, "honeycomb_create_trigger", tool_input)
+        result = json.loads(result_json)
+
+        assert result["id"] == "new-trigger"
+        # Verify both recipients are in result
+        assert len(result["recipients"]) == 2
 
     async def test_execute_delete_trigger(self, client: HoneycombClient, respx_mock: MockRouter):
         """Can execute delete_trigger tool."""
@@ -212,6 +273,51 @@ class TestExecuteBurnAlertTools:
 
         result = json.loads(result_json)
         assert result["id"] == "new-ba"
+
+
+class TestExecuteEventTools:
+    """Test execution of event ingestion tools."""
+
+    async def test_execute_send_event(self, client: HoneycombClient, respx_mock: MockRouter):
+        """Can execute send_event tool."""
+        respx_mock.post("https://api.honeycomb.io/1/events/test-dataset").respond(status_code=200)
+
+        tool_input = {
+            "dataset": "test-dataset",
+            "data": {"status_code": 200, "duration_ms": 123.4},
+        }
+
+        result_json = await execute_tool(client, "honeycomb_send_event", tool_input)
+        result = json.loads(result_json)
+        assert result["success"] is True
+
+    async def test_execute_send_batch_events(self, client: HoneycombClient, respx_mock: MockRouter):
+        """Can execute send_batch_events with time field (ISO8601)."""
+        respx_mock.post("https://api.honeycomb.io/1/batch/test-dataset").respond(
+            json=[
+                {"status": 202, "error": None},
+                {"status": 202, "error": None},
+            ]
+        )
+
+        tool_input = {
+            "dataset": "test-dataset",
+            "events": [
+                {
+                    "data": {"status_code": 200, "duration_ms": 123.4},
+                    "time": "2024-01-15T10:30:00Z",  # Should accept ISO8601 string
+                },
+                {
+                    "data": {"status_code": 500},
+                    # No time - should use server time
+                },
+            ],
+        }
+
+        result_json = await execute_tool(client, "honeycomb_send_batch_events", tool_input)
+        results = json.loads(result_json)
+        assert len(results) == 2
+        assert all(r["status"] == 202 for r in results)
 
 
 class TestExecutorErrorHandling:

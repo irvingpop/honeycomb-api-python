@@ -211,6 +211,12 @@ def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
         elif recip.get("type") == "pagerduty":
             severity = recip.get("details", {}).get("severity", "critical")
             builder.pagerduty(recip["target"], severity=severity)
+        elif recip.get("type") == "webhook":
+            name = recip.get("name", "Webhook")
+            secret = recip.get("details", {}).get("secret")
+            builder.webhook(recip["target"], name=name, secret=secret)
+        elif recip.get("type") in ("msteams", "msteams_workflow"):
+            builder.msteams(recip["target"])
 
     # Tags
     tags = data.get("tags", [])
@@ -315,6 +321,12 @@ def _build_slo(data: dict[str, Any]) -> SLOBuilder:
             elif recip.get("type") == "pagerduty":
                 severity = recip.get("details", {}).get("severity", "critical")
                 burn_builder.pagerduty(recip["target"], severity=severity)
+            elif recip.get("type") == "webhook":
+                name = recip.get("name", "Webhook")
+                secret = recip.get("details", {}).get("secret")
+                burn_builder.webhook(recip["target"], name=name, secret=secret)
+            elif recip.get("type") in ("msteams", "msteams_workflow"):
+                burn_builder.msteams(recip["target"])
 
         # Add burn alert using the appropriate method based on type
         if alert_type == BurnAlertType.EXHAUSTION_TIME:
@@ -400,7 +412,9 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
 
         # Orders
         for order in query_panel.get("orders", []):
-            qb.order_by(order.get("column", order.get("op", "COUNT")), order.get("order", "descending"))
+            qb.order_by(
+                order.get("column", order.get("op", "COUNT")), order.get("order", "descending")
+            )
 
         # Limit
         if "limit" in query_panel:

@@ -127,21 +127,32 @@ class TestRecipientMixin:
         assert mixin._new_recipients[0]["details"]["severity"] == "warning"
 
     def test_webhook_without_secret(self):
-        """Test adding webhook without secret."""
+        """Test adding webhook without secret (inline format for triggers)."""
         mixin = RecipientMixin()
         mixin.webhook("https://example.com/webhook")
         assert len(mixin._new_recipients) == 1
         assert mixin._new_recipients[0] == {
             "type": "webhook",
             "target": "https://example.com/webhook",
-            "details": {"url": "https://example.com/webhook"},
+            "details": {
+                "webhook_url": "https://example.com/webhook",
+                "webhook_name": "Webhook",
+            },
         }
 
     def test_webhook_with_secret(self):
-        """Test adding webhook with secret."""
+        """Test adding webhook with secret (inline format for triggers)."""
         mixin = RecipientMixin()
-        mixin.webhook("https://example.com/webhook", secret="secret123")
-        assert mixin._new_recipients[0]["details"]["secret"] == "secret123"
+        mixin.webhook("https://example.com/webhook", name="My Webhook", secret="secret123")
+        assert mixin._new_recipients[0] == {
+            "type": "webhook",
+            "target": "https://example.com/webhook",
+            "details": {
+                "webhook_url": "https://example.com/webhook",
+                "webhook_name": "My Webhook",
+                "webhook_secret": "secret123",
+            },
+        }
 
     def test_msteams(self):
         """Test adding MS Teams workflow recipient."""

@@ -117,12 +117,24 @@ class TestBuildTrigger:
                 {"type": "email", "target": "oncall@example.com"},
                 {"type": "slack", "target": "#alerts"},
                 {"type": "pagerduty", "target": "routing-key", "details": {"severity": "critical"}},
+                {"type": "webhook", "target": "https://example.com/webhook"},
+                {"type": "msteams", "target": "https://teams.webhook.url"},
             ],
         }
 
         builder = _build_trigger(data)
         trigger = builder.build()
-        assert len(trigger.recipients) == 4
+        assert len(trigger.recipients) == 6, "Should handle all 5 recipient types plus ID reference"
+
+        # Validate webhook recipient has correct structure (matches API spec)
+        webhook_recip = next(r for r in trigger.recipients if r.get("type") == "webhook")
+        assert webhook_recip["target"] == "https://example.com/webhook"
+        assert webhook_recip["details"]["webhook_url"] == "https://example.com/webhook"
+        assert webhook_recip["details"]["webhook_name"] == "Webhook"
+
+        # Validate msteams recipient
+        msteams_recip = next(r for r in trigger.recipients if r.get("type") == "msteams_workflow")
+        assert msteams_recip["target"] == "https://teams.webhook.url"
 
     def test_trigger_with_tags(self):
         """Can build trigger with tags."""

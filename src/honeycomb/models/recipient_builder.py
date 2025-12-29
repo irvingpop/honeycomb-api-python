@@ -78,19 +78,28 @@ class RecipientMixin:
         )
         return self
 
-    def webhook(self, url: str, secret: str | None = None) -> Self:
-        """Add a webhook recipient.
+    def webhook(self, url: str, name: str = "Webhook", secret: str | None = None) -> Self:
+        """Add a webhook recipient (inline format for triggers/burn alerts).
 
         Args:
             url: Webhook URL to POST to.
+            name: A name for this webhook (default: "Webhook").
             secret: Optional webhook secret for signing.
 
         Returns:
             Self for method chaining.
+
+        Note:
+            This creates inline recipients for triggers/burn alerts.
+            For standalone recipient creation via Recipients API, use RecipientBuilder.webhook().
         """
-        details = {"url": url}
+        details: dict[str, Any] = {
+            "webhook_url": url,
+            "webhook_name": name,
+        }
         if secret:
-            details["secret"] = secret
+            details["webhook_secret"] = secret
+
         self._new_recipients.append(
             {
                 "type": "webhook",

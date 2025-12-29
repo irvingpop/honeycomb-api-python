@@ -29,7 +29,8 @@ TRIGGER_DESCRIPTIONS = {
         "Use this when setting up alerting rules for service health monitoring, error rates, latency thresholds, or when migrating Datadog monitors to Honeycomb. "
         "Requires a dataset, query specification with calculations and filters, threshold operator and value, and evaluation frequency in seconds. "
         "The query can be provided inline with calculations, filters, and time range. "
-        "Recipients must already exist in Honeycomb (create them first with honeycomb_create_recipient if needed). "
+        "IMPORTANT: Recipients can be provided inline using the 'recipients' array - each recipient needs 'type' (email/webhook/slack/pagerduty/msteams) and 'target' (email address/URL/channel). "
+        "Inline recipient creation is PREFERRED - create trigger and recipients in one call for efficiency. Alternatively, you can reference existing recipient IDs. "
         "Note: Trigger queries have a maximum time_range of 3600 seconds (1 hour) and support only a single calculation."
     ),
     "honeycomb_update_trigger": (
@@ -425,18 +426,21 @@ MARKER_SETTING_DESCRIPTIONS = {
 
 EVENT_DESCRIPTIONS = {
     "honeycomb_send_event": (
-        "Sends a single telemetry event to a Honeycomb dataset for ingestion and analysis. "
-        "Use this for testing data ingestion, sending critical one-off events, or when batch sending isn't feasible. "
-        "Requires the dataset slug and data object (key-value pairs representing the event fields). "
-        "Optional timestamp (Unix seconds) and samplerate parameters control event timing and sampling. "
-        "Note: For production use, prefer send_batch_events for better performance and efficiency."
+        "Sends a SINGLE telemetry event to a Honeycomb dataset. Use ONLY for one-off events or testing. "
+        "STRUCTURE: Flat - parameters are 'dataset' (string) and 'data' (object with key-value pairs) provided directly at top level. "
+        "Example: {dataset: 'api-logs', data: {status_code: 200, endpoint: '/api/users'}}. "
+        "For 2+ events, you MUST use honeycomb_send_batch_events instead. "
+        "Optional parameters: timestamp (Unix seconds), samplerate (integer). "
+        "IMPORTANT: This is for SINGLE events only - batch tool is required for multiple events."
     ),
     "honeycomb_send_batch_events": (
-        "Sends multiple telemetry events to a Honeycomb dataset in a single API call (highly preferred over single events). "
-        "Use this for efficient data ingestion, sending application logs, traces, or metrics in bulk. "
-        "Requires the dataset slug and events array, where each event has a data object (key-value pairs) and optional timestamp/samplerate. "
-        "Batch sending reduces API overhead, improves throughput, and is the recommended approach for production telemetry. "
-        "Returns status for each event, allowing you to identify and retry failed events."
+        "Sends MULTIPLE telemetry events to a Honeycomb dataset in a single API call (preferred for 2+ events). "
+        "STRUCTURE: Nested - requires 'dataset' (string) and 'events' (array) where EACH event object has a 'data' field. "
+        "Example: {dataset: 'api-logs', events: [{data: {status_code: 200}}, {data: {status_code: 201}}]}. "
+        "CRITICAL: The 'events' parameter is REQUIRED and must be an ARRAY of event objects. Each event MUST have a 'data' field containing key-value pairs. "
+        "Per-event optional fields: 'time' (ISO8601 string like '2024-01-15T10:30:00Z'), 'samplerate' (integer). "
+        "Use this for efficient bulk data ingestion, application logs, traces, or metrics. "
+        "Returns status for each event, allowing identification and retry of failed events."
     ),
 }
 

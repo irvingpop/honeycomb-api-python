@@ -218,11 +218,116 @@ async def _execute_get_trigger(client: "HoneycombClient", tool_input: dict[str, 
 async def _execute_create_trigger(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_create_trigger.
 
-    Uses TriggerBuilder for convenience, then calls create_async.
+    Handles inline recipient creation with idempotent logic:
+    - Checks if recipient already exists (by type + target)
+    - Reuses existing ID if found
+    - Creates new recipient if not found
     """
+    from honeycomb.exceptions import HoneycombAPIError
+    from honeycomb.models.recipients import RecipientCreate, RecipientType
+
     dataset = tool_input.pop("dataset")  # Remove dataset from tool_input
 
-    # Use builder to construct trigger
+    # Get existing recipients once for idempotent checks (environment-wide)
+    existing_recipients = await client.recipients.list_async()
+
+    # Process inline recipients - find or create, then replace with IDs
+    recipients_input = tool_input.get("recipients", [])
+    for recip in recipients_input:
+        if "id" not in recip:
+            # Inline recipient - find existing or create new
+            recip_type = RecipientType(recip["type"])
+            target = recip["target"]
+
+            # Check if recipient with matching type and target already exists
+            existing = None
+            for existing_recip in existing_recipients:
+                if existing_recip.type == recip_type:
+                    # Check target match based on type
+                    existing_target = None
+                    if recip_type == RecipientType.EMAIL:
+                        existing_target = existing_recip.details.get("email_address")
+                    elif recip_type == RecipientType.SLACK:
+                        existing_target = existing_recip.details.get("slack_channel")
+                    elif recip_type == RecipientType.WEBHOOK:
+                        existing_target = existing_recip.details.get("webhook_url")
+                    elif recip_type in (RecipientType.MSTEAMS_WORKFLOW, RecipientType.MSTEAMS):
+                        existing_target = existing_recip.details.get("webhook_url")
+                    elif recip_type == RecipientType.PAGERDUTY:
+                        existing_target = existing_recip.details.get("pagerduty_integration_key")
+
+                    if existing_target == target:
+                        existing = existing_recip
+                        break
+
+            if existing:
+                # Reuse existing recipient
+                recip.clear()
+                recip["id"] = existing.id
+            else:
+                # Create new recipient - build details based on type (matching API spec)
+                details = recip.get("details", {})
+                if recip_type == RecipientType.EMAIL:
+                    if "email_address" not in details:
+                        details = {"email_address": target}
+                elif recip_type == RecipientType.SLACK:
+                    if "slack_channel" not in details:
+                        details = {"slack_channel": target}
+                elif recip_type == RecipientType.PAGERDUTY:
+                    if "pagerduty_integration_key" not in details:
+                        details = {
+                            "pagerduty_integration_key": target,
+                            "pagerduty_integration_name": "PagerDuty Integration",
+                        }
+                elif recip_type == RecipientType.WEBHOOK:
+                    if "webhook_url" not in details:
+                        details = {
+                            "webhook_url": target,
+                            "webhook_name": recip.get("name", "Webhook"),
+                        }
+                elif recip_type in (RecipientType.MSTEAMS_WORKFLOW, RecipientType.MSTEAMS):
+                    if "webhook_url" not in details:
+                        details = {
+                            "webhook_url": target,
+                            "webhook_name": "MS Teams",
+                        }
+
+                # Create recipient via Recipients API
+                try:
+                    recipient_obj = RecipientCreate(type=recip_type, details=details)
+                    created_recip = await client.recipients.create_async(recipient_obj)
+                    recip.clear()
+                    recip["id"] = created_recip.id
+                except HoneycombAPIError as e:
+                    if e.status_code == 409:
+                        # Conflict - recipient exists but we didn't find it (race condition or bug)
+                        # Re-fetch and try to find it
+                        existing_recipients = await client.recipients.list_async()
+                        for existing_recip in existing_recipients:
+                            if existing_recip.type == recip_type:
+                                check_target = None
+                                if recip_type == RecipientType.EMAIL:
+                                    check_target = existing_recip.details.get("email_address")
+                                elif recip_type == RecipientType.SLACK:
+                                    check_target = existing_recip.details.get("slack_channel")
+                                elif recip_type == RecipientType.WEBHOOK:
+                                    check_target = existing_recip.details.get("webhook_url")
+                                elif recip_type in (RecipientType.MSTEAMS_WORKFLOW, RecipientType.MSTEAMS):
+                                    check_target = existing_recip.details.get("webhook_url")
+                                elif recip_type == RecipientType.PAGERDUTY:
+                                    check_target = existing_recip.details.get("pagerduty_integration_key")
+
+                                if check_target == target:
+                                    recip.clear()
+                                    recip["id"] = existing_recip.id
+                                    break
+                        else:
+                            # Still not found - re-raise original error
+                            raise
+                    else:
+                        raise
+
+    # Now build trigger with recipient IDs
     builder = _build_trigger(tool_input)
     trigger = builder.build()
 
@@ -401,7 +506,8 @@ async def _execute_delete_burn_alert(client: "HoneycombClient", tool_input: dict
 
 
 async def _execute_list_datasets(
-    client: "HoneycombClient", tool_input: dict[str, Any]  # noqa: ARG001
+    client: "HoneycombClient",
+    tool_input: dict[str, Any],  # noqa: ARG001
 ) -> str:
     """Execute honeycomb_list_datasets."""
     datasets = await client.datasets.list_async()
@@ -491,7 +597,8 @@ async def _execute_delete_column(client: "HoneycombClient", tool_input: dict[str
 
 
 async def _execute_list_recipients(
-    client: "HoneycombClient", tool_input: dict[str, Any]  # noqa: ARG001
+    client: "HoneycombClient",
+    tool_input: dict[str, Any],  # noqa: ARG001
 ) -> str:
     """Execute honeycomb_list_recipients."""
     recipients = await client.recipients.list_async()
@@ -646,7 +753,8 @@ async def _execute_run_query(client: "HoneycombClient", tool_input: dict[str, An
 
 
 async def _execute_list_boards(
-    client: "HoneycombClient", tool_input: dict[str, Any]  # noqa: ARG001
+    client: "HoneycombClient",
+    tool_input: dict[str, Any],  # noqa: ARG001
 ) -> str:
     """Execute honeycomb_list_boards."""
     boards = await client.boards.list_async()
@@ -726,7 +834,9 @@ async def _execute_update_marker(client: "HoneycombClient", tool_input: dict[str
 
 async def _execute_delete_marker(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_delete_marker."""
-    await client.markers.delete_async(dataset=tool_input["dataset"], marker_id=tool_input["marker_id"])
+    await client.markers.delete_async(
+        dataset=tool_input["dataset"], marker_id=tool_input["marker_id"]
+    )
     return json.dumps({"success": True, "message": "Marker deleted"})
 
 
@@ -735,7 +845,9 @@ async def _execute_delete_marker(client: "HoneycombClient", tool_input: dict[str
 # ==============================================================================
 
 
-async def _execute_list_marker_settings(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+async def _execute_list_marker_settings(
+    client: "HoneycombClient", tool_input: dict[str, Any]
+) -> str:
     """Execute honeycomb_list_marker_settings."""
     settings = await client.markers.list_settings_async(dataset=tool_input["dataset"])
     return json.dumps([s.model_dump() for s in settings], default=str)
@@ -750,7 +862,9 @@ async def _execute_get_marker_setting(client: "HoneycombClient", tool_input: dic
     return json.dumps(setting.model_dump(), default=str)
 
 
-async def _execute_create_marker_setting(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+async def _execute_create_marker_setting(
+    client: "HoneycombClient", tool_input: dict[str, Any]
+) -> str:
     """Execute honeycomb_create_marker_setting."""
     dataset = tool_input.pop("dataset")
     setting = MarkerSettingCreate(**tool_input)
@@ -758,7 +872,9 @@ async def _execute_create_marker_setting(client: "HoneycombClient", tool_input: 
     return json.dumps(created.model_dump(), default=str)
 
 
-async def _execute_update_marker_setting(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+async def _execute_update_marker_setting(
+    client: "HoneycombClient", tool_input: dict[str, Any]
+) -> str:
     """Execute honeycomb_update_marker_setting."""
     dataset = tool_input.pop("dataset")
     setting_id = tool_input.pop("setting_id")
@@ -771,7 +887,9 @@ async def _execute_update_marker_setting(client: "HoneycombClient", tool_input: 
     return json.dumps(updated.model_dump(), default=str)
 
 
-async def _execute_delete_marker_setting(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+async def _execute_delete_marker_setting(
+    client: "HoneycombClient", tool_input: dict[str, Any]
+) -> str:
     """Execute honeycomb_delete_marker_setting."""
     await client.markers.delete_setting_async(
         dataset=tool_input["dataset"],
@@ -792,7 +910,9 @@ async def _execute_send_event(client: "HoneycombClient", tool_input: dict[str, A
     timestamp = tool_input.pop("timestamp", None)
     samplerate = tool_input.pop("samplerate", None)
 
-    await client.events.send_async(dataset=dataset, data=data, timestamp=timestamp, samplerate=samplerate)
+    await client.events.send_async(
+        dataset=dataset, data=data, timestamp=timestamp, samplerate=samplerate
+    )
     return json.dumps({"success": True, "message": "Event sent"})
 
 

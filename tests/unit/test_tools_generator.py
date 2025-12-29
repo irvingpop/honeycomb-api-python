@@ -174,7 +174,9 @@ class TestGenerateAllTools:
     def test_generates_15_tools(self):
         """Should generate exactly 56 tools (complete implementation)."""
         tools = generate_all_tools()
-        assert len(tools) == 56  # 15 Priority 1 + 10 Batch 1 + 11 Batch 2 + 3 Queries + 5 Boards + 12 Batch 4
+        assert (
+            len(tools) == 56
+        )  # 15 Priority 1 + 10 Batch 1 + 11 Batch 2 + 3 Queries + 5 Boards + 12 Batch 4
 
     def test_all_tools_have_required_fields(self):
         """All tools must have name, description, and input_schema."""
@@ -378,3 +380,35 @@ class TestToolExamplesValidation:
                         assert field in schema["properties"], (
                             f"{tool_name} example {i}: unknown field '{field}'"
                         )
+
+
+class TestSchemaModelAlignment:
+    """Test that tool schemas align with Pydantic models."""
+
+    def test_batch_events_schema_uses_time_not_timestamp(self):
+        """Batch events schema should use 'time' field to match BatchEvent model."""
+        from honeycomb.tools.generator import generate_send_batch_events_tool
+
+        tool = generate_send_batch_events_tool()
+        event_schema = tool["input_schema"]["properties"]["events"]["items"]
+
+        # Should have 'time' (ISO8601 string), not 'timestamp' (integer)
+        assert "time" in event_schema["properties"], "Should have 'time' field"
+        assert "timestamp" not in event_schema["properties"], "Should NOT have 'timestamp' field"
+
+        # Validate type is string (ISO8601)
+        assert event_schema["properties"]["time"]["type"] == "string"
+        assert "ISO8601" in event_schema["properties"]["time"]["description"]
+
+    def test_batch_events_examples_use_time_field(self):
+        """Batch events examples should show 'time' field usage."""
+        from honeycomb.tools.generator import generate_send_batch_events_tool
+
+        tool = generate_send_batch_events_tool()
+        examples = tool.get("input_examples", [])
+
+        # At least one example should show time field
+        has_time_example = any(
+            any("time" in event for event in ex.get("events", [])) for ex in examples
+        )
+        assert has_time_example, "At least one example should demonstrate 'time' field usage"

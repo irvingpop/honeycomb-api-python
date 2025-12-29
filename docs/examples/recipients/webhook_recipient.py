@@ -37,8 +37,8 @@ async def create_webhook_recipient_manual(client: HoneycombClient) -> str:
     recipient = RecipientCreate(
         type=RecipientType.WEBHOOK,
         details={
-            "url": "https://your-webhook.example.com/alerts",
-            "name": "Custom Webhook",
+            "webhook_url": "https://your-webhook.example.com/alerts",
+            "webhook_name": "Custom Webhook",
         },
     )
     created = await client.recipients.create_async(recipient)

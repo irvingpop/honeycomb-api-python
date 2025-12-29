@@ -65,6 +65,7 @@ markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
     "evals: marks tests as Claude API evaluation tests (requires ANTHROPIC_API_KEY)",
     "live: marks tests requiring live Honeycomb API access (requires HONEYCOMB_API_KEY)",
+    "live_tools: marks tests for live Claude tool execution (requires ANTHROPIC_API_KEY and HONEYCOMB_MANAGEMENT_KEY)",
 ]
 
 [tool.ruff]

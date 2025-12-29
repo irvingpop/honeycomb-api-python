@@ -97,10 +97,7 @@ def save_cached_result(prompt: str, result: dict) -> None:
 
     # Convert tool calls to serializable format
     serializable_result = {
-        "tool_calls": [
-            {"name": tc.name, "input": tc.input}
-            for tc in result.get("tool_calls", [])
-        ],
+        "tool_calls": [{"name": tc.name, "input": tc.input} for tc in result.get("tool_calls", [])],
         "text": result.get("text", ""),
         "stop_reason": result.get("stop_reason", ""),
     }
@@ -116,8 +113,7 @@ def deserialize_cached_result(cached: dict) -> dict:
     """Convert cached JSON back to expected format."""
     return {
         "tool_calls": [
-            CachedToolCall(tc["name"], tc["input"])
-            for tc in cached.get("tool_calls", [])
+            CachedToolCall(tc["name"], tc["input"]) for tc in cached.get("tool_calls", [])
         ],
         "text": cached.get("text", ""),
         "stop_reason": cached.get("stop_reason", ""),
@@ -229,9 +225,7 @@ class TestToolSelection:
         result = call_claude_with_tools(anthropic_client, test_case["prompt"])
 
         # Verify tool was called
-        assert len(result["tool_calls"]) >= 1, (
-            f"No tool calls for: {test_case['description']}"
-        )
+        assert len(result["tool_calls"]) >= 1, f"No tool calls for: {test_case['description']}"
 
         # Verify correct tool selected
         actual_tool = result["tool_calls"][0].name
@@ -249,9 +243,7 @@ class TestArgumentCorrectness:
         """Verify parameter assertions."""
         result = call_claude_with_tools(anthropic_client, test_case["prompt"])
 
-        assert len(result["tool_calls"]) >= 1, (
-            f"No tool calls for: {test_case['description']}"
-        )
+        assert len(result["tool_calls"]) >= 1, f"No tool calls for: {test_case['description']}"
         tool_call = result["tool_calls"][0]
         params = tool_call.input
 
