@@ -160,8 +160,15 @@ class SLOsResource(BaseResource):
 
             # Step 3: Create burn alerts for this SLO
             for alert_def in bundle.burn_alerts:
+                # Process inline recipients with idempotent handling
+                from ._recipient_utils import process_inline_recipients
+
+                processed_recipients = await process_inline_recipients(
+                    self._client, alert_def.recipients.copy()
+                )
+
                 # Convert recipients to BurnAlertRecipient format
-                recipients = [BurnAlertRecipient(**recipient) for recipient in alert_def.recipients]
+                recipients = [BurnAlertRecipient(**recipient) for recipient in processed_recipients]
 
                 # Convert budget rate percent to per-million if needed
                 budget_rate_threshold = None
@@ -314,8 +321,17 @@ class SLOsResource(BaseResource):
 
             # Step 3: Create burn alerts for this SLO
             for alert_def in bundle.burn_alerts:
+                # Process inline recipients with idempotent handling
+                import asyncio
+
+                from ._recipient_utils import process_inline_recipients
+
+                processed_recipients = asyncio.run(
+                    process_inline_recipients(self._client, alert_def.recipients.copy())
+                )
+
                 # Convert recipients to BurnAlertRecipient format
-                recipients = [BurnAlertRecipient(**recipient) for recipient in alert_def.recipients]
+                recipients = [BurnAlertRecipient(**recipient) for recipient in processed_recipients]
 
                 # Convert budget rate percent to per-million if needed
                 budget_rate_threshold = None

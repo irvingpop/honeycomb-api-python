@@ -141,7 +141,7 @@ class TestTriggerBuilderMethodCoverage:
             }
             builder = _build_trigger(data)
             trigger = builder.build()
-            assert trigger.threshold.op.value == threshold["op"]
+            assert trigger.trigger.threshold.op.value == threshold["op"]
 
     def test_frequency_presets_covered(self):
         """Common frequency values should map to builder presets."""
@@ -164,7 +164,9 @@ class TestTriggerBuilderMethodCoverage:
             }
             builder = _build_trigger(data)
             trigger = builder.build()
-            assert trigger.frequency == freq, f"Frequency {freq} ({method_name}) not working"
+            assert trigger.trigger.frequency == freq, (
+                f"Frequency {freq} ({method_name}) not working"
+            )
 
     def test_alert_type_covered(self):
         """Both alert types must be supported."""
@@ -179,7 +181,7 @@ class TestTriggerBuilderMethodCoverage:
             }
             builder = _build_trigger(data)
             trigger = builder.build()
-            assert trigger.alert_type.value == alert_type
+            assert trigger.trigger.alert_type.value == alert_type
 
     def test_recipient_formats_covered(self):
         """All recipient formats must be supported."""
@@ -205,7 +207,11 @@ class TestTriggerBuilderMethodCoverage:
             }
             builder = _build_trigger(data)
             trigger = builder.build()
-            assert len(trigger.recipients) > 0, f"Recipient format {recipient} not supported"
+            # Recipients can be in trigger.recipients (if they have 'id') or inline_recipients (if not)
+            total_recipients = (
+                len(trigger.trigger.recipients) if trigger.trigger.recipients else 0
+            ) + len(trigger.inline_recipients)
+            assert total_recipients > 0, f"Recipient format {recipient} not supported"
 
 
 class TestSLOBuilderMethodCoverage:

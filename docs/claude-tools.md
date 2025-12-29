@@ -305,7 +305,7 @@ Always include the beta for better tool selection with 56 tools:
 response = client.beta.messages.create(
     betas=["advanced-tool-use-2025-11-20"],  # Improves tool selection
     tools=HONEYCOMB_TOOLS,
-    ...
+    # ... other parameters like model, max_tokens, messages, etc.
 )
 ```
 
@@ -395,7 +395,7 @@ ALERTING_TOOLS = [
 
 response = client.beta.messages.create(
     tools=ALERTING_TOOLS,  # Subset of tools
-    ...
+    # ... other parameters
 )
 ```
 
@@ -412,7 +412,7 @@ Prefer environment-wide queries when comparing across services.
 response = client.beta.messages.create(
     system=CUSTOM_SYSTEM,
     tools=HONEYCOMB_TOOLS,
-    ...
+    # ... other parameters
 )
 ```
 
@@ -483,9 +483,9 @@ Each tool in `HONEYCOMB_TOOLS` contains:
         "properties": {
             "dataset": {"type": "string", "description": "..."},
             "name": {"type": "string", "description": "..."},
-            ...
+            # ... more properties
         },
-        "required": ["dataset", "name", ...]
+        "required": ["dataset", "name"]  # ... and more required fields
     }
 }
 ```

@@ -46,7 +46,7 @@ from .service_map_dependencies import (
 from .slo_builder import BurnAlertBuilder, BurnAlertDefinition, SLIDefinition, SLOBuilder, SLOBundle
 from .slos import SLI, SLO, SLOCreate
 from .tags_mixin import TagsMixin
-from .trigger_builder import TriggerBuilder
+from .trigger_builder import TriggerBuilder, TriggerBundle
 from .triggers import (
     Trigger,
     TriggerAlertType,
@@ -75,6 +75,7 @@ __all__ = [
     "TriggerAlertType",
     "TriggerQuery",
     "TriggerBuilder",
+    "TriggerBundle",
     # SLOs
     "SLO",
     "SLOCreate",

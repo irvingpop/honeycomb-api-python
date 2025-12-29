@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Literal
+from dataclasses import dataclass
+from typing import TYPE_CHECKING, Any, Literal
 
 from typing_extensions import Self
 
@@ -19,6 +20,25 @@ from .triggers import (
 
 if TYPE_CHECKING:
     pass
+
+
+@dataclass
+class TriggerBundle:
+    """Bundle for trigger creation with inline recipients.
+
+    Orchestrates:
+    1. Create inline recipients via Recipients API
+    2. Create trigger with recipient IDs
+
+    Attributes:
+        dataset: Dataset slug or "__all__" for environment-wide
+        trigger: The TriggerCreate object
+        inline_recipients: Recipients without 'id' field (need creation)
+    """
+
+    dataset: str
+    trigger: TriggerCreate
+    inline_recipients: list[dict[str, Any]]
 
 
 class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
@@ -380,19 +400,22 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
     # Build
     # -------------------------------------------------------------------------
 
-    def build(self) -> TriggerCreate:  # type: ignore[override]
-        """Build TriggerCreate with validation.
+    def _validate_and_get_components(
+        self,
+    ) -> tuple[
+        TriggerThreshold,
+        TriggerQuery,
+        list[dict[str, Any]] | None,
+        list[dict[str, str]] | None,
+        dict[str, int | str] | None,
+    ]:
+        """Validate trigger configuration and return components.
 
         Returns:
-            TriggerCreate object ready for API submission.
+            Tuple of (threshold, query, recipients, tags, baseline_details)
 
         Raises:
-            ValueError: If constraints are violated:
-                - More than one calculation
-                - Time range > 3600 seconds
-                - Absolute time used
-                - Missing threshold
-                - Frequency vs duration constraint (duration <= frequency * 4)
+            ValueError: If constraints are violated
         """
         # Validate single calculation
         if len(self._calculations) > 1:
@@ -453,6 +476,68 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
         recipients = self._get_all_recipients() if self._get_all_recipients() else None
         tags = self._get_all_tags()
         baseline = self._baseline_details
+
+        return threshold, query, recipients, tags, baseline
+
+    def build(self) -> TriggerBundle:  # type: ignore[override]
+        """Build TriggerBundle with validation for orchestrated creation.
+
+        Returns:
+            TriggerBundle containing trigger and inline recipients
+
+        Raises:
+            ValueError: If constraints are violated:
+                - More than one calculation
+                - Time range > 3600 seconds
+                - Absolute time used
+                - Missing threshold
+                - Frequency vs duration constraint (duration <= frequency * 4)
+        """
+        threshold, query, recipients, tags, baseline = self._validate_and_get_components()
+
+        # Separate inline recipients (without 'id') from those with IDs
+        inline_recipients: list[dict[str, Any]] = []
+        recipients_with_ids: list[dict[str, Any]] = []
+
+        if recipients:
+            for recip in recipients:
+                if "id" in recip:
+                    recipients_with_ids.append(recip)
+                else:
+                    inline_recipients.append(recip.copy())
+
+        # Build trigger with only the recipients that already have IDs
+        trigger = TriggerCreate(
+            name=self._name,
+            description=self._description,
+            threshold=threshold,
+            frequency=self._frequency,
+            query=query,
+            disabled=self._disabled,
+            alert_type=self._alert_type,
+            recipients=recipients_with_ids if recipients_with_ids else None,
+            tags=tags,
+            baseline_details=baseline,
+        )
+
+        return TriggerBundle(
+            dataset=self.get_dataset(),
+            trigger=trigger,
+            inline_recipients=inline_recipients,
+        )
+
+    def build_trigger(self) -> TriggerCreate:
+        """Build TriggerCreate with validation (legacy method).
+
+        Deprecated: Use build() which returns TriggerBundle for better orchestration.
+
+        Returns:
+            TriggerCreate object ready for API submission.
+
+        Raises:
+            ValueError: If constraints are violated (same as build())
+        """
+        threshold, query, recipients, tags, baseline = self._validate_and_get_components()
 
         return TriggerCreate(
             name=self._name,

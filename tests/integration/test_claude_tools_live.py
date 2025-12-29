@@ -409,9 +409,9 @@ IMPORTANT: Use inline creation for queries and SLO to minimize API calls. Create
     )
 
     # Validate panel types
-    query_panels = [p for p in board_full.panels if p.type == "query"]
-    text_panels = [p for p in board_full.panels if p.type == "text"]
-    slo_panels = [p for p in board_full.panels if p.type == "slo"]
+    query_panels = [p for p in board_full.panels if p["type"] == "query"]
+    text_panels = [p for p in board_full.panels if p["type"] == "text"]
+    slo_panels = [p for p in board_full.panels if p["type"] == "slo"]
 
     assert len(query_panels) >= 2, f"Should have at least 2 query panels, got {len(query_panels)}"
     assert len(text_panels) >= 1, f"Should have at least 1 text panel, got {len(text_panels)}"

@@ -23,10 +23,10 @@ class TestBuildTrigger:
         builder = _build_trigger(data)
         trigger = builder.build()
 
-        assert trigger.name == "Test Trigger"
-        assert trigger.threshold.op.value == ">"
-        assert trigger.threshold.value == 100
-        assert trigger.frequency == 900
+        assert trigger.trigger.name == "Test Trigger"
+        assert trigger.trigger.threshold.op.value == ">"
+        assert trigger.trigger.threshold.value == 100
+        assert trigger.trigger.frequency == 900
 
     def test_trigger_with_all_calculation_types(self):
         """All calculation types should work."""
@@ -124,16 +124,20 @@ class TestBuildTrigger:
 
         builder = _build_trigger(data)
         trigger = builder.build()
-        assert len(trigger.recipients) == 6, "Should handle all 5 recipient types plus ID reference"
+        # With TriggerBundle: 1 with ID goes to trigger.recipients, 5 inline go to inline_recipients
+        assert len(trigger.trigger.recipients) == 1, "Should have 1 recipient with ID"
+        assert len(trigger.inline_recipients) == 5, "Should have 5 inline recipients"
 
         # Validate webhook recipient has correct structure (matches API spec)
-        webhook_recip = next(r for r in trigger.recipients if r.get("type") == "webhook")
+        webhook_recip = next(r for r in trigger.inline_recipients if r.get("type") == "webhook")
         assert webhook_recip["target"] == "https://example.com/webhook"
         assert webhook_recip["details"]["webhook_url"] == "https://example.com/webhook"
         assert webhook_recip["details"]["webhook_name"] == "Webhook"
 
         # Validate msteams recipient
-        msteams_recip = next(r for r in trigger.recipients if r.get("type") == "msteams_workflow")
+        msteams_recip = next(
+            r for r in trigger.inline_recipients if r.get("type") == "msteams_workflow"
+        )
         assert msteams_recip["target"] == "https://teams.webhook.url"
 
     def test_trigger_with_tags(self):
@@ -155,8 +159,8 @@ class TestBuildTrigger:
 
         builder = _build_trigger(data)
         trigger = builder.build()
-        assert trigger.tags is not None
-        assert len(trigger.tags) == 2
+        assert trigger.trigger.tags is not None
+        assert len(trigger.trigger.tags) == 2
 
     def test_trigger_frequency_presets(self):
         """Common frequencies should work."""
@@ -176,7 +180,7 @@ class TestBuildTrigger:
 
             builder = _build_trigger(data)
             trigger = builder.build()
-            assert trigger.frequency == freq
+            assert trigger.trigger.frequency == freq
 
     def test_trigger_alert_types(self):
         """Both alert types should work."""
@@ -195,7 +199,7 @@ class TestBuildTrigger:
 
             builder = _build_trigger(data)
             trigger = builder.build()
-            assert trigger.alert_type.value == alert_type
+            assert trigger.trigger.alert_type.value == alert_type
 
 
 class TestBuildSLO:
@@ -307,7 +311,7 @@ class TestBuilderEdgeCases:
         builder = _build_trigger(data)
         trigger = builder.build()
 
-        assert trigger.threshold.exceeded_limit == 3
+        assert trigger.trigger.threshold.exceeded_limit == 3
 
     def test_trigger_with_multiple_filters_and_combination(self):
         """Can build trigger with multiple filters and combination."""
@@ -330,7 +334,7 @@ class TestBuilderEdgeCases:
         builder = _build_trigger(data)
         trigger = builder.build()
 
-        assert len(trigger.query.filters) == 2
+        assert len(trigger.trigger.query.filters) == 2
 
     def test_trigger_with_breakdowns(self):
         """Can build trigger with breakdowns (group by)."""
@@ -349,4 +353,4 @@ class TestBuilderEdgeCases:
         builder = _build_trigger(data)
         trigger = builder.build()
 
-        assert trigger.query.breakdowns == ["endpoint", "status_code"]
+        assert trigger.trigger.query.breakdowns == ["endpoint", "status_code"]

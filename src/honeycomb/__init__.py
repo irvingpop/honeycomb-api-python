@@ -86,6 +86,7 @@ from .models import (
     Trigger,
     TriggerAlertType,
     TriggerBuilder,
+    TriggerBundle,
     TriggerCreate,
     TriggerQuery,
     TriggerThreshold,
@@ -133,6 +134,7 @@ __all__ = [
     "TriggerAlertType",
     "TriggerQuery",
     "TriggerBuilder",
+    "TriggerBundle",
     # Models - SLOs
     "SLO",
     "SLOCreate",

@@ -27,7 +27,7 @@ async def create_simple_trigger(client: HoneycombClient, dataset: str) -> str:
     Returns:
         The created trigger ID
     """
-    trigger = (
+    bundle = (
         TriggerBuilder("High Request Count")
         .dataset(dataset)
         .description("Alert when request count exceeds threshold")
@@ -38,7 +38,7 @@ async def create_simple_trigger(client: HoneycombClient, dataset: str) -> str:
         .disabled()  # Start disabled for safety
         .build()
     )
-    created = await client.triggers.create_async(dataset, trigger)
+    created = await client.triggers.create_from_bundle_async(bundle)
     return created.id
 
 
@@ -56,7 +56,7 @@ async def create_trigger_with_filter(client: HoneycombClient, dataset: str) -> s
     Returns:
         The created trigger ID
     """
-    trigger = (
+    bundle = (
         TriggerBuilder("Error Rate Alert")
         .dataset(dataset)
         .description("Alert on high error rate for API service")
@@ -69,7 +69,7 @@ async def create_trigger_with_filter(client: HoneycombClient, dataset: str) -> s
         .disabled()
         .build()
     )
-    created = await client.triggers.create_async(dataset, trigger)
+    created = await client.triggers.create_from_bundle_async(bundle)
     return created.id
 
 

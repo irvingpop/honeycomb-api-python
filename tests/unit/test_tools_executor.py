@@ -121,7 +121,10 @@ class TestExecuteTriggerTools:
             json={
                 "id": "new-webhook",
                 "type": "webhook",
-                "details": {"webhook_url": "https://example.com/webhook", "webhook_name": "Webhook"},
+                "details": {
+                    "webhook_url": "https://example.com/webhook",
+                    "webhook_name": "Webhook",
+                },
             }
         )
 
@@ -252,6 +255,9 @@ class TestExecuteBurnAlertTools:
 
     async def test_execute_create_burn_alert(self, client: HoneycombClient, respx_mock: MockRouter):
         """Can execute create_burn_alert tool."""
+        # Mock recipients list (needed for inline recipient processing)
+        respx_mock.get("https://api.honeycomb.io/1/recipients").respond(json=[])
+
         respx_mock.post("https://api.honeycomb.io/1/burn_alerts/test-dataset").respond(
             json={
                 "id": "new-ba",

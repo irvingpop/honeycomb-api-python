@@ -216,140 +216,35 @@ async def _execute_get_trigger(client: "HoneycombClient", tool_input: dict[str, 
 
 
 async def _execute_create_trigger(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
-    """Execute honeycomb_create_trigger.
+    """Execute honeycomb_create_trigger using bundle orchestration.
 
-    Handles inline recipient creation with idempotent logic:
+    The bundle handles inline recipient creation with idempotent logic:
     - Checks if recipient already exists (by type + target)
     - Reuses existing ID if found
     - Creates new recipient if not found
     """
-    from honeycomb.exceptions import HoneycombAPIError
-    from honeycomb.models.recipients import RecipientCreate, RecipientType
-
-    dataset = tool_input.pop("dataset")  # Remove dataset from tool_input
-
-    # Get existing recipients once for idempotent checks (environment-wide)
-    existing_recipients = await client.recipients.list_async()
-
-    # Process inline recipients - find or create, then replace with IDs
-    recipients_input = tool_input.get("recipients", [])
-    for recip in recipients_input:
-        if "id" not in recip:
-            # Inline recipient - find existing or create new
-            recip_type = RecipientType(recip["type"])
-            target = recip["target"]
-
-            # Check if recipient with matching type and target already exists
-            existing = None
-            for existing_recip in existing_recipients:
-                if existing_recip.type == recip_type:
-                    # Check target match based on type
-                    existing_target = None
-                    if recip_type == RecipientType.EMAIL:
-                        existing_target = existing_recip.details.get("email_address")
-                    elif recip_type == RecipientType.SLACK:
-                        existing_target = existing_recip.details.get("slack_channel")
-                    elif recip_type == RecipientType.WEBHOOK:
-                        existing_target = existing_recip.details.get("webhook_url")
-                    elif recip_type in (RecipientType.MSTEAMS_WORKFLOW, RecipientType.MSTEAMS):
-                        existing_target = existing_recip.details.get("webhook_url")
-                    elif recip_type == RecipientType.PAGERDUTY:
-                        existing_target = existing_recip.details.get("pagerduty_integration_key")
-
-                    if existing_target == target:
-                        existing = existing_recip
-                        break
-
-            if existing:
-                # Reuse existing recipient
-                recip.clear()
-                recip["id"] = existing.id
-            else:
-                # Create new recipient - build details based on type (matching API spec)
-                details = recip.get("details", {})
-                if recip_type == RecipientType.EMAIL:
-                    if "email_address" not in details:
-                        details = {"email_address": target}
-                elif recip_type == RecipientType.SLACK:
-                    if "slack_channel" not in details:
-                        details = {"slack_channel": target}
-                elif recip_type == RecipientType.PAGERDUTY:
-                    if "pagerduty_integration_key" not in details:
-                        details = {
-                            "pagerduty_integration_key": target,
-                            "pagerduty_integration_name": "PagerDuty Integration",
-                        }
-                elif recip_type == RecipientType.WEBHOOK:
-                    if "webhook_url" not in details:
-                        details = {
-                            "webhook_url": target,
-                            "webhook_name": recip.get("name", "Webhook"),
-                        }
-                elif recip_type in (RecipientType.MSTEAMS_WORKFLOW, RecipientType.MSTEAMS):
-                    if "webhook_url" not in details:
-                        details = {
-                            "webhook_url": target,
-                            "webhook_name": "MS Teams",
-                        }
-
-                # Create recipient via Recipients API
-                try:
-                    recipient_obj = RecipientCreate(type=recip_type, details=details)
-                    created_recip = await client.recipients.create_async(recipient_obj)
-                    recip.clear()
-                    recip["id"] = created_recip.id
-                except HoneycombAPIError as e:
-                    if e.status_code == 409:
-                        # Conflict - recipient exists but we didn't find it (race condition or bug)
-                        # Re-fetch and try to find it
-                        existing_recipients = await client.recipients.list_async()
-                        for existing_recip in existing_recipients:
-                            if existing_recip.type == recip_type:
-                                check_target = None
-                                if recip_type == RecipientType.EMAIL:
-                                    check_target = existing_recip.details.get("email_address")
-                                elif recip_type == RecipientType.SLACK:
-                                    check_target = existing_recip.details.get("slack_channel")
-                                elif recip_type == RecipientType.WEBHOOK:
-                                    check_target = existing_recip.details.get("webhook_url")
-                                elif recip_type in (RecipientType.MSTEAMS_WORKFLOW, RecipientType.MSTEAMS):
-                                    check_target = existing_recip.details.get("webhook_url")
-                                elif recip_type == RecipientType.PAGERDUTY:
-                                    check_target = existing_recip.details.get("pagerduty_integration_key")
-
-                                if check_target == target:
-                                    recip.clear()
-                                    recip["id"] = existing_recip.id
-                                    break
-                        else:
-                            # Still not found - re-raise original error
-                            raise
-                    else:
-                        raise
-
-    # Now build trigger with recipient IDs
+    # Build bundle from tool input (includes dataset)
     builder = _build_trigger(tool_input)
-    trigger = builder.build()
+    bundle = builder.build()
 
-    # Create via API
-    created = await client.triggers.create_async(dataset=dataset, trigger=trigger)
+    # Create via bundle (handles recipient orchestration)
+    created = await client.triggers.create_from_bundle_async(bundle)
     return json.dumps(created.model_dump(), default=str)
 
 
 async def _execute_update_trigger(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_update_trigger."""
-    dataset = tool_input.pop("dataset")
     trigger_id = tool_input.pop("trigger_id")
 
     # Use builder to construct updated trigger
     builder = _build_trigger(tool_input)
-    trigger = builder.build()
+    bundle = builder.build()
 
-    # Update via API
+    # Update via API (use trigger from bundle)
     updated = await client.triggers.update_async(
-        dataset=dataset,
+        dataset=bundle.dataset,
         trigger_id=trigger_id,
-        trigger=trigger,
+        trigger=bundle.trigger,
     )
     return json.dumps(updated.model_dump(), default=str)
 
@@ -461,12 +356,15 @@ async def _execute_get_burn_alert(client: "HoneycombClient", tool_input: dict[st
 
 
 async def _execute_create_burn_alert(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
-    """Execute honeycomb_create_burn_alert."""
+    """Execute honeycomb_create_burn_alert with inline recipient handling."""
+    from honeycomb.resources._recipient_utils import process_inline_recipients
+
     dataset = tool_input.pop("dataset")
 
-    # Convert recipients to BurnAlertRecipient model
+    # Process inline recipients with idempotent handling
     recipients_data = tool_input.pop("recipients", [])
-    recipients = [BurnAlertRecipient(**r) for r in recipients_data]
+    processed = await process_inline_recipients(client, recipients_data)
+    recipients = [BurnAlertRecipient(**r) for r in processed]
 
     burn_alert = BurnAlertCreate(**tool_input, recipients=recipients)
     created = await client.burn_alerts.create_async(dataset=dataset, burn_alert=burn_alert)
@@ -474,13 +372,16 @@ async def _execute_create_burn_alert(client: "HoneycombClient", tool_input: dict
 
 
 async def _execute_update_burn_alert(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
-    """Execute honeycomb_update_burn_alert."""
+    """Execute honeycomb_update_burn_alert with inline recipient handling."""
+    from honeycomb.resources._recipient_utils import process_inline_recipients
+
     dataset = tool_input.pop("dataset")
     burn_alert_id = tool_input.pop("burn_alert_id")
 
-    # Convert recipients
+    # Process inline recipients with idempotent handling
     recipients_data = tool_input.pop("recipients", [])
-    recipients = [BurnAlertRecipient(**r) for r in recipients_data]
+    processed = await process_inline_recipients(client, recipients_data)
+    recipients = [BurnAlertRecipient(**r) for r in processed]
 
     burn_alert = BurnAlertCreate(**tool_input, recipients=recipients)
     updated = await client.burn_alerts.update_async(

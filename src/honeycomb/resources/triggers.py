@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from typing import TYPE_CHECKING
 
 from ..models.triggers import Trigger, TriggerCreate
@@ -9,6 +10,7 @@ from .base import BaseResource
 
 if TYPE_CHECKING:
     from ..client import HoneycombClient
+    from ..models.trigger_builder import TriggerBundle
 
 
 class TriggersResource(BaseResource):
@@ -180,3 +182,103 @@ class TriggersResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use delete_async() for async mode, or pass sync=True to client")
         self._delete_sync(self._build_path(dataset, trigger_id))
+
+    # -------------------------------------------------------------------------
+    # Trigger Bundle creation helpers (async)
+    # -------------------------------------------------------------------------
+
+    async def create_from_bundle_async(self, bundle: TriggerBundle) -> Trigger:
+        """Create trigger from bundle with recipient orchestration (async).
+
+        Orchestrates:
+        1. Create/find inline recipients (idempotent)
+        2. Create trigger with recipient IDs
+
+        Args:
+            bundle: TriggerBundle from TriggerBuilder.build_bundle()
+
+        Returns:
+            Created Trigger object
+
+        Example:
+            >>> bundle = (
+            ...     TriggerBuilder("High Error Rate")
+            ...     .dataset("api-logs")
+            ...     .last_30_minutes()
+            ...     .count()
+            ...     .threshold_gt(100)
+            ...     .email("oncall@example.com")
+            ...     .build_bundle()
+            ... )
+            >>> trigger = await client.triggers.create_from_bundle_async(bundle)
+        """
+        from ._recipient_utils import process_inline_recipients
+
+        # Handle inline recipients with idempotency
+        if bundle.inline_recipients:
+            processed_recipients = await process_inline_recipients(
+                self._client, bundle.inline_recipients
+            )
+
+            # Merge with existing recipients in trigger
+            existing_recipients = bundle.trigger.recipients or []
+            all_recipients = existing_recipients + processed_recipients
+
+            # Create new trigger object with all recipients
+            trigger_with_ids = TriggerCreate(
+                name=bundle.trigger.name,
+                description=bundle.trigger.description,
+                threshold=bundle.trigger.threshold,
+                frequency=bundle.trigger.frequency,
+                query=bundle.trigger.query,
+                disabled=bundle.trigger.disabled,
+                alert_type=bundle.trigger.alert_type,
+                recipients=all_recipients if all_recipients else None,
+                tags=bundle.trigger.tags,
+                baseline_details=bundle.trigger.baseline_details,
+            )
+        else:
+            trigger_with_ids = bundle.trigger
+
+        # Create trigger
+        return await self.create_async(bundle.dataset, trigger_with_ids)
+
+    # -------------------------------------------------------------------------
+    # Trigger Bundle creation helpers (sync)
+    # -------------------------------------------------------------------------
+
+    def create_from_bundle(self, bundle: TriggerBundle) -> Trigger:
+        """Create trigger from bundle with recipient orchestration (sync).
+
+        Orchestrates:
+        1. Create/find inline recipients (idempotent)
+        2. Create trigger with recipient IDs
+
+        Args:
+            bundle: TriggerBundle from TriggerBuilder.build_bundle()
+
+        Returns:
+            Created Trigger object
+
+        Raises:
+            RuntimeError: If client is in async mode
+
+        Example:
+            >>> bundle = (
+            ...     TriggerBuilder("High Error Rate")
+            ...     .dataset("api-logs")
+            ...     .last_30_minutes()
+            ...     .count()
+            ...     .threshold_gt(100)
+            ...     .email("oncall@example.com")
+            ...     .build_bundle()
+            ... )
+            >>> trigger = client.triggers.create_from_bundle(bundle)
+        """
+        if not self._client.is_sync:
+            raise RuntimeError(
+                "Cannot use sync method with async client. "
+                "Use create_from_bundle_async() for async mode, or pass sync=True to client"
+            )
+
+        return asyncio.run(self.create_from_bundle_async(bundle))

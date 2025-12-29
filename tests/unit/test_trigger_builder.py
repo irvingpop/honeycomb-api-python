@@ -6,6 +6,7 @@ from honeycomb import (
     CalcOp,
     TriggerAlertType,
     TriggerBuilder,
+    TriggerBundle,
     TriggerCreate,
     TriggerThresholdOp,
 )
@@ -16,16 +17,17 @@ class TestTriggerBuilderBasics:
 
     def test_minimal_trigger(self):
         """Test building minimal trigger with defaults."""
-        trigger = TriggerBuilder("Test Trigger").last_30_minutes().count().threshold_gt(100).build()
-        assert isinstance(trigger, TriggerCreate)
-        assert trigger.name == "Test Trigger"
-        assert trigger.threshold.op == TriggerThresholdOp.GREATER_THAN
-        assert trigger.threshold.value == 100.0
-        assert trigger.frequency == 900  # Default 15 minutes
+        bundle = TriggerBuilder("Test Trigger").last_30_minutes().count().threshold_gt(100).build()
+        assert isinstance(bundle, TriggerBundle)
+        assert isinstance(bundle.trigger, TriggerCreate)
+        assert bundle.trigger.name == "Test Trigger"
+        assert bundle.trigger.threshold.op == TriggerThresholdOp.GREATER_THAN
+        assert bundle.trigger.threshold.value == 100.0
+        assert bundle.trigger.frequency == 900  # Default 15 minutes
 
     def test_trigger_with_description(self):
         """Test adding description."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test Trigger")
             .description("Test description")
             .last_30_minutes()
@@ -33,7 +35,7 @@ class TestTriggerBuilderBasics:
             .threshold_gt(100)
             .build()
         )
-        assert trigger.description == "Test description"
+        assert bundle.trigger.description == "Test description"
 
     def test_dataset_scoped_trigger(self):
         """Test dataset-scoped trigger."""
@@ -44,9 +46,9 @@ class TestTriggerBuilderBasics:
             .count()
             .threshold_gt(100)
         )
-        trigger = builder.build()
+        bundle = builder.build()
         assert builder.get_dataset() == "my-dataset"
-        assert trigger.name == "Test Trigger"
+        assert bundle.trigger.name == "Test Trigger"
 
     def test_environment_wide_trigger(self):
         """Test environment-wide trigger."""
@@ -65,31 +67,31 @@ class TestTriggerBuilderThresholds:
 
     def test_threshold_gt(self):
         """Test greater than threshold."""
-        trigger = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100.5).build()
-        assert trigger.threshold.op == TriggerThresholdOp.GREATER_THAN
-        assert trigger.threshold.value == 100.5
+        bundle = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100.5).build()
+        assert bundle.trigger.threshold.op == TriggerThresholdOp.GREATER_THAN
+        assert bundle.trigger.threshold.value == 100.5
 
     def test_threshold_gte(self):
         """Test greater than or equal threshold."""
-        trigger = TriggerBuilder("Test").last_30_minutes().count().threshold_gte(50).build()
-        assert trigger.threshold.op == TriggerThresholdOp.GREATER_THAN_OR_EQUAL
-        assert trigger.threshold.value == 50.0
+        bundle = TriggerBuilder("Test").last_30_minutes().count().threshold_gte(50).build()
+        assert bundle.trigger.threshold.op == TriggerThresholdOp.GREATER_THAN_OR_EQUAL
+        assert bundle.trigger.threshold.value == 50.0
 
     def test_threshold_lt(self):
         """Test less than threshold."""
-        trigger = TriggerBuilder("Test").last_30_minutes().count().threshold_lt(10).build()
-        assert trigger.threshold.op == TriggerThresholdOp.LESS_THAN
-        assert trigger.threshold.value == 10.0
+        bundle = TriggerBuilder("Test").last_30_minutes().count().threshold_lt(10).build()
+        assert bundle.trigger.threshold.op == TriggerThresholdOp.LESS_THAN
+        assert bundle.trigger.threshold.value == 10.0
 
     def test_threshold_lte(self):
         """Test less than or equal threshold."""
-        trigger = TriggerBuilder("Test").last_30_minutes().count().threshold_lte(25).build()
-        assert trigger.threshold.op == TriggerThresholdOp.LESS_THAN_OR_EQUAL
-        assert trigger.threshold.value == 25.0
+        bundle = TriggerBuilder("Test").last_30_minutes().count().threshold_lte(25).build()
+        assert bundle.trigger.threshold.op == TriggerThresholdOp.LESS_THAN_OR_EQUAL
+        assert bundle.trigger.threshold.value == 25.0
 
     def test_exceeded_limit(self):
         """Test exceeded limit configuration."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -97,7 +99,7 @@ class TestTriggerBuilderThresholds:
             .exceeded_limit(3)
             .build()
         )
-        assert trigger.threshold.exceeded_limit == 3
+        assert bundle.trigger.threshold.exceeded_limit == 3
 
     def test_missing_threshold_raises_error(self):
         """Test that missing threshold raises error."""
@@ -110,7 +112,7 @@ class TestTriggerBuilderFrequency:
 
     def test_every_minute(self):
         """Test every minute frequency."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .time_range(240)  # 4 minutes - max for every_minute (60*4=240)
             .count()
@@ -118,11 +120,11 @@ class TestTriggerBuilderFrequency:
             .every_minute()
             .build()
         )
-        assert trigger.frequency == 60
+        assert bundle.trigger.frequency == 60
 
     def test_every_5_minutes(self):
         """Test every 5 minutes frequency."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .time_range(1200)  # 20 minutes - within limit for every_5_minutes (300*4=1200)
             .count()
@@ -130,11 +132,11 @@ class TestTriggerBuilderFrequency:
             .every_5_minutes()
             .build()
         )
-        assert trigger.frequency == 300
+        assert bundle.trigger.frequency == 300
 
     def test_every_15_minutes(self):
         """Test every 15 minutes frequency (default)."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -142,11 +144,11 @@ class TestTriggerBuilderFrequency:
             .every_15_minutes()
             .build()
         )
-        assert trigger.frequency == 900
+        assert bundle.trigger.frequency == 900
 
     def test_every_30_minutes(self):
         """Test every 30 minutes frequency."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -154,18 +156,18 @@ class TestTriggerBuilderFrequency:
             .every_30_minutes()
             .build()
         )
-        assert trigger.frequency == 1800
+        assert bundle.trigger.frequency == 1800
 
     def test_every_hour(self):
         """Test every hour frequency."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).every_hour().build()
         )
-        assert trigger.frequency == 3600
+        assert bundle.trigger.frequency == 3600
 
     def test_custom_frequency(self):
         """Test custom frequency."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -173,7 +175,7 @@ class TestTriggerBuilderFrequency:
             .frequency(600)
             .build()
         )
-        assert trigger.frequency == 600
+        assert bundle.trigger.frequency == 600
 
     def test_frequency_too_low_raises_error(self):
         """Test that frequency < 60 raises error."""
@@ -191,12 +193,12 @@ class TestTriggerBuilderAlertBehavior:
 
     def test_alert_on_change_default(self):
         """Test alert on change (default)."""
-        trigger = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).build()
-        assert trigger.alert_type == TriggerAlertType.ON_CHANGE
+        bundle = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).build()
+        assert bundle.trigger.alert_type == TriggerAlertType.ON_CHANGE
 
     def test_alert_on_change_explicit(self):
         """Test explicit alert on change."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -204,11 +206,11 @@ class TestTriggerBuilderAlertBehavior:
             .alert_on_change()
             .build()
         )
-        assert trigger.alert_type == TriggerAlertType.ON_CHANGE
+        assert bundle.trigger.alert_type == TriggerAlertType.ON_CHANGE
 
     def test_alert_on_true(self):
         """Test alert on true."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -216,16 +218,16 @@ class TestTriggerBuilderAlertBehavior:
             .alert_on_true()
             .build()
         )
-        assert trigger.alert_type == TriggerAlertType.ON_TRUE
+        assert bundle.trigger.alert_type == TriggerAlertType.ON_TRUE
 
     def test_disabled_default(self):
         """Test trigger enabled by default."""
-        trigger = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).build()
-        assert trigger.disabled is False
+        bundle = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).build()
+        assert bundle.trigger.disabled is False
 
     def test_disabled_explicit(self):
         """Test disabled trigger."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -233,14 +235,14 @@ class TestTriggerBuilderAlertBehavior:
             .disabled(True)
             .build()
         )
-        assert trigger.disabled is True
+        assert bundle.trigger.disabled is True
 
     def test_disabled_no_args(self):
         """Test disabled() with no args defaults to True."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).disabled().build()
         )
-        assert trigger.disabled is True
+        assert bundle.trigger.disabled is True
 
 
 class TestTriggerBuilderQueryIntegration:
@@ -248,7 +250,7 @@ class TestTriggerBuilderQueryIntegration:
 
     def test_inherits_query_builder_methods(self):
         """Test that TriggerBuilder inherits QueryBuilder methods."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -258,16 +260,16 @@ class TestTriggerBuilderQueryIntegration:
             .threshold_gt(100)
             .build()
         )
-        assert len(trigger.query.filters) == 2
-        assert trigger.query.breakdowns == ["endpoint"]
+        assert len(bundle.trigger.query.filters) == 2
+        assert bundle.trigger.query.breakdowns == ["endpoint"]
 
     def test_single_calculation_allowed(self):
         """Test that single calculation is allowed."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test").last_30_minutes().p99("duration_ms").threshold_gt(500).build()
         )
-        assert len(trigger.query.calculations) == 1
-        assert trigger.query.calculations[0].op == CalcOp.P99
+        assert len(bundle.trigger.query.calculations) == 1
+        assert bundle.trigger.query.calculations[0].op == CalcOp.P99
 
     def test_multiple_calculations_raise_error(self):
         """Test that multiple calculations raise error."""
@@ -283,8 +285,8 @@ class TestTriggerBuilderQueryIntegration:
 
     def test_time_range_within_limit(self):
         """Test that time range <= 3600 is allowed."""
-        trigger = TriggerBuilder("Test").time_range(3600).count().threshold_gt(100).build()
-        assert trigger.query.time_range == 3600
+        bundle = TriggerBuilder("Test").time_range(3600).count().threshold_gt(100).build()
+        assert bundle.trigger.query.time_range == 3600
 
     def test_time_range_exceeds_limit_raises_error(self):
         """Test that time range > 3600 raises error."""
@@ -326,7 +328,7 @@ class TestTriggerBuilderRecipients:
 
     def test_email_recipient(self):
         """Test adding email recipient."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -334,13 +336,13 @@ class TestTriggerBuilderRecipients:
             .email("oncall@example.com")
             .build()
         )
-        assert len(trigger.recipients) == 1
-        assert trigger.recipients[0]["type"] == "email"
-        assert trigger.recipients[0]["target"] == "oncall@example.com"
+        assert len(bundle.inline_recipients) == 1
+        assert bundle.inline_recipients[0]["type"] == "email"
+        assert bundle.inline_recipients[0]["target"] == "oncall@example.com"
 
     def test_slack_recipient(self):
         """Test adding Slack recipient."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -348,12 +350,12 @@ class TestTriggerBuilderRecipients:
             .slack("#alerts")
             .build()
         )
-        assert trigger.recipients[0]["type"] == "slack"
-        assert trigger.recipients[0]["target"] == "#alerts"
+        assert bundle.inline_recipients[0]["type"] == "slack"
+        assert bundle.inline_recipients[0]["target"] == "#alerts"
 
     def test_pagerduty_recipient(self):
         """Test adding PagerDuty recipient."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -361,13 +363,13 @@ class TestTriggerBuilderRecipients:
             .pagerduty("routing-key-123", severity="critical")
             .build()
         )
-        assert trigger.recipients[0]["type"] == "pagerduty"
-        assert trigger.recipients[0]["target"] == "routing-key-123"
-        assert trigger.recipients[0]["details"]["severity"] == "critical"
+        assert bundle.inline_recipients[0]["type"] == "pagerduty"
+        assert bundle.inline_recipients[0]["target"] == "routing-key-123"
+        assert bundle.inline_recipients[0]["details"]["severity"] == "critical"
 
     def test_webhook_recipient(self):
         """Test adding webhook recipient."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -375,11 +377,11 @@ class TestTriggerBuilderRecipients:
             .webhook("https://example.com/webhook")
             .build()
         )
-        assert trigger.recipients[0]["type"] == "webhook"
+        assert bundle.inline_recipients[0]["type"] == "webhook"
 
     def test_msteams_recipient(self):
         """Test adding MS Teams recipient."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -387,11 +389,11 @@ class TestTriggerBuilderRecipients:
             .msteams("https://outlook.office.com/webhook/...")
             .build()
         )
-        assert trigger.recipients[0]["type"] == "msteams_workflow"
+        assert bundle.inline_recipients[0]["type"] == "msteams_workflow"
 
     def test_recipient_id(self):
         """Test adding recipient by ID."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -399,12 +401,12 @@ class TestTriggerBuilderRecipients:
             .recipient_id("recipient-123")
             .build()
         )
-        assert len(trigger.recipients) == 1
-        assert trigger.recipients[0]["id"] == "recipient-123"
+        assert len(bundle.trigger.recipients) == 1
+        assert bundle.trigger.recipients[0]["id"] == "recipient-123"
 
     def test_multiple_recipients(self):
         """Test adding multiple recipients."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -414,12 +416,12 @@ class TestTriggerBuilderRecipients:
             .pagerduty("routing-key", severity="warning")
             .build()
         )
-        assert len(trigger.recipients) == 3
+        assert len(bundle.inline_recipients) == 3
 
     def test_no_recipients(self):
         """Test trigger without recipients."""
-        trigger = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).build()
-        assert trigger.recipients is None
+        bundle = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).build()
+        assert bundle.trigger.recipients is None
 
 
 class TestTriggerBuilderComplexScenarios:
@@ -427,7 +429,7 @@ class TestTriggerBuilderComplexScenarios:
 
     def test_complete_trigger(self):
         """Test building a complete trigger with all features."""
-        trigger = (
+        bundle = (
             TriggerBuilder("High Error Rate")
             .description("Alert when error rate is high")
             .dataset("api-logs")
@@ -444,18 +446,18 @@ class TestTriggerBuilderComplexScenarios:
             .pagerduty("routing-key", severity="critical")
             .build()
         )
-        assert trigger.name == "High Error Rate"
-        assert trigger.description == "Alert when error rate is high"
-        assert trigger.query.time_range == 1200
-        assert trigger.threshold.value == 100.0
-        assert trigger.threshold.exceeded_limit == 3
-        assert trigger.frequency == 300
-        assert trigger.alert_type == TriggerAlertType.ON_TRUE
-        assert len(trigger.recipients) == 3
+        assert bundle.trigger.name == "High Error Rate"
+        assert bundle.trigger.description == "Alert when error rate is high"
+        assert bundle.trigger.query.time_range == 1200
+        assert bundle.trigger.threshold.value == 100.0
+        assert bundle.trigger.threshold.exceeded_limit == 3
+        assert bundle.trigger.frequency == 300
+        assert bundle.trigger.alert_type == TriggerAlertType.ON_TRUE
+        assert len(bundle.inline_recipients) == 3
 
     def test_p99_latency_trigger(self):
         """Test P99 latency trigger pattern."""
-        trigger = (
+        bundle = (
             TriggerBuilder("High Latency")
             .dataset("api-logs")
             .time_range(240)  # 4 minutes - max for every_minute (60*4=240)
@@ -466,13 +468,13 @@ class TestTriggerBuilderComplexScenarios:
             .email("oncall@example.com")
             .build()
         )
-        assert trigger.query.calculations[0].op == CalcOp.P99
-        assert trigger.query.calculations[0].column == "duration_ms"
-        assert trigger.frequency == 60
+        assert bundle.trigger.query.calculations[0].op == CalcOp.P99
+        assert bundle.trigger.query.calculations[0].column == "duration_ms"
+        assert bundle.trigger.frequency == 60
 
     def test_error_rate_trigger(self):
         """Test error rate trigger pattern."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Error Spike")
             .environment_wide()
             .time_range(1200)  # 20 minutes - valid for every_5_minutes (300*4=1200)
@@ -483,8 +485,8 @@ class TestTriggerBuilderComplexScenarios:
             .pagerduty("routing-key", severity="critical")
             .build()
         )
-        assert trigger.query.filters[0].column == "status"
-        assert trigger.threshold.op == TriggerThresholdOp.GREATER_THAN
+        assert bundle.trigger.query.filters[0].column == "status"
+        assert bundle.trigger.threshold.op == TriggerThresholdOp.GREATER_THAN
 
     def test_method_chaining(self):
         """Test that all methods support chaining."""
@@ -510,7 +512,7 @@ class TestTriggerBuilderTags:
 
     def test_single_tag(self):
         """Test adding a single tag."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -518,11 +520,11 @@ class TestTriggerBuilderTags:
             .tag("team", "backend")
             .build()
         )
-        assert trigger.tags == [{"key": "team", "value": "backend"}]
+        assert bundle.trigger.tags == [{"key": "team", "value": "backend"}]
 
     def test_multiple_tags(self):
         """Test adding multiple tags."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -532,11 +534,11 @@ class TestTriggerBuilderTags:
             .tag("service", "api")
             .build()
         )
-        assert len(trigger.tags) == 3
+        assert len(bundle.trigger.tags) == 3
 
     def test_tags_via_dict(self):
         """Test adding tags via dictionary."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -544,12 +546,12 @@ class TestTriggerBuilderTags:
             .tags({"team": "backend", "env": "production"})
             .build()
         )
-        assert len(trigger.tags) == 2
+        assert len(bundle.trigger.tags) == 2
 
     def test_no_tags(self):
         """Test trigger without tags."""
-        trigger = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).build()
-        assert trigger.tags is None
+        bundle = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).build()
+        assert bundle.trigger.tags is None
 
     def test_tag_validation_enforced(self):
         """Test that tag validation is enforced."""
@@ -562,7 +564,7 @@ class TestTriggerBuilderBaseline:
 
     def test_baseline_1_hour_ago_percentage(self):
         """Test baseline comparison to 1 hour ago (percentage)."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -570,11 +572,11 @@ class TestTriggerBuilderBaseline:
             .baseline_1_hour_ago("percentage")
             .build()
         )
-        assert trigger.baseline_details == {"offset_minutes": 60, "type": "percentage"}
+        assert bundle.trigger.baseline_details == {"offset_minutes": 60, "type": "percentage"}
 
     def test_baseline_1_hour_ago_default(self):
         """Test baseline 1 hour ago with default percentage."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -582,11 +584,11 @@ class TestTriggerBuilderBaseline:
             .baseline_1_hour_ago()
             .build()
         )
-        assert trigger.baseline_details["type"] == "percentage"
+        assert bundle.trigger.baseline_details["type"] == "percentage"
 
     def test_baseline_1_hour_ago_value(self):
         """Test baseline comparison to 1 hour ago (value)."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -594,11 +596,11 @@ class TestTriggerBuilderBaseline:
             .baseline_1_hour_ago("value")
             .build()
         )
-        assert trigger.baseline_details == {"offset_minutes": 60, "type": "value"}
+        assert bundle.trigger.baseline_details == {"offset_minutes": 60, "type": "value"}
 
     def test_baseline_1_day_ago(self):
         """Test baseline comparison to 1 day ago."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -606,11 +608,11 @@ class TestTriggerBuilderBaseline:
             .baseline_1_day_ago()
             .build()
         )
-        assert trigger.baseline_details == {"offset_minutes": 1440, "type": "percentage"}
+        assert bundle.trigger.baseline_details == {"offset_minutes": 1440, "type": "percentage"}
 
     def test_baseline_1_week_ago(self):
         """Test baseline comparison to 1 week ago."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -618,11 +620,11 @@ class TestTriggerBuilderBaseline:
             .baseline_1_week_ago()
             .build()
         )
-        assert trigger.baseline_details == {"offset_minutes": 10080, "type": "percentage"}
+        assert bundle.trigger.baseline_details == {"offset_minutes": 10080, "type": "percentage"}
 
     def test_baseline_4_weeks_ago(self):
         """Test baseline comparison to 4 weeks ago."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -630,11 +632,11 @@ class TestTriggerBuilderBaseline:
             .baseline_4_weeks_ago()
             .build()
         )
-        assert trigger.baseline_details == {"offset_minutes": 40320, "type": "percentage"}
+        assert bundle.trigger.baseline_details == {"offset_minutes": 40320, "type": "percentage"}
 
     def test_baseline_custom_valid(self):
         """Test custom baseline with valid offset."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()
             .count()
@@ -642,7 +644,7 @@ class TestTriggerBuilderBaseline:
             .baseline(10080, "value")
             .build()
         )
-        assert trigger.baseline_details == {"offset_minutes": 10080, "type": "value"}
+        assert bundle.trigger.baseline_details == {"offset_minutes": 10080, "type": "value"}
 
     def test_baseline_custom_invalid_offset(self):
         """Test that invalid baseline offset raises error."""
@@ -657,8 +659,8 @@ class TestTriggerBuilderBaseline:
 
     def test_no_baseline(self):
         """Test trigger without baseline."""
-        trigger = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).build()
-        assert trigger.baseline_details is None
+        bundle = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).build()
+        assert bundle.trigger.baseline_details is None
 
 
 class TestTriggerBuilderValidationConstraints:
@@ -677,7 +679,7 @@ class TestTriggerBuilderValidationConstraints:
     def test_exceeded_limit_valid_range(self):
         """Test all valid exceeded_limit values."""
         for limit in [1, 2, 3, 4, 5]:
-            trigger = (
+            bundle = (
                 TriggerBuilder("Test")
                 .last_30_minutes()
                 .count()
@@ -685,13 +687,13 @@ class TestTriggerBuilderValidationConstraints:
                 .exceeded_limit(limit)
                 .build()
             )
-            assert trigger.threshold.exceeded_limit == limit
+            assert bundle.trigger.threshold.exceeded_limit == limit
 
     def test_frequency_vs_duration_valid(self):
         """Test that duration <= frequency * 4 passes."""
         # 30 minutes (1800s) with every_minute (60s): 1800 <= 60 * 4 = 240 (FAILS)
         # So we need frequency of at least 450s for 30 min duration
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()  # 1800s
             .count()
@@ -699,7 +701,7 @@ class TestTriggerBuilderValidationConstraints:
             .frequency(450)  # 1800 <= 450 * 4 = 1800 (OK)
             .build()
         )
-        assert trigger.frequency == 450
+        assert bundle.trigger.frequency == 450
 
     def test_frequency_vs_duration_invalid(self):
         """Test that duration > frequency * 4 raises error."""
@@ -716,7 +718,7 @@ class TestTriggerBuilderValidationConstraints:
     def test_frequency_vs_duration_edge_case(self):
         """Test frequency vs duration at exact boundary."""
         # 1 hour (3600s) with every 15 minutes (900s): 3600 <= 900 * 4 = 3600 (OK)
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .last_1_hour()  # 3600s
             .count()
@@ -724,15 +726,15 @@ class TestTriggerBuilderValidationConstraints:
             .every_15_minutes()  # 900s: 3600 == 900 * 4 (OK)
             .build()
         )
-        assert trigger.query.time_range == 3600
-        assert trigger.frequency == 900
+        assert bundle.trigger.query.time_range == 3600
+        assert bundle.trigger.frequency == 900
 
     def test_default_frequency_with_default_duration(self):
         """Test default frequency (900s) works with default duration (3600s)."""
         # Default: 1 hour (3600s) with 15 min frequency (900s): 3600 <= 900 * 4 = 3600 (OK)
-        trigger = TriggerBuilder("Test").count().threshold_gt(100).build()
-        assert trigger.query.time_range == 3600
-        assert trigger.frequency == 900
+        bundle = TriggerBuilder("Test").count().threshold_gt(100).build()
+        assert bundle.trigger.query.time_range == 3600
+        assert bundle.trigger.frequency == 900
 
 
 class TestTriggerBuilderPhase25Integration:
@@ -740,7 +742,7 @@ class TestTriggerBuilderPhase25Integration:
 
     def test_trigger_with_tags_and_baseline(self):
         """Test trigger with both tags and baseline."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Test")
             .dataset("my-dataset")
             .last_30_minutes()
@@ -754,16 +756,16 @@ class TestTriggerBuilderPhase25Integration:
             .email("oncall@example.com")
             .build()
         )
-        assert trigger.tags == [
+        assert bundle.trigger.tags == [
             {"key": "team", "value": "backend"},
             {"key": "severity", "value": "high"},
         ]
-        assert trigger.baseline_details == {"offset_minutes": 60, "type": "percentage"}
-        assert trigger.frequency == 600
+        assert bundle.trigger.baseline_details == {"offset_minutes": 60, "type": "percentage"}
+        assert bundle.trigger.frequency == 600
 
     def test_all_features_combined(self):
         """Test trigger using all Phase 2.5 features."""
-        trigger = (
+        bundle = (
             TriggerBuilder("Complex Trigger")
             .description("Full feature test")
             .dataset("my-dataset")
@@ -782,7 +784,7 @@ class TestTriggerBuilderPhase25Integration:
             .baseline_1_day_ago("percentage")
             .build()
         )
-        assert trigger.threshold.exceeded_limit == 3
-        assert len(trigger.tags) == 2
-        assert trigger.baseline_details is not None
-        assert trigger.frequency == 1800
+        assert bundle.trigger.threshold.exceeded_limit == 3
+        assert len(bundle.trigger.tags) == 2
+        assert bundle.trigger.baseline_details is not None
+        assert bundle.trigger.frequency == 1800
