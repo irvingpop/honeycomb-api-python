@@ -64,12 +64,13 @@ SLO_DESCRIPTIONS = {
         "Returns the complete SLO configuration including the derived column used for the SLI calculation."
     ),
     "honeycomb_create_slo": (
-        "Creates a new Service Level Objective (SLO) with optional derived column and burn alerts. "
-        "Use this when defining reliability targets for services, such as 99.9% availability or p99 latency under 200ms. "
-        "Requires a dataset, SLO name, target percentage (or per-million), time period in days, and an SLI definition with an alias. "
-        "If the SLI expression is provided, a new derived column will be created automatically. "
-        "You can also configure burn alerts to notify when error budget is depleting too quickly. "
-        "Supports both single-dataset and environment-wide SLOs (when multiple datasets are specified)."
+        "Creates a new Service Level Objective (SLO) to track reliability targets, with automatic derived column creation if needed. "
+        "IMPORTANT: Use this tool (not honeycomb_create_derived_column) when you want to create an SLO - it will create both the SLI derived column AND the SLO in one operation. "
+        "Use this when defining reliability targets for services, such as 99.9% availability or p99 latency targets. "
+        "Requires a dataset, SLO name, target (as percentage, per-million, or nines), time period in days, and an SLI definition. "
+        "For the SLI, provide an alias and optionally an expression - if expression is provided, a new derived column is created inline; if only alias is provided, it uses an existing derived column. "
+        "You can also add burn alerts inline to notify when error budget depletes too quickly. "
+        "Supports both single-dataset and multi-dataset SLOs."
     ),
     "honeycomb_update_slo": (
         "Updates an existing SLO's target percentage, time period, or SLI configuration. "
@@ -262,8 +263,9 @@ DERIVED_COLUMN_DESCRIPTIONS = {
         "Returns the complete derived column configuration including the calculation expression and metadata."
     ),
     "honeycomb_create_derived_column": (
-        "Creates a new derived column that calculates values from event fields using expressions. "
-        "Use this to create computed metrics (e.g., success rate from status codes), normalize data formats, or prepare fields for SLI calculations. "
+        "Creates a new standalone derived column that calculates values from event fields using expressions. "
+        "Use this for general-purpose computed metrics, data normalization, or calculations that will be used in multiple queries. "
+        "NOTE: If you are creating a derived column specifically for an SLO, use honeycomb_create_slo instead with an inline SLI expression - it creates both in one operation. "
         "Requires the dataset slug (use '__all__' for environment-wide), an alias (the column name), and an expression using Honeycomb's query language. "
         "Common expression functions include IF() for conditionals, EQUALS/LT/GT for comparisons, and field references with $ prefix (e.g., $status_code). "
         "Optional description parameter documents the column's purpose for team members."

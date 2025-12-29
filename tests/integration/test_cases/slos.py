@@ -30,16 +30,21 @@ TEST_CASES = [
         "id": "slo_inline_expression",
         "description": "SLO with inline derived column expression",
         "prompt": (
-            "Create an SLO in dataset 'api-logs' with 99.5% target over 30 days "
-            "where the SLI is the ratio of requests with status_code < 400 to total requests"
+            "Create an SLO named 'API Availability' in dataset 'api-logs' with 99.5% target over 30 days. "
+            "For the SLI, create a NEW derived column inline: set alias to 'success_rate' "
+            "and expression to IF(LT($status_code, 400), 1, 0) with description 'Success indicator'"
         ),
         "expected_tool": "honeycomb_create_slo",
         "expected_params": {
             "dataset": "api-logs",
+            "name": "API Availability",
             "target_per_million": 995000,
         },
         "assertion_checks": [
-            "'expression' in params['sli'] or 'alias' in params['sli']",
+            "'sli' in params",
+            "'alias' in params['sli']",
+            "params['sli'].get('alias') == 'success_rate'",
+            "'expression' in params['sli']",
         ],
     },
     {

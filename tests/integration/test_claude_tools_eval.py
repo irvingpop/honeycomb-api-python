@@ -170,9 +170,10 @@ def call_claude_with_tools(client, prompt: str, use_cache: bool = True) -> dict:
         if cached is not None:
             return deserialize_cached_result(cached)
 
-    response = client.messages.create(
+    response = client.beta.messages.create(
         model="claude-sonnet-4-5-20250929",
         max_tokens=1024,
+        betas=["advanced-tool-use-2025-11-20"],
         tools=HONEYCOMB_TOOLS,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}],

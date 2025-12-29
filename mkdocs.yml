@@ -62,6 +62,7 @@ nav:
       - Error Handling: advanced/error-handling.md
       - Retry Configuration: advanced/retry-config.md
       - Async vs Sync: advanced/async-sync.md
+      - Claude Tool Definitions: claude-tools.md
   - API Reference:
       - Client: api/client.md
       - Resources: api/resources.md
