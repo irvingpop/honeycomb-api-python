@@ -183,8 +183,7 @@ TEST_CASES = [
         "id": "query_run_or_filter_combination",
         "description": "OR filter combination",
         "prompt": (
-            "Check api-logs for problematic requests: either server errors (status >= 500) "
-            "or slow responses (duration > 5000ms) in the last hour"
+            "Check api-logs for problematic requests of either type: server errors (status >= 500) OR slow responses (duration > 5000ms) in the last hour"
         ),
         "expected_tool": "honeycomb_run_query",
         "expected_params": {

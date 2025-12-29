@@ -243,7 +243,17 @@ class TestArgumentCorrectness:
         """Verify parameter assertions."""
         result = call_claude_with_tools(anthropic_client, test_case["prompt"])
 
-        assert len(result["tool_calls"]) >= 1, f"No tool calls for: {test_case['description']}"
+        if len(result["tool_calls"]) < 1:
+            # Print debug info when no tool calls made
+            print("\n" + "=" * 80)
+            print(f"NO TOOL CALLS MADE: {test_case['id']}")
+            print("=" * 80)
+            print(f"\nPROMPT:\n{test_case['prompt']}\n")
+            print(f"CLAUDE'S RESPONSE:\n{result['text']}\n")
+            print(f"STOP REASON: {result['stop_reason']}\n")
+            print("=" * 80 + "\n")
+            raise AssertionError(f"No tool calls for: {test_case['description']}")
+
         tool_call = result["tool_calls"][0]
         params = tool_call.input
 
@@ -254,32 +264,44 @@ class TestArgumentCorrectness:
             return
 
         # Check expected parameters (partial match)
-        for key, expected_value in expected_params.items():
-            if "." in key:
-                # Nested field access (e.g., "threshold.op")
-                parts = key.split(".")
-                current = params
-                for part in parts[:-1]:
-                    current = current.get(part, {})
-                actual_value = current.get(parts[-1])
-            else:
-                actual_value = params.get(key)
+        try:
+            for key, expected_value in expected_params.items():
+                if "." in key:
+                    # Nested field access (e.g., "threshold.op")
+                    parts = key.split(".")
+                    current = params
+                    for part in parts[:-1]:
+                        current = current.get(part, {})
+                    actual_value = current.get(parts[-1])
+                else:
+                    actual_value = params.get(key)
 
-            # For dict values, do deep equality
-            if isinstance(expected_value, dict):
-                for nested_key, nested_val in expected_value.items():
-                    assert actual_value.get(nested_key) == nested_val, (
-                        f"{test_case['id']}: {key}.{nested_key} = {actual_value.get(nested_key)}, "
-                        f"expected {nested_val}"
+                # For dict values, do deep equality
+                if isinstance(expected_value, dict):
+                    for nested_key, nested_val in expected_value.items():
+                        assert actual_value.get(nested_key) == nested_val, (
+                            f"{test_case['id']}: {key}.{nested_key} = {actual_value.get(nested_key)}, "
+                            f"expected {nested_val}"
+                        )
+                else:
+                    assert actual_value == expected_value, (
+                        f"{test_case['id']}: {key} = {actual_value}, expected {expected_value}"
                     )
-            else:
-                assert actual_value == expected_value, (
-                    f"{test_case['id']}: {key} = {actual_value}, expected {expected_value}"
-                )
 
-        # Run custom assertions
-        for assertion in test_case.get("assertion_checks", []):
-            check_assertion(assertion, params)
+            # Run custom assertions
+            for assertion in test_case.get("assertion_checks", []):
+                check_assertion(assertion, params)
+        except AssertionError:
+            # On failure, print detailed debug information
+            print("\n" + "=" * 80)
+            print(f"TEST FAILURE: {test_case['id']}")
+            print("=" * 80)
+            print(f"\nPROMPT:\n{test_case['prompt']}\n")
+            print(f"CLAUDE'S REASONING:\n{result['text']}\n")
+            print(f"TOOL CALLED: {tool_call.name}\n")
+            print(f"TOOL PARAMETERS:\n{json.dumps(params, indent=2)}\n")
+            print("=" * 80 + "\n")
+            raise
 
 
 # ==============================================================================

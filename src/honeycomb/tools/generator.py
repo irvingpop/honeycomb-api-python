@@ -554,11 +554,18 @@ def generate_create_burn_alert_tool() -> dict[str, Any]:
         schema["$defs"] = base_schema["$defs"]
 
     examples = [
-        # Exhaustion time alert with ID-based recipient
+        # Exhaustion time alert without recipients (recipients are optional)
         {
             "dataset": "api-logs",
             "alert_type": "exhaustion_time",
             "slo_id": "slo-123",
+            "exhaustion_minutes": 60,
+        },
+        # Exhaustion time alert with ID-based recipient
+        {
+            "dataset": "api-logs",
+            "alert_type": "exhaustion_time",
+            "slo_id": "slo-456",
             "exhaustion_minutes": 60,
             "recipients": [{"id": "recip-123"}],
         },
@@ -566,7 +573,7 @@ def generate_create_burn_alert_tool() -> dict[str, Any]:
         {
             "dataset": "production",
             "alert_type": "budget_rate",
-            "slo_id": "slo-456",
+            "slo_id": "slo-789",
             "budget_rate_window_minutes": 60,
             "budget_rate_decrease_threshold_per_million": 10000,  # 1% drop in 1 hour
             "description": "Alert when error budget drops by 1% in 1 hour",
@@ -579,7 +586,7 @@ def generate_create_burn_alert_tool() -> dict[str, Any]:
         {
             "dataset": "critical-services",
             "alert_type": "exhaustion_time",
-            "slo_id": "slo-789",
+            "slo_id": "slo-abc",
             "exhaustion_minutes": 30,
             "description": "Critical: Budget exhausting in 30 minutes",
             "recipients": [

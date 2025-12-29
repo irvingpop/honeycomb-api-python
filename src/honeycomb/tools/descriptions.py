@@ -110,7 +110,8 @@ BURN_ALERT_DESCRIPTIONS = {
         "Requires a dataset, the SLO ID to attach to, alert type (exhaustion_time or budget_rate), and threshold value. "
         "For exhaustion_time alerts, specify the threshold in minutes (fires when budget will be exhausted in X minutes). "
         "For budget_rate alerts, specify threshold as percentage drop within a time window. "
-        "Recipients must already exist in Honeycomb (create them first with honeycomb_create_recipient if needed)."
+        "Recipients are OPTIONAL - omit them to create a silent alert, or include inline recipients "
+        "(type + target) to create and attach them automatically."
     ),
     "honeycomb_update_burn_alert": (
         "Updates an existing burn alert's threshold, recipients, or alert type. "
