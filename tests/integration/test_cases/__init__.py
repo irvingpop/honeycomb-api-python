@@ -21,6 +21,7 @@ from . import (
     markers,
     queries,
     recipients,
+    service_map,
     slos,
     triggers,
 )
@@ -34,7 +35,7 @@ ALL_TEST_CASES_BY_RESOURCE = {
     "triggers": triggers.TEST_CASES,
     "slos": slos.TEST_CASES,
     "burn_alerts": burn_alerts.TEST_CASES,
-    # Priority 2 & 3 (Skeleton - expand as tools are implemented)
+    # Priority 2 & 3 (All implemented)
     "datasets": datasets.TEST_CASES,
     "columns": columns.TEST_CASES,
     "derived_columns": derived_columns.TEST_CASES,
@@ -43,6 +44,7 @@ ALL_TEST_CASES_BY_RESOURCE = {
     "boards": boards.TEST_CASES,
     "markers": markers.TEST_CASES,
     "events": events.TEST_CASES,
+    "service_map": service_map.TEST_CASES,
 }
 
 

@@ -16,6 +16,7 @@ from honeycomb.models import (
     MarkerSettingCreate,
     QuerySpec,
     RecipientCreate,
+    ServiceMapDependencyRequestCreate,
     SLOCreate,
     TriggerCreate,
 )
@@ -1977,6 +1978,42 @@ def generate_send_batch_events_tool() -> dict[str, Any]:
 
 
 # ==============================================================================
+# Service Map Dependencies Tool Definitions
+# ==============================================================================
+
+
+def generate_query_service_map_tool() -> dict[str, Any]:
+    """Generate honeycomb_query_service_map tool definition."""
+    base_schema = generate_schema_from_model(
+        ServiceMapDependencyRequestCreate,
+        exclude_fields={"id", "status"},
+    )
+
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+    schema["properties"].update(base_schema["properties"])
+    schema["required"].extend(base_schema.get("required", []))
+
+    # Add max_pages parameter
+    add_parameter(schema, "max_pages", "integer", "Maximum pages to fetch (default: 640, up to 64K results)", required=False)
+
+    examples: list[dict[str, Any]] = [
+        # Simple: last 2 hours
+        {"time_range": 7200},
+        # With filters
+        {"time_range": 3600, "filters": [{"name": "user-service"}]},
+        # Absolute time range
+        {"start_time": 1640000000, "end_time": 1640003600},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_query_service_map",
+        description=get_description("honeycomb_query_service_map"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
 # Generator Functions
 # ==============================================================================
 
@@ -1985,13 +2022,13 @@ def generate_all_tools() -> list[dict[str, Any]]:
     """Generate all tool definitions.
 
     Returns:
-        List of 55 tool definitions:
+        List of 56 tool definitions:
         - Priority 1: Triggers (5), SLOs (5), Burn Alerts (5) = 15 tools
         - Batch 1: Datasets (5), Columns (5) = 10 tools
         - Batch 2: Recipients (6), Derived Columns (5) = 11 tools
         - Batch 3a: Queries (3) = 3 tools
         - Batch 3b: Boards (5) = 5 tools
-        - Batch 4: Markers (4), Marker Settings (5), Events (2) = 11 tools
+        - Batch 4: Markers (4), Marker Settings (5), Events (2), Service Map (1) = 12 tools
     """
     tools = [
         # Priority 1: Triggers
@@ -2061,6 +2098,8 @@ def generate_all_tools() -> list[dict[str, Any]]:
         # Batch 4: Events
         generate_send_event_tool(),
         generate_send_batch_events_tool(),
+        # Batch 4: Service Map
+        generate_query_service_map_tool(),
     ]
 
     return tools
@@ -2157,6 +2196,9 @@ def generate_tools_for_resource(resource: str) -> list[dict[str, Any]]:
         "events": [
             generate_send_event_tool,
             generate_send_batch_events_tool,
+        ],
+        "service_map": [
+            generate_query_service_map_tool,
         ],
     }
 

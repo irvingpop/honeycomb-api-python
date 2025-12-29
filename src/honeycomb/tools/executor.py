@@ -18,6 +18,7 @@ from honeycomb.models import (
     MarkerSettingCreate,
     QuerySpec,
     RecipientCreate,
+    ServiceMapDependencyRequestCreate,
     SLOCreate,
 )
 from honeycomb.tools.builders import _build_board, _build_slo, _build_trigger
@@ -182,12 +183,15 @@ async def execute_tool(
         return await _execute_send_event(client, tool_input)
     elif tool_name == "honeycomb_send_batch_events":
         return await _execute_send_batch_events(client, tool_input)
+    # Service Map
+    elif tool_name == "honeycomb_query_service_map":
+        return await _execute_query_service_map(client, tool_input)
     else:
         raise ValueError(
             f"Unknown tool: {tool_name}. "
             "Valid tools: triggers (5), slos (5), burn_alerts (5), datasets (5), columns (5), "
             "recipients (6), derived_columns (5), queries (3), boards (5), markers (4), "
-            "marker_settings (5), events (2)"
+            "marker_settings (5), events (2), service_map (1)"
         )
 
 
@@ -802,6 +806,32 @@ async def _execute_send_batch_events(client: "HoneycombClient", tool_input: dict
 
     results = await client.events.send_batch_async(dataset=dataset, events=events)
     return json.dumps([r.model_dump() for r in results], default=str)
+
+
+# ==============================================================================
+# Service Map Dependencies
+# ==============================================================================
+
+
+async def _execute_query_service_map(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_query_service_map.
+
+    Performs create + poll + paginate automatically.
+    """
+    max_pages = tool_input.pop("max_pages", 640)
+    request = ServiceMapDependencyRequestCreate(**tool_input)
+
+    # Query with polling and pagination - returns ServiceMapDependencyResult
+    result = await client.service_map_dependencies.get_async(
+        request=request,
+        max_pages=max_pages,
+    )
+
+    # Return just the dependencies list
+    if result.dependencies:
+        return json.dumps([d.model_dump() for d in result.dependencies], default=str)
+    else:
+        return json.dumps([], default=str)
 
 
 __all__ = [

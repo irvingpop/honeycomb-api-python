@@ -438,6 +438,21 @@ EVENT_DESCRIPTIONS = {
     ),
 }
 
+# ==============================================================================
+# Service Map Dependencies
+# ==============================================================================
+
+SERVICE_MAP_DESCRIPTIONS = {
+    "honeycomb_query_service_map": (
+        "Queries service dependencies and relationships from distributed trace data with automatic polling and pagination. "
+        "Use this to discover service-to-service call patterns, identify dependencies, visualize system architecture, or debug cross-service issues. "
+        "Requires a time range specification (time_range in seconds, or start_time/end_time as Unix timestamps). "
+        "Optional filters parameter allows narrowing to specific services by name. "
+        "This tool performs create + poll + paginate operations automatically: creates async query, polls until ready, fetches all pages of results (up to 64K dependencies). "
+        "Warning: Large time ranges may return thousands of dependencies across hundreds of API pages - use max_pages parameter to limit."
+    ),
+}
+
 # Combined mapping of all descriptions
 ALL_DESCRIPTIONS = {
     **TRIGGER_DESCRIPTIONS,
@@ -452,6 +467,7 @@ ALL_DESCRIPTIONS = {
     **MARKER_DESCRIPTIONS,
     **MARKER_SETTING_DESCRIPTIONS,
     **EVENT_DESCRIPTIONS,
+    **SERVICE_MAP_DESCRIPTIONS,
 }
 
 
