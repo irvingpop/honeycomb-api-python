@@ -1,17 +1,16 @@
-[tool.poetry]
+[project]
 name = "honeycomb-api"
-version = "0.1.0"
 description = "Python client for the Honeycomb.io API"
-authors = ["Irving Popovetsky"]
+authors = [
+    {name = "Irving Popovetsky"}
+]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/irvingpop/honeycomb-api-python"
-repository = "https://github.com/irvingpop/honeycomb-api-python"
+requires-python = ">=3.10"
 keywords = ["honeycomb", "observability", "api", "client", "sdk"]
 classifiers = [
     "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -19,6 +18,14 @@ classifiers = [
     "Programming Language :: Python :: 3.13",
     "Typing :: Typed",
 ]
+dynamic = ["version", "dependencies"]
+
+[project.urls]
+Homepage = "https://github.com/irvingpop/honeycomb-api-python"
+Repository = "https://github.com/irvingpop/honeycomb-api-python"
+
+[tool.poetry]
+version = "0.1.0"
 packages = [{ include = "honeycomb", from = "src" }]
 
 [tool.poetry.dependencies]
@@ -51,7 +58,7 @@ optional = true
 
 [tool.poetry.group.evals.dependencies]
 deepeval = {version = "^3.7.5", python = ">=3.10,<4.0"}
-anthropic = ">=0.40.0"
+anthropic = ">=0.75.0"
 
 [build-system]
 requires = ["poetry-core"]

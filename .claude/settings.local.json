@@ -23,7 +23,8 @@
       "Skill(check)",
       "Skill(check:*)",
       "Bash(cat:*)",
-      "Bash(poetry lock:*)"
+      "Bash(poetry lock:*)",
+      "Bash(poetry check:*)"
     ]
   }
 }

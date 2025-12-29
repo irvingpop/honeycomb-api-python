@@ -1,6 +1,8 @@
 """Honeycomb API client for Python."""
 
-__version__ = "0.1.0"
+from importlib.metadata import version
+
+__version__ = version("honeycomb-api")
 
 from . import tools
 from .auth import APIKeyAuth, AuthStrategy, ManagementKeyAuth, create_auth
