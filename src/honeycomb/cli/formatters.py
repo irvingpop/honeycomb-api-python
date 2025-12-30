@@ -57,6 +57,17 @@ def output_result(
             console.print(data.get("id", str(data)))
         return
 
+    # Special handling for QueryResult objects in table mode (duck typing check)
+    if (
+        format == OutputFormat.table
+        and isinstance(data, BaseModel)
+        and hasattr(data, "data")
+        and data.data is not None
+        and hasattr(data.data, "rows")
+    ):
+        _output_query_result(data)
+        return
+
     # Convert Pydantic models to dicts for easier handling
     data_dict: Any
     if isinstance(data, BaseModel):
@@ -119,3 +130,58 @@ def _output_single_item(data: dict[str, Any]) -> None:
         table.add_row(key, value_str)
 
     console.print(table)
+
+
+def _output_query_result(result: Any) -> None:
+    """Output a QueryResult object with proper formatting.
+
+    Displays query results as a table with breakdown columns and calculation results.
+    Shows query URL and result count.
+    """
+    # Check if data is available
+    if not result.data or not hasattr(result.data, "rows"):
+        console.print("[yellow]No data available (query may still be processing)[/yellow]")
+        return
+
+    rows = result.data.rows
+
+    if not rows:
+        console.print("[yellow]Query returned no results[/yellow]")
+        # Still show the query URL
+        if result.links and "query_url" in result.links:
+            console.print(f"\n[dim]View in UI: {result.links['query_url']}[/dim]")
+        return
+
+    # Create table with all columns from first row
+    table = Table(title=f"Query Results ({len(rows)} rows)")
+
+    # Get all column names from first row
+    columns = list(rows[0].keys())
+
+    for col in columns:
+        # Style calculation columns differently
+        if col.isupper() or col.startswith("P"):  # COUNT, AVG, P99, etc.
+            table.add_column(col, style="green bold", justify="right")
+        else:
+            table.add_column(col, style="cyan")
+
+    # Add rows
+    for row in rows:
+        formatted_row = []
+        for col in columns:
+            value = row.get(col, "-")
+            # Format numbers nicely
+            if isinstance(value, (int, float)):
+                if isinstance(value, float):
+                    formatted_row.append(f"{value:.2f}")
+                else:
+                    formatted_row.append(str(value))
+            else:
+                formatted_row.append(str(value))
+        table.add_row(*formatted_row)
+
+    console.print(table)
+
+    # Show query metadata
+    if result.links and "query_url" in result.links:
+        console.print(f"\n[dim]View in UI: {result.links['query_url']}[/dim]")

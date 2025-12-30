@@ -35,7 +35,10 @@ def _register_commands() -> None:
     app.add_typer(triggers.app, name="triggers")
     app.add_typer(slos.app, name="slos")
     app.add_typer(boards.app, name="boards")
+    app.add_typer(queries.app, name="query")
+    # Add aliases for query
     app.add_typer(queries.app, name="queries")
+    app.add_typer(queries.app, name="q")
     app.add_typer(datasets.app, name="datasets")
     app.add_typer(markers.app, name="markers")
     app.add_typer(recipients.app, name="recipients")

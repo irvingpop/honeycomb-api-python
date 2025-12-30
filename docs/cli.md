@@ -23,15 +23,18 @@ poetry add honeycomb-api --extras cli
 # Configure authentication
 export HONEYCOMB_API_KEY=your_api_key_here
 
-# List triggers in a dataset
-honeycomb triggers list --dataset my-dataset
+# List all triggers (environment-wide)
+hny triggers list
+
+# Run a quick query
+hny q run --count --last-30-minutes
 
 # Export a trigger
-honeycomb triggers export trigger-123 --dataset my-dataset > trigger.json
+hny triggers export trigger-123 --dataset my-dataset > trigger.json
 
 # Import to another environment
 export HONEYCOMB_API_KEY=another_api_key
-honeycomb triggers create --dataset my-dataset --from-file trigger.json
+hny triggers create --dataset my-dataset --from-file trigger.json
 ```
 
 ## Authentication
@@ -156,33 +159,78 @@ honeycomb boards export-all --output-dir ./boards/
 
 ### Queries
 
-Run and manage queries. List queries default to environment-wide:
+Run and manage queries. List queries default to environment-wide. Command aliases: `q`, `queries`.
 
 ```bash
 # List all saved queries (environment-wide)
-honeycomb queries list
+hny q list
 
 # List queries in specific dataset
-honeycomb queries list --dataset my-dataset
+hny q list --dataset my-dataset
+
+# Run a query using builder flags (recommended)
+hny q run --dataset my-dataset --count --last-30-minutes
+hny q run --dataset my-dataset --count --avg duration_ms --where-gte status_code,500 --last-24-hours
+hny q run --count --p99 duration_ms --where-equals service,api --group-by endpoint --last-1-hour
 
 # Run a query from JSON file
-honeycomb queries run --dataset my-dataset --from-file query.json
+hny q run --dataset my-dataset --from-file query.json
 
-# Run inline query
-honeycomb queries run --dataset my-dataset --spec '{"calculations": [{"op": "COUNT"}], "time_range": 3600}'
+# Run inline query (JSON spec)
+hny q run --dataset my-dataset --spec '{"calculations": [{"op": "COUNT"}], "time_range": 3600}'
 
 # Run existing saved query
-honeycomb queries run --dataset my-dataset --query-id query-123
+hny q run --dataset my-dataset --query-id query-123
 
 # Create (save) a query
-honeycomb queries create --dataset my-dataset --from-file query.json
+hny queries create --dataset my-dataset --from-file query.json
 
 # Get query details
-honeycomb queries get query-123 --dataset my-dataset
+hny q get query-123
 
 # Get query results
-honeycomb queries get-result result-123 --dataset my-dataset
+hny q get-result result-123
 ```
+
+#### Query Builder Flags
+
+The `run` command supports QueryBuilder methods as CLI flags:
+
+**Calculations** (repeatable for multi-column):
+- `--count` - Count results
+- `--avg <column>` - Average of column
+- `--sum <column>` - Sum of column
+- `--min <column>` - Minimum value
+- `--max <column>` - Maximum value
+- `--p50 <column>` - P50 percentile
+- `--p90 <column>` - P90 percentile
+- `--p95 <column>` - P95 percentile
+- `--p99 <column>` - P99 percentile
+
+**Time Ranges** (mutually exclusive):
+- `--time-range <seconds>` - Custom time range
+- `--last-10-minutes`
+- `--last-30-minutes`
+- `--last-1-hour`
+- `--last-2-hours`
+- `--last-8-hours`
+- `--last-24-hours`
+- `--last-7-days`
+
+**Filters** (repeatable, format: `column,value`):
+- `--where-equals service,api` - Equals filter
+- `--where-ne status_code,200` - Not equals
+- `--where-gt duration_ms,1000` - Greater than
+- `--where-gte status_code,400` - Greater than or equal
+- `--where-lt duration_ms,100` - Less than
+- `--where-lte status_code,299` - Less than or equal
+- `--where-contains path,/api/` - Contains substring
+- `--where-exists trace.span_id` - Column exists
+
+**Grouping & Ordering**:
+- `--group-by <column>` - Group by column (repeatable)
+- `--order-by <field>` - Order by field
+- `--limit <n>` - Limit results
 
 ### Datasets
 
