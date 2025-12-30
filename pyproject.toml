@@ -24,6 +24,10 @@ dynamic = ["version", "dependencies"]
 Homepage = "https://github.com/irvingpop/honeycomb-api-python"
 Repository = "https://github.com/irvingpop/honeycomb-api-python"
 
+[project.scripts]
+honeycomb = "honeycomb.cli:app"
+hny = "honeycomb.cli:app"
+
 [tool.poetry]
 version = "0.1.1"
 packages = [{ include = "honeycomb", from = "src" }]
@@ -36,6 +40,14 @@ attrs = ">=23.0"          # Used by generated client
 python-dateutil = ">=2.8" # Used by generated client
 pytest-xdist = "^3.8.0"
 
+[tool.poetry.group.cli]
+optional = true
+
+[tool.poetry.group.cli.dependencies]
+typer = {extras = ["all"], version = ">=0.9.0"}
+rich = ">=13.0"
+pyyaml = ">=6.0"
+
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.0"
 pytest-asyncio = ">=0.24"
@@ -43,6 +55,7 @@ respx = ">=0.21"
 ruff = ">=0.8.0"
 mypy = ">=1.0"
 mkdocs-include-markdown-plugin = "^7.2.0"
+types-pyyaml = "^6.0.12.20250915"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = ">=1.5"
@@ -97,6 +110,9 @@ ignore = [
     "E501",   # line too long (handled by formatter)
     "B008",   # do not perform function calls in argument defaults
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"src/honeycomb/cli/*.py" = ["B904"]  # CLI error exits don't need exception chaining
 
 [tool.ruff.lint.isort]
 known-first-party = ["honeycomb"]
