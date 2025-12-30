@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import suppress
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from email.utils import parsedate_to_datetime
 from typing import TYPE_CHECKING, Any
@@ -64,12 +64,7 @@ class RetryConfig:
     base_delay: float = 1.0
     max_delay: float = 30.0
     exponential_base: float = 2.0
-    retry_statuses: set[int] = None  # type: ignore
-
-    def __post_init__(self) -> None:
-        """Initialize default retry statuses if not provided."""
-        if self.retry_statuses is None:
-            self.retry_statuses = {429, 500, 502, 503, 504}
+    retry_statuses: set[int] = field(default_factory=lambda: {429, 500, 502, 503, 504})
 
 
 @dataclass

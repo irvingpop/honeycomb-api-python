@@ -568,10 +568,10 @@ class QueryBuilder:
         Returns:
             self for chaining
         """
-        if isinstance(combination, str):
-            self._filter_combination = FilterCombination(combination)
-        else:
+        if isinstance(combination, FilterCombination):
             self._filter_combination = combination
+        else:
+            self._filter_combination = FilterCombination(combination)
         return self
 
     # -------------------------------------------------------------------------

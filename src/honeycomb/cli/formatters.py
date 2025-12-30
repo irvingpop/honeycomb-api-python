@@ -88,8 +88,6 @@ def output_result(
         else:
             # Single item - output as key-value pairs
             _output_single_item(data_dict)
-    else:
-        console.print(f"[red]Unknown output format: {format}[/red]")
 
 
 def _output_table(data: list[dict[str, Any]], columns: list[str] | None = None) -> None:

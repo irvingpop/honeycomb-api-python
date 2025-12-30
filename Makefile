@@ -83,7 +83,7 @@ format:
 	poetry run ruff format src/ tests/
 
 typecheck:
-	poetry run mypy src/
+	poetry run mypy --warn-unreachable --warn-redundant-casts --warn-unused-ignores src/
 
 check: lint typecheck
 	@echo "All checks passed!"
