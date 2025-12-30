@@ -460,6 +460,23 @@ SERVICE_MAP_DESCRIPTIONS = {
     ),
 }
 
+# ==============================================================================
+# Auth
+# ==============================================================================
+
+AUTH_DESCRIPTIONS = {
+    "honeycomb_get_auth": (
+        "Returns metadata about the API key used to authenticate with Honeycomb. "
+        "Use this to verify authentication is working correctly, check key permissions and scopes, "
+        "or discover which team and environment the key belongs to. "
+        "Automatically detects whether to use the v1 endpoint (for regular API keys) or "
+        "v2 endpoint (for management keys) based on the configured credentials. "
+        "Set use_v2=true to explicitly request management key information, which includes "
+        "scopes and team details. Returns an error if use_v2=true but management credentials "
+        "are not configured."
+    ),
+}
+
 # Combined mapping of all descriptions
 ALL_DESCRIPTIONS = {
     **TRIGGER_DESCRIPTIONS,
@@ -475,6 +492,7 @@ ALL_DESCRIPTIONS = {
     **MARKER_SETTING_DESCRIPTIONS,
     **EVENT_DESCRIPTIONS,
     **SERVICE_MAP_DESCRIPTIONS,
+    **AUTH_DESCRIPTIONS,
 }
 
 

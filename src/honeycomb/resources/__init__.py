@@ -1,6 +1,7 @@
 """Resource clients for Honeycomb API."""
 
 from .api_keys import ApiKeysResource
+from .auth import AuthResource
 from .base import BaseResource
 from .boards import BoardsResource
 from .burn_alerts import BurnAlertsResource
@@ -30,6 +31,7 @@ __all__ = [
     "BurnAlertsResource",
     "EventsResource",
     "ApiKeysResource",
+    "AuthResource",
     "EnvironmentsResource",
     "ServiceMapDependenciesResource",
 ]

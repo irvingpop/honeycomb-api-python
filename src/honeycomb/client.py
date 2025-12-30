@@ -26,6 +26,7 @@ from .exceptions import (
 
 if TYPE_CHECKING:
     from .resources.api_keys import ApiKeysResource
+    from .resources.auth import AuthResource
     from .resources.boards import BoardsResource
     from .resources.burn_alerts import BurnAlertsResource
     from .resources.columns import ColumnsResource
@@ -149,6 +150,7 @@ class HoneycombClient:
         self._burn_alerts: BurnAlertsResource | None = None
         self._events: EventsResource | None = None
         self._api_keys: ApiKeysResource | None = None
+        self._auth_resource: AuthResource | None = None
         self._environments: EnvironmentsResource | None = None
         self._service_map_dependencies: ServiceMapDependenciesResource | None = None
 
@@ -281,6 +283,15 @@ class HoneycombClient:
 
             self._api_keys = ApiKeysResource(self)
         return self._api_keys
+
+    @property
+    def auth(self) -> AuthResource:
+        """Access the Auth API."""
+        if self._auth_resource is None:
+            from .resources.auth import AuthResource
+
+            self._auth_resource = AuthResource(self)
+        return self._auth_resource
 
     @property
     def environments(self) -> EnvironmentsResource:

@@ -332,6 +332,30 @@ honeycomb derived-columns export column-123 --dataset my-dataset > column.json
 honeycomb derived-columns export-all --dataset my-dataset --output-dir ./columns/
 ```
 
+### Auth
+
+Check API key metadata and permissions:
+
+```bash
+# Get auth info (v1 endpoint - API key)
+hny auth get
+
+# Get management key info (v2 endpoint)
+hny auth get --v2
+
+# Output as JSON
+hny auth get --output json
+
+# Use specific profile
+hny auth get --profile production
+```
+
+The `auth get` command shows:
+- Team and environment details (v1)
+- Key type and permissions/scopes
+- Expiration time (if applicable)
+- For management keys (v2): key name, scopes, team info
+
 ### Config
 
 Manage CLI configuration:
