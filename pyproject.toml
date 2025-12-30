@@ -29,7 +29,7 @@ honeycomb = "honeycomb.cli:app"
 hny = "honeycomb.cli:app"
 
 [tool.poetry]
-version = "0.2.0"
+version = "0.2.1"
 packages = [{ include = "honeycomb", from = "src" }]
 
 [tool.poetry.dependencies]
