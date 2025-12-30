@@ -477,6 +477,93 @@ AUTH_DESCRIPTIONS = {
     ),
 }
 
+# ==============================================================================
+# API Keys (v2)
+# ==============================================================================
+
+API_KEY_DESCRIPTIONS = {
+    "honeycomb_list_api_keys": (
+        "Lists all API keys for your authenticated team with optional filtering by key type. "
+        "Use this to audit team API keys, discover existing keys before creating new ones, or when migrating to management key authentication. "
+        "Requires management key authentication. The team is automatically detected from your credentials (no team parameter needed). "
+        "Optional key_type parameter filters by 'ingest' or 'configuration' keys. "
+        "Returns a list of API key objects with their IDs, names, types, environment associations, and disabled status. "
+        "Note: The key secrets are not included in list responses for security."
+    ),
+    "honeycomb_get_api_key": (
+        "Retrieves detailed information about a specific API key by ID. "
+        "Use this to inspect an API key's configuration including name, type, environment, and disabled status before updating or deleting it. "
+        "Requires only the key ID parameter - the team is automatically detected from your management key credentials. "
+        "Returns the complete API key configuration but does NOT include the secret (only shown on creation). "
+        "Use this to verify key settings or check which environment a key is associated with."
+    ),
+    "honeycomb_create_api_key": (
+        "Creates a new API key for your authenticated team in a specific environment. "
+        "Use this when provisioning new services, creating separate keys for different applications, or rotating credentials. "
+        "Requires key name, key_type ('ingest' for data sending or 'configuration' for API access), and environment_id. The team is automatically detected from your management key. "
+        "CRITICAL: The secret is only returned once during creation - save it immediately. "
+        "Ingest keys allow sending events, configuration keys allow full API access to the environment. "
+        "Returns the created API key object including the secret field (only time it's available)."
+    ),
+    "honeycomb_update_api_key": (
+        "Updates an existing API key's name or disabled status. "
+        "Use this to rename keys for clarity, disable compromised keys, or re-enable previously disabled keys. "
+        "Requires key ID and at least one of: name (new display name) or disabled (true/false). The team is automatically detected from your credentials. "
+        "Note: You cannot change the key type or environment after creation. To rotate the secret, delete and create a new key. "
+        "The secret value is never returned in update responses."
+    ),
+    "honeycomb_delete_api_key": (
+        "Permanently deletes an API key from Honeycomb. "
+        "Use this when decommissioning services, rotating credentials after a security incident, or cleaning up unused keys. "
+        "Requires only the key ID parameter - the team is automatically detected from your management key. "
+        "Warning: This action cannot be undone. Any services using this key will immediately lose API access. "
+        "The secret cannot be recovered - you must create a new key if deleted accidentally."
+    ),
+}
+
+# ==============================================================================
+# Environments (v2)
+# ==============================================================================
+
+ENVIRONMENT_DESCRIPTIONS = {
+    "honeycomb_list_environments": (
+        "Lists all environments for your authenticated team. "
+        "Use this to discover existing environments, understand team organization, or before creating API keys scoped to specific environments. "
+        "Requires management key authentication. The team is automatically detected from your credentials (no team parameter needed). "
+        "Returns a list of environment objects with their IDs, names, slugs, colors, descriptions, and delete protection status. "
+        "Environments help organize your telemetry data by separating production, staging, development, etc."
+    ),
+    "honeycomb_get_environment": (
+        "Retrieves detailed information about a specific environment by ID, optionally including its datasets. "
+        "Use this to inspect an environment's configuration or get a complete view of an environment including all its datasets. "
+        "Requires only the environment ID parameter - the team is automatically detected from your management key. "
+        "Set with_datasets=true to also return the list of datasets in this environment (useful for understanding environment contents). "
+        "Returns the environment configuration plus optionally a datasets array with all datasets in this environment."
+    ),
+    "honeycomb_create_environment": (
+        "Creates a new environment for organizing telemetry data within your authenticated team. "
+        "Use this when setting up new deployment stages (production, staging, dev), isolating customer data, or creating test environments. "
+        "Requires only the environment name - the team is automatically detected from your management key. "
+        "Optional parameters include description for documentation and color (blue, green, gold, red, purple, or light variants) for visual distinction. "
+        "The environment slug is auto-generated from the name and used for API operations and dataset scoping. "
+        "New environments are delete-protected by default to prevent accidental deletion."
+    ),
+    "honeycomb_update_environment": (
+        "Updates an existing environment's description, color, or delete protection status. "
+        "Use this to add documentation, change visual appearance, or enable/disable delete protection for production environments. "
+        "Requires environment ID and at least one of: description, color, or delete_protected (boolean). The team is automatically detected from your credentials. "
+        "Note: The name and slug cannot be changed after creation. Setting delete_protected=true prevents accidental deletion. "
+        "To delete a protected environment, you must first update it with delete_protected=false."
+    ),
+    "honeycomb_delete_environment": (
+        "Permanently deletes an environment from Honeycomb. "
+        "Use this when decommissioning deployment stages, cleaning up test environments, or reorganizing team structure. "
+        "Requires only the environment ID parameter - the team is automatically detected from your management key. "
+        "Warning: This action cannot be undone. The environment must not be delete-protected. "
+        "All API keys scoped to this environment will become invalid. Datasets are NOT deleted automatically."
+    ),
+}
+
 # Combined mapping of all descriptions
 ALL_DESCRIPTIONS = {
     **TRIGGER_DESCRIPTIONS,
@@ -493,6 +580,8 @@ ALL_DESCRIPTIONS = {
     **EVENT_DESCRIPTIONS,
     **SERVICE_MAP_DESCRIPTIONS,
     **AUTH_DESCRIPTIONS,
+    **API_KEY_DESCRIPTIONS,
+    **ENVIRONMENT_DESCRIPTIONS,
 }
 
 

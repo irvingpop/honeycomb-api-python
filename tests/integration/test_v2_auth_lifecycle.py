@@ -55,7 +55,6 @@ class TestV2AuthLifecycle:
         # 2. Create environment
         env_name = f"test-auth-{unique_id}"
         env = await management_client.environments.create_async(
-            team=team_slug,
             environment=EnvironmentCreate(
                 name=env_name,
                 color=EnvironmentColor.BLUE,
@@ -68,7 +67,6 @@ class TestV2AuthLifecycle:
             # 3. Create API key in environment
             key_name = f"test-key-{unique_id}"
             api_key = await management_client.api_keys.create_async(
-                team=team_slug,
                 api_key=ApiKeyCreate(
                     name=key_name,
                     key_type=ApiKeyType.INGEST,
@@ -84,21 +82,16 @@ class TestV2AuthLifecycle:
             assert api_key.key_type == ApiKeyType.INGEST
 
             # 4. Delete API key
-            await management_client.api_keys.delete_async(
-                team=team_slug,
-                key_id=api_key.id,
-            )
+            await management_client.api_keys.delete_async(key_id=api_key.id)
             print(f"Deleted API key: {api_key.id}")
 
         finally:
             # 5. Cleanup: Disable delete protection then delete environment
             await management_client.environments.update_async(
-                team=team_slug,
                 env_id=env.id,
                 environment=EnvironmentUpdate(delete_protected=False),
             )
             await management_client.environments.delete_async(
-                team=team_slug,
                 env_id=env.id,
             )
             print(f"Deleted environment: {env.id}")

@@ -66,6 +66,28 @@ async def execute_tool(
     # Route to appropriate handler
     if tool_name == "honeycomb_get_auth":
         return await _execute_get_auth(client, tool_input)
+    # API Keys (v2)
+    elif tool_name == "honeycomb_list_api_keys":
+        return await _execute_list_api_keys(client, tool_input)
+    elif tool_name == "honeycomb_get_api_key":
+        return await _execute_get_api_key(client, tool_input)
+    elif tool_name == "honeycomb_create_api_key":
+        return await _execute_create_api_key(client, tool_input)
+    elif tool_name == "honeycomb_update_api_key":
+        return await _execute_update_api_key(client, tool_input)
+    elif tool_name == "honeycomb_delete_api_key":
+        return await _execute_delete_api_key(client, tool_input)
+    # Environments (v2)
+    elif tool_name == "honeycomb_list_environments":
+        return await _execute_list_environments(client, tool_input)
+    elif tool_name == "honeycomb_get_environment":
+        return await _execute_get_environment(client, tool_input)
+    elif tool_name == "honeycomb_create_environment":
+        return await _execute_create_environment(client, tool_input)
+    elif tool_name == "honeycomb_update_environment":
+        return await _execute_update_environment(client, tool_input)
+    elif tool_name == "honeycomb_delete_environment":
+        return await _execute_delete_environment(client, tool_input)
     elif tool_name == "honeycomb_list_triggers":
         return await _execute_list_triggers(client, tool_input)
     elif tool_name == "honeycomb_get_trigger":
@@ -207,6 +229,142 @@ async def _execute_get_auth(client: "HoneycombClient", tool_input: dict[str, Any
     use_v2 = tool_input.get("use_v2")
     result = await client.auth.get_async(use_v2=use_v2)
     return json.dumps(result.model_dump(), default=str)
+
+
+# ==============================================================================
+# API Keys (v2)
+# ==============================================================================
+
+
+async def _execute_list_api_keys(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_list_api_keys tool."""
+    key_type = tool_input.get("key_type")
+    keys = await client.api_keys.list_async(key_type=key_type)
+    return json.dumps([k.model_dump() for k in keys], default=str)
+
+
+async def _execute_get_api_key(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_get_api_key tool."""
+    key = await client.api_keys.get_async(key_id=tool_input["key_id"])
+    return json.dumps(key.model_dump(), default=str)
+
+
+async def _execute_create_api_key(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_create_api_key tool."""
+    from honeycomb.models.api_keys import ApiKeyCreate, ApiKeyType
+
+    api_key = ApiKeyCreate(
+        name=tool_input["name"],
+        key_type=ApiKeyType(tool_input["key_type"]),
+        environment_id=tool_input["environment_id"],
+    )
+    created = await client.api_keys.create_async(api_key=api_key)
+    return json.dumps(created.model_dump(), default=str)
+
+
+async def _execute_update_api_key(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_update_api_key tool."""
+    from honeycomb.models.api_keys import ApiKeyUpdate
+
+    update = ApiKeyUpdate(
+        name=tool_input.get("name"),
+        disabled=tool_input.get("disabled"),
+    )
+    updated = await client.api_keys.update_async(
+        key_id=tool_input["key_id"],
+        api_key=update,
+    )
+    return json.dumps(updated.model_dump(), default=str)
+
+
+async def _execute_delete_api_key(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_delete_api_key tool."""
+    await client.api_keys.delete_async(key_id=tool_input["key_id"])
+    return json.dumps({"status": "deleted", "key_id": tool_input["key_id"]})
+
+
+# ==============================================================================
+# Environments (v2)
+# ==============================================================================
+
+
+async def _execute_list_environments(client: "HoneycombClient", _tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_list_environments tool."""
+    envs = await client.environments.list_async()
+    return json.dumps([e.model_dump() for e in envs], default=str)
+
+
+async def _execute_get_environment(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_get_environment tool."""
+    env = await client.environments.get_async(env_id=tool_input["env_id"])
+    result = env.model_dump()
+
+    # Optionally include datasets (requires environment-scoped API key)
+    if tool_input.get("with_datasets"):
+        import os
+
+        api_key = os.environ.get("HONEYCOMB_API_KEY")
+        if not api_key:
+            result["datasets_error"] = (
+                "Cannot list datasets: No HONEYCOMB_API_KEY found. "
+                "Datasets require an environment-scoped API key."
+            )
+        else:
+            # Create temporary client to verify environment match
+            from honeycomb import HoneycombClient
+
+            async with HoneycombClient(api_key=api_key) as api_key_client:
+                # Verify the API key is for this environment (force v1 for environment_slug)
+                from honeycomb.models.auth import AuthInfo
+
+                auth_info = await api_key_client.auth.get_async(use_v2=False)
+                assert isinstance(auth_info, AuthInfo)  # use_v2=False always returns AuthInfo
+                if auth_info.environment_slug != result["slug"]:
+                    result["datasets_error"] = (
+                        f"Cannot list datasets: HONEYCOMB_API_KEY is for environment "
+                        f"'{auth_info.environment_slug}' but requested '{result['slug']}'"
+                    )
+                else:
+                    # Environment matches - list datasets
+                    datasets = await api_key_client.datasets.list_async()
+                    result["datasets"] = [d.model_dump() for d in datasets]
+
+    return json.dumps(result, default=str)
+
+
+async def _execute_create_environment(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_create_environment tool."""
+    from honeycomb.models.environments import EnvironmentColor, EnvironmentCreate
+
+    environment = EnvironmentCreate(
+        name=tool_input["name"],
+        description=tool_input.get("description"),
+        color=EnvironmentColor(tool_input["color"]) if tool_input.get("color") else None,
+    )
+    created = await client.environments.create_async(environment=environment)
+    return json.dumps(created.model_dump(), default=str)
+
+
+async def _execute_update_environment(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_update_environment tool."""
+    from honeycomb.models.environments import EnvironmentColor, EnvironmentUpdate
+
+    environment = EnvironmentUpdate(
+        description=tool_input.get("description"),
+        color=EnvironmentColor(tool_input["color"]) if tool_input.get("color") else None,
+        delete_protected=tool_input.get("delete_protected"),
+    )
+    updated = await client.environments.update_async(
+        env_id=tool_input["env_id"],
+        environment=environment,
+    )
+    return json.dumps(updated.model_dump(), default=str)
+
+
+async def _execute_delete_environment(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_delete_environment tool."""
+    await client.environments.delete_async(env_id=tool_input["env_id"])
+    return json.dumps({"status": "deleted", "env_id": tool_input["env_id"]})
 
 
 # ==============================================================================

@@ -41,6 +41,29 @@ class ApiKeyCreate(BaseModel):
         }
 
 
+class ApiKeyUpdate(BaseModel):
+    """Model for updating an API key."""
+
+    name: str | None = Field(default=None, description="New name for the API key")
+    disabled: bool | None = Field(default=None, description="Enable/disable the key")
+
+    def to_jsonapi(self, key_id: str) -> dict[str, Any]:
+        """Convert to JSON:API format for API request."""
+        attributes: dict[str, Any] = {}
+        if self.name is not None:
+            attributes["name"] = self.name
+        if self.disabled is not None:
+            attributes["disabled"] = self.disabled
+
+        return {
+            "data": {
+                "id": key_id,
+                "type": "api-keys",
+                "attributes": attributes,
+            }
+        }
+
+
 class ApiKey(BaseModel):
     """A Honeycomb API key (response model)."""
 

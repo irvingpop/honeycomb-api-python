@@ -42,6 +42,35 @@ def _save_config(config: dict[str, Any]) -> None:
         yaml.safe_dump(config, f, default_flow_style=False)
 
 
+def get_api_key_from_config(profile: str | None = None) -> str | None:
+    """
+    Get API key from environment or config.
+
+    Priority order:
+    1. Environment variable (HONEYCOMB_API_KEY)
+    2. Profile from config file
+    3. Default profile from config file
+
+    Returns:
+        API key string or None if not found
+    """
+    # Try environment variable
+    env_api_key = os.environ.get("HONEYCOMB_API_KEY")
+    if env_api_key:
+        return env_api_key
+
+    # Try profile from config file
+    config = _load_config()
+    profiles = config.get("profiles", {})
+
+    # Use specified profile or default
+    profile_name = profile or config.get("default_profile")
+    if not profile_name or profile_name not in profiles:
+        return None
+
+    return profiles[profile_name].get("api_key")
+
+
 def get_client(
     profile: str | None = None,
     api_key: str | None = None,
