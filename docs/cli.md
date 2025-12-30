@@ -9,12 +9,13 @@ The Honeycomb CLI provides command-line access to the Honeycomb API for managing
 
 ## Installation
 
+The CLI is included by default when you install the package:
+
 ```bash
-# Install with CLI dependencies
-pip install honeycomb-api[cli]
+pip install honeycomb-api
 
 # Or with Poetry
-poetry add honeycomb-api --extras cli
+poetry add honeycomb-api
 ```
 
 ## Quick Start

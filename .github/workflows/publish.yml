@@ -4,8 +4,6 @@ on:
   push:
     tags:
       - 'v*'  # Trigger on version tags like v0.1.0, v1.0.0, etc.
-  release:
-    types: [published]  # Also trigger when a GitHub release is published
   workflow_dispatch:  # Allow manual trigger
 
 permissions:
