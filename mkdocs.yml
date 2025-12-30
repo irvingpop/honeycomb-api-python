@@ -57,6 +57,7 @@ nav:
           - Events (Ingestion): usage/events.md
           - Service Map Dependencies: usage/service_map_dependencies.md
       - Team Management (v2):
+          - Auth: usage/auth.md
           - API Keys: usage/api_keys.md
           - Environments: usage/environments.md
   - Advanced:

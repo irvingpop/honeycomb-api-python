@@ -12,6 +12,7 @@ To add test cases for a resource:
 from typing import Any
 
 from . import (
+    auth,
     boards,
     burn_alerts,
     columns,
@@ -31,6 +32,8 @@ from . import (
 # ==============================================================================
 
 ALL_TEST_CASES_BY_RESOURCE = {
+    # Foundational
+    "auth": auth.TEST_CASES,
     # Priority 1 (Implemented - comprehensive coverage)
     "triggers": triggers.TEST_CASES,
     "slos": slos.TEST_CASES,

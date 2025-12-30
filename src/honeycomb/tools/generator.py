@@ -2111,6 +2111,39 @@ def generate_query_service_map_tool() -> dict[str, Any]:
 
 
 # ==============================================================================
+# Auth Tool Definitions
+# ==============================================================================
+
+
+def generate_get_auth_tool() -> dict[str, Any]:
+    """Generate the honeycomb_get_auth tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+
+    add_parameter(
+        schema,
+        "use_v2",
+        "boolean",
+        (
+            "Force use of v2 endpoint for management key info. "
+            "If not specified, auto-detects based on configured credentials."
+        ),
+        required=False,
+    )
+
+    examples = [
+        {},
+        {"use_v2": True},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_get_auth",
+        description=get_description("honeycomb_get_auth"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
 # Generator Functions
 # ==============================================================================
 
@@ -2119,7 +2152,8 @@ def generate_all_tools() -> list[dict[str, Any]]:
     """Generate all tool definitions.
 
     Returns:
-        List of 56 tool definitions:
+        List of 57 tool definitions:
+        - Auth (1) = 1 tool
         - Priority 1: Triggers (5), SLOs (5), Burn Alerts (5) = 15 tools
         - Batch 1: Datasets (5), Columns (5) = 10 tools
         - Batch 2: Recipients (6), Derived Columns (5) = 11 tools
@@ -2128,6 +2162,8 @@ def generate_all_tools() -> list[dict[str, Any]]:
         - Batch 4: Markers (4), Marker Settings (5), Events (2), Service Map (1) = 12 tools
     """
     tools = [
+        # Auth (foundational)
+        generate_get_auth_tool(),
         # Priority 1: Triggers
         generate_list_triggers_tool(),
         generate_get_trigger_tool(),

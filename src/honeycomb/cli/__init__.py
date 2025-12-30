@@ -21,6 +21,7 @@ console = Console()
 def _register_commands() -> None:
     """Register all CLI subcommands."""
     from honeycomb.cli import (
+        auth,
         boards,
         config,
         datasets,
@@ -43,6 +44,7 @@ def _register_commands() -> None:
     app.add_typer(markers.app, name="markers")
     app.add_typer(recipients.app, name="recipients")
     app.add_typer(derived_columns.app, name="derived-columns")
+    app.add_typer(auth.app, name="auth")
     app.add_typer(config.app, name="config")
 
 

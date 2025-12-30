@@ -24,6 +24,8 @@ from .models import (
     ApiKey,
     ApiKeyCreate,
     ApiKeyType,
+    AuthInfo,
+    AuthInfoV2,
     BatchEvent,
     BatchEventResult,
     Board,
@@ -201,6 +203,9 @@ __all__ = [
     "ApiKey",
     "ApiKeyCreate",
     "ApiKeyType",
+    # Models - Auth
+    "AuthInfo",
+    "AuthInfoV2",
     # Models - Environments (v2)
     "Environment",
     "EnvironmentCreate",

@@ -114,18 +114,53 @@ def _output_table(data: list[dict[str, Any]], columns: list[str] | None = None) 
 
 def _output_single_item(data: dict[str, Any]) -> None:
     """Output a single item as key-value pairs in a table."""
-    table = Table(show_header=False, box=None)
-    table.add_column("Key", style="cyan bold")
+    from rich import box
+
+    table = Table(show_header=True, box=box.ROUNDED, padding=(0, 1))
+    table.add_column("Field", style="cyan bold", no_wrap=True)
     table.add_column("Value", style="white")
 
     for key, value in data.items():
-        # Format complex values
-        if isinstance(value, (dict, list)):
-            value_str = json.dumps(value, indent=2, default=str)
+        # Format complex values with nested tables/panels for clarity
+        value_display: Any
+        if isinstance(value, dict):
+            if value:
+                # Create a mini-table for dict values
+                nested_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
+                nested_table.add_column("Key", style="cyan")
+                nested_table.add_column("Value", style="white")
+                for k, v in value.items():
+                    nested_table.add_row(str(k), str(v))
+                value_display = nested_table
+            else:
+                value_display = "{}"
+        elif isinstance(value, list):
+            if value:
+                # Special handling for scopes - split on ':' to show resource:permission
+                if key == "scopes" and value and isinstance(value[0], str) and ":" in value[0]:
+                    nested_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
+                    nested_table.add_column("Resource", style="cyan")
+                    nested_table.add_column("Permission", style="white")
+                    for item in value:
+                        parts = str(item).split(":", 1)
+                        if len(parts) == 2:
+                            nested_table.add_row(parts[0], parts[1])
+                        else:
+                            nested_table.add_row(str(item), "")
+                    value_display = nested_table
+                else:
+                    # Regular list - single column
+                    nested_table = Table(show_header=False, box=box.SIMPLE, padding=(0, 1))
+                    nested_table.add_column("Value", style="white")
+                    for item in value:
+                        nested_table.add_row(str(item))
+                    value_display = nested_table
+            else:
+                value_display = "[]"
         else:
-            value_str = str(value)
+            value_display = str(value)
 
-        table.add_row(key, value_str)
+        table.add_row(key, value_display)
 
     console.print(table)
 

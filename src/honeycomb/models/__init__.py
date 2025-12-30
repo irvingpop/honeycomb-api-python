@@ -1,6 +1,7 @@
 """Pydantic models for Honeycomb API resources."""
 
 from .api_keys import ApiKey, ApiKeyCreate, ApiKeyType
+from .auth import AuthInfo, AuthInfoV2
 from .board_builder import (
     BoardBuilder,
     BoardBundle,
@@ -141,6 +142,9 @@ __all__ = [
     "ApiKey",
     "ApiKeyCreate",
     "ApiKeyType",
+    # Auth
+    "AuthInfo",
+    "AuthInfoV2",
     # Environments (v2)
     "Environment",
     "EnvironmentCreate",

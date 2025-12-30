@@ -16,6 +16,107 @@ async def client() -> HoneycombClient:
         yield client
 
 
+@pytest.fixture
+async def management_client() -> HoneycombClient:
+    """Create test client with management credentials."""
+    async with HoneycombClient(
+        management_key="test-mgmt-key", management_secret="test-secret"
+    ) as client:
+        yield client
+
+
+class TestExecuteAuthTools:
+    """Test execution of auth tools."""
+
+    async def test_execute_get_auth_v1(self, client: HoneycombClient, respx_mock: MockRouter):
+        """Can execute get_auth tool with v1 endpoint."""
+        respx_mock.get("https://api.honeycomb.io/1/auth").respond(
+            json={
+                "id": "key123",
+                "type": "configuration",
+                "team": {"name": "Test Team", "slug": "test-team"},
+                "environment": {"name": "Production", "slug": "production"},
+                "api_key_access": {"events": True, "markers": True},
+            }
+        )
+
+        result_json = await execute_tool(client, "honeycomb_get_auth", {})
+
+        result = json.loads(result_json)
+        assert result["id"] == "key123"
+        assert result["team_name"] == "Test Team"
+        assert result["environment_name"] == "Production"
+
+    async def test_execute_get_auth_v2(
+        self, management_client: HoneycombClient, respx_mock: MockRouter
+    ):
+        """Can execute get_auth tool with v2 endpoint."""
+        respx_mock.get("https://api.honeycomb.io/2/auth").respond(
+            json={
+                "data": {
+                    "id": "mgmt123",
+                    "type": "api-keys",
+                    "attributes": {
+                        "name": "My Management Key",
+                        "key_type": "management",
+                        "disabled": False,
+                        "scopes": ["environments:read", "api-keys:write"],
+                        "timestamps": {},
+                    },
+                    "relationships": {"team": {"data": {"type": "teams", "id": "team123"}}},
+                },
+                "included": [
+                    {
+                        "id": "team123",
+                        "type": "teams",
+                        "attributes": {"name": "My Team", "slug": "my-team"},
+                    }
+                ],
+            }
+        )
+
+        result_json = await execute_tool(management_client, "honeycomb_get_auth", {})
+
+        result = json.loads(result_json)
+        assert result["id"] == "mgmt123"
+        assert result["name"] == "My Management Key"
+        assert result["team_name"] == "My Team"
+        assert "api-keys:write" in result["scopes"]
+
+    async def test_execute_get_auth_explicit_v2(
+        self, management_client: HoneycombClient, respx_mock: MockRouter
+    ):
+        """Can execute get_auth tool with explicit v2 flag."""
+        respx_mock.get("https://api.honeycomb.io/2/auth").respond(
+            json={
+                "data": {
+                    "id": "mgmt456",
+                    "type": "api-keys",
+                    "attributes": {
+                        "name": "Another Key",
+                        "key_type": "management",
+                        "disabled": False,
+                        "scopes": ["*:*"],
+                        "timestamps": {},
+                    },
+                    "relationships": {"team": {"data": {"type": "teams", "id": "team789"}}},
+                },
+                "included": [
+                    {
+                        "id": "team789",
+                        "type": "teams",
+                        "attributes": {"name": "Team 789", "slug": "team-789"},
+                    }
+                ],
+            }
+        )
+
+        result_json = await execute_tool(management_client, "honeycomb_get_auth", {"use_v2": True})
+
+        result = json.loads(result_json)
+        assert result["id"] == "mgmt456"
+
+
 class TestExecuteTriggerTools:
     """Test execution of trigger tools."""
 

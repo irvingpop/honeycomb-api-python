@@ -64,7 +64,9 @@ async def execute_tool(
         ...     print(result)  # JSON string
     """
     # Route to appropriate handler
-    if tool_name == "honeycomb_list_triggers":
+    if tool_name == "honeycomb_get_auth":
+        return await _execute_get_auth(client, tool_input)
+    elif tool_name == "honeycomb_list_triggers":
         return await _execute_list_triggers(client, tool_input)
     elif tool_name == "honeycomb_get_trigger":
         return await _execute_get_trigger(client, tool_input)
@@ -193,6 +195,18 @@ async def execute_tool(
             "recipients (6), derived_columns (5), queries (3), boards (5), markers (4), "
             "marker_settings (5), events (2), service_map (1)"
         )
+
+
+# ==============================================================================
+# Auth
+# ==============================================================================
+
+
+async def _execute_get_auth(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_get_auth tool."""
+    use_v2 = tool_input.get("use_v2")
+    result = await client.auth.get_async(use_v2=use_v2)
+    return json.dumps(result.model_dump(), default=str)
 
 
 # ==============================================================================

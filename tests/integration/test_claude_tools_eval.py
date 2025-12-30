@@ -1,6 +1,6 @@
 """Data-driven Claude API evaluation tests.
 
-Scalable architecture for testing all 58 tools across 12 resources.
+Scalable architecture for testing all 57 tools across 13 resources.
 
 Test data is organized in test_cases/ directory, with one file per resource.
 This allows easy addition of new test cases without modifying test execution logic.

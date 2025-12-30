@@ -1187,3 +1187,29 @@ class TestApiKeyExamples:
         finally:
             # Delete (always, even on failure)
             await delete_api_key(management_client, team_slug, key_id)
+
+
+class TestAuthExamples:
+    """Test auth examples from docs/examples/auth/."""
+
+    @pytest.mark.asyncio
+    async def test_basic_usage(self, client: HoneycombClient) -> None:
+        """Test basic auth info retrieval with API key."""
+        from docs.examples.auth.basic_auth import (
+            get_auth_info_basic,
+            test_basic_usage,
+        )
+
+        auth_info = await get_auth_info_basic(client)
+        await test_basic_usage(auth_info)
+
+    @pytest.mark.asyncio
+    async def test_management_key(self, management_client: HoneycombClient) -> None:
+        """Test auth info retrieval with management key."""
+        from docs.examples.auth.basic_auth import (
+            get_auth_info_management,
+            test_management_key,
+        )
+
+        auth_info = await get_auth_info_management(management_client)
+        await test_management_key(auth_info)
