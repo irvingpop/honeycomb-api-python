@@ -40,6 +40,7 @@ nav:
       - Installation: getting-started/installation.md
       - Quick Start: getting-started/quickstart.md
       - Authentication: getting-started/authentication.md
+  - CLI Reference: cli.md
   - Usage Guides:
       - Core Resources:
           - Datasets: usage/datasets.md

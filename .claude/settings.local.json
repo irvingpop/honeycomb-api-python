@@ -24,7 +24,9 @@
       "Skill(check:*)",
       "Bash(cat:*)",
       "Bash(poetry lock:*)",
-      "Bash(poetry check:*)"
+      "Bash(poetry check:*)",
+      "Bash(poetry run honeycomb:*)",
+      "Bash(poetry run hny:*)"
     ]
   }
 }

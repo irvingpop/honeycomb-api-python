@@ -12,6 +12,7 @@ A modern, async-first Python client for the [Honeycomb.io](https://www.honeycomb
 
 - **Async-first design** with full sync support
 - **Fluent builder pattern** for queries, triggers, SLOs, and boards
+- **CLI tool** for porting objects between environments
 - **Pydantic models** for type-safe request/response handling
 - **Automatic retries** with exponential backoff for transient failures
 - **Comprehensive error handling** with specific exception types
