@@ -28,7 +28,7 @@ def list_boards(
         client = get_client(profile=profile, api_key=api_key)
         boards = client.boards.list()
         output_result(
-            boards, output, columns=["id", "name", "description", "created_at"], quiet=quiet
+            boards, output, columns=["id", "name", "description"], quiet=quiet
         )
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}", style="bold")

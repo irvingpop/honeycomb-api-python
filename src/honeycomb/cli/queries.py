@@ -39,7 +39,7 @@ def list_queries(
         output_result(
             annotations,
             output,
-            columns=["id", "name", "description", "created_at"],
+            columns=["id", "name", "description"],
             quiet=quiet,
         )
     except Exception as e:

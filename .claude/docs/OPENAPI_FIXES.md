@@ -185,6 +185,56 @@ curl -o api.yaml https://api.honeycomb.io/api.yaml
 ./scripts/generate-client.sh
 ```
 
+## API Response Discrepancies
+
+These are cases where the OpenAPI spec documents fields that the actual API does not return.
+
+### Issue 6: Missing `created_at` / `updated_at` Fields
+
+**Problem:** Several schemas document `created_at` and `updated_at` fields that the API does not actually return.
+
+**Affected resources:**
+
+| Resource | Spec Says | API Returns |
+|----------|-----------|-------------|
+| Boards | No `created_at` field defined | Correct - no field |
+| Query Annotations | `created_at` (date-time), `updated_at` (date-time) | Neither field returned |
+
+**Query Annotations spec (line ~7355):**
+```yaml
+QueryAnnotation:
+  properties:
+    created_at:
+      type: string
+      format: date-time
+      description: ISO8601 formatted time when the Query Annotation was created.
+    updated_at:
+      type: string
+      format: date-time
+      description: ISO8601 formatted time when the Query Annotation was last updated.
+```
+
+**Actual API response:**
+```json
+{
+    "id": "qZczAVg6hCV",
+    "query_id": "3dckwMaN7Su",
+    "name": "Avg Latency",
+    "description": "Top 10 endpoints by average latency",
+    "source": "query"
+}
+```
+
+**Workaround:** The CLI commands for boards and queries do not display `created_at` since the API doesn't return it. The model fields have `default=None` to handle the missing data gracefully.
+
+**Resources that DO return timestamps correctly:**
+- Datasets: `created_at` works
+- SLOs: `created_at`, `updated_at` work
+- Triggers: `created_at`, `updated_at` work
+- Markers: `created_at`, `updated_at` work
+- Derived Columns: `created_at`, `updated_at` work
+- Recipients: `created_at` works
+
 ## Reporting Upstream
 
 These issues should be reported to Honeycomb. Key points:
@@ -193,3 +243,6 @@ These issues should be reported to Honeycomb. Key points:
 - Arrays need `items` defined (OpenAPI 3.1 requirement)
 - `allOf` cannot be used to add defaults to `$ref`
 - Inline objects in arrays should be extracted to named schemas to avoid code generation issues
+
+### API Response Discrepancies:
+- Query Annotations spec documents `created_at`/`updated_at` but API doesn't return them

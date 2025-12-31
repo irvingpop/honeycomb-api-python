@@ -114,7 +114,11 @@ def _output_table(data: list[dict[str, Any]], columns: list[str] | None = None) 
             table.add_column(col.replace("_", " ").title(), style="cyan")
 
     for item in data:
-        row = [str(item.get(col, "-")) for col in columns]
+        row = []
+        for col in columns:
+            value = item.get(col)
+            # Display "-" for missing or None values
+            row.append(str(value) if value is not None else "-")
         table.add_row(*row)
 
     console.print(table)
