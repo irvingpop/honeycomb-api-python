@@ -70,6 +70,9 @@ SLO_DESCRIPTIONS = {
         "Use this when defining reliability targets for services, such as 99.9% availability or p99 latency targets. "
         "Requires a dataset, SLO name, target (as percentage, per-million, or nines), time period in days, and an SLI definition. "
         "For the SLI, provide an alias and optionally an expression - if expression is provided, a new derived column is created inline; if only alias is provided, it uses an existing derived column. "
+        "SLI EXPRESSION SYNTAX: Must return boolean (1/0 coerced). Use $ prefix for columns (case-sensitive). "
+        "Example: LT($status_code, 500) or AND(LT($status_code, 500), LT($duration_ms, 1000)). "
+        "See honeycomb_create_derived_column for full expression syntax (conditionals, comparisons, regex, etc.). "
         "You can also add burn alerts inline to notify when error budget depletes too quickly. "
         "Supports both single-dataset and multi-dataset SLOs."
     ),
@@ -251,6 +254,55 @@ RECIPIENT_DESCRIPTIONS = {
 # Derived Columns
 # ==============================================================================
 
+# Shared syntax reference for derived column descriptions
+_DERIVED_COLUMN_SYNTAX_GUIDE = """
+EXPRESSION SYNTAX REFERENCE:
+- Column refs: $column_name or $"column with spaces" (CASE-SENSITIVE)
+- Strings: double quotes ("value")
+- Regex patterns: backticks (`pattern`)
+- DCs operate on ONE ROW at a time - they are NOT aggregation functions
+
+CONDITIONALS:
+- IF(cond, true_val, false_val) - e.g., IF(LT($status, 400), "ok", "error")
+- SWITCH($field, "case1", result1, "case2", result2, default) - string matching
+- COALESCE(a, b, c) - first non-null value
+
+COMPARISONS (return bool):
+- LT, LTE, GT, GTE - e.g., LT($duration_ms, 1000)
+- EQUALS($a, $b) - e.g., EQUALS($method, "GET")
+- IN($field, val1, val2, ...) - e.g., IN($status, 200, 201, 204)
+
+BOOLEAN:
+- EXISTS($field) - true if field is non-null
+- NOT(cond), AND(a, b, ...), OR(a, b, ...)
+
+MATH: MIN, MAX, SUM, SUB, MUL, DIV, MOD, LOG10
+
+STRING:
+- CONCAT($a, " ", $b) - join strings
+- STARTS_WITH($str, "prefix"), ENDS_WITH, CONTAINS - return bool
+- TO_LOWER($str), LENGTH($str)
+
+REGEX (use backticks for patterns):
+- REG_MATCH($str, `pattern`) - returns bool
+- REG_VALUE($str, `^/api/(.+)`) - extracts first capture group
+- REG_COUNT($str, `pattern`) - count matches
+
+TIME:
+- EVENT_TIMESTAMP() - event time as Unix timestamp
+- UNIX_TIMESTAMP($field) - parse field as timestamp
+- FORMAT_TIME("%Y-%m-%d", $timestamp_field) - strftime formatting
+
+DATA: BUCKET($val, size) - numeric bucketing
+
+TYPE CONVERSION: INT(), FLOAT(), BOOL(), STRING()
+
+COMMON PATTERNS:
+- SLI for SLOs (MUST return boolean; 1/0 coerced to true/false): LT($status_code, 500)
+- Root span detection: NOT(EXISTS($trace.parent_id))
+- Error classification: IF(GTE($status, 500), "server_error", IF(GTE($status, 400), "client_error", "success"))
+"""
+
 DERIVED_COLUMN_DESCRIPTIONS = {
     "honeycomb_list_derived_columns": (
         "Lists all derived columns (calculated fields) in a dataset. "
@@ -268,15 +320,16 @@ DERIVED_COLUMN_DESCRIPTIONS = {
         "Creates a new standalone derived column that calculates values from event fields using expressions. "
         "Use this for general-purpose computed metrics, data normalization, or calculations that will be used in multiple queries. "
         "NOTE: If you are creating a derived column specifically for an SLO, use honeycomb_create_slo instead with an inline SLI expression - it creates both in one operation. "
-        "Requires the dataset slug (use '__all__' for environment-wide), an alias (the column name), and an expression using Honeycomb's query language. "
-        "Common expression functions include IF() for conditionals, EQUALS/LT/GT for comparisons, and field references with $ prefix (e.g., $status_code). "
-        "Optional description parameter documents the column's purpose for team members."
+        "Requires the dataset slug (use '__all__' for environment-wide), an alias (the column name), and an expression. "
+        "Optional description parameter documents the column's purpose for team members. "
+        + _DERIVED_COLUMN_SYNTAX_GUIDE
     ),
     "honeycomb_update_derived_column": (
         "Updates an existing derived column's alias, expression, or description. "
         "Use this to fix calculation logic, rename computed fields, or improve documentation as your understanding evolves. "
         "Requires the dataset slug, derived column ID, and the complete updated configuration. "
-        "Note: Changing the expression only affects new queries - existing query results are not recalculated."
+        "Note: Changing the expression only affects new queries - existing query results are not recalculated. "
+        + _DERIVED_COLUMN_SYNTAX_GUIDE
     ),
     "honeycomb_delete_derived_column": (
         "Permanently deletes a derived column from a dataset. "
@@ -297,6 +350,7 @@ QUERY_DESCRIPTIONS = {
         "Requires the dataset slug and query specification including time_range and calculations. "
         "Optional annotation_name parameter creates the query with a display name for easier identification in the UI. "
         "The query specification supports multiple calculations (unlike triggers which allow only one), filters, breakdowns, orders, havings, and limits for comprehensive data analysis."
+        "Queries can include calculated_fields (derived columns) - see honeycomb_create_derived_column for expression syntax. "
     ),
     "honeycomb_get_query": (
         "Retrieves a saved query's configuration by its ID. "
@@ -335,6 +389,8 @@ BOARD_DESCRIPTIONS = {
         "Use this to build comprehensive dashboards for service monitoring, create SRE views, or consolidate related visualizations. "
         "Requires a name and supports inline_query_panels (array of query definitions that will be created automatically), text_panels (markdown content), and slo_panels (SLO IDs). "
         "Each inline query panel needs a name, dataset, time_range, and calculations - optionally include filters, breakdowns, orders, and limit. "
+        "Query panels can include calculated_fields (derived columns) - see honeycomb_create_derived_column for expression syntax. "
+        "For inline SLO panels with SLI expressions: must return boolean, use $ prefix for columns. Example: LT($status_code, 500). "
         "Layout defaults to auto-layout (Honeycomb arranges panels) but supports manual layout with explicit positioning. "
         "The tool orchestrates: creating all inline queries with annotations, assembling panel configurations, and creating the board with all panels in one API call."
     ),
