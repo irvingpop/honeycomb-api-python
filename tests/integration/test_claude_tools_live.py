@@ -230,7 +230,9 @@ Create a new environment named '{env_name}' with color 'blue' for organizing tes
             "Should have called honeycomb_create_environment"
         )
 
-        env_result = next((result for tool, _, result in tool_calls if "create_environment" in tool), None)
+        env_result = next(
+            (result for tool, _, result in tool_calls if "create_environment" in tool), None
+        )
         env_data = json.loads(env_result)
         environment_id = env_data["id"]
         environment_slug = env_data["slug"]
@@ -251,7 +253,9 @@ This key will have full permissions to create datasets, triggers, SLOs, and boar
             "Should have called honeycomb_create_api_key"
         )
 
-        key_result = next((result for tool, _, result in tool_calls if "create_api_key" in tool), None)
+        key_result = next(
+            (result for tool, _, result in tool_calls if "create_api_key" in tool), None
+        )
         key_data = json.loads(key_result)
         api_key_id = key_data["id"]
         api_key_secret = key_data["secret"]
@@ -262,7 +266,9 @@ This key will have full permissions to create datasets, triggers, SLOs, and boar
         client = HoneycombClient(api_key=api_key_secret)
         await client.__aenter__()
 
-        print(f"✓ Initialized client with Claude-generated API key for environment {environment_slug}")
+        print(
+            f"✓ Initialized client with Claude-generated API key for environment {environment_slug}"
+        )
 
         # Reset conversation for dataset creation
         messages = []

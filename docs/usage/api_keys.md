@@ -83,7 +83,7 @@ Key IDs have prefixes indicating their type:
 
 ## Sync Usage
 
-All API key operations have sync equivalents:
+All API key operations have sync equivalents (team is auto-detected):
 
 ```python
 with HoneycombClient(
@@ -91,11 +91,52 @@ with HoneycombClient(
     management_secret="xxx",
     sync=True
 ) as client:
-    keys = client.api_keys.list("my-team")
-    key = client.api_keys.get("my-team", key_id)
-    key = client.api_keys.create("my-team", ApiKeyCreate(...))
-    updated = client.api_keys.update("my-team", key_id, ApiKeyCreate(...))
-    client.api_keys.delete("my-team", key_id)
+    keys = client.api_keys.list()
+    key = client.api_keys.get(key_id)
+    key = client.api_keys.create(ApiKeyCreate(...))
+    updated = client.api_keys.update(key_id, ApiKeyUpdate(...))
+    client.api_keys.delete(key_id)
 ```
+
+## Configuration Key Permissions
+
+When creating configuration keys, you **MUST** specify permissions. Without them, the key will have NO permissions:
+
+```python
+from honeycomb.models.api_keys import ApiKeyCreate, ApiKeyType
+
+# Full access configuration key
+key = await client.api_keys.create_async(
+    api_key=ApiKeyCreate(
+        name="Full Access Key",
+        key_type=ApiKeyType.CONFIGURATION,
+        environment_id="hcaen_xxx",
+        permissions={
+            "create_datasets": True,
+            "send_events": True,
+            "manage_markers": True,
+            "manage_triggers": True,
+            "manage_boards": True,
+            "run_queries": True,
+            "manage_columns": True,
+            "manage_slos": True,
+            "manage_recipients": True,
+            "manage_privateBoards": True,
+        }
+    )
+)
+```
+
+Available permissions:
+- `create_datasets` - Create and manage datasets
+- `send_events` - Send events to datasets
+- `manage_markers` - Create and manage markers
+- `manage_triggers` - Create and manage triggers
+- `manage_boards` - Create and manage boards
+- `run_queries` - Execute queries
+- `manage_columns` - Manage columns
+- `manage_slos` - Create and manage SLOs
+- `manage_recipients` - Manage recipients
+- `manage_privateBoards` - Manage private boards
 
 **Important**: The `secret` field is only returned when creating a key. Save it immediately - it cannot be retrieved later!
