@@ -2144,6 +2144,272 @@ def generate_get_auth_tool() -> dict[str, Any]:
 
 
 # ==============================================================================
+# API Keys Tool Definitions (v2)
+# ==============================================================================
+
+
+def generate_list_api_keys_tool() -> dict[str, Any]:
+    """Generate honeycomb_list_api_keys tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+
+    add_parameter(
+        schema,
+        "key_type",
+        "string",
+        "Filter by key type: 'ingest' or 'configuration'",
+        required=False,
+    )
+
+    examples: list[dict[str, Any]] = [
+        {},
+        {"key_type": "ingest"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_list_api_keys",
+        description=get_description("honeycomb_list_api_keys"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_get_api_key_tool() -> dict[str, Any]:
+    """Generate honeycomb_get_api_key tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["key_id"]}
+
+    add_parameter(schema, "key_id", "string", "The API key ID", required=True)
+
+    examples: list[dict[str, Any]] = [{"key_id": "hcaik_123"}]
+
+    return create_tool_definition(
+        name="honeycomb_get_api_key",
+        description=get_description("honeycomb_get_api_key"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_create_api_key_tool() -> dict[str, Any]:
+    """Generate honeycomb_create_api_key tool definition."""
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {},
+        "required": ["name", "key_type", "environment_id"],
+    }
+
+    add_parameter(schema, "name", "string", "Display name for the API key", required=True)
+    add_parameter(
+        schema,
+        "key_type",
+        "string",
+        "Type of key: 'ingest' or 'configuration'",
+        required=True,
+    )
+    add_parameter(
+        schema, "environment_id", "string", "Environment ID to scope the key to", required=True
+    )
+    add_parameter(
+        schema,
+        "permissions",
+        "object",
+        (
+            "Permissions for configuration keys (REQUIRED for 'configuration' type). "
+            "Object with boolean properties: 'create_datasets', 'send_events', 'manage_markers', "
+            "'manage_triggers', 'manage_boards', 'run_queries', 'manage_columns', "
+            "'manage_slos', 'manage_recipients', 'manage_privateBoards'. "
+            "Example: {'create_datasets': true, 'send_events': true, 'manage_triggers': true}. "
+            "Not needed for 'ingest' keys."
+        ),
+        required=False,
+    )
+
+    examples: list[dict[str, Any]] = [
+        {
+            "name": "Production Ingest Key",
+            "key_type": "ingest",
+            "environment_id": "hcaen_123",
+        },
+        {
+            "name": "Full Access Config Key",
+            "key_type": "configuration",
+            "environment_id": "hcaen_123",
+            "permissions": {
+                "create_datasets": True,
+                "send_events": True,
+                "manage_markers": True,
+                "manage_triggers": True,
+                "manage_boards": True,
+                "run_queries": True,
+                "manage_columns": True,
+                "manage_slos": True,
+                "manage_recipients": True,
+                "manage_privateBoards": True,
+            },
+        },
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_create_api_key",
+        description=get_description("honeycomb_create_api_key"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_update_api_key_tool() -> dict[str, Any]:
+    """Generate honeycomb_update_api_key tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["key_id"]}
+
+    add_parameter(schema, "key_id", "string", "The API key ID", required=True)
+    add_parameter(schema, "name", "string", "New name for the key", required=False)
+    add_parameter(schema, "disabled", "boolean", "Set to true to disable the key", required=False)
+
+    examples: list[dict[str, Any]] = [
+        {"key_id": "hcaik_123", "name": "New Name"},
+        {"key_id": "hcaik_123", "disabled": True},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_update_api_key",
+        description=get_description("honeycomb_update_api_key"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_delete_api_key_tool() -> dict[str, Any]:
+    """Generate honeycomb_delete_api_key tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["key_id"]}
+
+    add_parameter(schema, "key_id", "string", "The API key ID to delete", required=True)
+
+    examples: list[dict[str, Any]] = [{"key_id": "hcaik_123"}]
+
+    return create_tool_definition(
+        name="honeycomb_delete_api_key",
+        description=get_description("honeycomb_delete_api_key"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
+# Environments Tool Definitions (v2)
+# ==============================================================================
+
+
+def generate_list_environments_tool() -> dict[str, Any]:
+    """Generate honeycomb_list_environments tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
+
+    examples: list[dict[str, Any]] = [{}]
+
+    return create_tool_definition(
+        name="honeycomb_list_environments",
+        description=get_description("honeycomb_list_environments"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_get_environment_tool() -> dict[str, Any]:
+    """Generate honeycomb_get_environment tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["env_id"]}
+
+    add_parameter(schema, "env_id", "string", "The environment ID", required=True)
+    add_parameter(
+        schema,
+        "with_datasets",
+        "boolean",
+        "Also return list of datasets in this environment",
+        required=False,
+    )
+
+    examples: list[dict[str, Any]] = [
+        {"env_id": "hcaen_123"},
+        {"env_id": "hcaen_123", "with_datasets": True},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_get_environment",
+        description=get_description("honeycomb_get_environment"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_create_environment_tool() -> dict[str, Any]:
+    """Generate honeycomb_create_environment tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["name"]}
+
+    add_parameter(schema, "name", "string", "Environment name", required=True)
+    add_parameter(schema, "description", "string", "Environment description", required=False)
+    add_parameter(
+        schema,
+        "color",
+        "string",
+        "Display color (blue, green, gold, red, purple, or light variants)",
+        required=False,
+    )
+
+    examples: list[dict[str, Any]] = [
+        {"name": "Production"},
+        {"name": "Staging", "color": "blue", "description": "Staging env"},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_create_environment",
+        description=get_description("honeycomb_create_environment"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_update_environment_tool() -> dict[str, Any]:
+    """Generate honeycomb_update_environment tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["env_id"]}
+
+    add_parameter(schema, "env_id", "string", "The environment ID", required=True)
+    add_parameter(schema, "description", "string", "New description", required=False)
+    add_parameter(schema, "color", "string", "New color", required=False)
+    add_parameter(
+        schema,
+        "delete_protected",
+        "boolean",
+        "Enable (true) or disable (false) delete protection",
+        required=False,
+    )
+
+    examples: list[dict[str, Any]] = [
+        {"env_id": "hcaen_123", "description": "Updated description"},
+        {"env_id": "hcaen_123", "delete_protected": False},
+    ]
+
+    return create_tool_definition(
+        name="honeycomb_update_environment",
+        description=get_description("honeycomb_update_environment"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+def generate_delete_environment_tool() -> dict[str, Any]:
+    """Generate honeycomb_delete_environment tool definition."""
+    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["env_id"]}
+
+    add_parameter(schema, "env_id", "string", "The environment ID to delete", required=True)
+
+    examples: list[dict[str, Any]] = [{"env_id": "hcaen_123"}]
+
+    return create_tool_definition(
+        name="honeycomb_delete_environment",
+        description=get_description("honeycomb_delete_environment"),
+        input_schema=schema,
+        input_examples=examples,
+    )
+
+
+# ==============================================================================
 # Generator Functions
 # ==============================================================================
 
@@ -2152,8 +2418,9 @@ def generate_all_tools() -> list[dict[str, Any]]:
     """Generate all tool definitions.
 
     Returns:
-        List of 57 tool definitions:
+        List of 67 tool definitions:
         - Auth (1) = 1 tool
+        - API Keys (5) + Environments (5) = 10 tools
         - Priority 1: Triggers (5), SLOs (5), Burn Alerts (5) = 15 tools
         - Batch 1: Datasets (5), Columns (5) = 10 tools
         - Batch 2: Recipients (6), Derived Columns (5) = 11 tools
@@ -2164,6 +2431,17 @@ def generate_all_tools() -> list[dict[str, Any]]:
     tools = [
         # Auth (foundational)
         generate_get_auth_tool(),
+        # Team Management (v2)
+        generate_list_api_keys_tool(),
+        generate_get_api_key_tool(),
+        generate_create_api_key_tool(),
+        generate_update_api_key_tool(),
+        generate_delete_api_key_tool(),
+        generate_list_environments_tool(),
+        generate_get_environment_tool(),
+        generate_create_environment_tool(),
+        generate_update_environment_tool(),
+        generate_delete_environment_tool(),
         # Priority 1: Triggers
         generate_list_triggers_tool(),
         generate_get_trigger_tool(),

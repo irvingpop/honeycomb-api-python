@@ -23,20 +23,60 @@ class ApiKeyCreate(BaseModel):
     key_type: ApiKeyType = Field(description="Type of API key")
     environment_id: str = Field(description="Environment ID this key belongs to")
     disabled: bool = Field(default=False, description="Whether key is disabled")
+    permissions: dict[str, bool] | None = Field(
+        default=None,
+        description=(
+            "Permissions for configuration keys (REQUIRED for configuration type). "
+            "Available permissions: 'create_datasets', 'send_events', 'manage_markers', "
+            "'manage_triggers', 'manage_boards', 'run_queries', 'manage_columns', "
+            "'manage_slos', 'manage_recipients', 'manage_privateBoards', "
+            "'read_service_maps', 'visible_team_members'. "
+            "Ignored for ingest keys."
+        ),
+    )
 
     def to_jsonapi(self) -> dict[str, Any]:
         """Convert to JSON:API format for API request."""
+        attributes: dict[str, Any] = {
+            "name": self.name,
+            "key_type": self.key_type.value,
+            "disabled": self.disabled,
+        }
+
+        # Add permissions for configuration keys
+        if self.permissions is not None:
+            attributes["permissions"] = self.permissions
+
         return {
             "data": {
                 "type": "api-keys",
-                "attributes": {
-                    "name": self.name,
-                    "key_type": self.key_type.value,
-                    "disabled": self.disabled,
-                },
+                "attributes": attributes,
                 "relationships": {
                     "environment": {"data": {"type": "environments", "id": self.environment_id}}
                 },
+            }
+        }
+
+
+class ApiKeyUpdate(BaseModel):
+    """Model for updating an API key."""
+
+    name: str | None = Field(default=None, description="New name for the API key")
+    disabled: bool | None = Field(default=None, description="Enable/disable the key")
+
+    def to_jsonapi(self, key_id: str) -> dict[str, Any]:
+        """Convert to JSON:API format for API request."""
+        attributes: dict[str, Any] = {}
+        if self.name is not None:
+            attributes["name"] = self.name
+        if self.disabled is not None:
+            attributes["disabled"] = self.disabled
+
+        return {
+            "data": {
+                "id": key_id,
+                "type": "api-keys",
+                "attributes": attributes,
             }
         }
 
@@ -49,6 +89,9 @@ class ApiKey(BaseModel):
     key_type: ApiKeyType = Field(description="Type of API key")
     environment_id: str | None = Field(default=None, description="Environment ID")
     disabled: bool = Field(default=False, description="Whether key is disabled")
+    permissions: dict[str, bool] | None = Field(
+        default=None, description="Permissions for configuration keys"
+    )
     secret: str | None = Field(
         default=None, description="Key secret (only available during creation)"
     )
@@ -75,6 +118,7 @@ class ApiKey(BaseModel):
             key_type=attributes.get("key_type", "ingest"),
             environment_id=env_id,
             disabled=attributes.get("disabled", False),
+            permissions=attributes.get("permissions"),
             secret=attributes.get("secret"),
             created_at=attributes.get("created_at"),
             updated_at=attributes.get("updated_at"),

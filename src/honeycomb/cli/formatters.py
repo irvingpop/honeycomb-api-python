@@ -98,12 +98,20 @@ def _output_table(data: list[dict[str, Any]], columns: list[str] | None = None) 
 
     # Determine columns to display
     if columns is None:
-        # Use all keys from first item
-        columns = list(data[0].keys())
+        # Use all keys from first item, excluding timestamp fields
+        all_columns = list(data[0].keys())
+        # Filter out timestamp fields (can be added back with explicit columns parameter)
+        columns = [
+            col for col in all_columns if col not in ("created_at", "updated_at", "timestamps")
+        ]
 
     table = Table()
     for col in columns:
-        table.add_column(col.replace("_", " ").title(), style="cyan")
+        # ID columns should never truncate
+        if col == "id" or col.endswith("_id"):
+            table.add_column(col.replace("_", " ").title(), style="cyan", no_wrap=True)
+        else:
+            table.add_column(col.replace("_", " ").title(), style="cyan")
 
     for item in data:
         row = [str(item.get(col, "-")) for col in columns]

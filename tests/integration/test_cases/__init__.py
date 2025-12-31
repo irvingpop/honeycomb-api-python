@@ -12,12 +12,14 @@ To add test cases for a resource:
 from typing import Any
 
 from . import (
+    api_keys,
     auth,
     boards,
     burn_alerts,
     columns,
     datasets,
     derived_columns,
+    environments,
     events,
     markers,
     queries,
@@ -34,6 +36,9 @@ from . import (
 ALL_TEST_CASES_BY_RESOURCE = {
     # Foundational
     "auth": auth.TEST_CASES,
+    # Team Management (v2)
+    "api_keys": api_keys.TEST_CASES,
+    "environments": environments.TEST_CASES,
     # Priority 1 (Implemented - comprehensive coverage)
     "triggers": triggers.TEST_CASES,
     "slos": slos.TEST_CASES,

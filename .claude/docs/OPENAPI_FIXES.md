@@ -18,8 +18,8 @@ After applying patches, generation improved significantly:
 These schemas still fail but are not critical for our use case:
 - `JSONAPIError` / `RateLimitedJSONAPI` - Error response schemas (we handle errors manually)
 - `BudgetRateBurnAlertDetailResponse` - BurnAlert detail (partial functionality)
-- `ApiKeyCreateResponse` - v2 API key creation response
-- `IngestKeyRequest` / `ConfigurationKeyRequest` - Key management requests
+- `ApiKeyCreateResponse` - v2 API key creation response (FIELD NAME MISMATCH - see Issue 6)
+- `IngestKeyRequest` / `ConfigurationKeyRequest` - Key management requests (FIELD NAME MISMATCH - see Issue 6)
 
 ## Issues Fixed by Patch Script
 
@@ -156,6 +156,7 @@ JSONAPIError:
 
 **Fix:** Flatten the inheritance hierarchy by inlining properties instead of using deep `allOf` chains.
 
+
 ## Applying Fixes
 
 Run the patch script:
@@ -187,6 +188,8 @@ curl -o api.yaml https://api.honeycomb.io/api.yaml
 ## Reporting Upstream
 
 These issues should be reported to Honeycomb. Key points:
+
+### OpenAPI 3.1 Compliance Issues:
 - Arrays need `items` defined (OpenAPI 3.1 requirement)
 - `allOf` cannot be used to add defaults to `$ref`
 - Inline objects in arrays should be extracted to named schemas to avoid code generation issues

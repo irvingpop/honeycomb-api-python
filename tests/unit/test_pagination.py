@@ -22,6 +22,33 @@ class TestApiKeysPagination:
     @respx.mock
     async def test_list_single_page(self):
         """Test listing API keys with a single page of results."""
+        # Mock auth endpoint for team detection
+        respx.get("https://api.honeycomb.io/2/auth").mock(
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "id": "mgmt-key",
+                        "type": "api-keys",
+                        "attributes": {
+                            "name": "Test Key",
+                            "key_type": "management",
+                            "scopes": [],
+                            "timestamps": {},
+                        },
+                        "relationships": {"team": {"data": {"type": "teams", "id": "my-team"}}},
+                    },
+                    "included": [
+                        {
+                            "id": "my-team",
+                            "type": "teams",
+                            "attributes": {"name": "My Team", "slug": "my-team"},
+                        }
+                    ],
+                },
+            )
+        )
+
         respx.get("https://api.honeycomb.io/2/teams/my-team/api-keys").mock(
             return_value=Response(
                 200,
@@ -56,7 +83,7 @@ class TestApiKeysPagination:
         async with HoneycombClient(
             management_key="hcamk_test", management_secret="test_secret"
         ) as client:
-            keys = await client.api_keys.list_async(team="my-team")
+            keys = await client.api_keys.list_async()
 
         assert len(keys) == 2
         assert keys[0].id == "key-1"
@@ -65,6 +92,33 @@ class TestApiKeysPagination:
     @respx.mock
     async def test_list_multiple_pages(self):
         """Test listing API keys with multiple pages of results."""
+        # Mock auth endpoint for team detection
+        respx.get("https://api.honeycomb.io/2/auth").mock(
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "id": "mgmt-key",
+                        "type": "api-keys",
+                        "attributes": {
+                            "name": "Test Key",
+                            "key_type": "management",
+                            "scopes": [],
+                            "timestamps": {},
+                        },
+                        "relationships": {"team": {"data": {"type": "teams", "id": "my-team"}}},
+                    },
+                    "included": [
+                        {
+                            "id": "my-team",
+                            "type": "teams",
+                            "attributes": {"name": "My Team", "slug": "my-team"},
+                        }
+                    ],
+                },
+            )
+        )
+
         call_count = {"value": 0}
 
         def api_keys_handler(_request):
@@ -121,7 +175,7 @@ class TestApiKeysPagination:
         async with HoneycombClient(
             management_key="hcamk_test", management_secret="test_secret"
         ) as client:
-            keys = await client.api_keys.list_async(team="my-team")
+            keys = await client.api_keys.list_async()
 
         assert len(keys) == 5
         assert keys[0].id == "key-1"
@@ -131,6 +185,33 @@ class TestApiKeysPagination:
     @respx.mock
     async def test_list_with_key_type_filter(self):
         """Test listing API keys with key type filter."""
+        # Mock auth endpoint for team detection
+        respx.get("https://api.honeycomb.io/2/auth").mock(
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "id": "mgmt-key",
+                        "type": "api-keys",
+                        "attributes": {
+                            "name": "Test Key",
+                            "key_type": "management",
+                            "scopes": [],
+                            "timestamps": {},
+                        },
+                        "relationships": {"team": {"data": {"type": "teams", "id": "my-team"}}},
+                    },
+                    "included": [
+                        {
+                            "id": "my-team",
+                            "type": "teams",
+                            "attributes": {"name": "My Team", "slug": "my-team"},
+                        }
+                    ],
+                },
+            )
+        )
+
         route = respx.get("https://api.honeycomb.io/2/teams/my-team/api-keys").mock(
             return_value=Response(
                 200,
@@ -155,7 +236,7 @@ class TestApiKeysPagination:
         async with HoneycombClient(
             management_key="hcamk_test", management_secret="test_secret"
         ) as client:
-            keys = await client.api_keys.list_async(team="my-team", key_type="ingest")
+            keys = await client.api_keys.list_async(key_type="ingest")
 
         assert len(keys) == 1
         assert keys[0].key_type == ApiKeyType.INGEST
@@ -174,6 +255,34 @@ class TestEnvironmentsPagination:
     @respx.mock
     async def test_list_single_page(self):
         """Test listing environments with a single page of results."""
+        # Mock auth endpoint for team slug detection
+        respx.get("https://api.honeycomb.io/2/auth").mock(
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "id": "mgmt123",
+                        "type": "api-keys",
+                        "attributes": {
+                            "name": "Test Management Key",
+                            "key_type": "management",
+                            "disabled": False,
+                            "scopes": ["environments:read"],
+                            "timestamps": {},
+                        },
+                        "relationships": {"team": {"data": {"type": "teams", "id": "team123"}}},
+                    },
+                    "included": [
+                        {
+                            "id": "team123",
+                            "type": "teams",
+                            "attributes": {"name": "My Team", "slug": "my-team"},
+                        }
+                    ],
+                },
+            )
+        )
+
         respx.get("https://api.honeycomb.io/2/teams/my-team/environments").mock(
             return_value=Response(
                 200,
@@ -208,7 +317,7 @@ class TestEnvironmentsPagination:
         async with HoneycombClient(
             management_key="hcamk_test", management_secret="test_secret"
         ) as client:
-            envs = await client.environments.list_async(team="my-team")
+            envs = await client.environments.list_async()
 
         assert len(envs) == 2
         assert envs[0].id == "env-1"
@@ -219,6 +328,34 @@ class TestEnvironmentsPagination:
     @respx.mock
     async def test_list_multiple_pages(self):
         """Test listing environments with multiple pages of results."""
+        # Mock auth endpoint for team slug detection
+        respx.get("https://api.honeycomb.io/2/auth").mock(
+            return_value=Response(
+                200,
+                json={
+                    "data": {
+                        "id": "mgmt123",
+                        "type": "api-keys",
+                        "attributes": {
+                            "name": "Test Management Key",
+                            "key_type": "management",
+                            "disabled": False,
+                            "scopes": ["environments:read"],
+                            "timestamps": {},
+                        },
+                        "relationships": {"team": {"data": {"type": "teams", "id": "team123"}}},
+                    },
+                    "included": [
+                        {
+                            "id": "team123",
+                            "type": "teams",
+                            "attributes": {"name": "My Team", "slug": "my-team"},
+                        }
+                    ],
+                },
+            )
+        )
+
         call_count = {"value": 0}
 
         def envs_handler(_request):
@@ -273,7 +410,7 @@ class TestEnvironmentsPagination:
         async with HoneycombClient(
             management_key="hcamk_test", management_secret="test_secret"
         ) as client:
-            envs = await client.environments.list_async(team="my-team")
+            envs = await client.environments.list_async()
 
         assert len(envs) == 5
         assert envs[0].id == "env-1"

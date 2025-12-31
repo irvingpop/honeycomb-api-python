@@ -20,6 +20,7 @@ class EnvironmentsResource(BaseResource):
 
     This resource requires Management Key authentication and operates
     on a specific team. Environments help organize your data and API keys.
+    The team slug is automatically detected from the management key.
 
     Note:
         The list methods automatically paginate through all results. For teams
@@ -32,9 +33,8 @@ class EnvironmentsResource(BaseResource):
         ...     management_key="hcamk_xxx",
         ...     management_secret="xxx"
         ... ) as client:
-        ...     envs = await client.environments.list_async(team="my-team")
+        ...     envs = await client.environments.list_async()
         ...     env = await client.environments.create_async(
-        ...         team="my-team",
         ...         environment=EnvironmentCreate(
         ...             name="Production",
         ...             description="Production environment",
@@ -48,11 +48,40 @@ class EnvironmentsResource(BaseResource):
         ...     management_secret="xxx",
         ...     sync=True
         ... ) as client:
-        ...     envs = client.environments.list(team="my-team")
+        ...     envs = client.environments.list()
     """
 
     def __init__(self, client: HoneycombClient) -> None:
         super().__init__(client)
+        self._cached_team_slug: str | None = None
+
+    async def _get_team_slug_async(self) -> str:
+        """Get team slug, auto-detecting from auth."""
+        # Use cached value if available
+        if self._cached_team_slug:
+            return self._cached_team_slug
+
+        # Auto-detect from auth endpoint
+        auth_info = await self._client.auth.get_async()
+        if not hasattr(auth_info, "team_slug") or not auth_info.team_slug:
+            raise ValueError("Cannot auto-detect team slug from management key credentials.")
+
+        self._cached_team_slug = auth_info.team_slug
+        return self._cached_team_slug
+
+    def _get_team_slug(self) -> str:
+        """Get team slug (sync), auto-detecting from auth."""
+        # Use cached value if available
+        if self._cached_team_slug:
+            return self._cached_team_slug
+
+        # Auto-detect from auth endpoint
+        auth_info = self._client.auth.get()
+        if not hasattr(auth_info, "team_slug") or not auth_info.team_slug:
+            raise ValueError("Cannot auto-detect team slug from management key credentials.")
+
+        self._cached_team_slug = auth_info.team_slug
+        return self._cached_team_slug
 
     def _build_path(self, team: str, env_id: str | None = None) -> str:
         """Build API path for environments."""
@@ -85,14 +114,11 @@ class EnvironmentsResource(BaseResource):
     # Async methods
     # -------------------------------------------------------------------------
 
-    async def list_async(self, team: str) -> list[Environment]:
-        """List all environments for a team (async).
+    async def list_async(self) -> list[Environment]:
+        """List all environments for the authenticated team (async).
 
         Automatically paginates through all results. For teams with many environments,
         this may result in multiple API requests.
-
-        Args:
-            team: Team slug.
 
         Returns:
             List of Environment objects.
@@ -101,6 +127,7 @@ class EnvironmentsResource(BaseResource):
             The default rate limit is 100 requests per minute per operation.
             Contact Honeycomb support for higher limits: https://www.honeycomb.io/support
         """
+        team = await self._get_team_slug_async()
         results: list[Environment] = []
         cursor: str | None = None
         path = self._build_path(team)
@@ -124,29 +151,29 @@ class EnvironmentsResource(BaseResource):
 
         return results
 
-    async def get_async(self, team: str, env_id: str) -> Environment:
+    async def get_async(self, env_id: str) -> Environment:
         """Get a specific environment (async).
 
         Args:
-            team: Team slug.
             env_id: Environment ID.
 
         Returns:
             Environment object.
         """
+        team = await self._get_team_slug_async()
         data = await self._get_async(self._build_path(team, env_id))
         return Environment.from_jsonapi(data)
 
-    async def create_async(self, team: str, environment: EnvironmentCreate) -> Environment:
+    async def create_async(self, environment: EnvironmentCreate) -> Environment:
         """Create a new environment (async).
 
         Args:
-            team: Team slug.
             environment: Environment configuration.
 
         Returns:
             Created Environment object.
         """
+        team = await self._get_team_slug_async()
         data = await self._post_async(
             self._build_path(team),
             json=environment.to_jsonapi(),
@@ -154,19 +181,17 @@ class EnvironmentsResource(BaseResource):
         )
         return Environment.from_jsonapi(data)
 
-    async def update_async(
-        self, team: str, env_id: str, environment: EnvironmentUpdate
-    ) -> Environment:
+    async def update_async(self, env_id: str, environment: EnvironmentUpdate) -> Environment:
         """Update an existing environment (async).
 
         Args:
-            team: Team slug.
             env_id: Environment ID.
             environment: Updated environment configuration.
 
         Returns:
             Updated Environment object.
         """
+        team = await self._get_team_slug_async()
         data = await self._patch_async(
             self._build_path(team, env_id),
             json=environment.to_jsonapi(env_id),
@@ -174,27 +199,24 @@ class EnvironmentsResource(BaseResource):
         )
         return Environment.from_jsonapi(data)
 
-    async def delete_async(self, team: str, env_id: str) -> None:
+    async def delete_async(self, env_id: str) -> None:
         """Delete an environment (async).
 
         Args:
-            team: Team slug.
             env_id: Environment ID.
         """
+        team = await self._get_team_slug_async()
         await self._delete_async(self._build_path(team, env_id))
 
     # -------------------------------------------------------------------------
     # Sync methods
     # -------------------------------------------------------------------------
 
-    def list(self, team: str) -> list[Environment]:
-        """List all environments for a team.
+    def list(self) -> list[Environment]:
+        """List all environments for the authenticated team.
 
         Automatically paginates through all results. For teams with many environments,
         this may result in multiple API requests.
-
-        Args:
-            team: Team slug.
 
         Returns:
             List of Environment objects.
@@ -206,6 +228,7 @@ class EnvironmentsResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use list_async() for async mode, or pass sync=True to client")
 
+        team = self._get_team_slug()
         results: list[Environment] = []
         cursor: str | None = None
         path = self._build_path(team)
@@ -229,11 +252,10 @@ class EnvironmentsResource(BaseResource):
 
         return results
 
-    def get(self, team: str, env_id: str) -> Environment:
+    def get(self, env_id: str) -> Environment:
         """Get a specific environment.
 
         Args:
-            team: Team slug.
             env_id: Environment ID.
 
         Returns:
@@ -241,14 +263,14 @@ class EnvironmentsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use get_async() for async mode, or pass sync=True to client")
+        team = self._get_team_slug()
         data = self._get_sync(self._build_path(team, env_id))
         return Environment.from_jsonapi(data)
 
-    def create(self, team: str, environment: EnvironmentCreate) -> Environment:
+    def create(self, environment: EnvironmentCreate) -> Environment:
         """Create a new environment.
 
         Args:
-            team: Team slug.
             environment: Environment configuration.
 
         Returns:
@@ -256,6 +278,7 @@ class EnvironmentsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
+        team = self._get_team_slug()
         data = self._post_sync(
             self._build_path(team),
             json=environment.to_jsonapi(),
@@ -263,11 +286,10 @@ class EnvironmentsResource(BaseResource):
         )
         return Environment.from_jsonapi(data)
 
-    def update(self, team: str, env_id: str, environment: EnvironmentUpdate) -> Environment:
+    def update(self, env_id: str, environment: EnvironmentUpdate) -> Environment:
         """Update an existing environment.
 
         Args:
-            team: Team slug.
             env_id: Environment ID.
             environment: Updated environment configuration.
 
@@ -276,6 +298,7 @@ class EnvironmentsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
+        team = self._get_team_slug()
         data = self._patch_sync(
             self._build_path(team, env_id),
             json=environment.to_jsonapi(env_id),
@@ -283,13 +306,13 @@ class EnvironmentsResource(BaseResource):
         )
         return Environment.from_jsonapi(data)
 
-    def delete(self, team: str, env_id: str) -> None:
+    def delete(self, env_id: str) -> None:
         """Delete an environment.
 
         Args:
-            team: Team slug.
             env_id: Environment ID.
         """
         if not self._client.is_sync:
             raise RuntimeError("Use delete_async() for async mode, or pass sync=True to client")
+        team = self._get_team_slug()
         self._delete_sync(self._build_path(team, env_id))

@@ -5,6 +5,12 @@ Patch Honeycomb OpenAPI spec to fix issues that prevent client generation.
 This script applies fixes documented in OPENAPI_FIXES.md to make the spec
 compatible with openapi-python-client.
 
+NOTE: API Key permissions issue (Issue 6 in OPENAPI_FIXES.md) is NOT patched here
+because we hand-craft those models. The OpenAPI spec appears to use incorrect
+field names ('api_key_access' instead of 'permissions') but since we don't use
+the generated client for v2 API keys, we've worked around it by using the
+correct field names directly in our models.
+
 Usage:
     ./scripts/patch-openapi.py [--input api.yaml] [--output api.yaml]
 """

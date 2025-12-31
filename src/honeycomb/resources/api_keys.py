@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlparse
 
-from ..models.api_keys import ApiKey, ApiKeyCreate
+from ..models.api_keys import ApiKey, ApiKeyCreate, ApiKeyUpdate
 from .base import BaseResource
 
 if TYPE_CHECKING:
@@ -33,9 +33,8 @@ class ApiKeysResource(BaseResource):
         ...     management_key="hcamk_xxx",
         ...     management_secret="xxx"
         ... ) as client:
-        ...     keys = await client.api_keys.list_async(team="my-team")
+        ...     keys = await client.api_keys.list_async()
         ...     key = await client.api_keys.create_async(
-        ...         team="my-team",
         ...         api_key=ApiKeyCreate(
         ...             name="My Ingest Key",
         ...             key_type=ApiKeyType.INGEST,
@@ -49,11 +48,50 @@ class ApiKeysResource(BaseResource):
         ...     management_secret="xxx",
         ...     sync=True
         ... ) as client:
-        ...     keys = client.api_keys.list(team="my-team")
+        ...     keys = client.api_keys.list()
     """
 
     def __init__(self, client: HoneycombClient) -> None:
         super().__init__(client)
+        self._cached_team_slug: str | None = None
+
+    async def _get_team_slug_async(self, team: str | None = None) -> str:
+        """Get team slug, auto-detecting from auth if not provided."""
+        if team:
+            return team
+
+        # Use cached value if available
+        if self._cached_team_slug:
+            return self._cached_team_slug
+
+        # Auto-detect from auth endpoint
+        auth_info = await self._client.auth.get_async()
+        if not hasattr(auth_info, "team_slug") or not auth_info.team_slug:
+            raise ValueError(
+                "Cannot auto-detect team slug. Please provide team parameter explicitly."
+            )
+
+        self._cached_team_slug = auth_info.team_slug
+        return self._cached_team_slug
+
+    def _get_team_slug(self, team: str | None = None) -> str:
+        """Get team slug (sync), auto-detecting from auth if not provided."""
+        if team:
+            return team
+
+        # Use cached value if available
+        if self._cached_team_slug:
+            return self._cached_team_slug
+
+        # Auto-detect from auth endpoint
+        auth_info = self._client.auth.get()
+        if not hasattr(auth_info, "team_slug") or not auth_info.team_slug:
+            raise ValueError(
+                "Cannot auto-detect team slug. Please provide team parameter explicitly."
+            )
+
+        self._cached_team_slug = auth_info.team_slug
+        return self._cached_team_slug
 
     def _build_path(self, team: str, key_id: str | None = None) -> str:
         """Build API path for API keys."""
@@ -89,14 +127,13 @@ class ApiKeysResource(BaseResource):
     # Async methods
     # -------------------------------------------------------------------------
 
-    async def list_async(self, team: str, key_type: str | None = None) -> list[ApiKey]:
-        """List all API keys for a team (async).
+    async def list_async(self, key_type: str | None = None) -> list[ApiKey]:
+        """List all API keys for the authenticated team (async).
 
         Automatically paginates through all results. For teams with many API keys,
         this may result in multiple API requests.
 
         Args:
-            team: Team slug.
             key_type: Optional filter by key type ('ingest' or 'configuration').
 
         Returns:
@@ -106,6 +143,7 @@ class ApiKeysResource(BaseResource):
             The default rate limit is 100 requests per minute per operation.
             Contact Honeycomb support for higher limits: https://www.honeycomb.io/support
         """
+        team = await self._get_team_slug_async()
         results: list[ApiKey] = []
         cursor: str | None = None
         path = self._build_path(team)
@@ -129,29 +167,29 @@ class ApiKeysResource(BaseResource):
 
         return results
 
-    async def get_async(self, team: str, key_id: str) -> ApiKey:
+    async def get_async(self, key_id: str) -> ApiKey:
         """Get a specific API key (async).
 
         Args:
-            team: Team slug.
             key_id: API Key ID.
 
         Returns:
             ApiKey object.
         """
+        team = await self._get_team_slug_async()
         data = await self._get_async(self._build_path(team, key_id))
         return ApiKey.from_jsonapi(data)
 
-    async def create_async(self, team: str, api_key: ApiKeyCreate) -> ApiKey:
+    async def create_async(self, api_key: ApiKeyCreate) -> ApiKey:
         """Create a new API key (async).
 
         Args:
-            team: Team slug.
             api_key: API key configuration.
 
         Returns:
             Created ApiKey object (includes secret, save it immediately!).
         """
+        team = await self._get_team_slug_async()
         data = await self._post_async(
             self._build_path(team),
             json=api_key.to_jsonapi(),
@@ -159,19 +197,18 @@ class ApiKeysResource(BaseResource):
         )
         return ApiKey.from_jsonapi(data)
 
-    async def update_async(self, team: str, key_id: str, api_key: ApiKeyCreate) -> ApiKey:
+    async def update_async(self, key_id: str, api_key: ApiKeyUpdate) -> ApiKey:
         """Update an existing API key (async).
 
         Args:
-            team: Team slug.
             key_id: API Key ID.
             api_key: Updated API key configuration.
 
         Returns:
             Updated ApiKey object.
         """
-        payload = api_key.to_jsonapi()
-        payload["data"]["id"] = key_id  # Include ID for update
+        team = await self._get_team_slug_async()
+        payload = api_key.to_jsonapi(key_id)
         data = await self._patch_async(
             self._build_path(team, key_id),
             json=payload,
@@ -179,27 +216,26 @@ class ApiKeysResource(BaseResource):
         )
         return ApiKey.from_jsonapi(data)
 
-    async def delete_async(self, team: str, key_id: str) -> None:
+    async def delete_async(self, key_id: str) -> None:
         """Delete an API key (async).
 
         Args:
-            team: Team slug.
             key_id: API Key ID.
         """
+        team = await self._get_team_slug_async()
         await self._delete_async(self._build_path(team, key_id))
 
     # -------------------------------------------------------------------------
     # Sync methods
     # -------------------------------------------------------------------------
 
-    def list(self, team: str, key_type: str | None = None) -> list[ApiKey]:
-        """List all API keys for a team.
+    def list(self, key_type: str | None = None) -> list[ApiKey]:
+        """List all API keys for the authenticated team.
 
         Automatically paginates through all results. For teams with many API keys,
         this may result in multiple API requests.
 
         Args:
-            team: Team slug.
             key_type: Optional filter by key type ('ingest' or 'configuration').
 
         Returns:
@@ -212,6 +248,7 @@ class ApiKeysResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use list_async() for async mode, or pass sync=True to client")
 
+        team = self._get_team_slug()
         results: list[ApiKey] = []
         cursor: str | None = None
         path = self._build_path(team)
@@ -235,11 +272,10 @@ class ApiKeysResource(BaseResource):
 
         return results
 
-    def get(self, team: str, key_id: str) -> ApiKey:
+    def get(self, key_id: str) -> ApiKey:
         """Get a specific API key.
 
         Args:
-            team: Team slug.
             key_id: API Key ID.
 
         Returns:
@@ -247,10 +283,11 @@ class ApiKeysResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use get_async() for async mode, or pass sync=True to client")
+        team = self._get_team_slug()
         data = self._get_sync(self._build_path(team, key_id))
         return ApiKey.from_jsonapi(data)
 
-    def create(self, team: str, api_key: ApiKeyCreate) -> ApiKey:
+    def create(self, api_key: ApiKeyCreate) -> ApiKey:
         """Create a new API key.
 
         Args:
@@ -262,6 +299,7 @@ class ApiKeysResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
+        team = self._get_team_slug()
         data = self._post_sync(
             self._build_path(team),
             json=api_key.to_jsonapi(),
@@ -269,11 +307,10 @@ class ApiKeysResource(BaseResource):
         )
         return ApiKey.from_jsonapi(data)
 
-    def update(self, team: str, key_id: str, api_key: ApiKeyCreate) -> ApiKey:
+    def update(self, key_id: str, api_key: ApiKeyUpdate) -> ApiKey:
         """Update an existing API key.
 
         Args:
-            team: Team slug.
             key_id: API Key ID.
             api_key: Updated API key configuration.
 
@@ -282,8 +319,8 @@ class ApiKeysResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
-        payload = api_key.to_jsonapi()
-        payload["data"]["id"] = key_id
+        team = self._get_team_slug()
+        payload = api_key.to_jsonapi(key_id)
         data = self._patch_sync(
             self._build_path(team, key_id),
             json=payload,
@@ -291,13 +328,13 @@ class ApiKeysResource(BaseResource):
         )
         return ApiKey.from_jsonapi(data)
 
-    def delete(self, team: str, key_id: str) -> None:
+    def delete(self, key_id: str) -> None:
         """Delete an API key.
 
         Args:
-            team: Team slug.
             key_id: API Key ID.
         """
         if not self._client.is_sync:
             raise RuntimeError("Use delete_async() for async mode, or pass sync=True to client")
+        team = self._get_team_slug()
         self._delete_sync(self._build_path(team, key_id))
