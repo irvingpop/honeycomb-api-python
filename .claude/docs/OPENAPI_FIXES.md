@@ -156,66 +156,6 @@ JSONAPIError:
 
 **Fix:** Flatten the inheritance hierarchy by inlining properties instead of using deep `allOf` chains.
 
-### Issue 6: API Key Permissions Field Name Mismatch (CRITICAL BUG)
-
-**Problem:** The OpenAPI spec and actual API behavior have a critical discrepancy for API key permissions.
-
-**Actual API behavior (verified via live testing):**
-- **Request field name**: `permissions` (NOT `api_key_access`)
-- **Response field name**: `permissions` (NOT `api_key_access`)
-- **Permission field names**: snake_case with prefixes:
-  - `create_datasets` (NOT `createDatasets`)
-  - `send_events` (NOT `events`)
-  - `manage_markers` (NOT `markers`)
-  - `manage_triggers` (NOT `triggers`)
-  - `manage_boards` (NOT `boards`)
-  - `run_queries` (NOT `queries`)
-  - `manage_columns` (NOT `columns`)
-  - `manage_slos` (NOT `slos`)
-  - `manage_recipients` (NOT `recipients`)
-  - `manage_privateBoards` (NOT `privateBoards`)
-  - Plus: `read_service_maps`, `visible_team_members`
-
-**Live testing results:**
-```json
-// Request with "permissions" - WORKS ✅
-{
-  "attributes": {
-    "permissions": {
-      "create_datasets": true,
-      "send_events": true,
-      "manage_triggers": true
-    }
-  }
-}
-// Response includes all permissions with actual values
-
-// Request with "api_key_access" - IGNORED ❌
-{
-  "attributes": {
-    "api_key_access": {
-      "events": true,
-      "createDatasets": true
-    }
-  }
-}
-// Results in key with ALL permissions set to false!
-```
-
-**Impact:**
-- Configuration keys created without the correct `permissions` field have NO permissions
-- Tools/documentation using `api_key_access` will create non-functional keys
-- This is a CRITICAL issue for v2 API usage
-
-**Workaround for our implementation:**
-- Use `permissions` field name in request/response models
-- Use snake_case with `manage_` prefix for permission names
-- Document the correct format in tool descriptions
-
-**Should be reported to Honeycomb:**
-- OpenAPI spec needs to document `permissions` field correctly
-- Field names should match actual API behavior
-- This affects all API key management integrations
 
 ## Applying Fixes
 
@@ -253,11 +193,3 @@ These issues should be reported to Honeycomb. Key points:
 - Arrays need `items` defined (OpenAPI 3.1 requirement)
 - `allOf` cannot be used to add defaults to `$ref`
 - Inline objects in arrays should be extracted to named schemas to avoid code generation issues
-
-### Critical API Behavior Mismatch (Issue 6):
-- **API Key Permissions Field**: Spec likely uses `api_key_access` but actual API requires `permissions`
-- **Permission Names**: Spec may use camelCase/simple names but API requires snake_case with prefixes
-  - Correct: `create_datasets`, `send_events`, `manage_triggers`, `manage_boards`, `run_queries`, `manage_columns`, `manage_slos`, `manage_recipients`, `manage_privateBoards`
-  - Wrong: `createDatasets`, `events`, `triggers`, `boards`, `queries`, `columns`, `slos`, `recipients`, `privateBoards`
-- **Impact**: Configuration keys created with wrong field names will have ZERO permissions
-- **Verification**: Live API testing confirms `permissions` field with snake_case names works correctly
