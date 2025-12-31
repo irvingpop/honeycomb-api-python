@@ -33,6 +33,7 @@ def output_result(
     format: OutputFormat,
     columns: list[str] | None = None,
     quiet: bool = False,
+    column_titles: dict[str, str] | None = None,
 ) -> None:
     """
     Output data in the specified format.
@@ -42,6 +43,7 @@ def output_result(
         format: Output format (table, json, yaml)
         columns: Column names for table output (only used if format is table)
         quiet: If True, only output IDs (one per line)
+        column_titles: Optional mapping of column names to display titles
     """
     # Handle quiet mode
     if quiet:
@@ -84,13 +86,17 @@ def output_result(
         console.print(yaml.dump(data_dict, default_flow_style=False, sort_keys=False))
     elif format == OutputFormat.table:
         if isinstance(data_dict, list):
-            _output_table(data_dict, columns)
+            _output_table(data_dict, columns, column_titles)
         else:
             # Single item - output as key-value pairs
             _output_single_item(data_dict)
 
 
-def _output_table(data: list[dict[str, Any]], columns: list[str] | None = None) -> None:
+def _output_table(
+    data: list[dict[str, Any]],
+    columns: list[str] | None = None,
+    column_titles: dict[str, str] | None = None,
+) -> None:
     """Output a list of items as a table."""
     if not data:
         console.print("[yellow]No results found[/yellow]")
@@ -107,11 +113,15 @@ def _output_table(data: list[dict[str, Any]], columns: list[str] | None = None) 
 
     table = Table()
     for col in columns:
+        # Use custom title if provided, otherwise auto-generate from column name
+        title = column_titles.get(col) if column_titles else None
+        if title is None:
+            title = col.replace("_", " ").title()
         # ID columns should never truncate
         if col == "id" or col.endswith("_id"):
-            table.add_column(col.replace("_", " ").title(), style="cyan", no_wrap=True)
+            table.add_column(title, style="cyan", no_wrap=True)
         else:
-            table.add_column(col.replace("_", " ").title(), style="cyan")
+            table.add_column(title, style="cyan")
 
     for item in data:
         row = []

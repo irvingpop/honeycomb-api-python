@@ -24,6 +24,7 @@ def _register_commands() -> None:
         api_keys,
         auth,
         boards,
+        columns,
         config,
         datasets,
         derived_columns,
@@ -46,6 +47,9 @@ def _register_commands() -> None:
     app.add_typer(boards.app, name="boards")
     app.add_typer(boards.app, name="board", hidden=True)
     app.add_typer(boards.app, name="b", hidden=True)
+    app.add_typer(columns.app, name="columns")
+    app.add_typer(columns.app, name="column", hidden=True)
+    app.add_typer(columns.app, name="c", hidden=True)
     app.add_typer(queries.app, name="query")
     app.add_typer(queries.app, name="queries", hidden=True)
     app.add_typer(queries.app, name="q", hidden=True)
@@ -73,8 +77,6 @@ def _register_commands() -> None:
     app.add_typer(environments.app, name="e", hidden=True)
     app.add_typer(config.app, name="config")
     app.add_typer(config.app, name="conf", hidden=True)
-    app.add_typer(config.app, name="c", hidden=True)
-
 
 _register_commands()
 
