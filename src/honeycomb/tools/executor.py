@@ -257,6 +257,7 @@ async def _execute_create_api_key(client: "HoneycombClient", tool_input: dict[st
         name=tool_input["name"],
         key_type=ApiKeyType(tool_input["key_type"]),
         environment_id=tool_input["environment_id"],
+        permissions=tool_input.get("permissions"),
     )
     created = await client.api_keys.create_async(api_key=api_key)
     return json.dumps(created.model_dump(), default=str)

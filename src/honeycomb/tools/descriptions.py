@@ -501,8 +501,11 @@ API_KEY_DESCRIPTIONS = {
         "Creates a new API key for your authenticated team in a specific environment. "
         "Use this when provisioning new services, creating separate keys for different applications, or rotating credentials. "
         "Requires key name, key_type ('ingest' for data sending or 'configuration' for API access), and environment_id. The team is automatically detected from your management key. "
+        "CRITICAL FOR CONFIGURATION KEYS: Must include permissions object with boolean properties. Available permissions: 'create_datasets', 'send_events', 'manage_markers', 'manage_triggers', 'manage_boards', 'run_queries', 'manage_columns', 'manage_slos', 'manage_recipients', 'manage_privateBoards'. "
+        "Example for full access: {'create_datasets': true, 'send_events': true, 'manage_markers': true, 'manage_triggers': true, 'manage_boards': true, 'run_queries': true, 'manage_columns': true, 'manage_slos': true, 'manage_recipients': true, 'manage_privateBoards': true}. "
+        "Without permissions object, configuration keys will have NO permissions and cannot perform any actions. "
+        "Ingest keys have fixed permissions (send events, optionally create datasets implicitly) and don't use permissions object. "
         "CRITICAL: The secret is only returned once during creation - save it immediately. "
-        "Ingest keys allow sending events, configuration keys allow full API access to the environment. "
         "Returns the created API key object including the secret field (only time it's available)."
     ),
     "honeycomb_update_api_key": (

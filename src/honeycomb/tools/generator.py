@@ -2208,13 +2208,44 @@ def generate_create_api_key_tool() -> dict[str, Any]:
     add_parameter(
         schema, "environment_id", "string", "Environment ID to scope the key to", required=True
     )
+    add_parameter(
+        schema,
+        "permissions",
+        "object",
+        (
+            "Permissions for configuration keys (REQUIRED for 'configuration' type). "
+            "Object with boolean properties: 'create_datasets', 'send_events', 'manage_markers', "
+            "'manage_triggers', 'manage_boards', 'run_queries', 'manage_columns', "
+            "'manage_slos', 'manage_recipients', 'manage_privateBoards'. "
+            "Example: {'create_datasets': true, 'send_events': true, 'manage_triggers': true}. "
+            "Not needed for 'ingest' keys."
+        ),
+        required=False,
+    )
 
     examples: list[dict[str, Any]] = [
         {
             "name": "Production Ingest Key",
             "key_type": "ingest",
             "environment_id": "hcaen_123",
-        }
+        },
+        {
+            "name": "Full Access Config Key",
+            "key_type": "configuration",
+            "environment_id": "hcaen_123",
+            "permissions": {
+                "create_datasets": True,
+                "send_events": True,
+                "manage_markers": True,
+                "manage_triggers": True,
+                "manage_boards": True,
+                "run_queries": True,
+                "manage_columns": True,
+                "manage_slos": True,
+                "manage_recipients": True,
+                "manage_privateBoards": True,
+            },
+        },
     ]
 
     return create_tool_definition(
