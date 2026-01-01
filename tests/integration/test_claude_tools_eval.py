@@ -145,7 +145,15 @@ SYSTEM_PROMPT = (
     "you MUST use the available tools rather than providing conversational responses. "
     "Always call the appropriate tool, even if some parameters are not explicitly specified - "
     "use reasonable defaults. "
-    "Only respond conversationally if no appropriate tool is available."
+    "Only respond conversationally if no appropriate tool is available. "
+    "\n\n"
+    "IMPORTANT: For every tool call, you MUST provide:\n"
+    "1. 'confidence': Your confidence level ('high', 'medium', 'low', 'none') in the tool call.\n"
+    "2. 'notes': A structured object with your reasoning, containing any of these optional arrays:\n"
+    "   - 'decisions': Key decisions you made (e.g., 'Chose COUNT over AVG for error rate')\n"
+    "   - 'concerns': Potential issues (e.g., 'Time range may be too short')\n"
+    "   - 'assumptions': Things you're assuming (e.g., 'Assuming status_code column exists')\n"
+    "   - 'questions': Uncertainties (e.g., 'I would be more confident if I knew the baseline')\n"
 )
 
 
@@ -302,6 +310,50 @@ class TestArgumentCorrectness:
             print(f"TOOL PARAMETERS:\n{json.dumps(params, indent=2)}\n")
             print("=" * 80 + "\n")
             raise
+
+
+# ==============================================================================
+# Confidence Validation Tests
+# ==============================================================================
+
+
+class TestConfidenceLevel:
+    """Test that Claude provides adequate confidence for all tool calls."""
+
+    @pytest.mark.parametrize("test_case", get_all_test_cases(), ids=lambda tc: tc["id"])
+    def test_confidence_is_medium_or_higher(self, anthropic_client, test_case):
+        """Verify Claude provides 'medium' or 'high' confidence for tool calls.
+
+        If confidence is missing, it defaults to 'none' which fails the test.
+        When confidence is too low, the test outputs the notes for debugging.
+        """
+        result = call_claude_with_tools(anthropic_client, test_case["prompt"])
+
+        if len(result["tool_calls"]) < 1:
+            pytest.skip(f"No tool calls made for: {test_case['description']}")
+
+        tool_call = result["tool_calls"][0]
+        params = tool_call.input
+
+        # Extract confidence (default to "none" if missing)
+        confidence = params.get("confidence", "none")
+        notes = params.get("notes", {})
+
+        # Confidence must be "high" or "medium" to pass
+        if confidence not in ("high", "medium"):
+            print("\n" + "=" * 80)
+            print(f"LOW CONFIDENCE: {test_case['id']}")
+            print("=" * 80)
+            print(f"\nCONFIDENCE: {confidence}")
+            print("\nNOTES:")
+            print(json.dumps(notes, indent=2))
+            print(f"\nPROMPT:\n{test_case['prompt']}\n")
+            print(f"CLAUDE'S REASONING:\n{result['text']}\n")
+            print(f"TOOL CALLED: {tool_call.name}")
+            print("=" * 80 + "\n")
+            raise AssertionError(
+                f"Confidence '{confidence}' is below 'medium' threshold for {test_case['id']}"
+            )
 
 
 # ==============================================================================

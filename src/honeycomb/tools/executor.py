@@ -28,6 +28,28 @@ if TYPE_CHECKING:
 
 
 # ==============================================================================
+# Metadata Field Handling
+# ==============================================================================
+
+
+def strip_metadata_fields(tool_input: dict[str, Any]) -> dict[str, Any]:
+    """Strip Claude reasoning metadata fields before API execution.
+
+    These fields are for downstream applications to observe Claude's reasoning
+    and are NOT sent to the Honeycomb API.
+
+    Args:
+        tool_input: The tool input dict (will be modified in place)
+
+    Returns:
+        The same dict with metadata fields removed
+    """
+    tool_input.pop("confidence", None)
+    tool_input.pop("notes", None)
+    return tool_input
+
+
+# ==============================================================================
 # Main Executor
 # ==============================================================================
 
@@ -63,6 +85,10 @@ async def execute_tool(
         ...     )
         ...     print(result)  # JSON string
     """
+    # Strip metadata fields before processing
+    # These are for Claude's reasoning and not sent to Honeycomb API
+    strip_metadata_fields(tool_input)
+
     # Route to appropriate handler
     if tool_name == "honeycomb_get_auth":
         return await _execute_get_auth(client, tool_input)

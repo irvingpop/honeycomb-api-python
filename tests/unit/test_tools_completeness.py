@@ -145,9 +145,9 @@ class TestTriggerBuilderMethodCoverage:
 
     def test_frequency_presets_covered(self):
         """Common frequency values should map to builder presets."""
-        # time_range must be <= frequency * 4 (API constraint)
+        # time_range must be >= 300 (API minimum) AND <= frequency * 4
         frequency_tests = [
-            (60, "every_minute", 240),  # 60s * 4 = 240s max
+            (120, "custom_2min", 300),  # 120s * 4 = 480s max, use min 300
             (300, "every_5_minutes", 900),  # 300s * 4 = 1200s, but use 900
             (900, "every_15_minutes", 3600),  # 900s * 4 = 3600s
             (1800, "every_30_minutes", 3600),  # 1800s * 4 = 7200s, but triggers max 3600

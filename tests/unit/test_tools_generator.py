@@ -18,7 +18,14 @@ from honeycomb.tools.generator import (
     generate_list_triggers_tool,
     generate_tools_for_resource,
 )
-from honeycomb.tools.schemas import validate_schema, validate_tool_name
+from honeycomb.tools.schemas import (
+    CONFIDENCE_SCHEMA,
+    METADATA_FIELDS,
+    NOTES_SCHEMA,
+    add_metadata_fields,
+    validate_schema,
+    validate_tool_name,
+)
 
 
 class TestToolNameValidation:
@@ -118,6 +125,97 @@ class TestSchemaValidation:
         }
         with pytest.raises(ValueError, match="missing description"):
             validate_schema(schema)
+
+
+class TestMetadataFields:
+    """Test metadata field schemas and helper functions."""
+
+    def test_confidence_schema_structure(self):
+        """CONFIDENCE_SCHEMA should have correct structure."""
+        assert CONFIDENCE_SCHEMA["type"] == "string"
+        assert CONFIDENCE_SCHEMA["enum"] == ["high", "medium", "low", "none"]
+        assert "description" in CONFIDENCE_SCHEMA
+
+    def test_notes_schema_structure(self):
+        """NOTES_SCHEMA should have correct structure with all categories."""
+        assert NOTES_SCHEMA["type"] == "object"
+        assert "description" in NOTES_SCHEMA
+
+        # Should have all 4 categories
+        props = NOTES_SCHEMA["properties"]
+        assert "decisions" in props
+        assert "concerns" in props
+        assert "assumptions" in props
+        assert "questions" in props
+
+        # Each category should be an array of strings
+        for category in ["decisions", "concerns", "assumptions", "questions"]:
+            assert props[category]["type"] == "array"
+            assert props[category]["items"]["type"] == "string"
+            assert "description" in props[category]
+
+    def test_metadata_fields_set(self):
+        """METADATA_FIELDS should contain confidence and notes."""
+        assert "confidence" in METADATA_FIELDS
+        assert "notes" in METADATA_FIELDS
+        assert len(METADATA_FIELDS) == 2
+
+    def test_add_metadata_fields(self):
+        """add_metadata_fields should add confidence and notes to schema."""
+        schema = {"type": "object", "properties": {}, "required": ["dataset"]}
+        add_metadata_fields(schema)
+
+        assert "confidence" in schema["properties"]
+        assert "notes" in schema["properties"]
+
+        # Verify confidence schema
+        conf = schema["properties"]["confidence"]
+        assert conf["type"] == "string"
+        assert conf["enum"] == ["high", "medium", "low", "none"]
+        assert "description" in conf
+
+        # Verify notes schema
+        notes = schema["properties"]["notes"]
+        assert notes["type"] == "object"
+        assert "decisions" in notes["properties"]
+        assert "concerns" in notes["properties"]
+        assert "assumptions" in notes["properties"]
+        assert "questions" in notes["properties"]
+
+    def test_metadata_fields_are_optional(self):
+        """Metadata fields should not be added to required list."""
+        schema = {"type": "object", "properties": {}, "required": ["dataset"]}
+        add_metadata_fields(schema)
+
+        assert "confidence" not in schema["required"]
+        assert "notes" not in schema["required"]
+        assert schema["required"] == ["dataset"]
+
+    def test_metadata_fields_are_deep_copied(self):
+        """Metadata fields should be deep copied to avoid shared state."""
+        schema1 = {"type": "object", "properties": {}, "required": []}
+        schema2 = {"type": "object", "properties": {}, "required": []}
+
+        add_metadata_fields(schema1)
+        add_metadata_fields(schema2)
+
+        # Modifying one should not affect the other
+        schema1["properties"]["confidence"]["test_key"] = "test_value"
+        assert "test_key" not in schema2["properties"]["confidence"]
+
+    def test_all_tools_have_metadata_fields(self):
+        """Every generated tool should have confidence and notes fields."""
+        tools = generate_all_tools()
+
+        for tool in tools:
+            props = tool["input_schema"]["properties"]
+            assert "confidence" in props, f"{tool['name']} missing confidence"
+            assert "notes" in props, f"{tool['name']} missing notes"
+
+            # Verify they have correct structure
+            assert props["confidence"]["type"] == "string"
+            assert props["confidence"]["enum"] == ["high", "medium", "low", "none"]
+            assert props["notes"]["type"] == "object"
 
 
 class TestToolDefinitionCreation:
@@ -367,19 +465,23 @@ class TestToolExamplesValidation:
             examples = tool.get("input_examples", [])
 
             for i, example in enumerate(examples):
-                # Check all required fields are present
-                required_fields = schema.get("required", [])
+                # Check all required fields are present (excluding metadata fields)
+                required_fields = [
+                    f for f in schema.get("required", []) if f not in METADATA_FIELDS
+                ]
                 for field in required_fields:
                     assert field in example, (
                         f"{tool_name} example {i}: missing required field '{field}'"
                     )
 
                 # Check no extra unknown fields (unless schema allows additionalProperties)
+                # Metadata fields are allowed in examples but not required
                 if schema.get("additionalProperties") is False:
                     for field in example:
-                        assert field in schema["properties"], (
-                            f"{tool_name} example {i}: unknown field '{field}'"
-                        )
+                        if field not in METADATA_FIELDS:
+                            assert field in schema["properties"], (
+                                f"{tool_name} example {i}: unknown field '{field}'"
+                            )
 
 
 class TestSchemaModelAlignment:

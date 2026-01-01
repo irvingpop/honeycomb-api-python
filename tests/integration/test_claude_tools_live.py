@@ -40,6 +40,21 @@ TEST_MODEL = "claude-sonnet-4-5-20250929"
 TEST_BETA = "advanced-tool-use-2025-11-20"
 MAX_CONVERSATION_TURNS = 30  # Generous for full workflow
 
+# System prompt with confidence/notes instructions
+SYSTEM_PROMPT = (
+    "You are a Honeycomb API automation assistant. "
+    "When the user asks you to perform operations on Honeycomb resources, "
+    "you MUST use the available tools. "
+    "\n\n"
+    "IMPORTANT: For every tool call, you MUST provide:\n"
+    "1. 'confidence': Your confidence level ('high', 'medium', 'low', 'none') in the tool call.\n"
+    "2. 'notes': A structured object with your reasoning, containing any of these optional arrays:\n"
+    "   - 'decisions': Key decisions you made (e.g., 'Chose COUNT over AVG for error rate')\n"
+    "   - 'concerns': Potential issues (e.g., 'Time range may be too short')\n"
+    "   - 'assumptions': Things you're assuming (e.g., 'Assuming status_code column exists')\n"
+    "   - 'questions': Uncertainties (e.g., 'I would be more confident if I knew the baseline')\n"
+)
+
 
 # Fixtures
 
@@ -74,6 +89,33 @@ def dump_tool_call(step: str, tool_name: str, tool_input: dict[str, Any], result
     print(f"{'=' * 80}\n")
 
 
+def validate_confidence(tool_name: str, tool_input: dict[str, Any], step_name: str) -> None:
+    """Validate that tool call has adequate confidence level.
+
+    Args:
+        tool_name: Name of the tool called
+        tool_input: Input parameters (includes confidence and notes)
+        step_name: Current step name for error messages
+
+    Raises:
+        AssertionError: If confidence is not 'high' or 'medium'
+    """
+    confidence = tool_input.get("confidence", "none")
+    notes = tool_input.get("notes", {})
+
+    if confidence not in ("high", "medium"):
+        print(f"\n{'!' * 80}")
+        print(f"LOW CONFIDENCE DETECTED: {tool_name}")
+        print(f"Step: {step_name}")
+        print(f"{'!' * 80}")
+        print(f"Confidence: {confidence}")
+        print(f"Notes: {json.dumps(notes, indent=2)}")
+        print(f"{'!' * 80}\n")
+        raise AssertionError(
+            f"Confidence '{confidence}' is below 'medium' threshold for {tool_name} in {step_name}"
+        )
+
+
 async def execute_single_turn(
     anthropic_client: Anthropic,
     honeycomb_client: HoneycombClient,
@@ -99,6 +141,7 @@ async def execute_single_turn(
         max_tokens=4096,
         betas=[TEST_BETA],
         tools=HONEYCOMB_TOOLS,
+        system=SYSTEM_PROMPT,
         messages=messages,
     )
 
@@ -125,6 +168,9 @@ async def execute_single_turn(
 
             # IMPORTANT: Save original input BEFORE execute_tool (which mutates it with .pop())
             original_input = dict(block.input)
+
+            # Validate confidence level
+            validate_confidence(block.name, original_input, step_name)
 
             try:
                 result = await execute_tool(
