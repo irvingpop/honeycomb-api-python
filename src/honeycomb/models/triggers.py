@@ -50,8 +50,6 @@ def _default_calculations() -> list[Calculation | dict[str, Any]]:
 class TriggerQuery(BaseModel):
     """Inline query specification for a trigger.
 
-    Note: time_range must be <= 3600 (1 hour) for triggers.
-
     Accepts both typed models and dicts for flexibility:
         >>> # Using typed models
         >>> TriggerQuery(calculations=[Calculation(op=CalcOp.P99, column="duration_ms")])
@@ -61,9 +59,10 @@ class TriggerQuery(BaseModel):
     """
 
     time_range: int = Field(
-        default=3600,
+        default=900,
+        ge=300,
         le=3600,
-        description="Query time range in seconds (max 3600 for triggers)",
+        description="Query time range in seconds (300-3600, i.e. 5 min to 1 hour)",
     )
     granularity: int | None = Field(default=None, description="Time granularity in seconds")
     calculations: list[Calculation | dict[str, Any]] | None = Field(
