@@ -325,6 +325,53 @@ class TestExecuteSLOTools:
         result = json.loads(result_json)
         assert result["id"] == "new-slo"
 
+    async def test_execute_create_slo_with_expression(
+        self, client: HoneycombClient, respx_mock: MockRouter
+    ):
+        """Can execute create_slo with expression (triggers bundle orchestration).
+
+        This tests the scenario where Claude provides an SLI with expression,
+        which should create a derived column first, then the SLO.
+        """
+        # Mock derived column creation
+        respx_mock.post("https://api.honeycomb.io/1/derived_columns/test-dataset").respond(
+            json={
+                "id": "dc-123",
+                "alias": "request_success",
+                "expression": "IF(LT($status_code, 500), 1, 0)",
+                "description": "1 if success, 0 if error",
+            }
+        )
+
+        # Mock SLO creation
+        respx_mock.post("https://api.honeycomb.io/1/slos/test-dataset").respond(
+            json={
+                "id": "new-slo",
+                "name": "Request Success Rate",
+                "target_per_million": 999000,
+                "time_period_days": 30,
+                "sli": {"alias": "request_success"},
+            }
+        )
+
+        tool_input = {
+            "dataset": "test-dataset",
+            "name": "Request Success Rate",
+            "sli": {
+                "alias": "request_success",
+                "expression": "IF(LT($status_code, 500), 1, 0)",
+                "description": "1 if success, 0 if error",
+            },
+            "target_per_million": 999000,
+            "time_period_days": 30,
+        }
+
+        result_json = await execute_tool(client, "honeycomb_create_slo", tool_input)
+
+        result = json.loads(result_json)
+        assert result["id"] == "new-slo"
+        assert result["sli"]["alias"] == "request_success"
+
 
 class TestExecuteBurnAlertTools:
     """Test execution of burn alert tools."""

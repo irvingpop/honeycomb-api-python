@@ -1093,9 +1093,7 @@ class TestEnvironmentExamples:
     """
 
     @pytest.mark.asyncio
-    async def test_environment_lifecycle(
-        self, management_client: HoneycombClient, team_slug: str
-    ) -> None:
+    async def test_environment_lifecycle(self, management_client: HoneycombClient) -> None:
         """Test full environment CRUD lifecycle: list -> create -> get -> update -> delete."""
         from docs.examples.environments.basic_environment import (
             create_environment,
@@ -1109,31 +1107,31 @@ class TestEnvironmentExamples:
         )
 
         # List (before create)
-        initial_envs = await list_environments(management_client, team_slug)
+        initial_envs = await list_environments(management_client)
         await test_list_environments(initial_envs)
         initial_count = len(initial_envs)
 
         # Create
-        env_id = await create_environment(management_client, team_slug)
+        env_id = await create_environment(management_client)
         try:
             await test_create_environment(env_id)
 
             # Get
-            env = await get_environment(management_client, team_slug, env_id)
+            env = await get_environment(management_client, env_id)
             await test_get_environment(env, env_id)
 
             # Update
-            updated = await update_environment(management_client, team_slug, env_id)
+            updated = await update_environment(management_client, env_id)
             await test_update_environment(updated, env_id)
 
             # List (after create - verify it appears)
-            envs = await list_environments(management_client, team_slug)
+            envs = await list_environments(management_client)
             assert len(envs) == initial_count + 1
         finally:
             # Delete (always, even on failure)
             from docs.examples.environments.basic_environment import cleanup
 
-            await cleanup(management_client, team_slug, env_id)
+            await cleanup(management_client, env_id)
 
 
 class TestApiKeyExamples:
@@ -1145,7 +1143,7 @@ class TestApiKeyExamples:
 
     @pytest.mark.asyncio
     async def test_api_key_lifecycle(
-        self, management_client: HoneycombClient, team_slug: str, session_info: dict
+        self, management_client: HoneycombClient, session_info: dict
     ) -> None:
         """Test full API key CRUD lifecycle: list -> create -> get -> update -> delete."""
         from docs.examples.api_keys.basic_api_key import (
@@ -1161,7 +1159,7 @@ class TestApiKeyExamples:
         )
 
         # List (before create)
-        initial_keys = await list_api_keys(management_client, team_slug)
+        initial_keys = await list_api_keys(management_client)
         await test_list_api_keys(initial_keys)
         initial_count = len(initial_keys)
 
@@ -1169,24 +1167,24 @@ class TestApiKeyExamples:
         environment_id = session_info["environment_id"]
 
         # Create
-        key_id, secret = await create_api_key(management_client, team_slug, environment_id)
+        key_id, secret = await create_api_key(management_client, environment_id)
         try:
             await test_create_api_key(key_id, secret)
 
             # Get
-            key = await get_api_key(management_client, team_slug, key_id)
+            key = await get_api_key(management_client, key_id)
             await test_get_api_key(key, key_id)
 
             # Update
-            updated = await update_api_key(management_client, team_slug, key_id, environment_id)
+            updated = await update_api_key(management_client, key_id)
             await test_update_api_key(updated, key_id)
 
             # List (after create - verify it appears)
-            keys = await list_api_keys(management_client, team_slug)
+            keys = await list_api_keys(management_client)
             assert len(keys) == initial_count + 1
         finally:
             # Delete (always, even on failure)
-            await delete_api_key(management_client, team_slug, key_id)
+            await delete_api_key(management_client, key_id)
 
 
 class TestAuthExamples:

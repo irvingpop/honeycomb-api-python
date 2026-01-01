@@ -78,6 +78,7 @@ def _register_commands() -> None:
     app.add_typer(config.app, name="config")
     app.add_typer(config.app, name="conf", hidden=True)
 
+
 _register_commands()
 
 if __name__ == "__main__":

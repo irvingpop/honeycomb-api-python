@@ -9,9 +9,28 @@ from pydantic import BaseModel, Field
 
 
 class SLI(BaseModel):
-    """Service Level Indicator configuration."""
+    """Service Level Indicator configuration.
 
-    alias: str | None = Field(default=None, description="Alias for the SLI")
+    The SLI references a derived column by alias. You can either:
+    1. Reference an existing derived column: just provide alias
+    2. Create a new derived column inline: provide alias + expression
+
+    When expression is provided, a new derived column will be created automatically
+    before the SLO is created.
+    """
+
+    alias: str | None = Field(
+        default=None, description="Alias for the derived column (existing or new)"
+    )
+    expression: str | None = Field(
+        default=None,
+        description="If provided, creates a new derived column with this expression. "
+        "If omitted, uses an existing derived column with the given alias.",
+    )
+    description: str | None = Field(
+        default=None,
+        description="Description for the new derived column (only used when expression is provided)",
+    )
 
 
 class SLOCreate(BaseModel):
