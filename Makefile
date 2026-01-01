@@ -110,10 +110,12 @@ test-live:
 	poetry run python scripts/test_live_api.py
 
 test-eval:
-	poetry run pytest tests/integration/test_claude_tools_eval.py -v -n 10
+	rm -rf tests/integration/.tool_call_cache/
+	direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v -n 4
 
 test-eval-debug:
-	EVAL_USE_CACHE=false poetry run pytest tests/integration/test_claude_tools_eval.py -v
+	rm -rf tests/integration/.tool_call_cache/
+	EVAL_USE_CACHE=false direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v
 
 # =============================================================================
 # Build & Publish

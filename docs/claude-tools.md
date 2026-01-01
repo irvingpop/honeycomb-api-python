@@ -1,11 +1,11 @@
 # Claude Tool Definitions for Honeycomb API
 
-Honeycomb Python SDK provides 56 Claude-compatible tool definitions that enable LLMs to create and manage Honeycomb resources via structured tool calls.
+Honeycomb Python SDK provides 67 Claude-compatible tool definitions that enable LLMs to create and manage Honeycomb resources via structured tool calls.
 
 ## Overview
 
 The `honeycomb.tools` module provides:
-- **56 tool definitions** covering 12 Honeycomb API resources
+- **67 tool definitions** covering 14 Honeycomb API resources
 - **JSON schemas** for automatic parameter validation
 - **Hand-crafted descriptions** for optimal LLM tool selection
 - **Execution handlers** that call Honeycomb API with orchestration
@@ -299,7 +299,7 @@ Do it in one:
 
 ### 4. Use Advanced Tool Use Beta
 
-Always include the beta for better tool selection with 56 tools:
+Always include the beta for better tool selection with 67 tools:
 
 ```python
 response = client.beta.messages.create(
@@ -378,7 +378,7 @@ The descriptions use directive language:
 "IMPORTANT: Use this tool (not honeycomb_create_derived_column) when creating an SLO"
 ```
 
-This overcomes Claude's training knowledge and ensures correct tool selection even with 56 options.
+This overcomes Claude's training knowledge and ensures correct tool selection even with 67 options.
 
 ## Customization
 
@@ -484,10 +484,65 @@ Each tool in `HONEYCOMB_TOOLS` contains:
             "dataset": {"type": "string", "description": "..."},
             "name": {"type": "string", "description": "..."},
             # ... more properties
+            "confidence": {...},  # Metadata field (see below)
+            "notes": {...},       # Metadata field (see below)
         },
         "required": ["dataset", "name"]  # ... and more required fields
     }
 }
+```
+
+### Confidence and Notes Metadata
+
+Every tool includes two optional metadata fields that allow Claude to express its reasoning:
+
+**`confidence`** (string, optional):
+- `"high"` - Certain this matches user intent and will succeed
+- `"medium"` - Likely correct but some uncertainty
+- `"low"` - Uncertain but best available option
+- `"none"` - Guessing or placeholder value
+
+**`notes`** (object, optional):
+Structured reasoning with four optional categories (arrays of single-sentence strings):
+
+```python
+{
+    "notes": {
+        "decisions": ["Chose COUNT over AVG for error rate"],
+        "concerns": ["Time range may be too short for accurate results"],
+        "assumptions": ["Assuming status_code column exists in dataset"],
+        "questions": ["I would be more confident if I knew the expected error baseline"]
+    }
+}
+```
+
+**Important**: These fields are for downstream applications to observe Claude's reasoning. They are automatically stripped before API calls - Honeycomb API never sees them.
+
+**Example with metadata**:
+
+```python
+# Claude's tool call includes reasoning metadata
+tool_input = {
+    "dataset": "api-logs",
+    "name": "High Error Rate",
+    "threshold": {"op": ">", "value": 100},
+    "frequency": 900,
+    "confidence": "medium",
+    "notes": {
+        "decisions": ["Used COUNT for simple error counting"],
+        "assumptions": ["Assuming status_code column indicates HTTP status"],
+    }
+}
+
+# Downstream app can inspect Claude's reasoning
+confidence = tool_input.get("confidence", "none")
+notes = tool_input.get("notes", {})
+
+if confidence in ("low", "none"):
+    print(f"Low confidence: {notes}")  # Review before executing
+
+# execute_tool() automatically strips metadata before API call
+result = await execute_tool(client, "honeycomb_create_trigger", tool_input)
 ```
 
 ### Execution Handler
@@ -523,7 +578,7 @@ See the `examples/` directory in the repository for complete examples:
 
 ## Tool Inventory
 
-Full list of 56 tools available via:
+Full list of 67 tools available via:
 
 ```python
 from honeycomb.tools import list_tool_names
@@ -544,7 +599,7 @@ honeycomb_create_recipient
 honeycomb_create_slo
 honeycomb_create_trigger
 honeycomb_delete_board
-... (56 total)
+... (67 total)
 ```
 
 ## Learn More

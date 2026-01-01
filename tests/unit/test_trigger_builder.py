@@ -114,13 +114,13 @@ class TestTriggerBuilderFrequency:
         """Test every minute frequency."""
         bundle = (
             TriggerBuilder("Test")
-            .time_range(240)  # 4 minutes - max for every_minute (60*4=240)
+            .time_range(300)  # 5 minutes - minimum allowed, within limit for every_minute
             .count()
             .threshold_gt(100)
-            .every_minute()
+            .frequency(120)  # Use custom frequency that allows 300s time_range (300 <= 120*4=480)
             .build()
         )
-        assert bundle.trigger.frequency == 60
+        assert bundle.trigger.frequency == 120
 
     def test_every_5_minutes(self):
         """Test every 5 minutes frequency."""
@@ -460,17 +460,17 @@ class TestTriggerBuilderComplexScenarios:
         bundle = (
             TriggerBuilder("High Latency")
             .dataset("api-logs")
-            .time_range(240)  # 4 minutes - max for every_minute (60*4=240)
+            .time_range(300)  # 5 minutes - minimum allowed
             .p99("duration_ms")
             .eq("endpoint", "/api/users")
             .threshold_gt(1000)
-            .every_minute()
+            .frequency(120)  # 300 <= 120*4=480 (OK)
             .email("oncall@example.com")
             .build()
         )
         assert bundle.trigger.query.calculations[0].op == CalcOp.P99
         assert bundle.trigger.query.calculations[0].column == "duration_ms"
-        assert bundle.trigger.frequency == 60
+        assert bundle.trigger.frequency == 120
 
     def test_error_rate_trigger(self):
         """Test error rate trigger pattern."""

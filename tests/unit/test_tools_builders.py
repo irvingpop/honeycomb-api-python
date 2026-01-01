@@ -164,14 +164,21 @@ class TestBuildTrigger:
 
     def test_trigger_frequency_presets(self):
         """Common frequencies should work."""
-        frequencies = [60, 300, 900, 1800, 3600]
+        # time_range must be >= 300 (API minimum) and <= freq * 4 (constraint)
+        frequency_time_range_pairs = [
+            (120, 300),  # 120s freq: 300 <= 120*4=480 (OK, uses min time_range)
+            (300, 900),  # 300s freq: 900 <= 300*4=1200 (OK)
+            (900, 3600),  # 900s freq: 3600 <= 900*4=3600 (OK)
+            (1800, 3600),  # 1800s freq: 3600 <= 1800*4=7200 (OK)
+            (3600, 3600),  # 3600s freq: 3600 <= 3600*4=14400 (OK)
+        ]
 
-        for freq in frequencies:
+        for freq, time_range in frequency_time_range_pairs:
             data = {
                 "name": "Test Frequency",
                 "dataset": "test",
                 "query": {
-                    "time_range": min(freq, 3600),  # Ensure time_range <= freq * 4
+                    "time_range": time_range,
                     "calculations": [{"op": "COUNT"}],
                 },
                 "threshold": {"op": ">", "value": 100},

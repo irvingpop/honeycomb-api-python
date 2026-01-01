@@ -9,6 +9,87 @@ from typing import Any
 
 from pydantic import BaseModel
 
+# ==============================================================================
+# Metadata Field Schemas (for Claude reasoning - stripped before API execution)
+# ==============================================================================
+
+CONFIDENCE_SCHEMA: dict[str, Any] = {
+    "type": "string",
+    "enum": ["high", "medium", "low", "none"],
+    "description": (
+        "Claude's confidence level in this tool call. "
+        "'high' = certain this matches user intent and will succeed, "
+        "'medium' = likely correct but some uncertainty, "
+        "'low' = uncertain but best available option, "
+        "'none' = guessing or placeholder value."
+    ),
+}
+
+NOTES_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "description": (
+        "Structured reasoning notes explaining Claude's decision-making process. "
+        "All categories are optional arrays of single-sentence strings."
+    ),
+    "properties": {
+        "decisions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')",
+        },
+        "concerns": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Potential issues or risks (e.g., 'Time range may be too short')",
+        },
+        "assumptions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Assumptions being made (e.g., 'Assuming status_code column exists')",
+        },
+        "questions": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": (
+                "Clarifying questions for increased confidence "
+                "(e.g., 'I would be more confident if I knew the expected error baseline')"
+            ),
+        },
+    },
+    "additionalProperties": False,
+}
+
+# Fields that are metadata for downstream applications, not sent to Honeycomb API
+METADATA_FIELDS: set[str] = {"confidence", "notes"}
+
+
+def add_metadata_fields(schema: dict[str, Any]) -> None:
+    """Add confidence and notes metadata fields to a tool schema.
+
+    These fields are for Claude's reasoning and are NOT sent to the Honeycomb API.
+    They are stripped by the executor before API calls.
+
+    Both fields are optional - they are not added to the required list.
+
+    Args:
+        schema: The tool input schema to modify (mutated in place)
+
+    Example:
+        >>> schema = {"type": "object", "properties": {}, "required": ["dataset"]}
+        >>> add_metadata_fields(schema)
+        >>> "confidence" in schema["properties"]
+        True
+        >>> "notes" in schema["properties"]
+        True
+        >>> "confidence" in schema.get("required", [])
+        False
+    """
+    import copy
+
+    schema["properties"]["confidence"] = copy.deepcopy(CONFIDENCE_SCHEMA)
+    schema["properties"]["notes"] = copy.deepcopy(NOTES_SCHEMA)
+    # Note: Both fields are OPTIONAL - not added to required list
+
 
 def validate_tool_name(name: str) -> None:
     """Validate tool name follows Claude's naming constraints.

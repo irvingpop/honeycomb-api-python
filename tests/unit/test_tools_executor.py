@@ -6,7 +6,7 @@ import pytest
 from respx import MockRouter
 
 from honeycomb import HoneycombClient
-from honeycomb.tools.executor import execute_tool
+from honeycomb.tools.executor import execute_tool, strip_metadata_fields
 
 
 @pytest.fixture
@@ -486,3 +486,125 @@ class TestExecutorErrorHandling:
         """Missing required parameter should raise appropriate error."""
         with pytest.raises(KeyError):
             await execute_tool(client, "honeycomb_list_triggers", {})  # Missing dataset
+
+
+class TestMetadataStripping:
+    """Test that metadata fields are properly stripped before API execution."""
+
+    def test_strip_metadata_fields_removes_confidence(self):
+        """strip_metadata_fields should remove confidence field."""
+        tool_input = {
+            "dataset": "test",
+            "name": "trigger",
+            "confidence": "high",
+        }
+
+        result = strip_metadata_fields(tool_input)
+
+        assert "confidence" not in result
+        assert result["dataset"] == "test"
+        assert result["name"] == "trigger"
+
+    def test_strip_metadata_fields_removes_notes(self):
+        """strip_metadata_fields should remove notes field."""
+        tool_input = {
+            "dataset": "test",
+            "notes": {
+                "decisions": ["Chose COUNT for simple counting"],
+                "assumptions": ["Column exists"],
+            },
+        }
+
+        result = strip_metadata_fields(tool_input)
+
+        assert "notes" not in result
+        assert result["dataset"] == "test"
+
+    def test_strip_metadata_fields_removes_both(self):
+        """strip_metadata_fields should remove both confidence and notes."""
+        tool_input = {
+            "dataset": "test",
+            "name": "trigger",
+            "confidence": "medium",
+            "notes": {
+                "decisions": ["Used COUNT operator"],
+                "concerns": ["Time range might be too short"],
+                "assumptions": ["status_code column exists"],
+                "questions": ["I would be more confident if I knew the baseline error rate"],
+            },
+        }
+
+        result = strip_metadata_fields(tool_input)
+
+        assert "confidence" not in result
+        assert "notes" not in result
+        assert result["dataset"] == "test"
+        assert result["name"] == "trigger"
+
+    def test_strip_metadata_fields_handles_missing_fields(self):
+        """strip_metadata_fields should handle missing metadata fields gracefully."""
+        tool_input = {"dataset": "test", "name": "trigger"}
+
+        result = strip_metadata_fields(tool_input)
+
+        # Should not raise, should return same dict
+        assert result["dataset"] == "test"
+        assert result["name"] == "trigger"
+
+    def test_strip_metadata_fields_mutates_input(self):
+        """strip_metadata_fields should mutate the input dict."""
+        tool_input = {"dataset": "test", "confidence": "high"}
+
+        strip_metadata_fields(tool_input)
+
+        # Original dict should be mutated
+        assert "confidence" not in tool_input
+
+    async def test_executor_strips_metadata_before_api_call(
+        self, client: HoneycombClient, respx_mock: MockRouter
+    ):
+        """Metadata fields should be stripped before API calls."""
+        respx_mock.get("https://api.honeycomb.io/1/triggers/test-dataset").respond(
+            json=[
+                {
+                    "id": "t1",
+                    "name": "Test",
+                    "dataset_slug": "test-dataset",
+                    "threshold": {"op": ">", "value": 100},
+                    "frequency": 900,
+                }
+            ]
+        )
+
+        # Include metadata fields in input
+        tool_input = {
+            "dataset": "test-dataset",
+            "confidence": "high",
+            "notes": {"decisions": ["Testing metadata stripping"]},
+        }
+
+        # Should not raise - metadata stripped before processing
+        result = await execute_tool(client, "honeycomb_list_triggers", tool_input)
+        assert "t1" in result
+
+    async def test_executor_works_without_metadata(
+        self, client: HoneycombClient, respx_mock: MockRouter
+    ):
+        """Executor should work when metadata fields are absent."""
+        respx_mock.get("https://api.honeycomb.io/1/triggers/test-dataset").respond(
+            json=[
+                {
+                    "id": "t1",
+                    "name": "Test",
+                    "dataset_slug": "test-dataset",
+                    "threshold": {"op": ">", "value": 100},
+                    "frequency": 900,
+                }
+            ]
+        )
+
+        # No metadata fields
+        tool_input = {"dataset": "test-dataset"}
+
+        result = await execute_tool(client, "honeycomb_list_triggers", tool_input)
+        assert "t1" in result

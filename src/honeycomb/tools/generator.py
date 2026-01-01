@@ -22,6 +22,7 @@ from honeycomb.models import (
 )
 from honeycomb.tools.descriptions import get_description, validate_description
 from honeycomb.tools.schemas import (
+    add_metadata_fields,
     add_parameter,
     generate_schema_from_model,
     validate_schema,
@@ -53,10 +54,14 @@ def create_tool_definition(
     Raises:
         ValueError: If validation fails
     """
-    # Validate
+    # Validate business fields
     validate_tool_name(name)
     validate_description(description)
     validate_schema(input_schema)
+
+    # Add metadata fields for Claude reasoning (optional, stripped before API execution)
+    # These are added after validation since they're always valid (defined by us)
+    add_metadata_fields(input_schema)
 
     # Build definition
     definition: dict[str, Any] = {
