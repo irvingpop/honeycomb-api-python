@@ -7,8 +7,8 @@ from attrs import field as _attrs_field
 from ..types import UNSET, Unset
 
 if TYPE_CHECKING:
-  from ..models.configuration_key import ConfigurationKey
-  from ..models.ingest_key import IngestKey
+  from ..models.configuration_key_request import ConfigurationKeyRequest
+  from ..models.ingest_key_request import IngestKeyRequest
 
 
 
@@ -22,18 +22,18 @@ T = TypeVar("T", bound="ApiKeyUpdateRequest")
 class ApiKeyUpdateRequest:
     """ 
         Attributes:
-            data (Union['ConfigurationKey', 'IngestKey']):
+            data (Union['ConfigurationKeyRequest', 'IngestKeyRequest']):
      """
 
-    data: Union['ConfigurationKey', 'IngestKey']
+    data: Union['ConfigurationKeyRequest', 'IngestKeyRequest']
     additional_properties: dict[str, Any] = _attrs_field(init=False, factory=dict)
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.configuration_key import ConfigurationKey
-        from ..models.ingest_key import IngestKey
+        from ..models.configuration_key_request import ConfigurationKeyRequest
+        from ..models.ingest_key_request import IngestKeyRequest
         data: dict[str, Any]
-        if isinstance(self.data, IngestKey):
+        if isinstance(self.data, IngestKeyRequest):
             data = self.data.to_dict()
         else:
             data = self.data.to_dict()
@@ -52,14 +52,14 @@ class ApiKeyUpdateRequest:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.configuration_key import ConfigurationKey
-        from ..models.ingest_key import IngestKey
+        from ..models.configuration_key_request import ConfigurationKeyRequest
+        from ..models.ingest_key_request import IngestKeyRequest
         d = src_dict.copy()
-        def _parse_data(data: object) -> Union['ConfigurationKey', 'IngestKey']:
+        def _parse_data(data: object) -> Union['ConfigurationKeyRequest', 'IngestKeyRequest']:
             try:
                 if not isinstance(data, dict):
                     raise TypeError()
-                data_type_0 = IngestKey.from_dict(data)
+                data_type_0 = IngestKeyRequest.from_dict(data)
 
 
 
@@ -68,7 +68,7 @@ class ApiKeyUpdateRequest:
                 pass
             if not isinstance(data, dict):
                 raise TypeError()
-            data_type_1 = ConfigurationKey.from_dict(data)
+            data_type_1 = ConfigurationKeyRequest.from_dict(data)
 
 
 

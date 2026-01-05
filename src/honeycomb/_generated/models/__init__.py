@@ -65,8 +65,16 @@ from .calculated_field import CalculatedField
 from .configuration_key_attributes import ConfigurationKeyAttributes
 from .configuration_key_attributes_key_type import \
     ConfigurationKeyAttributesKeyType
+from .configuration_key_attributes_permissions import \
+    ConfigurationKeyAttributesPermissions
 from .configuration_key_attributes_timestamps import \
     ConfigurationKeyAttributesTimestamps
+from .configuration_key_request import ConfigurationKeyRequest
+from .configuration_key_request_attributes import \
+    ConfigurationKeyRequestAttributes
+from .configuration_key_request_attributes_permissions import \
+    ConfigurationKeyRequestAttributesPermissions
+from .configuration_key_request_type import ConfigurationKeyRequestType
 from .create_board_view_request import CreateBoardViewRequest
 from .create_budget_rate_burn_alert_request import \
     CreateBudgetRateBurnAlertRequest
@@ -192,6 +200,9 @@ from .ingest_key_attributes import IngestKeyAttributes
 from .ingest_key_attributes_key_type import IngestKeyAttributesKeyType
 from .ingest_key_attributes_permissions import IngestKeyAttributesPermissions
 from .ingest_key_attributes_timestamps import IngestKeyAttributesTimestamps
+from .ingest_key_request import IngestKeyRequest
+from .ingest_key_request_attributes import IngestKeyRequestAttributes
+from .ingest_key_request_type import IngestKeyRequestType
 from .ingest_key_type import IngestKeyType
 from .ingest_key_type_key_type import IngestKeyTypeKeyType
 from .jsonapi_error_source import JSONAPIErrorSource
@@ -420,7 +431,12 @@ __all__ = (
     "CalculatedField",
     "ConfigurationKeyAttributes",
     "ConfigurationKeyAttributesKeyType",
+    "ConfigurationKeyAttributesPermissions",
     "ConfigurationKeyAttributesTimestamps",
+    "ConfigurationKeyRequest",
+    "ConfigurationKeyRequestAttributes",
+    "ConfigurationKeyRequestAttributesPermissions",
+    "ConfigurationKeyRequestType",
     "CreateBoardViewRequest",
     "CreateBudgetRateBurnAlertRequest",
     "CreateBudgetRateBurnAlertRequestSlo",
@@ -508,6 +524,9 @@ __all__ = (
     "IngestKeyAttributesKeyType",
     "IngestKeyAttributesPermissions",
     "IngestKeyAttributesTimestamps",
+    "IngestKeyRequest",
+    "IngestKeyRequestAttributes",
+    "IngestKeyRequestType",
     "IngestKeyType",
     "IngestKeyTypeKeyType",
     "JSONAPIErrorSource",
