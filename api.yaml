@@ -8793,6 +8793,7 @@ components:
               type: email
               target: alerts@example.com
     IngestKeyAttributes:
+      title: Ingest Key
       allOf:
       - $ref: '#/components/schemas/IngestKeyType'
       - type: object
@@ -8841,6 +8842,7 @@ components:
                 readOnly: true
                 example: '2022-10-31T15:08:11Z'
     ConfigurationKeyAttributes:
+      title: Configuration Key
       type: object
       required:
       - key_type
