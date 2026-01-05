@@ -30,10 +30,22 @@ def list_triggers(
     try:
         client = get_client(profile=profile, api_key=api_key)
         triggers = client.triggers.list(dataset=dataset)
+
+        # Add computed dataset column for table display
+        triggers_with_dataset = []
+        for trigger in triggers:
+            trigger_dict = trigger.model_dump(mode="json")
+            # Show "environment-wide" for environment-wide triggers, otherwise show dataset slug
+            if trigger.dataset_slug == "__all__":
+                trigger_dict["dataset"] = "environment-wide"
+            else:
+                trigger_dict["dataset"] = trigger.dataset_slug
+            triggers_with_dataset.append(trigger_dict)
+
         output_result(
-            triggers,
+            triggers_with_dataset if output == OutputFormat.table else triggers,
             output,
-            columns=["id", "name", "disabled", "frequency", "created_at"],
+            columns=["id", "name", "dataset", "disabled", "frequency", "created_at"],
             quiet=quiet,
         )
     except Exception as e:
@@ -44,7 +56,9 @@ def list_triggers(
 @app.command("get")
 def get_trigger(
     trigger_id: str = typer.Argument(..., help="Trigger ID"),
-    dataset: str = typer.Option(..., "--dataset", "-d", help="Dataset slug"),
+    dataset: str | None = typer.Option(
+        None, "--dataset", "-d", help="Dataset slug (auto-detected if not provided)"
+    ),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Config profile"),
     api_key: str | None = typer.Option(None, "--api-key", envvar="HONEYCOMB_API_KEY"),
     output: OutputFormat = typer.Option(DEFAULT_OUTPUT_FORMAT, "--output", "-o"),
@@ -52,8 +66,23 @@ def get_trigger(
     """Get a specific trigger."""
     try:
         client = get_client(profile=profile, api_key=api_key)
-        trigger = client.triggers.get(dataset=dataset, trigger_id=trigger_id)
-        output_result(trigger, output)
+
+        # If dataset not provided, find it by listing all triggers
+        if dataset is None:
+            all_triggers = client.triggers.list(dataset="__all__")
+            matching = [t for t in all_triggers if t.id == trigger_id]
+            if not matching:
+                console.print(f"[red]Error:[/red] Trigger {trigger_id} not found", style="bold")
+                raise typer.Exit(1)
+            trigger = matching[0]
+            dataset = trigger.dataset
+            console.print(f"[dim]Found trigger in dataset: {dataset}[/dim]")
+            # We already have the trigger from the list, just output it
+            output_result(trigger, output)
+        else:
+            # Dataset provided, fetch directly
+            trigger = client.triggers.get(dataset=dataset, trigger_id=trigger_id)
+            output_result(trigger, output)
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}", style="bold")
         raise typer.Exit(1)
@@ -125,20 +154,33 @@ def update_trigger(
 @app.command("delete")
 def delete_trigger(
     trigger_id: str = typer.Argument(..., help="Trigger ID"),
-    dataset: str = typer.Option(..., "--dataset", "-d", help="Dataset slug"),
+    dataset: str | None = typer.Option(
+        None, "--dataset", "-d", help="Dataset slug (auto-detected if not provided)"
+    ),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Config profile"),
     api_key: str | None = typer.Option(None, "--api-key", envvar="HONEYCOMB_API_KEY"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation"),
 ) -> None:
     """Delete a trigger."""
     try:
+        client = get_client(profile=profile, api_key=api_key)
+
+        # If dataset not provided, find it by listing all triggers
+        if dataset is None:
+            all_triggers = client.triggers.list(dataset="__all__")
+            matching = [t for t in all_triggers if t.id == trigger_id]
+            if not matching:
+                console.print(f"[red]Error:[/red] Trigger {trigger_id} not found", style="bold")
+                raise typer.Exit(1)
+            dataset = matching[0].dataset
+            console.print(f"[dim]Found trigger in dataset: {dataset}[/dim]")
+
         if not yes:
             confirm = typer.confirm(f"Delete trigger {trigger_id} from dataset {dataset}?")
             if not confirm:
                 console.print("[yellow]Cancelled[/yellow]")
                 raise typer.Exit(0)
 
-        client = get_client(profile=profile, api_key=api_key)
         client.triggers.delete(dataset=dataset, trigger_id=trigger_id)
         console.print(f"[green]Deleted trigger {trigger_id}[/green]")
     except Exception as e:
@@ -149,7 +191,9 @@ def delete_trigger(
 @app.command("export")
 def export_trigger(
     trigger_id: str = typer.Argument(..., help="Trigger ID"),
-    dataset: str = typer.Option(..., "--dataset", "-d", help="Dataset slug"),
+    dataset: str | None = typer.Option(
+        None, "--dataset", "-d", help="Dataset slug (auto-detected if not provided)"
+    ),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Config profile"),
     api_key: str | None = typer.Option(None, "--api-key", envvar="HONEYCOMB_API_KEY"),
     output_file: Path | None = typer.Option(
@@ -163,7 +207,20 @@ def export_trigger(
     """
     try:
         client = get_client(profile=profile, api_key=api_key)
-        trigger = client.triggers.get(dataset=dataset, trigger_id=trigger_id)
+
+        # If dataset not provided, find it by listing all triggers
+        if dataset is None:
+            all_triggers = client.triggers.list(dataset="__all__")
+            matching = [t for t in all_triggers if t.id == trigger_id]
+            if not matching:
+                console.print(f"[red]Error:[/red] Trigger {trigger_id} not found", style="bold")
+                raise typer.Exit(1)
+            trigger = matching[0]
+            dataset = trigger.dataset
+            console.print(f"[dim]Found trigger in dataset: {dataset}[/dim]")
+        else:
+            # Dataset provided, fetch directly
+            trigger = client.triggers.get(dataset=dataset, trigger_id=trigger_id)
 
         # Export without IDs/timestamps for portability
         data = trigger.model_dump(exclude={"id", "created_at", "updated_at"}, mode="json")

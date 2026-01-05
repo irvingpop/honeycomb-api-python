@@ -83,3 +83,15 @@ class SLO(BaseModel):
     updated_at: datetime | None = Field(default=None, description="Last update timestamp")
 
     model_config = {"extra": "allow"}
+
+    @property
+    def dataset(self) -> str | None:
+        """Return the first dataset slug for convenience (SLOs can span multiple datasets)."""
+        if self.dataset_slugs and len(self.dataset_slugs) > 0:
+            return self.dataset_slugs[0]
+        return None
+
+    @property
+    def target_percentage(self) -> float:
+        """Convert target_per_million to percentage for display (e.g., 999000 → 99.9)."""
+        return self.target_per_million / 10000

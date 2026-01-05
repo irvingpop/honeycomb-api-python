@@ -205,3 +205,8 @@ class Trigger(BaseModel):
     updated_at: datetime | None = Field(default=None, description="Last update timestamp")
 
     model_config = {"extra": "allow"}
+
+    @property
+    def dataset(self) -> str:
+        """Alias for dataset_slug for convenience."""
+        return self.dataset_slug

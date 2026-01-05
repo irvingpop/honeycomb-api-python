@@ -30,10 +30,34 @@ def list_slos(
     try:
         client = get_client(profile=profile, api_key=api_key)
         slos = client.slos.list(dataset=dataset)
+
+        # Add computed columns for table display
+        slos_with_computed = []
+        for slo in slos:
+            slo_dict = slo.model_dump(mode="json")
+            # Show "environment-wide" or comma-separated dataset slugs
+            if slo.dataset_slugs and len(slo.dataset_slugs) > 0:
+                if slo.dataset_slugs == ["__all__"]:
+                    slo_dict["datasets"] = "environment-wide"
+                else:
+                    slo_dict["datasets"] = ", ".join(slo.dataset_slugs)
+            else:
+                slo_dict["datasets"] = "environment-wide"
+            # Add target_percentage for user-friendly display
+            slo_dict["target_percentage"] = slo.target_percentage
+            slos_with_computed.append(slo_dict)
+
         output_result(
-            slos,
+            slos_with_computed if output == OutputFormat.table else slos,
             output,
-            columns=["id", "name", "target_percentage", "time_period_days", "created_at"],
+            columns=[
+                "id",
+                "name",
+                "datasets",
+                "target_percentage",
+                "time_period_days",
+                "created_at",
+            ],
             quiet=quiet,
         )
     except Exception as e:
@@ -44,7 +68,9 @@ def list_slos(
 @app.command("get")
 def get_slo(
     slo_id: str = typer.Argument(..., help="SLO ID"),
-    dataset: str = typer.Option(..., "--dataset", "-d", help="Dataset slug"),
+    dataset: str | None = typer.Option(
+        None, "--dataset", "-d", help="Dataset slug (auto-detected if not provided)"
+    ),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Config profile"),
     api_key: str | None = typer.Option(None, "--api-key", envvar="HONEYCOMB_API_KEY"),
     output: OutputFormat = typer.Option(DEFAULT_OUTPUT_FORMAT, "--output", "-o"),
@@ -52,8 +78,38 @@ def get_slo(
     """Get a specific SLO."""
     try:
         client = get_client(profile=profile, api_key=api_key)
-        slo = client.slos.get(dataset=dataset, slo_id=slo_id)
-        output_result(slo, output)
+
+        # If dataset not provided, find it by listing all SLOs
+        if dataset is None:
+            all_slos = client.slos.list(dataset="__all__")
+            matching = [s for s in all_slos if s.id == slo_id]
+            if not matching:
+                console.print(f"[red]Error:[/red] SLO {slo_id} not found", style="bold")
+                raise typer.Exit(1)
+
+            slo = matching[0]
+            # Check if SLO spans multiple datasets
+            if slo.dataset_slugs and len(slo.dataset_slugs) > 1:
+                datasets_str = ", ".join(slo.dataset_slugs)
+                console.print(
+                    f"[yellow]Note:[/yellow] SLO {slo_id} spans multiple datasets: {datasets_str}"
+                )
+                console.print(
+                    "[yellow]Fetching from first dataset. Use --dataset to specify a different one.[/yellow]"
+                )
+
+            found_dataset = slo.dataset
+            if not found_dataset:
+                console.print(f"[red]Error:[/red] SLO {slo_id} has no dataset", style="bold")
+                raise typer.Exit(1)
+            dataset = found_dataset
+            console.print(f"[dim]Found SLO in dataset: {dataset}[/dim]")
+            # We already have the SLO from the list, just output it
+            output_result(slo, output)
+        else:
+            # Dataset provided, fetch directly
+            slo = client.slos.get(dataset=dataset, slo_id=slo_id)
+            output_result(slo, output)
     except Exception as e:
         console.print(f"[red]Error:[/red] {e}", style="bold")
         raise typer.Exit(1)
@@ -123,20 +179,68 @@ def update_slo(
 @app.command("delete")
 def delete_slo(
     slo_id: str = typer.Argument(..., help="SLO ID"),
-    dataset: str = typer.Option(..., "--dataset", "-d", help="Dataset slug"),
+    dataset: str | None = typer.Option(
+        None, "--dataset", "-d", help="Dataset slug (auto-detected if not provided)"
+    ),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Config profile"),
     api_key: str | None = typer.Option(None, "--api-key", envvar="HONEYCOMB_API_KEY"),
     yes: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation"),
 ) -> None:
     """Delete an SLO."""
     try:
+        client = get_client(profile=profile, api_key=api_key)
+
+        # If dataset not provided, find it by listing all SLOs
+        if dataset is None:
+            all_slos = client.slos.list(dataset="__all__")
+            matching = [s for s in all_slos if s.id == slo_id]
+            if not matching:
+                console.print(f"[red]Error:[/red] SLO {slo_id} not found", style="bold")
+                raise typer.Exit(1)
+
+            slo = matching[0]
+            # Check if SLO spans multiple datasets - must use __all__ to delete
+            if slo.dataset_slugs and len(slo.dataset_slugs) > 1:
+                datasets_str = ", ".join(slo.dataset_slugs)
+                console.print(
+                    f"[dim]SLO {slo_id} spans multiple datasets: {datasets_str}[/dim]"
+                )
+                dataset = "__all__"
+                console.print("[dim]Using dataset=__all__ for deletion[/dim]")
+            else:
+                found_dataset = slo.dataset
+                if not found_dataset:
+                    console.print(f"[red]Error:[/red] SLO {slo_id} has no dataset", style="bold")
+                    raise typer.Exit(1)
+                dataset = found_dataset
+                console.print(f"[dim]Found SLO in dataset: {dataset}[/dim]")
+        else:
+            # If dataset is explicitly provided for a multi-dataset SLO and it's not __all__, error
+            all_slos = client.slos.list(dataset="__all__")
+            matching = [s for s in all_slos if s.id == slo_id]
+            if matching:
+                slo = matching[0]
+                if (
+                    slo.dataset_slugs
+                    and len(slo.dataset_slugs) > 1
+                    and dataset != "__all__"
+                ):
+                    datasets_str = ", ".join(slo.dataset_slugs)
+                    console.print(
+                        f"[red]Error:[/red] SLO {slo_id} spans multiple datasets: {datasets_str}",
+                        style="bold",
+                    )
+                    console.print(
+                        "[yellow]Multi-dataset SLOs can only be deleted with --dataset __all__[/yellow]"
+                    )
+                    raise typer.Exit(1)
+
         if not yes:
             confirm = typer.confirm(f"Delete SLO {slo_id} from dataset {dataset}?")
             if not confirm:
                 console.print("[yellow]Cancelled[/yellow]")
                 raise typer.Exit(0)
 
-        client = get_client(profile=profile, api_key=api_key)
         client.slos.delete(dataset=dataset, slo_id=slo_id)
         console.print(f"[green]Deleted SLO {slo_id}[/green]")
     except Exception as e:
@@ -147,7 +251,9 @@ def delete_slo(
 @app.command("export")
 def export_slo(
     slo_id: str = typer.Argument(..., help="SLO ID"),
-    dataset: str = typer.Option(..., "--dataset", "-d", help="Dataset slug"),
+    dataset: str | None = typer.Option(
+        None, "--dataset", "-d", help="Dataset slug (auto-detected if not provided)"
+    ),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Config profile"),
     api_key: str | None = typer.Option(None, "--api-key", envvar="HONEYCOMB_API_KEY"),
     output_file: Path | None = typer.Option(
@@ -161,7 +267,35 @@ def export_slo(
     """
     try:
         client = get_client(profile=profile, api_key=api_key)
-        slo = client.slos.get(dataset=dataset, slo_id=slo_id)
+
+        # If dataset not provided, find it by listing all SLOs
+        if dataset is None:
+            all_slos = client.slos.list(dataset="__all__")
+            matching = [s for s in all_slos if s.id == slo_id]
+            if not matching:
+                console.print(f"[red]Error:[/red] SLO {slo_id} not found", style="bold")
+                raise typer.Exit(1)
+
+            slo = matching[0]
+            # Check if SLO spans multiple datasets
+            if slo.dataset_slugs and len(slo.dataset_slugs) > 1:
+                datasets_str = ", ".join(slo.dataset_slugs)
+                console.print(
+                    f"[yellow]Warning:[/yellow] SLO {slo_id} spans multiple datasets: {datasets_str}"
+                )
+                console.print(
+                    "[yellow]Exporting from first dataset. Use --dataset to specify a different one.[/yellow]"
+                )
+
+            found_dataset = slo.dataset
+            if not found_dataset:
+                console.print(f"[red]Error:[/red] SLO {slo_id} has no dataset", style="bold")
+                raise typer.Exit(1)
+            dataset = found_dataset
+            console.print(f"[dim]Exporting SLO from dataset: {dataset}[/dim]")
+        else:
+            # Dataset provided, fetch directly
+            slo = client.slos.get(dataset=dataset, slo_id=slo_id)
 
         # Export without IDs/timestamps for portability
         data = slo.model_dump(exclude={"id", "created_at", "updated_at"}, mode="json")
