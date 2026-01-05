@@ -1,14 +1,14 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from typing import cast
-
 if TYPE_CHECKING:
-  from ..models.create_pipeline_health_record_request_data_attributes_usage_data_resource_metrics_item_scope_metrics_item import CreatePipelineHealthRecordRequestDataAttributesUsageDataResourceMetricsItemScopeMetricsItem
+  from ..models.create_pipeline_health_record_request_data_attributes_usage_data_resource_metrics_item_scope_metrics_item import \
+      CreatePipelineHealthRecordRequestDataAttributesUsageDataResourceMetricsItemScopeMetricsItem
 
 
 
@@ -31,7 +31,8 @@ class CreatePipelineHealthRecordRequestDataAttributesUsageDataResourceMetricsIte
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.create_pipeline_health_record_request_data_attributes_usage_data_resource_metrics_item_scope_metrics_item import CreatePipelineHealthRecordRequestDataAttributesUsageDataResourceMetricsItemScopeMetricsItem
+        from ..models.create_pipeline_health_record_request_data_attributes_usage_data_resource_metrics_item_scope_metrics_item import \
+            CreatePipelineHealthRecordRequestDataAttributesUsageDataResourceMetricsItemScopeMetricsItem
         scope_metrics = []
         for scope_metrics_item_data in self.scope_metrics:
             scope_metrics_item = scope_metrics_item_data.to_dict()
@@ -52,7 +53,8 @@ class CreatePipelineHealthRecordRequestDataAttributesUsageDataResourceMetricsIte
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.create_pipeline_health_record_request_data_attributes_usage_data_resource_metrics_item_scope_metrics_item import CreatePipelineHealthRecordRequestDataAttributesUsageDataResourceMetricsItemScopeMetricsItem
+        from ..models.create_pipeline_health_record_request_data_attributes_usage_data_resource_metrics_item_scope_metrics_item import \
+            CreatePipelineHealthRecordRequestDataAttributesUsageDataResourceMetricsItemScopeMetricsItem
         d = src_dict.copy()
         scope_metrics = []
         _scope_metrics = d.pop("scopeMetrics")

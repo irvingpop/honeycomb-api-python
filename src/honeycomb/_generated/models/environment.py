@@ -1,16 +1,15 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.environment_type import EnvironmentType
 from ..types import UNSET, Unset
 
-from ..models.environment_type import EnvironmentType
-from typing import cast
-
 if TYPE_CHECKING:
-  from ..models.environment_links import EnvironmentLinks
   from ..models.environment_attributes import EnvironmentAttributes
+  from ..models.environment_links import EnvironmentLinks
 
 
 
@@ -38,8 +37,8 @@ class Environment:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.environment_links import EnvironmentLinks
         from ..models.environment_attributes import EnvironmentAttributes
+        from ..models.environment_links import EnvironmentLinks
         id = self.id
 
         type_ = self.type_.value
@@ -64,8 +63,8 @@ class Environment:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.environment_links import EnvironmentLinks
         from ..models.environment_attributes import EnvironmentAttributes
+        from ..models.environment_links import EnvironmentLinks
         d = src_dict.copy()
         id = d.pop("id")
 

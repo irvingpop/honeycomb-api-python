@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class QueryOp(str, Enum):
     AVG = "AVG"
     CONCURRENCY = "CONCURRENCY"

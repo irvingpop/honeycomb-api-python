@@ -1,18 +1,17 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..types import UNSET, Unset
-
 from ..models.auth_v2_response_data_type import AuthV2ResponseDataType
 from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
 
 if TYPE_CHECKING:
-  from ..models.auth_v2_response_data_relationships import AuthV2ResponseDataRelationships
-  from ..models.auth_v2_response_data_attributes import AuthV2ResponseDataAttributes
+  from ..models.auth_v2_response_data_attributes import \
+      AuthV2ResponseDataAttributes
+  from ..models.auth_v2_response_data_relationships import \
+      AuthV2ResponseDataRelationships
 
 
 
@@ -40,8 +39,10 @@ class AuthV2ResponseData:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.auth_v2_response_data_relationships import AuthV2ResponseDataRelationships
-        from ..models.auth_v2_response_data_attributes import AuthV2ResponseDataAttributes
+        from ..models.auth_v2_response_data_attributes import \
+            AuthV2ResponseDataAttributes
+        from ..models.auth_v2_response_data_relationships import \
+            AuthV2ResponseDataRelationships
         id = self.id
 
         type_ = self.type_.value
@@ -69,8 +70,10 @@ class AuthV2ResponseData:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.auth_v2_response_data_relationships import AuthV2ResponseDataRelationships
-        from ..models.auth_v2_response_data_attributes import AuthV2ResponseDataAttributes
+        from ..models.auth_v2_response_data_attributes import \
+            AuthV2ResponseDataAttributes
+        from ..models.auth_v2_response_data_relationships import \
+            AuthV2ResponseDataRelationships
         d = src_dict.copy()
         id = d.pop("id")
 

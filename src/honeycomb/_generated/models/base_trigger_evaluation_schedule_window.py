@@ -1,17 +1,12 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.base_trigger_evaluation_schedule_window_days_of_week_item import \
+    BaseTriggerEvaluationScheduleWindowDaysOfWeekItem
 from ..types import UNSET, Unset
-
-from ..models.base_trigger_evaluation_schedule_window_days_of_week_item import BaseTriggerEvaluationScheduleWindowDaysOfWeekItem
-from typing import cast
-
-
-
-
-
 
 T = TypeVar("T", bound="BaseTriggerEvaluationScheduleWindow")
 

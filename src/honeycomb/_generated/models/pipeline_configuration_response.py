@@ -1,16 +1,18 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.pipeline_configuration_response_type import \
+    PipelineConfigurationResponseType
 from ..types import UNSET, Unset
 
-from ..models.pipeline_configuration_response_type import PipelineConfigurationResponseType
-from typing import cast
-
 if TYPE_CHECKING:
-  from ..models.pipeline_configuration_response_links import PipelineConfigurationResponseLinks
-  from ..models.pipeline_configuration_response_attributes import PipelineConfigurationResponseAttributes
+  from ..models.pipeline_configuration_response_attributes import \
+      PipelineConfigurationResponseAttributes
+  from ..models.pipeline_configuration_response_links import \
+      PipelineConfigurationResponseLinks
 
 
 
@@ -38,8 +40,10 @@ class PipelineConfigurationResponse:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.pipeline_configuration_response_links import PipelineConfigurationResponseLinks
-        from ..models.pipeline_configuration_response_attributes import PipelineConfigurationResponseAttributes
+        from ..models.pipeline_configuration_response_attributes import \
+            PipelineConfigurationResponseAttributes
+        from ..models.pipeline_configuration_response_links import \
+            PipelineConfigurationResponseLinks
         id = self.id
 
         type_ = self.type_.value
@@ -64,8 +68,10 @@ class PipelineConfigurationResponse:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.pipeline_configuration_response_links import PipelineConfigurationResponseLinks
-        from ..models.pipeline_configuration_response_attributes import PipelineConfigurationResponseAttributes
+        from ..models.pipeline_configuration_response_attributes import \
+            PipelineConfigurationResponseAttributes
+        from ..models.pipeline_configuration_response_links import \
+            PipelineConfigurationResponseLinks
         d = src_dict.copy()
         id = d.pop("id")
 

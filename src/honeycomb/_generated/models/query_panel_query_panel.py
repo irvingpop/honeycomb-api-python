@@ -1,17 +1,16 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.query_panel_query_panel_query_style import \
+    QueryPanelQueryPanelQueryStyle
 from ..types import UNSET, Unset
-
-from ..models.query_panel_query_panel_query_style import QueryPanelQueryPanelQueryStyle
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
 
 if TYPE_CHECKING:
-  from ..models.board_query_visualization_settings import BoardQueryVisualizationSettings
+  from ..models.board_query_visualization_settings import \
+      BoardQueryVisualizationSettings
 
 
 
@@ -50,7 +49,8 @@ class QueryPanelQueryPanel:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.board_query_visualization_settings import BoardQueryVisualizationSettings
+        from ..models.board_query_visualization_settings import \
+            BoardQueryVisualizationSettings
         query_id = self.query_id
 
         query_annotation_id = self.query_annotation_id
@@ -86,7 +86,8 @@ class QueryPanelQueryPanel:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.board_query_visualization_settings import BoardQueryVisualizationSettings
+        from ..models.board_query_visualization_settings import \
+            BoardQueryVisualizationSettings
         d = src_dict.copy()
         query_id = d.pop("query_id")
 

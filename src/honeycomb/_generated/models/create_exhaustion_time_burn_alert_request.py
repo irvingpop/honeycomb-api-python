@@ -1,19 +1,17 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+import datetime
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
-
-from ..types import UNSET, Unset
+from dateutil.parser import isoparse
 
 from ..models.exhaustion_time_alert_type import ExhaustionTimeAlertType
 from ..types import UNSET, Unset
-from dateutil.parser import isoparse
-from typing import cast
-from typing import Union
-import datetime
 
 if TYPE_CHECKING:
-  from ..models.create_exhaustion_time_burn_alert_request_slo import CreateExhaustionTimeBurnAlertRequestSlo
+  from ..models.create_exhaustion_time_burn_alert_request_slo import \
+      CreateExhaustionTimeBurnAlertRequestSlo
   from ..models.notification_recipient import NotificationRecipient
 
 
@@ -69,7 +67,8 @@ class CreateExhaustionTimeBurnAlertRequest:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.create_exhaustion_time_burn_alert_request_slo import CreateExhaustionTimeBurnAlertRequestSlo
+        from ..models.create_exhaustion_time_burn_alert_request_slo import \
+            CreateExhaustionTimeBurnAlertRequestSlo
         from ..models.notification_recipient import NotificationRecipient
         exhaustion_minutes = self.exhaustion_minutes
 
@@ -128,7 +127,8 @@ class CreateExhaustionTimeBurnAlertRequest:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.create_exhaustion_time_burn_alert_request_slo import CreateExhaustionTimeBurnAlertRequestSlo
+        from ..models.create_exhaustion_time_burn_alert_request_slo import \
+            CreateExhaustionTimeBurnAlertRequestSlo
         from ..models.notification_recipient import NotificationRecipient
         d = src_dict.copy()
         exhaustion_minutes = d.pop("exhaustion_minutes")

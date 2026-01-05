@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class CreateColumnType(str, Enum):
     BOOLEAN = "boolean"
     FLOAT = "float"

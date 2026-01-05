@@ -1,18 +1,12 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.dataset_definition_type_1_column_type import \
+    DatasetDefinitionType1ColumnType
 from ..types import UNSET, Unset
-
-from ..models.dataset_definition_type_1_column_type import DatasetDefinitionType1ColumnType
-from ..types import UNSET, Unset
-from typing import Union
-
-
-
-
-
 
 T = TypeVar("T", bound="DatasetDefinitionType1")
 

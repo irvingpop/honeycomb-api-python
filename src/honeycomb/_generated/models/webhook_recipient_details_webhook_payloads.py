@@ -1,17 +1,15 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
-
 if TYPE_CHECKING:
   from ..models.template_variable_definition import TemplateVariableDefinition
-  from ..models.webhook_recipient_details_webhook_payloads_payload_templates import WebhookRecipientDetailsWebhookPayloadsPayloadTemplates
+  from ..models.webhook_recipient_details_webhook_payloads_payload_templates import \
+      WebhookRecipientDetailsWebhookPayloadsPayloadTemplates
 
 
 
@@ -37,8 +35,10 @@ class WebhookRecipientDetailsWebhookPayloads:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.template_variable_definition import TemplateVariableDefinition
-        from ..models.webhook_recipient_details_webhook_payloads_payload_templates import WebhookRecipientDetailsWebhookPayloadsPayloadTemplates
+        from ..models.template_variable_definition import \
+            TemplateVariableDefinition
+        from ..models.webhook_recipient_details_webhook_payloads_payload_templates import \
+            WebhookRecipientDetailsWebhookPayloadsPayloadTemplates
         template_variables: Union[Unset, list[dict[str, Any]]] = UNSET
         if not isinstance(self.template_variables, Unset):
             template_variables = []
@@ -68,8 +68,10 @@ class WebhookRecipientDetailsWebhookPayloads:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.template_variable_definition import TemplateVariableDefinition
-        from ..models.webhook_recipient_details_webhook_payloads_payload_templates import WebhookRecipientDetailsWebhookPayloadsPayloadTemplates
+        from ..models.template_variable_definition import \
+            TemplateVariableDefinition
+        from ..models.webhook_recipient_details_webhook_payloads_payload_templates import \
+            WebhookRecipientDetailsWebhookPayloadsPayloadTemplates
         d = src_dict.copy()
         template_variables = []
         _template_variables = d.pop("template_variables", UNSET)

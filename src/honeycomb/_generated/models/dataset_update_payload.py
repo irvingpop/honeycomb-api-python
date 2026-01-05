@@ -1,16 +1,14 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
-
 if TYPE_CHECKING:
-  from ..models.dataset_update_payload_settings import DatasetUpdatePayloadSettings
+  from ..models.dataset_update_payload_settings import \
+      DatasetUpdatePayloadSettings
 
 
 
@@ -37,7 +35,8 @@ class DatasetUpdatePayload:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.dataset_update_payload_settings import DatasetUpdatePayloadSettings
+        from ..models.dataset_update_payload_settings import \
+            DatasetUpdatePayloadSettings
         description = self.description
 
         expand_json_depth = self.expand_json_depth
@@ -62,7 +61,8 @@ class DatasetUpdatePayload:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.dataset_update_payload_settings import DatasetUpdatePayloadSettings
+        from ..models.dataset_update_payload_settings import \
+            DatasetUpdatePayloadSettings
         d = src_dict.copy()
         description = d.pop("description")
 

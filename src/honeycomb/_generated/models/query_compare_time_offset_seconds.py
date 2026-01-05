@@ -1,5 +1,6 @@
 from enum import IntEnum
 
+
 class QueryCompareTimeOffsetSeconds(IntEnum):
     VALUE_1800 = 1800
     VALUE_3600 = 3600

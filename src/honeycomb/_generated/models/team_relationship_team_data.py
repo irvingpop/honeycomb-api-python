@@ -1,16 +1,11 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.team_relationship_team_data_type import \
+    TeamRelationshipTeamDataType
 from ..types import UNSET, Unset
-
-from ..models.team_relationship_team_data_type import TeamRelationshipTeamDataType
-
-
-
-
-
 
 T = TypeVar("T", bound="TeamRelationshipTeamData")
 

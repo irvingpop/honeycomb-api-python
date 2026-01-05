@@ -1,17 +1,16 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.notification_recipient_details_pagerduty_severity import \
+    NotificationRecipientDetailsPagerdutySeverity
 from ..types import UNSET, Unset
-
-from ..models.notification_recipient_details_pagerduty_severity import NotificationRecipientDetailsPagerdutySeverity
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
 
 if TYPE_CHECKING:
-  from ..models.notification_recipient_details_variables_item import NotificationRecipientDetailsVariablesItem
+  from ..models.notification_recipient_details_variables_item import \
+      NotificationRecipientDetailsVariablesItem
 
 
 
@@ -38,7 +37,8 @@ class NotificationRecipientDetails:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.notification_recipient_details_variables_item import NotificationRecipientDetailsVariablesItem
+        from ..models.notification_recipient_details_variables_item import \
+            NotificationRecipientDetailsVariablesItem
         pagerduty_severity: Union[Unset, str] = UNSET
         if not isinstance(self.pagerduty_severity, Unset):
             pagerduty_severity = self.pagerduty_severity.value
@@ -69,7 +69,8 @@ class NotificationRecipientDetails:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.notification_recipient_details_variables_item import NotificationRecipientDetailsVariablesItem
+        from ..models.notification_recipient_details_variables_item import \
+            NotificationRecipientDetailsVariablesItem
         d = src_dict.copy()
         _pagerduty_severity = d.pop("pagerduty_severity", UNSET)
         pagerduty_severity: Union[Unset, NotificationRecipientDetailsPagerdutySeverity]

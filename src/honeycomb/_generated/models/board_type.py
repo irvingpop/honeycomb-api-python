@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class BoardType(str, Enum):
     FLEXIBLE = "flexible"
 

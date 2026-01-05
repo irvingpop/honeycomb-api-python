@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class HavingCalculateOp(str, Enum):
     AVG = "AVG"
     CONCURRENCY = "CONCURRENCY"

@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class WebhookRecipientType(str, Enum):
     WEBHOOK = "webhook"
 

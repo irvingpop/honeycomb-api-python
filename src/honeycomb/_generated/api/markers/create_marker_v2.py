@@ -3,17 +3,14 @@ from typing import Any, Optional, Union, cast
 
 import httpx
 
-from ...client import AuthenticatedClient, Client
-from ...types import Response, UNSET
 from ... import errors
-
+from ...client import AuthenticatedClient, Client
 from ...models.detailed_error import DetailedError
 from ...models.error import Error
 from ...models.marker_create_request import MarkerCreateRequest
 from ...models.marker_response import MarkerResponse
 from ...models.validation_error import ValidationError
-from typing import cast
-
+from ...types import UNSET, Response
 
 
 def _get_kwargs(

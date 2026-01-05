@@ -1,17 +1,15 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..types import UNSET, Unset
-
 from ..models.recipient_type import RecipientType
 from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
 
 if TYPE_CHECKING:
-  from ..models.notification_recipient_details import NotificationRecipientDetails
+  from ..models.notification_recipient_details import \
+      NotificationRecipientDetails
 
 
 
@@ -43,7 +41,8 @@ class NotificationRecipient:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.notification_recipient_details import NotificationRecipientDetails
+        from ..models.notification_recipient_details import \
+            NotificationRecipientDetails
         id = self.id
 
         type_: Union[Unset, str] = UNSET
@@ -77,7 +76,8 @@ class NotificationRecipient:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.notification_recipient_details import NotificationRecipientDetails
+        from ..models.notification_recipient_details import \
+            NotificationRecipientDetails
         d = src_dict.copy()
         id = d.pop("id", UNSET)
 

@@ -1,17 +1,14 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
-
 if TYPE_CHECKING:
-  from ..models.included_resource import IncludedResource
   from ..models.auth_v2_response_data import AuthV2ResponseData
+  from ..models.included_resource import IncludedResource
 
 
 
@@ -36,8 +33,8 @@ class AuthV2Response:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.included_resource import IncludedResource
         from ..models.auth_v2_response_data import AuthV2ResponseData
+        from ..models.included_resource import IncludedResource
         data = self.data.to_dict()
 
         included: Union[Unset, list[dict[str, Any]]] = UNSET
@@ -64,8 +61,8 @@ class AuthV2Response:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.included_resource import IncludedResource
         from ..models.auth_v2_response_data import AuthV2ResponseData
+        from ..models.included_resource import IncludedResource
         d = src_dict.copy()
         data = AuthV2ResponseData.from_dict(d.pop("data"))
 

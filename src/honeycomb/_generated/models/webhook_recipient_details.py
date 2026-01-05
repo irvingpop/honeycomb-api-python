@@ -1,17 +1,15 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
-
 if TYPE_CHECKING:
   from ..models.webhook_header import WebhookHeader
-  from ..models.webhook_recipient_details_webhook_payloads import WebhookRecipientDetailsWebhookPayloads
+  from ..models.webhook_recipient_details_webhook_payloads import \
+      WebhookRecipientDetailsWebhookPayloads
 
 
 
@@ -44,7 +42,8 @@ class WebhookRecipientDetails:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.webhook_header import WebhookHeader
-        from ..models.webhook_recipient_details_webhook_payloads import WebhookRecipientDetailsWebhookPayloads
+        from ..models.webhook_recipient_details_webhook_payloads import \
+            WebhookRecipientDetailsWebhookPayloads
         webhook_name = self.webhook_name
 
         webhook_url = self.webhook_url
@@ -85,7 +84,8 @@ class WebhookRecipientDetails:
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
         from ..models.webhook_header import WebhookHeader
-        from ..models.webhook_recipient_details_webhook_payloads import WebhookRecipientDetailsWebhookPayloads
+        from ..models.webhook_recipient_details_webhook_payloads import \
+            WebhookRecipientDetailsWebhookPayloads
         d = src_dict.copy()
         webhook_name = d.pop("webhook_name")
 

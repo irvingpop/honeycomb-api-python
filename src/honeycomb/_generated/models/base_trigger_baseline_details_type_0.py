@@ -1,17 +1,13 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.base_trigger_baseline_details_type_0_offset_minutes import \
+    BaseTriggerBaselineDetailsType0OffsetMinutes
+from ..models.base_trigger_baseline_details_type_0_type import \
+    BaseTriggerBaselineDetailsType0Type
 from ..types import UNSET, Unset
-
-from ..models.base_trigger_baseline_details_type_0_offset_minutes import BaseTriggerBaselineDetailsType0OffsetMinutes
-from ..models.base_trigger_baseline_details_type_0_type import BaseTriggerBaselineDetailsType0Type
-
-
-
-
-
 
 T = TypeVar("T", bound="BaseTriggerBaselineDetailsType0")
 

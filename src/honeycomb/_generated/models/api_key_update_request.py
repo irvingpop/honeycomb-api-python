@@ -1,16 +1,14 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from typing import cast
-from typing import cast, Union
-
 if TYPE_CHECKING:
-  from ..models.ingest_key import IngestKey
   from ..models.configuration_key import ConfigurationKey
+  from ..models.ingest_key import IngestKey
 
 
 
@@ -32,8 +30,8 @@ class ApiKeyUpdateRequest:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.ingest_key import IngestKey
         from ..models.configuration_key import ConfigurationKey
+        from ..models.ingest_key import IngestKey
         data: dict[str, Any]
         if isinstance(self.data, IngestKey):
             data = self.data.to_dict()
@@ -54,8 +52,8 @@ class ApiKeyUpdateRequest:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.ingest_key import IngestKey
         from ..models.configuration_key import ConfigurationKey
+        from ..models.ingest_key import IngestKey
         d = src_dict.copy()
         def _parse_data(data: object) -> Union['ConfigurationKey', 'IngestKey']:
             try:

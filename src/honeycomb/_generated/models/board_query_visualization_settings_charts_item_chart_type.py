@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class BoardQueryVisualizationSettingsChartsItemChartType(str, Enum):
     CBAR = "cbar"
     CPIE = "cpie"

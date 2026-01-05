@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class BaseTriggerBaselineDetailsType0Type(str, Enum):
     PERCENTAGE = "percentage"
     VALUE = "value"

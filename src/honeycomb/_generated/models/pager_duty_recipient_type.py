@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class PagerDutyRecipientType(str, Enum):
     PAGERDUTY = "pagerduty"
 

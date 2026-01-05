@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class BaseTriggerEvaluationScheduleType(str, Enum):
     FREQUENCY = "frequency"
     WINDOW = "window"

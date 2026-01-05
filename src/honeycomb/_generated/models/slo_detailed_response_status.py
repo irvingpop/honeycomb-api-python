@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class SLODetailedResponseStatus(str, Enum):
     NORMAL = "normal"
     NO_ALERTS = "no_alerts"

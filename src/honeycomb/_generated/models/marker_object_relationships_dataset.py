@@ -1,17 +1,14 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from ..types import UNSET, Unset
-from typing import cast
-from typing import cast, Union
-from typing import Union
-
 if TYPE_CHECKING:
-  from ..models.marker_object_relationships_dataset_data_type_0 import MarkerObjectRelationshipsDatasetDataType0
+  from ..models.marker_object_relationships_dataset_data_type_0 import \
+      MarkerObjectRelationshipsDatasetDataType0
 
 
 
@@ -34,7 +31,8 @@ class MarkerObjectRelationshipsDataset:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.marker_object_relationships_dataset_data_type_0 import MarkerObjectRelationshipsDatasetDataType0
+        from ..models.marker_object_relationships_dataset_data_type_0 import \
+            MarkerObjectRelationshipsDatasetDataType0
         data: Union[None, Unset, dict[str, Any]]
         if isinstance(self.data, Unset):
             data = UNSET
@@ -57,7 +55,8 @@ class MarkerObjectRelationshipsDataset:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.marker_object_relationships_dataset_data_type_0 import MarkerObjectRelationshipsDatasetDataType0
+        from ..models.marker_object_relationships_dataset_data_type_0 import \
+            MarkerObjectRelationshipsDatasetDataType0
         d = src_dict.copy()
         def _parse_data(data: object) -> Union['MarkerObjectRelationshipsDatasetDataType0', None, Unset]:
             if data is None:

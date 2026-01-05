@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class BoardLayoutGeneration(str, Enum):
     AUTO = "auto"
     MANUAL = "manual"

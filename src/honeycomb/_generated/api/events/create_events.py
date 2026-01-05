@@ -1,22 +1,18 @@
 from http import HTTPStatus
+from io import BytesIO
 from typing import Any, Optional, Union, cast
 
 import httpx
 
-from ...client import AuthenticatedClient, Client
-from ...types import Response, UNSET
 from ... import errors
-
+from ...client import AuthenticatedClient, Client
 from ...models.batch_event import BatchEvent
-from ...models.create_events_content_encoding import CreateEventsContentEncoding
-from ...models.create_events_response_200_item import CreateEventsResponse200Item
+from ...models.create_events_content_encoding import \
+    CreateEventsContentEncoding
+from ...models.create_events_response_200_item import \
+    CreateEventsResponse200Item
 from ...models.error import Error
-from ...types import File, FileJsonType
-from ...types import UNSET, Unset
-from io import BytesIO
-from typing import cast
-from typing import Union
-
+from ...types import UNSET, File, FileJsonType, Response, Unset
 
 
 def _get_kwargs(

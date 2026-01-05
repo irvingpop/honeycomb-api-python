@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class MSTeamsWorkflowRecipientType(str, Enum):
     MSTEAMS_WORKFLOW = "msteams_workflow"
 

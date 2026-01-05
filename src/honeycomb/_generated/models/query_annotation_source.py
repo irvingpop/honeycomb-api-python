@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class QueryAnnotationSource(str, Enum):
     BOARD = "board"
     QUERY = "query"

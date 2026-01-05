@@ -214,14 +214,14 @@ def extract_inline_objects(spec: dict) -> int:
 
 def remove_problematic_titles(spec: dict) -> int:
     """
-    Remove 'title' fields from allOf items that cause duplicate model names.
+    Remove 'title' fields that cause duplicate model names.
     Returns count of fixes applied.
     """
     fixes = 0
     schemas = spec.get("components", {}).get("schemas", {})
 
     # These schemas have title fields in allOf that cause duplicate names
-    problematic_schemas = [
+    problematic_allof_schemas = [
         "ExhaustionTimeBurnAlertListResponse",
         "ExhaustionTimeBurnAlertDetailResponse",
         "BudgetRateBurnAlertListResponse",
@@ -232,7 +232,7 @@ def remove_problematic_titles(spec: dict) -> int:
         "UpdateBudgetRateBurnAlertRequest",
     ]
 
-    for schema_name in problematic_schemas:
+    for schema_name in problematic_allof_schemas:
         if schema_name in schemas:
             schema = schemas[schema_name]
             if "allOf" in schema:
@@ -241,6 +241,23 @@ def remove_problematic_titles(spec: dict) -> int:
                         del item["title"]
                         print(f"  Removed title from {schema_name} allOf item")
                         fixes += 1
+
+    # These schemas have duplicate title values that cause name conflicts
+    # Remove title from the schema itself (not allOf items)
+    problematic_title_schemas = [
+        "IngestKeyAttributes",      # conflicts with IngestKeyRequest (both "Ingest Key")
+        "IngestKeyRequest",
+        "ConfigurationKeyAttributes",  # conflicts with ConfigurationKeyRequest (both "Configuration Key")
+        "ConfigurationKeyRequest",
+    ]
+
+    for schema_name in problematic_title_schemas:
+        if schema_name in schemas:
+            schema = schemas[schema_name]
+            if "title" in schema:
+                del schema["title"]
+                print(f"  Removed duplicate title from {schema_name}")
+                fixes += 1
 
     return fixes
 

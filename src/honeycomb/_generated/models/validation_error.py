@@ -1,16 +1,14 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
-
 if TYPE_CHECKING:
-  from ..models.validation_error_type_detail_item import ValidationErrorTypeDetailItem
+  from ..models.validation_error_type_detail_item import \
+      ValidationErrorTypeDetailItem
 
 
 
@@ -46,7 +44,8 @@ class ValidationError:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.validation_error_type_detail_item import ValidationErrorTypeDetailItem
+        from ..models.validation_error_type_detail_item import \
+            ValidationErrorTypeDetailItem
         error = self.error
 
         status = self.status
@@ -90,7 +89,8 @@ class ValidationError:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.validation_error_type_detail_item import ValidationErrorTypeDetailItem
+        from ..models.validation_error_type_detail_item import \
+            ValidationErrorTypeDetailItem
         d = src_dict.copy()
         error = d.pop("error")
 

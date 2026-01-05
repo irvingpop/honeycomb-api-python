@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class CreatePipelineHealthRecordRequestDataType(str, Enum):
     PIPELINE_USAGE = "pipeline_usage"
 

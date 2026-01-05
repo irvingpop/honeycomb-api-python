@@ -1,14 +1,14 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from typing import cast
-
 if TYPE_CHECKING:
-  from ..models.create_pipeline_health_record_request_data import CreatePipelineHealthRecordRequestData
+  from ..models.create_pipeline_health_record_request_data import \
+      CreatePipelineHealthRecordRequestData
 
 
 
@@ -30,7 +30,8 @@ class CreatePipelineHealthRecordRequest:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.create_pipeline_health_record_request_data import CreatePipelineHealthRecordRequestData
+        from ..models.create_pipeline_health_record_request_data import \
+            CreatePipelineHealthRecordRequestData
         data = self.data.to_dict()
 
 
@@ -46,7 +47,8 @@ class CreatePipelineHealthRecordRequest:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.create_pipeline_health_record_request_data import CreatePipelineHealthRecordRequestData
+        from ..models.create_pipeline_health_record_request_data import \
+            CreatePipelineHealthRecordRequestData
         d = src_dict.copy()
         data = CreatePipelineHealthRecordRequestData.from_dict(d.pop("data"))
 

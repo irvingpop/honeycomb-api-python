@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class NotificationRecipientDetailsPagerdutySeverity(str, Enum):
     CRITICAL = "critical"
     ERROR = "error"

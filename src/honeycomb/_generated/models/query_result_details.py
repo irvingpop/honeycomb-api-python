@@ -1,18 +1,15 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
-
 if TYPE_CHECKING:
   from ..models.query import Query
-  from ..models.query_result_details_links import QueryResultDetailsLinks
   from ..models.query_result_details_data import QueryResultDetailsData
+  from ..models.query_result_details_links import QueryResultDetailsLinks
 
 
 
@@ -49,8 +46,8 @@ class QueryResultDetails:
 
     def to_dict(self) -> dict[str, Any]:
         from ..models.query import Query
-        from ..models.query_result_details_links import QueryResultDetailsLinks
         from ..models.query_result_details_data import QueryResultDetailsData
+        from ..models.query_result_details_links import QueryResultDetailsLinks
         query: Union[Unset, dict[str, Any]] = UNSET
         if not isinstance(self.query, Unset):
             query = self.query.to_dict()
@@ -90,8 +87,8 @@ class QueryResultDetails:
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
         from ..models.query import Query
-        from ..models.query_result_details_links import QueryResultDetailsLinks
         from ..models.query_result_details_data import QueryResultDetailsData
+        from ..models.query_result_details_links import QueryResultDetailsLinks
         d = src_dict.copy()
         _query = d.pop("query", UNSET)
         query: Union[Unset, Query]

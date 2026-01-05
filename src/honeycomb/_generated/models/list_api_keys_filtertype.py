@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class ListApiKeysFiltertype(str, Enum):
     CONFIGURATION = "configuration"
     INGEST = "ingest"

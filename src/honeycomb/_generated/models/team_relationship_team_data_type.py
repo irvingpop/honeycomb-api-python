@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class TeamRelationshipTeamDataType(str, Enum):
     TEAMS = "teams"
 
