@@ -292,8 +292,14 @@ def main():
     parser.add_argument(
         "--backup",
         action="store_true",
-        default=True,
-        help="Create backup of original file (default: True)",
+        default=False,
+        help="Create backup of original file",
+    )
+    parser.add_argument(
+        "--no-backup",
+        dest="backup",
+        action="store_false",
+        help="Do not create backup (useful when input != output)",
     )
     args = parser.parse_args()
 

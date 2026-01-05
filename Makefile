@@ -1,5 +1,5 @@
 # Honeycomb API Python Client - Development Makefile
-.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs generate-tools validate-tools ci update-deps release-patch release-minor release-major changelog
+.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs generate-tools validate-tools ci update-deps release-patch release-minor release-major changelog update-spec update-spec-apply generate-client
 
 # Default target
 help:
@@ -21,8 +21,8 @@ help:
 	@echo "  make test-cov       Run tests with coverage report"
 	@echo "  make test-live      Run live API tests (requires HONEYCOMB_API_KEY)"
 	@echo "  make test-unit      Run only unit tests"
-	@echo "  make test-eval      Run evaluation tests" (requires ANTHROPIC_API_KEY)
-	@echo "  make test-eval-debug Run evaluation tests with no cache or parallelism" (requires ANTHROPIC_API_KEY)
+	@echo "  make test-eval      Run evaluation tests (requires ANTHROPIC_API_KEY)"
+	@echo "  make test-eval-debug Run evaluation tests with no cache or parallelism (requires ANTHROPIC_API_KEY)"
 	@echo ""
 	@echo "Build & Publish:"
 	@echo "  make build          Build distribution packages"
@@ -43,6 +43,11 @@ help:
 	@echo "Claude Tools:"
 	@echo "  make generate-tools Generate Claude tool definitions (JSON)"
 	@echo "  make validate-tools Validate generated tool definitions"
+	@echo ""
+	@echo "OpenAPI Spec Management:"
+	@echo "  make update-spec       Download latest spec and show diff (doesn't apply)"
+	@echo "  make update-spec-apply Download latest spec, show diff, and apply changes"
+	@echo "  make generate-client   Regenerate client from current api.yaml"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean          Remove build artifacts and cache files"
@@ -204,6 +209,19 @@ clean:
 update-deps:
 	poetry update
 	poetry export -f requirements.txt --output requirements.txt --without-hashes 2>/dev/null || true
+
+# =============================================================================
+# OpenAPI Spec Management
+# =============================================================================
+
+update-spec:
+	@bash scripts/update-openapi-spec.sh
+
+update-spec-apply:
+	@bash scripts/update-openapi-spec.sh --apply
+
+generate-client:
+	@bash scripts/generate-client.sh
 
 # =============================================================================
 # CI Pipeline

@@ -45,7 +45,7 @@ fi
 # Step 2: Apply patches (using poetry for pyyaml dependency)
 echo ""
 echo "Applying patches to OpenAPI spec..."
-poetry run python scripts/patch-openapi.py --input api.yaml --output api.yaml
+poetry run python scripts/patch-openapi.py --input api.yaml --output api.yaml --backup
 
 # Step 3: Remove old generated client
 echo ""
