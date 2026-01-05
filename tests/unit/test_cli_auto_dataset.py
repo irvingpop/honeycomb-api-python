@@ -325,3 +325,26 @@ def test_slo_export_multi_dataset_shows_warning():
         assert result.exit_code == 0
         assert "spans multiple datasets" in result.stdout
         assert "dataset1, dataset2" in result.stdout
+
+
+def test_slo_target_percentage_property():
+    """Test that SLO.target_percentage correctly converts from target_per_million."""
+    slo = SLO(
+        id="slo123",
+        name="Test SLO",
+        dataset_slugs=["my-dataset"],
+        sli={"alias": "test"},
+        target_per_million=999000,
+        time_period_days=30,
+    )
+    assert slo.target_percentage == 99.9
+
+    slo2 = SLO(
+        id="slo456",
+        name="Test SLO 2",
+        dataset_slugs=["my-dataset"],
+        sli={"alias": "test"},
+        target_per_million=995000,
+        time_period_days=30,
+    )
+    assert slo2.target_percentage == 99.5

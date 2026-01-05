@@ -31,8 +31,8 @@ def list_slos(
         client = get_client(profile=profile, api_key=api_key)
         slos = client.slos.list(dataset=dataset)
 
-        # Add computed datasets column for table display
-        slos_with_datasets = []
+        # Add computed columns for table display
+        slos_with_computed = []
         for slo in slos:
             slo_dict = slo.model_dump(mode="json")
             # Show "environment-wide" or comma-separated dataset slugs
@@ -43,16 +43,18 @@ def list_slos(
                     slo_dict["datasets"] = ", ".join(slo.dataset_slugs)
             else:
                 slo_dict["datasets"] = "environment-wide"
-            slos_with_datasets.append(slo_dict)
+            # Add target_percentage for user-friendly display
+            slo_dict["target_percentage"] = slo.target_percentage
+            slos_with_computed.append(slo_dict)
 
         output_result(
-            slos_with_datasets if output == OutputFormat.table else slos,
+            slos_with_computed if output == OutputFormat.table else slos,
             output,
             columns=[
                 "id",
                 "name",
                 "datasets",
-                "target_per_million",
+                "target_percentage",
                 "time_period_days",
                 "created_at",
             ],
