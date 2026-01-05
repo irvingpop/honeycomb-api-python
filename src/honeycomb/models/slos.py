@@ -83,3 +83,10 @@ class SLO(BaseModel):
     updated_at: datetime | None = Field(default=None, description="Last update timestamp")
 
     model_config = {"extra": "allow"}
+
+    @property
+    def dataset(self) -> str | None:
+        """Return the first dataset slug for convenience (SLOs can span multiple datasets)."""
+        if self.dataset_slugs and len(self.dataset_slugs) > 0:
+            return self.dataset_slugs[0]
+        return None

@@ -39,7 +39,7 @@ def _register_commands() -> None:
     # we can't do real aliases because Typer doesn't support them
     # but watch this PR: https://github.com/fastapi/typer/pull/1422
     app.add_typer(triggers.app, name="triggers")
-    app.add_typer(triggers.app, name="triggers", hidden=True)
+    app.add_typer(triggers.app, name="trigger", hidden=True)
     app.add_typer(triggers.app, name="t", hidden=True)
     app.add_typer(slos.app, name="slos")
     app.add_typer(slos.app, name="slo", hidden=True)
@@ -50,8 +50,8 @@ def _register_commands() -> None:
     app.add_typer(columns.app, name="columns")
     app.add_typer(columns.app, name="column", hidden=True)
     app.add_typer(columns.app, name="c", hidden=True)
-    app.add_typer(queries.app, name="query")
-    app.add_typer(queries.app, name="queries", hidden=True)
+    app.add_typer(queries.app, name="queries")
+    app.add_typer(queries.app, name="query", hidden=True)
     app.add_typer(queries.app, name="q", hidden=True)
     app.add_typer(datasets.app, name="datasets")
     app.add_typer(datasets.app, name="dataset", hidden=True)
