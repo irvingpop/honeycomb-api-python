@@ -1,4 +1,4 @@
-"""Tests for SLOBuilder and BurnAlertBuilder."""
+"""Tests for SLOBuilder, BurnAlertBuilder, and SLO model."""
 
 import pytest
 
@@ -12,6 +12,7 @@ from honeycomb import (
     SLOBundle,
     SLOCreate,
 )
+from honeycomb.models.slos import SLO
 
 
 class TestBurnAlertBuilderBasics:
@@ -661,3 +662,77 @@ class TestSLOBuilderComplexScenarios:
 
         # Verify burn alerts
         assert len(bundle.burn_alerts) == 1
+
+
+class TestSLOModel:
+    """Tests for SLO model properties and methods."""
+
+    def test_target_percentage_converts_from_per_million(self) -> None:
+        """SLO.target_percentage correctly converts from target_per_million."""
+        slo = SLO(
+            id="slo123",
+            name="Test SLO",
+            dataset_slugs=["my-dataset"],
+            sli={"alias": "test"},
+            target_per_million=999000,
+            time_period_days=30,
+        )
+        assert slo.target_percentage == 99.9
+
+    def test_target_percentage_various_values(self) -> None:
+        """SLO.target_percentage handles various target values correctly."""
+        test_cases = [
+            (995000, 99.5),
+            (990000, 99.0),
+            (999900, 99.99),
+            (1000000, 100.0),
+            (0, 0.0),
+        ]
+        for target_per_million, expected_percentage in test_cases:
+            slo = SLO(
+                id="test",
+                name="Test",
+                dataset_slugs=["test"],
+                sli={"alias": "test"},
+                target_per_million=target_per_million,
+                time_period_days=30,
+            )
+            assert slo.target_percentage == expected_percentage, (
+                f"Expected {expected_percentage} for {target_per_million}, got {slo.target_percentage}"
+            )
+
+    def test_dataset_property_returns_first_dataset(self) -> None:
+        """SLO.dataset property returns the first dataset slug."""
+        slo = SLO(
+            id="test",
+            name="Test",
+            dataset_slugs=["first-dataset", "second-dataset"],
+            sli={"alias": "test"},
+            target_per_million=999000,
+            time_period_days=30,
+        )
+        assert slo.dataset == "first-dataset"
+
+    def test_dataset_property_returns_none_for_empty_list(self) -> None:
+        """SLO.dataset property returns None when dataset_slugs is empty."""
+        slo = SLO(
+            id="test",
+            name="Test",
+            dataset_slugs=[],
+            sli={"alias": "test"},
+            target_per_million=999000,
+            time_period_days=30,
+        )
+        assert slo.dataset is None
+
+    def test_dataset_property_returns_none_when_not_set(self) -> None:
+        """SLO.dataset property returns None when dataset_slugs is None."""
+        slo = SLO(
+            id="test",
+            name="Test",
+            dataset_slugs=None,
+            sli={"alias": "test"},
+            target_per_million=999000,
+            time_period_days=30,
+        )
+        assert slo.dataset is None

@@ -202,9 +202,7 @@ def delete_slo(
             # Check if SLO spans multiple datasets - must use __all__ to delete
             if slo.dataset_slugs and len(slo.dataset_slugs) > 1:
                 datasets_str = ", ".join(slo.dataset_slugs)
-                console.print(
-                    f"[dim]SLO {slo_id} spans multiple datasets: {datasets_str}[/dim]"
-                )
+                console.print(f"[dim]SLO {slo_id} spans multiple datasets: {datasets_str}[/dim]")
                 dataset = "__all__"
                 console.print("[dim]Using dataset=__all__ for deletion[/dim]")
             else:
@@ -220,11 +218,7 @@ def delete_slo(
             matching = [s for s in all_slos if s.id == slo_id]
             if matching:
                 slo = matching[0]
-                if (
-                    slo.dataset_slugs
-                    and len(slo.dataset_slugs) > 1
-                    and dataset != "__all__"
-                ):
+                if slo.dataset_slugs and len(slo.dataset_slugs) > 1 and dataset != "__all__":
                     datasets_str = ", ".join(slo.dataset_slugs)
                     console.print(
                         f"[red]Error:[/red] SLO {slo_id} spans multiple datasets: {datasets_str}",
