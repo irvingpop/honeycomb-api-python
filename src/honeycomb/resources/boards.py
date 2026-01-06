@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+import builtins
 from typing import TYPE_CHECKING, Any
 
-from ..models.boards import Board, BoardCreate
+from ..models.boards import Board, BoardCreate, BoardView, BoardViewCreate
 from .base import BaseResource
 
 if TYPE_CHECKING:
@@ -35,6 +36,13 @@ class BoardsResource(BaseResource):
         base = "/1/boards"
         if board_id:
             return f"{base}/{board_id}"
+        return base
+
+    def _build_view_path(self, board_id: str, view_id: str | None = None) -> str:
+        """Build API path for board views."""
+        base = f"/1/boards/{board_id}/views"
+        if view_id:
+            return f"{base}/{view_id}"
         return base
 
     # -------------------------------------------------------------------------
@@ -96,16 +104,20 @@ class BoardsResource(BaseResource):
         await self._delete_async(self._build_path(board_id))
 
     async def create_from_bundle_async(self, bundle: BoardBundle) -> Board:
-        """Create board from BoardBundle with automatic query creation.
+        """Create board from BoardBundle with automatic query and view creation.
 
         Orchestrates:
         1. Create queries + annotations from QueryBuilder instances
         2. Assemble all panel configurations
         3. Create board with all panels
+        4. Create views for the board (if any)
 
         Panels are added to the board in the order they appear in the bundle:
         - Auto-layout: Honeycomb arranges panels in this order
         - Manual-layout: Respects explicit positions
+
+        If view creation fails, a warning is issued but the board creation succeeds.
+        Views can be created manually later using create_view_async().
 
         Args:
             bundle: BoardBundle from BoardBuilder.build()
@@ -123,6 +135,7 @@ class BoardsResource(BaseResource):
             ...                 .last_1_hour()
             ...                 .count()
             ...         )
+            ...         .add_view("Active Only", [{"column": "status", "operation": "=", "value": "active"}])
             ...         .build()
             ... )
         """
@@ -194,7 +207,25 @@ class BoardsResource(BaseResource):
             preset_filters=bundle.preset_filters,
         )
 
-        return await self.create_async(board_create)
+        board = await self.create_async(board_create)
+
+        # Create views after board creation
+        if bundle.views:
+            import warnings
+
+            for view_create in bundle.views:
+                try:
+                    await self.create_view_async(board.id, view_create)
+                except Exception as e:
+                    # Log but don't fail - board was created successfully
+                    # User can retry view creation manually
+                    warnings.warn(
+                        f"Failed to create view '{view_create.name}' for board '{board.id}': {e}",
+                        UserWarning,
+                        stacklevel=2,
+                    )
+
+        return board
 
     def _build_query_panel_dict(
         self,
@@ -258,6 +289,85 @@ class BoardsResource(BaseResource):
                 "height": position[3],
             }
         return panel
+
+    # -------------------------------------------------------------------------
+    # Board View Methods - Async
+    # -------------------------------------------------------------------------
+
+    async def list_views_async(self, board_id: str) -> list[BoardView]:
+        """List all views for a board (async).
+
+        Args:
+            board_id: Board ID.
+
+        Returns:
+            List of BoardView objects (max 50 per board).
+        """
+        data = await self._get_async(self._build_view_path(board_id))
+        return self._parse_model_list(BoardView, data)
+
+    async def get_view_async(self, board_id: str, view_id: str) -> BoardView:
+        """Get a specific board view (async).
+
+        Args:
+            board_id: Board ID.
+            view_id: View ID.
+
+        Returns:
+            BoardView object.
+        """
+        data = await self._get_async(self._build_view_path(board_id, view_id))
+        return self._parse_model(BoardView, data)
+
+    async def create_view_async(self, board_id: str, view: BoardViewCreate) -> BoardView:
+        """Create a new board view (async).
+
+        Args:
+            board_id: Board ID.
+            view: View configuration.
+
+        Returns:
+            Created BoardView object.
+
+        Note:
+            Each board is limited to 50 views maximum.
+        """
+        data = await self._post_async(
+            self._build_view_path(board_id),
+            json=view.model_dump_for_api(),
+        )
+        return self._parse_model(BoardView, data)
+
+    async def update_view_async(
+        self,
+        board_id: str,
+        view_id: str,
+        view: BoardViewCreate,
+    ) -> BoardView:
+        """Update an existing board view (async).
+
+        Args:
+            board_id: Board ID.
+            view_id: View ID.
+            view: Updated view configuration.
+
+        Returns:
+            Updated BoardView object.
+        """
+        data = await self._put_async(
+            self._build_view_path(board_id, view_id),
+            json=view.model_dump_for_api(),
+        )
+        return self._parse_model(BoardView, data)
+
+    async def delete_view_async(self, board_id: str, view_id: str) -> None:
+        """Delete a board view (async).
+
+        Args:
+            board_id: Board ID.
+            view_id: View ID.
+        """
+        await self._delete_async(self._build_view_path(board_id, view_id))
 
     # -------------------------------------------------------------------------
     # Sync methods
@@ -348,3 +458,146 @@ class BoardsResource(BaseResource):
         import asyncio
 
         return asyncio.run(self.create_from_bundle_async(bundle))
+
+    # -------------------------------------------------------------------------
+    # Board View Methods - Sync
+    # -------------------------------------------------------------------------
+
+    def list_views(self, board_id: str) -> builtins.list[BoardView]:
+        """List all views for a board.
+
+        Args:
+            board_id: Board ID.
+
+        Returns:
+            List of BoardView objects (max 50 per board).
+        """
+        if not self._client.is_sync:
+            raise RuntimeError("Use list_views_async() for async mode, or pass sync=True to client")
+        data = self._get_sync(self._build_view_path(board_id))
+        return self._parse_model_list(BoardView, data)
+
+    def get_view(self, board_id: str, view_id: str) -> BoardView:
+        """Get a specific board view.
+
+        Args:
+            board_id: Board ID.
+            view_id: View ID.
+
+        Returns:
+            BoardView object.
+        """
+        if not self._client.is_sync:
+            raise RuntimeError("Use get_view_async() for async mode, or pass sync=True to client")
+        data = self._get_sync(self._build_view_path(board_id, view_id))
+        return self._parse_model(BoardView, data)
+
+    def create_view(self, board_id: str, view: BoardViewCreate) -> BoardView:
+        """Create a new board view.
+
+        Args:
+            board_id: Board ID.
+            view: View configuration.
+
+        Returns:
+            Created BoardView object.
+
+        Note:
+            Each board is limited to 50 views maximum.
+        """
+        if not self._client.is_sync:
+            raise RuntimeError(
+                "Use create_view_async() for async mode, or pass sync=True to client"
+            )
+        data = self._post_sync(
+            self._build_view_path(board_id),
+            json=view.model_dump_for_api(),
+        )
+        return self._parse_model(BoardView, data)
+
+    def update_view(self, board_id: str, view_id: str, view: BoardViewCreate) -> BoardView:
+        """Update an existing board view.
+
+        Args:
+            board_id: Board ID.
+            view_id: View ID.
+            view: Updated view configuration.
+
+        Returns:
+            Updated BoardView object.
+        """
+        if not self._client.is_sync:
+            raise RuntimeError(
+                "Use update_view_async() for async mode, or pass sync=True to client"
+            )
+        data = self._put_sync(
+            self._build_view_path(board_id, view_id),
+            json=view.model_dump_for_api(),
+        )
+        return self._parse_model(BoardView, data)
+
+    def delete_view(self, board_id: str, view_id: str) -> None:
+        """Delete a board view.
+
+        Args:
+            board_id: Board ID.
+            view_id: View ID.
+        """
+        if not self._client.is_sync:
+            raise RuntimeError(
+                "Use delete_view_async() for async mode, or pass sync=True to client"
+            )
+        self._delete_sync(self._build_view_path(board_id, view_id))
+
+    # -------------------------------------------------------------------------
+    # Export/Import with Views
+    # -------------------------------------------------------------------------
+
+    async def export_with_views_async(self, board_id: str) -> dict[str, Any]:
+        """Export board with views included (async).
+
+        Returns a dictionary suitable for JSON serialization and import,
+        including all board data and associated views.
+
+        Args:
+            board_id: Board ID
+
+        Returns:
+            Dict with board data and views (IDs stripped for portability)
+
+        Example:
+            >>> data = await client.boards.export_with_views_async("board-123")
+            >>> with open("board.json", "w") as f:
+            ...     json.dump(data, f, indent=2)
+        """
+        board = await self.get_async(board_id)
+        views = await self.list_views_async(board_id)
+
+        # Export board without IDs and timestamps for portability
+        data = board.model_dump(exclude={"id", "created_at", "updated_at"}, mode="json")
+
+        # Add views (without IDs)
+        if views:
+            data["views"] = [v.model_dump(exclude={"id"}, mode="json") for v in views]
+
+        return data
+
+    def export_with_views(self, board_id: str) -> dict[str, Any]:
+        """Export board with views included (sync).
+
+        Returns a dictionary suitable for JSON serialization and import,
+        including all board data and associated views.
+
+        Args:
+            board_id: Board ID
+
+        Returns:
+            Dict with board data and views (IDs stripped for portability)
+        """
+        if not self._client.is_sync:
+            raise RuntimeError(
+                "Use export_with_views_async() for async mode, or pass sync=True to client"
+            )
+        import asyncio
+
+        return asyncio.run(self.export_with_views_async(board_id))

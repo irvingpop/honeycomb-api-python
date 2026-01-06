@@ -3,6 +3,8 @@
 import pytest
 
 from honeycomb import BoardBuilder, BoardBundle
+from honeycomb.models.boards import BoardViewFilter
+from honeycomb.models.query_builder import FilterOp
 
 
 class TestBoardBuilderBasics:
@@ -331,3 +333,109 @@ class TestBoardBuilderComplexScenarios:
         assert bundle.existing_query_panels[0].position == (0, 0, 8, 6)
         assert bundle.existing_slo_panels[0].position == (8, 0, 4, 6)
         assert bundle.text_panels[0].position == (0, 6, 12, 2)
+
+
+class TestBoardBuilderViews:
+    """Tests for board view support in BoardBuilder."""
+
+    def test_add_view_with_dict_filters(self):
+        """Test adding view with dict filters."""
+        bundle = (
+            BoardBuilder("Test")
+            .auto_layout()
+            .add_view("Active", [{"column": "status", "operation": "=", "value": "active"}])
+            .build()
+        )
+
+        assert len(bundle.views) == 1
+        assert bundle.views[0].name == "Active"
+        assert len(bundle.views[0].filters) == 1
+        assert bundle.views[0].filters[0].column == "status"
+        assert bundle.views[0].filters[0].value == "active"
+
+    def test_add_view_with_filter_objects(self):
+        """Test adding view with BoardViewFilter objects."""
+        bundle = (
+            BoardBuilder("Test")
+            .auto_layout()
+            .add_view(
+                "Errors",
+                [
+                    BoardViewFilter(
+                        column="status_code",
+                        operation=FilterOp.GREATER_THAN_OR_EQUAL,
+                        value=400,
+                    )
+                ],
+            )
+            .build()
+        )
+
+        assert len(bundle.views) == 1
+        assert bundle.views[0].name == "Errors"
+        assert len(bundle.views[0].filters) == 1
+        assert bundle.views[0].filters[0].column == "status_code"
+        assert bundle.views[0].filters[0].value == 400
+
+    def test_add_view_with_no_filters(self):
+        """Test adding view with no filters."""
+        bundle = BoardBuilder("Test").auto_layout().add_view("All Data").build()
+
+        assert len(bundle.views) == 1
+        assert bundle.views[0].name == "All Data"
+        assert len(bundle.views[0].filters) == 0
+
+    def test_add_multiple_views(self):
+        """Test adding multiple views."""
+        bundle = (
+            BoardBuilder("Test")
+            .auto_layout()
+            .add_view("View 1", [])
+            .add_view("View 2", [])
+            .add_view("View 3", [])
+            .build()
+        )
+
+        assert len(bundle.views) == 3
+        assert bundle.views[0].name == "View 1"
+        assert bundle.views[1].name == "View 2"
+        assert bundle.views[2].name == "View 3"
+
+    def test_add_view_with_multiple_filters(self):
+        """Test adding view with multiple filters."""
+        bundle = (
+            BoardBuilder("Test")
+            .auto_layout()
+            .add_view(
+                "Production Errors",
+                [
+                    {"column": "environment", "operation": "=", "value": "production"},
+                    {"column": "status_code", "operation": ">=", "value": 500},
+                ],
+            )
+            .build()
+        )
+
+        assert len(bundle.views) == 1
+        assert len(bundle.views[0].filters) == 2
+
+    def test_method_chaining_with_views(self):
+        """Test that add_view returns self for chaining."""
+        builder = BoardBuilder("Test")
+        assert builder.add_view("Test View") is builder
+
+    def test_complete_board_with_views(self):
+        """Test complete board with panels and views."""
+        bundle = (
+            BoardBuilder("Service Dashboard")
+            .description("Dashboard with views")
+            .auto_layout()
+            .query("query-1", "annot-1")
+            .add_view("Active Only", [{"column": "status", "operation": "=", "value": "active"}])
+            .add_view("Errors Only", [{"column": "status_code", "operation": ">=", "value": 400}])
+            .build()
+        )
+
+        assert bundle.board_name == "Service Dashboard"
+        assert len(bundle.existing_query_panels) == 1
+        assert len(bundle.views) == 2

@@ -149,6 +149,58 @@ For simple cases without panels:
 %}
 ```
 
+## Board Views
+
+Board views are filtered perspectives on a board (max 50 per board). Create them using `BoardBuilder.add_view()` or the view CRUD methods.
+
+### Creating Views with BoardBuilder
+
+```python
+{%
+   include "../examples/boards/builder_board.py"
+   start="# start_example:create_with_views"
+   end="# end_example:create_with_views"
+%}
+```
+
+### Managing Views
+
+```python
+{%
+   include "../examples/boards/builder_board.py"
+   start="# start_example:manage_views"
+   end="# end_example:manage_views"
+%}
+```
+
+### Export/Import with Views
+
+```python
+{%
+   include "../examples/boards/builder_board.py"
+   start="# start_example:export_with_views"
+   end="# end_example:export_with_views"
+%}
+```
+
+**Filter Operations**: Use `FilterOp` enum (same as QueryBuilder): `EQUALS`, `GREATER_THAN`, `CONTAINS`, `STARTS_WITH`, `ENDS_WITH`, `EXISTS`, `IN`, etc.
+
+**CLI**: `hny boards export board-123 --views` (default) or `--no-views`
+
+## Board Preset Filters
+
+Preset filters allow dynamic filtering of board data. Add using `.preset_filter(column, alias)` (max 5):
+
+```python
+board = await client.boards.create_from_bundle_async(
+    BoardBuilder("Dashboard")
+        .auto_layout()
+        .preset_filter("service_name", "Service")
+        .preset_filter("environment", "Environment")
+        .build()
+)
+```
+
 ## Sync Usage
 
 All board operations have sync equivalents. Use `sync=True` when creating the client:
@@ -169,4 +221,8 @@ with HoneycombClient(api_key="...", sync=True) as client:
 
     # Delete board
     client.boards.delete(board_id)
+
+    # Board views (sync)
+    views = client.boards.list_views(board_id)
+    data = client.boards.export_with_views(board_id)
 ```
