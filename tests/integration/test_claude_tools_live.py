@@ -493,7 +493,11 @@ Panel 4 - SLO Panel: Create inline SLO named '{slo_name}'
 - Create inline derived column 'test_success_indicator' with expression: IF(LT($status_code, 500), 1, 0)
 - Add inline burn alert that fires when 10% of error budget consumed in 1 hour
 
-IMPORTANT: Use inline creation for queries and SLO to minimize API calls. Create everything in one honeycomb_create_board call.
+Also create these board views for different perspectives:
+- View "Production Errors" filtering where environment = production AND status_code >= 500
+- View "Slow Requests" filtering where duration_ms > 1000
+
+IMPORTANT: Use inline creation for queries, SLO, and views to minimize API calls. Create everything in one honeycomb_create_board call.
 """
 
         messages.append({"role": "user", "content": step4_prompt})
@@ -548,6 +552,31 @@ IMPORTANT: Use inline creation for queries and SLO to minimize API calls. Create
         print(f"  - Query panels: {len(query_panels)}")
         print(f"  - Text panels: {len(text_panels)}")
         print(f"  - SLO panels: {len(slo_panels)}")
+
+        # Validate board views were created
+        views = await client.boards.list_views_async(board_id=board.id)
+        assert len(views) >= 2, f"Expected at least 2 views, got {len(views)}"
+
+        view_names = {v.name for v in views}
+        assert "Production Errors" in view_names, f"Missing 'Production Errors' view. Found: {view_names}"
+        assert "Slow Requests" in view_names, f"Missing 'Slow Requests' view. Found: {view_names}"
+
+        # Validate filter counts
+        prod_errors_view = next(v for v in views if v.name == "Production Errors")
+        assert len(prod_errors_view.filters) == 2, (
+            f"'Production Errors' should have 2 filters, got {len(prod_errors_view.filters)}"
+        )
+
+        slow_view = next(v for v in views if v.name == "Slow Requests")
+        assert len(slow_view.filters) == 1, (
+            f"'Slow Requests' should have 1 filter, got {len(slow_view.filters)}"
+        )
+
+        print(f"✓ VALIDATED: Board views created successfully")
+        print(f"  - Total views: {len(views)}")
+        print(f"  - View names: {sorted(view_names)}")
+        print(f"  - 'Production Errors': {len(prod_errors_view.filters)} filters")
+        print(f"  - 'Slow Requests': {len(slow_view.filters)} filter")
 
         # Validate SLO was created (should be inline or separate)
         slos = await client.slos.list_async(dataset=dataset_name)
