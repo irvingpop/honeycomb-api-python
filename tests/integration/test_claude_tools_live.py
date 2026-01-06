@@ -558,7 +558,9 @@ IMPORTANT: Use inline creation for queries, SLO, and views to minimize API calls
         assert len(views) >= 2, f"Expected at least 2 views, got {len(views)}"
 
         view_names = {v.name for v in views}
-        assert "Production Errors" in view_names, f"Missing 'Production Errors' view. Found: {view_names}"
+        assert "Production Errors" in view_names, (
+            f"Missing 'Production Errors' view. Found: {view_names}"
+        )
         assert "Slow Requests" in view_names, f"Missing 'Slow Requests' view. Found: {view_names}"
 
         # Validate filter counts
@@ -572,7 +574,7 @@ IMPORTANT: Use inline creation for queries, SLO, and views to minimize API calls
             f"'Slow Requests' should have 1 filter, got {len(slow_view.filters)}"
         )
 
-        print(f"✓ VALIDATED: Board views created successfully")
+        print("✓ VALIDATED: Board views created successfully")
         print(f"  - Total views: {len(views)}")
         print(f"  - View names: {sorted(view_names)}")
         print(f"  - 'Production Errors': {len(prod_errors_view.filters)} filters")
