@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class UpdatePipelineConfigurationRolloutAttributesStatus(str, Enum):
     ARCHIVED = "archived"
     DEPLOYING = "deploying"

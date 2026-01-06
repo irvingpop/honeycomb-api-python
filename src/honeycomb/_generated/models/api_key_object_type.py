@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class ApiKeyObjectType(str, Enum):
     API_KEYS = "api-keys"
 

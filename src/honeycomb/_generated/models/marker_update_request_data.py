@@ -1,16 +1,18 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.marker_update_request_data_type import \
+    MarkerUpdateRequestDataType
 from ..types import UNSET, Unset
 
-from ..models.marker_update_request_data_type import MarkerUpdateRequestDataType
-from typing import cast
-
 if TYPE_CHECKING:
-  from ..models.marker_update_request_data_attributes import MarkerUpdateRequestDataAttributes
-  from ..models.marker_update_request_data_relationships import MarkerUpdateRequestDataRelationships
+  from ..models.marker_update_request_data_attributes import \
+      MarkerUpdateRequestDataAttributes
+  from ..models.marker_update_request_data_relationships import \
+      MarkerUpdateRequestDataRelationships
 
 
 
@@ -36,8 +38,10 @@ class MarkerUpdateRequestData:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.marker_update_request_data_attributes import MarkerUpdateRequestDataAttributes
-        from ..models.marker_update_request_data_relationships import MarkerUpdateRequestDataRelationships
+        from ..models.marker_update_request_data_attributes import \
+            MarkerUpdateRequestDataAttributes
+        from ..models.marker_update_request_data_relationships import \
+            MarkerUpdateRequestDataRelationships
         type_ = self.type_.value
 
         attributes = self.attributes.to_dict()
@@ -59,8 +63,10 @@ class MarkerUpdateRequestData:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.marker_update_request_data_attributes import MarkerUpdateRequestDataAttributes
-        from ..models.marker_update_request_data_relationships import MarkerUpdateRequestDataRelationships
+        from ..models.marker_update_request_data_attributes import \
+            MarkerUpdateRequestDataAttributes
+        from ..models.marker_update_request_data_relationships import \
+            MarkerUpdateRequestDataRelationships
         d = src_dict.copy()
         type_ = MarkerUpdateRequestDataType(d.pop("type"))
 

@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class BaseTriggerEvaluationScheduleWindowDaysOfWeekItem(str, Enum):
     FRIDAY = "friday"
     MONDAY = "monday"

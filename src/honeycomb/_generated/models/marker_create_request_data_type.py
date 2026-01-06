@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class MarkerCreateRequestDataType(str, Enum):
     MARKERS = "markers"
 

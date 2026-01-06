@@ -1,15 +1,16 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.create_environment_request_data_type import \
+    CreateEnvironmentRequestDataType
 from ..types import UNSET, Unset
 
-from ..models.create_environment_request_data_type import CreateEnvironmentRequestDataType
-from typing import cast
-
 if TYPE_CHECKING:
-  from ..models.create_environment_request_data_attributes import CreateEnvironmentRequestDataAttributes
+  from ..models.create_environment_request_data_attributes import \
+      CreateEnvironmentRequestDataAttributes
 
 
 
@@ -33,7 +34,8 @@ class CreateEnvironmentRequestData:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.create_environment_request_data_attributes import CreateEnvironmentRequestDataAttributes
+        from ..models.create_environment_request_data_attributes import \
+            CreateEnvironmentRequestDataAttributes
         type_ = self.type_.value
 
         attributes = self.attributes.to_dict()
@@ -52,7 +54,8 @@ class CreateEnvironmentRequestData:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.create_environment_request_data_attributes import CreateEnvironmentRequestDataAttributes
+        from ..models.create_environment_request_data_attributes import \
+            CreateEnvironmentRequestDataAttributes
         d = src_dict.copy()
         type_ = CreateEnvironmentRequestDataType(d.pop("type"))
 

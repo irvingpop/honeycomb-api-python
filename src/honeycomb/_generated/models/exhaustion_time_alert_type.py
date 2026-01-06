@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class ExhaustionTimeAlertType(str, Enum):
     BUDGET_RATE = "budget_rate"
     EXHAUSTION_TIME = "exhaustion_time"

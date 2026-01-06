@@ -1,25 +1,24 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+import datetime
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
-
-from ..types import UNSET, Unset
+from dateutil.parser import isoparse
 
 from ..models.base_trigger_alert_type import BaseTriggerAlertType
-from ..models.base_trigger_evaluation_schedule_type import BaseTriggerEvaluationScheduleType
+from ..models.base_trigger_evaluation_schedule_type import \
+    BaseTriggerEvaluationScheduleType
 from ..types import UNSET, Unset
-from dateutil.parser import isoparse
-from typing import cast
-from typing import cast, Union
-from typing import Union
-import datetime
 
 if TYPE_CHECKING:
+  from ..models.base_trigger_baseline_details_type_0 import \
+      BaseTriggerBaselineDetailsType0
+  from ..models.base_trigger_evaluation_schedule import \
+      BaseTriggerEvaluationSchedule
   from ..models.base_trigger_threshold import BaseTriggerThreshold
-  from ..models.tag import Tag
-  from ..models.base_trigger_evaluation_schedule import BaseTriggerEvaluationSchedule
-  from ..models.base_trigger_baseline_details_type_0 import BaseTriggerBaselineDetailsType0
   from ..models.notification_recipient import NotificationRecipient
+  from ..models.tag import Tag
 
 
 
@@ -94,11 +93,13 @@ class BaseTrigger:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.base_trigger_baseline_details_type_0 import \
+            BaseTriggerBaselineDetailsType0
+        from ..models.base_trigger_evaluation_schedule import \
+            BaseTriggerEvaluationSchedule
         from ..models.base_trigger_threshold import BaseTriggerThreshold
-        from ..models.tag import Tag
-        from ..models.base_trigger_evaluation_schedule import BaseTriggerEvaluationSchedule
-        from ..models.base_trigger_baseline_details_type_0 import BaseTriggerBaselineDetailsType0
         from ..models.notification_recipient import NotificationRecipient
+        from ..models.tag import Tag
         id = self.id
 
         dataset_slug = self.dataset_slug
@@ -209,11 +210,13 @@ class BaseTrigger:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
+        from ..models.base_trigger_baseline_details_type_0 import \
+            BaseTriggerBaselineDetailsType0
+        from ..models.base_trigger_evaluation_schedule import \
+            BaseTriggerEvaluationSchedule
         from ..models.base_trigger_threshold import BaseTriggerThreshold
-        from ..models.tag import Tag
-        from ..models.base_trigger_evaluation_schedule import BaseTriggerEvaluationSchedule
-        from ..models.base_trigger_baseline_details_type_0 import BaseTriggerBaselineDetailsType0
         from ..models.notification_recipient import NotificationRecipient
+        from ..models.tag import Tag
         d = src_dict.copy()
         id = d.pop("id", UNSET)
 

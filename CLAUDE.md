@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | [README.md](README.md) | Usage examples, API reference, setup |
 | [PLAN.md](PLAN.md) | Architecture decisions, implementation plan |
 | [api.yaml](api.yaml) | OpenAPI spec (source of truth for API) |
+| [.claude/docs/openapi-spec-updates.md](.claude/docs/openapi-spec-updates.md) | How to update the OpenAPI spec |
 
 ## Ground Rules
 

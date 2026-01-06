@@ -1,17 +1,14 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
-
 if TYPE_CHECKING:
-  from ..models.query_results_series import QueryResultsSeries
   from ..models.query_results_data import QueryResultsData
+  from ..models.query_results_series import QueryResultsSeries
 
 
 
@@ -47,8 +44,8 @@ class QueryResultDetailsData:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.query_results_series import QueryResultsSeries
         from ..models.query_results_data import QueryResultsData
+        from ..models.query_results_series import QueryResultsSeries
         series: Union[Unset, list[dict[str, Any]]] = UNSET
         if not isinstance(self.series, Unset):
             series = []
@@ -106,8 +103,8 @@ class QueryResultDetailsData:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.query_results_series import QueryResultsSeries
         from ..models.query_results_data import QueryResultsData
+        from ..models.query_results_series import QueryResultsSeries
         d = src_dict.copy()
         series = []
         _series = d.pop("series", UNSET)

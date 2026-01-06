@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class CreateEventsContentEncoding(str, Enum):
     GZIP = "gzip"
     ZSTD = "zstd"

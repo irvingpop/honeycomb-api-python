@@ -1,17 +1,17 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.environment_attributes_color_type_1 import \
+    EnvironmentAttributesColorType1
+from ..models.environment_color import EnvironmentColor
 from ..types import UNSET, Unset
 
-from ..models.environment_attributes_color_type_1 import EnvironmentAttributesColorType1
-from ..models.environment_color import EnvironmentColor
-from typing import cast
-from typing import cast, Union
-
 if TYPE_CHECKING:
-  from ..models.environment_attributes_settings import EnvironmentAttributesSettings
+  from ..models.environment_attributes_settings import \
+      EnvironmentAttributesSettings
 
 
 
@@ -43,7 +43,8 @@ class EnvironmentAttributes:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.environment_attributes_settings import EnvironmentAttributesSettings
+        from ..models.environment_attributes_settings import \
+            EnvironmentAttributesSettings
         name = self.name
 
         description = self.description
@@ -76,7 +77,8 @@ class EnvironmentAttributes:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.environment_attributes_settings import EnvironmentAttributesSettings
+        from ..models.environment_attributes_settings import \
+            EnvironmentAttributesSettings
         d = src_dict.copy()
         name = d.pop("name")
 

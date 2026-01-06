@@ -1,15 +1,16 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.update_pipeline_configuration_rollout_type import \
+    UpdatePipelineConfigurationRolloutType
 from ..types import UNSET, Unset
 
-from ..models.update_pipeline_configuration_rollout_type import UpdatePipelineConfigurationRolloutType
-from typing import cast
-
 if TYPE_CHECKING:
-  from ..models.update_pipeline_configuration_rollout_attributes import UpdatePipelineConfigurationRolloutAttributes
+  from ..models.update_pipeline_configuration_rollout_attributes import \
+      UpdatePipelineConfigurationRolloutAttributes
 
 
 
@@ -35,7 +36,8 @@ class UpdatePipelineConfigurationRollout:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.update_pipeline_configuration_rollout_attributes import UpdatePipelineConfigurationRolloutAttributes
+        from ..models.update_pipeline_configuration_rollout_attributes import \
+            UpdatePipelineConfigurationRolloutAttributes
         id = self.id
 
         type_ = self.type_.value
@@ -57,7 +59,8 @@ class UpdatePipelineConfigurationRollout:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.update_pipeline_configuration_rollout_attributes import UpdatePipelineConfigurationRolloutAttributes
+        from ..models.update_pipeline_configuration_rollout_attributes import \
+            UpdatePipelineConfigurationRolloutAttributes
         d = src_dict.copy()
         id = d.pop("id")
 

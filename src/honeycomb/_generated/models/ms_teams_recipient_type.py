@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class MSTeamsRecipientType(str, Enum):
     MSTEAMS = "msteams"
 

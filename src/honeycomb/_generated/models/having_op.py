@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class HavingOp(str, Enum):
     VALUE_0 = "="
     VALUE_1 = "!="

@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class EnvironmentAttributesColorType1(str, Enum):
     CLASSIC = "classic"
 

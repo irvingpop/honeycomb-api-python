@@ -1,22 +1,20 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..types import UNSET, Unset
-
-from ..models.query_compare_time_offset_seconds import QueryCompareTimeOffsetSeconds
+from ..models.query_compare_time_offset_seconds import \
+    QueryCompareTimeOffsetSeconds
 from ..models.query_filter_combination import QueryFilterCombination
 from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
 
 if TYPE_CHECKING:
   from ..models.query_calculated_fields_item import QueryCalculatedFieldsItem
   from ..models.query_calculations_item import QueryCalculationsItem
-  from ..models.query_orders_item import QueryOrdersItem
   from ..models.query_filters_item import QueryFiltersItem
   from ..models.query_havings_item import QueryHavingsItem
+  from ..models.query_orders_item import QueryOrdersItem
 
 
 
@@ -99,11 +97,12 @@ class Query:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.query_calculated_fields_item import QueryCalculatedFieldsItem
+        from ..models.query_calculated_fields_item import \
+            QueryCalculatedFieldsItem
         from ..models.query_calculations_item import QueryCalculationsItem
-        from ..models.query_orders_item import QueryOrdersItem
         from ..models.query_filters_item import QueryFiltersItem
         from ..models.query_havings_item import QueryHavingsItem
+        from ..models.query_orders_item import QueryOrdersItem
         id = self.id
 
         breakdowns: Union[Unset, list[str]] = UNSET
@@ -217,11 +216,12 @@ class Query:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.query_calculated_fields_item import QueryCalculatedFieldsItem
+        from ..models.query_calculated_fields_item import \
+            QueryCalculatedFieldsItem
         from ..models.query_calculations_item import QueryCalculationsItem
-        from ..models.query_orders_item import QueryOrdersItem
         from ..models.query_filters_item import QueryFiltersItem
         from ..models.query_havings_item import QueryHavingsItem
+        from ..models.query_orders_item import QueryOrdersItem
         d = src_dict.copy()
         id = d.pop("id", UNSET)
 

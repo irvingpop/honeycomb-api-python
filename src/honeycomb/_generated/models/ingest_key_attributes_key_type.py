@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class IngestKeyAttributesKeyType(str, Enum):
     INGEST = "ingest"
 

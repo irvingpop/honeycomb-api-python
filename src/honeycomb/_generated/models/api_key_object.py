@@ -1,21 +1,17 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..types import UNSET, Unset
-
 from ..models.api_key_object_type import ApiKeyObjectType
 from ..types import UNSET, Unset
-from typing import cast
-from typing import cast, Union
-from typing import Union
 
 if TYPE_CHECKING:
-  from ..models.ingest_key_attributes import IngestKeyAttributes
-  from ..models.api_key_object_relationships import ApiKeyObjectRelationships
   from ..models.api_key_object_links import ApiKeyObjectLinks
+  from ..models.api_key_object_relationships import ApiKeyObjectRelationships
   from ..models.configuration_key_attributes import ConfigurationKeyAttributes
+  from ..models.ingest_key_attributes import IngestKeyAttributes
 
 
 
@@ -49,10 +45,12 @@ class ApiKeyObject:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.ingest_key_attributes import IngestKeyAttributes
-        from ..models.api_key_object_relationships import ApiKeyObjectRelationships
         from ..models.api_key_object_links import ApiKeyObjectLinks
-        from ..models.configuration_key_attributes import ConfigurationKeyAttributes
+        from ..models.api_key_object_relationships import \
+            ApiKeyObjectRelationships
+        from ..models.configuration_key_attributes import \
+            ConfigurationKeyAttributes
+        from ..models.ingest_key_attributes import IngestKeyAttributes
         id = self.id
 
         type_: Union[Unset, str] = UNSET
@@ -99,10 +97,12 @@ class ApiKeyObject:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.ingest_key_attributes import IngestKeyAttributes
-        from ..models.api_key_object_relationships import ApiKeyObjectRelationships
         from ..models.api_key_object_links import ApiKeyObjectLinks
-        from ..models.configuration_key_attributes import ConfigurationKeyAttributes
+        from ..models.api_key_object_relationships import \
+            ApiKeyObjectRelationships
+        from ..models.configuration_key_attributes import \
+            ConfigurationKeyAttributes
+        from ..models.ingest_key_attributes import IngestKeyAttributes
         d = src_dict.copy()
         id = d.pop("id", UNSET)
 

@@ -6058,6 +6058,7 @@ components:
             width of the panel is calculated dynamically based on the panel type.
           minimum: 0
     QueryPanel:
+      title: Query Panel
       type: object
       required:
       - query_panel
@@ -6108,6 +6109,7 @@ components:
             visualization_settings:
               $ref: '#/components/schemas/BoardQueryVisualizationSettings'
     SLOPanel:
+      title: SLO Panel
       type: object
       required:
       - slo_panel
@@ -6129,6 +6131,7 @@ components:
                 '
               example: BGfyxhFto
     TextPanel:
+      title: Text Panel
       type: object
       required:
       - text_panel
@@ -9231,7 +9234,6 @@ components:
           - $ref: '#/components/schemas/ConfigurationKeyRequest'
     IngestKeyRequest:
       type: object
-      title: Ingest Key
       required:
       - id
       - type
@@ -9259,7 +9261,6 @@ components:
               example: false
     ConfigurationKeyRequest:
       type: object
-      title: Configuration Key
       required:
       - id
       - type

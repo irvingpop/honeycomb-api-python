@@ -45,7 +45,7 @@ fi
 # Step 2: Apply patches (using poetry for pyyaml dependency)
 echo ""
 echo "Applying patches to OpenAPI spec..."
-poetry run python scripts/patch-openapi.py --input api.yaml --output api.yaml
+poetry run python scripts/patch-openapi.py --input api.yaml --output api.yaml --backup
 
 # Step 3: Remove old generated client
 echo ""
@@ -66,7 +66,12 @@ echo "Moving generated package..."
 mv ./generated-client/_generated src/honeycomb/
 rm -rf ./generated-client
 
-# Step 6: Summary
+# Step 6: Sort imports for deterministic output
+echo ""
+echo "Sorting imports for deterministic output..."
+poetry run isort src/honeycomb/_generated/
+
+# Step 7: Summary
 echo ""
 echo "Generation complete!"
 echo ""

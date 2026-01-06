@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class CreateMapDependenciesResponseStatus(str, Enum):
     ERROR = "error"
     PENDING = "pending"

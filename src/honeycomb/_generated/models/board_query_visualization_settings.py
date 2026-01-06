@@ -1,16 +1,14 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
-
 if TYPE_CHECKING:
-  from ..models.board_query_visualization_settings_charts_item import BoardQueryVisualizationSettingsChartsItem
+  from ..models.board_query_visualization_settings_charts_item import \
+      BoardQueryVisualizationSettingsChartsItem
 
 
 
@@ -45,7 +43,8 @@ class BoardQueryVisualizationSettings:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.board_query_visualization_settings_charts_item import BoardQueryVisualizationSettingsChartsItem
+        from ..models.board_query_visualization_settings_charts_item import \
+            BoardQueryVisualizationSettingsChartsItem
         hide_compare = self.hide_compare
 
         hide_hovers = self.hide_hovers
@@ -89,7 +88,8 @@ class BoardQueryVisualizationSettings:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.board_query_visualization_settings_charts_item import BoardQueryVisualizationSettingsChartsItem
+        from ..models.board_query_visualization_settings_charts_item import \
+            BoardQueryVisualizationSettingsChartsItem
         d = src_dict.copy()
         hide_compare = d.pop("hide_compare", UNSET)
 

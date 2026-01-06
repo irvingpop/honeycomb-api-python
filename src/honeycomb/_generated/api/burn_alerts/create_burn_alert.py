@@ -3,17 +3,15 @@ from typing import Any, Optional, Union, cast
 
 import httpx
 
-from ...client import AuthenticatedClient, Client
-from ...types import Response, UNSET
 from ... import errors
-
-from ...models.create_budget_rate_burn_alert_request import CreateBudgetRateBurnAlertRequest
-from ...models.create_exhaustion_time_burn_alert_request import CreateExhaustionTimeBurnAlertRequest
+from ...client import AuthenticatedClient, Client
+from ...models.create_budget_rate_burn_alert_request import \
+    CreateBudgetRateBurnAlertRequest
+from ...models.create_exhaustion_time_burn_alert_request import \
+    CreateExhaustionTimeBurnAlertRequest
 from ...models.error import Error
 from ...models.validation_error import ValidationError
-from typing import cast
-from typing import cast, Union
-
+from ...types import UNSET, Response
 
 
 def _get_kwargs(

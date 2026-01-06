@@ -1,14 +1,14 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from typing import cast
-
 if TYPE_CHECKING:
-  from ..models.base_trigger_evaluation_schedule_window import BaseTriggerEvaluationScheduleWindow
+  from ..models.base_trigger_evaluation_schedule_window import \
+      BaseTriggerEvaluationScheduleWindow
 
 
 
@@ -35,7 +35,8 @@ class BaseTriggerEvaluationSchedule:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.base_trigger_evaluation_schedule_window import BaseTriggerEvaluationScheduleWindow
+        from ..models.base_trigger_evaluation_schedule_window import \
+            BaseTriggerEvaluationScheduleWindow
         window = self.window.to_dict()
 
 
@@ -51,7 +52,8 @@ class BaseTriggerEvaluationSchedule:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.base_trigger_evaluation_schedule_window import BaseTriggerEvaluationScheduleWindow
+        from ..models.base_trigger_evaluation_schedule_window import \
+            BaseTriggerEvaluationScheduleWindow
         d = src_dict.copy()
         window = BaseTriggerEvaluationScheduleWindow.from_dict(d.pop("window"))
 

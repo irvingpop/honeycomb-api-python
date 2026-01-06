@@ -1,18 +1,18 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.api_key_create_request_data_type import \
+    ApiKeyCreateRequestDataType
 from ..types import UNSET, Unset
 
-from ..models.api_key_create_request_data_type import ApiKeyCreateRequestDataType
-from typing import cast
-from typing import cast, Union
-
 if TYPE_CHECKING:
-  from ..models.ingest_key_attributes import IngestKeyAttributes
-  from ..models.api_key_create_request_data_relationships import ApiKeyCreateRequestDataRelationships
+  from ..models.api_key_create_request_data_relationships import \
+      ApiKeyCreateRequestDataRelationships
   from ..models.configuration_key_attributes import ConfigurationKeyAttributes
+  from ..models.ingest_key_attributes import IngestKeyAttributes
 
 
 
@@ -38,9 +38,11 @@ class ApiKeyCreateRequestData:
 
 
     def to_dict(self) -> dict[str, Any]:
+        from ..models.api_key_create_request_data_relationships import \
+            ApiKeyCreateRequestDataRelationships
+        from ..models.configuration_key_attributes import \
+            ConfigurationKeyAttributes
         from ..models.ingest_key_attributes import IngestKeyAttributes
-        from ..models.api_key_create_request_data_relationships import ApiKeyCreateRequestDataRelationships
-        from ..models.configuration_key_attributes import ConfigurationKeyAttributes
         type_ = self.type_.value
 
         attributes: dict[str, Any]
@@ -67,9 +69,11 @@ class ApiKeyCreateRequestData:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
+        from ..models.api_key_create_request_data_relationships import \
+            ApiKeyCreateRequestDataRelationships
+        from ..models.configuration_key_attributes import \
+            ConfigurationKeyAttributes
         from ..models.ingest_key_attributes import IngestKeyAttributes
-        from ..models.api_key_create_request_data_relationships import ApiKeyCreateRequestDataRelationships
-        from ..models.configuration_key_attributes import ConfigurationKeyAttributes
         d = src_dict.copy()
         type_ = ApiKeyCreateRequestDataType(d.pop("type"))
 

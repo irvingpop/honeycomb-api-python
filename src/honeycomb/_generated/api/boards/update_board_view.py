@@ -3,17 +3,14 @@ from typing import Any, Optional, Union, cast
 
 import httpx
 
-from ...client import AuthenticatedClient, Client
-from ...types import Response, UNSET
 from ... import errors
-
+from ...client import AuthenticatedClient, Client
 from ...models.board_view_response import BoardViewResponse
 from ...models.detailed_error import DetailedError
 from ...models.error import Error
 from ...models.update_board_view_request import UpdateBoardViewRequest
 from ...models.validation_error import ValidationError
-from typing import cast
-
+from ...types import UNSET, Response
 
 
 def _get_kwargs(

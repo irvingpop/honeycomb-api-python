@@ -1,16 +1,11 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.update_pipeline_configuration_rollout_request_data_attributes_status import \
+    UpdatePipelineConfigurationRolloutRequestDataAttributesStatus
 from ..types import UNSET, Unset
-
-from ..models.update_pipeline_configuration_rollout_request_data_attributes_status import UpdatePipelineConfigurationRolloutRequestDataAttributesStatus
-
-
-
-
-
 
 T = TypeVar("T", bound="UpdatePipelineConfigurationRolloutRequestDataAttributes")
 

@@ -102,3 +102,9 @@ Thumbs.db
 # DeepEval telemetry and caches
 .deepeval/
 tests/integration/.tool_call_cache/
+
+# OpenAPI spec management - temporary files
+api.yaml.downloaded
+api.yaml.new
+api.yaml.backup.*
+.openapi-diff.txt

@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class BoardViewFilterOperation(str, Enum):
     CONTAINS = "contains"
     DOES_NOT_CONTAIN = "does-not-contain"

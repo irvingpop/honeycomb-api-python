@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class QueryFilterCombination(str, Enum):
     AND = "AND"
     OR = "OR"

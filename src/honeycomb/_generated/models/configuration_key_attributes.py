@@ -1,18 +1,18 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.configuration_key_attributes_key_type import \
+    ConfigurationKeyAttributesKeyType
 from ..types import UNSET, Unset
-
-from ..models.configuration_key_attributes_key_type import ConfigurationKeyAttributesKeyType
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
 
 if TYPE_CHECKING:
-  from ..models.configuration_key_attributes_timestamps import ConfigurationKeyAttributesTimestamps
-  from ..models.configuration_key_attributes_permissions import ConfigurationKeyAttributesPermissions
+  from ..models.configuration_key_attributes_permissions import \
+      ConfigurationKeyAttributesPermissions
+  from ..models.configuration_key_attributes_timestamps import \
+      ConfigurationKeyAttributesTimestamps
 
 
 
@@ -43,8 +43,10 @@ class ConfigurationKeyAttributes:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.configuration_key_attributes_timestamps import ConfigurationKeyAttributesTimestamps
-        from ..models.configuration_key_attributes_permissions import ConfigurationKeyAttributesPermissions
+        from ..models.configuration_key_attributes_permissions import \
+            ConfigurationKeyAttributesPermissions
+        from ..models.configuration_key_attributes_timestamps import \
+            ConfigurationKeyAttributesTimestamps
         key_type = self.key_type.value
 
         name = self.name
@@ -79,8 +81,10 @@ class ConfigurationKeyAttributes:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.configuration_key_attributes_timestamps import ConfigurationKeyAttributesTimestamps
-        from ..models.configuration_key_attributes_permissions import ConfigurationKeyAttributesPermissions
+        from ..models.configuration_key_attributes_permissions import \
+            ConfigurationKeyAttributesPermissions
+        from ..models.configuration_key_attributes_timestamps import \
+            ConfigurationKeyAttributesTimestamps
         d = src_dict.copy()
         key_type = ConfigurationKeyAttributesKeyType(d.pop("key_type"))
 

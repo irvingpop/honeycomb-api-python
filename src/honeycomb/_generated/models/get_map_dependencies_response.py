@@ -1,19 +1,16 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.get_map_dependencies_response_status import \
+    GetMapDependenciesResponseStatus
 from ..types import UNSET, Unset
-
-from ..models.get_map_dependencies_response_status import GetMapDependenciesResponseStatus
-from ..types import UNSET, Unset
-from typing import cast
-from typing import cast, Union
-from typing import Union
 
 if TYPE_CHECKING:
-  from ..models.pagination_links import PaginationLinks
   from ..models.map_dependency import MapDependency
+  from ..models.pagination_links import PaginationLinks
 
 
 
@@ -45,8 +42,8 @@ class GetMapDependenciesResponse:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.pagination_links import PaginationLinks
         from ..models.map_dependency import MapDependency
+        from ..models.pagination_links import PaginationLinks
         request_id = self.request_id
 
         status: Union[Unset, str] = UNSET
@@ -91,8 +88,8 @@ class GetMapDependenciesResponse:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.pagination_links import PaginationLinks
         from ..models.map_dependency import MapDependency
+        from ..models.pagination_links import PaginationLinks
         d = src_dict.copy()
         request_id = d.pop("request_id", UNSET)
 

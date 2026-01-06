@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class EnvironmentColor(str, Enum):
     BLUE = "blue"
     GOLD = "gold"

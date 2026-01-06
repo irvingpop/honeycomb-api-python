@@ -1,19 +1,16 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..types import UNSET, Unset
-
 from ..models.marker_object_type import MarkerObjectType
 from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
 
 if TYPE_CHECKING:
-  from ..models.marker_object_relationships import MarkerObjectRelationships
   from ..models.marker_object_attributes import MarkerObjectAttributes
   from ..models.marker_object_links import MarkerObjectLinks
+  from ..models.marker_object_relationships import MarkerObjectRelationships
 
 
 
@@ -43,9 +40,10 @@ class MarkerObject:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.marker_object_relationships import MarkerObjectRelationships
         from ..models.marker_object_attributes import MarkerObjectAttributes
         from ..models.marker_object_links import MarkerObjectLinks
+        from ..models.marker_object_relationships import \
+            MarkerObjectRelationships
         id = self.id
 
         type_ = self.type_.value
@@ -76,9 +74,10 @@ class MarkerObject:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.marker_object_relationships import MarkerObjectRelationships
         from ..models.marker_object_attributes import MarkerObjectAttributes
         from ..models.marker_object_links import MarkerObjectLinks
+        from ..models.marker_object_relationships import \
+            MarkerObjectRelationships
         d = src_dict.copy()
         id = d.pop("id")
 

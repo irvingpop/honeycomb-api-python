@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class MarkerObjectType(str, Enum):
     MARKERS = "markers"
 

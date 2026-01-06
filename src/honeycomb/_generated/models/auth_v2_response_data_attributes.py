@@ -1,17 +1,16 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union, cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.auth_v2_response_data_attributes_key_type import \
+    AuthV2ResponseDataAttributesKeyType
 from ..types import UNSET, Unset
-
-from ..models.auth_v2_response_data_attributes_key_type import AuthV2ResponseDataAttributesKeyType
-from ..types import UNSET, Unset
-from typing import cast
-from typing import Union
 
 if TYPE_CHECKING:
-  from ..models.auth_v2_response_data_attributes_timestamps import AuthV2ResponseDataAttributesTimestamps
+  from ..models.auth_v2_response_data_attributes_timestamps import \
+      AuthV2ResponseDataAttributesTimestamps
 
 
 
@@ -41,7 +40,8 @@ class AuthV2ResponseDataAttributes:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.auth_v2_response_data_attributes_timestamps import AuthV2ResponseDataAttributesTimestamps
+        from ..models.auth_v2_response_data_attributes_timestamps import \
+            AuthV2ResponseDataAttributesTimestamps
         name = self.name
 
         key_type: Union[Unset, str] = UNSET
@@ -83,7 +83,8 @@ class AuthV2ResponseDataAttributes:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.auth_v2_response_data_attributes_timestamps import AuthV2ResponseDataAttributesTimestamps
+        from ..models.auth_v2_response_data_attributes_timestamps import \
+            AuthV2ResponseDataAttributesTimestamps
         d = src_dict.copy()
         name = d.pop("name", UNSET)
 

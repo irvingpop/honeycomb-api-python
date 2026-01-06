@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class UserRelationshipDataType(str, Enum):
     USERS = "users"
 

@@ -1,16 +1,10 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
-from ..types import UNSET, Unset
-
 from ..models.user_relationship_data_type import UserRelationshipDataType
-
-
-
-
-
+from ..types import UNSET, Unset
 
 T = TypeVar("T", bound="UserRelationshipData")
 

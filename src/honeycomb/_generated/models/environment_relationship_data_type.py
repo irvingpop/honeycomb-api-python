@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class EnvironmentRelationshipDataType(str, Enum):
     ENVIRONMENTS = "environments"
 

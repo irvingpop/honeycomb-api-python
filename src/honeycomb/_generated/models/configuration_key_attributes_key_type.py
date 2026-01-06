@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class ConfigurationKeyAttributesKeyType(str, Enum):
     CONFIGURATION = "configuration"
 

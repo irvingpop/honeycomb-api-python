@@ -1,18 +1,12 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    Union)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
+from ..models.validation_error_type_detail_item_code import \
+    ValidationErrorTypeDetailItemCode
 from ..types import UNSET, Unset
-
-from ..models.validation_error_type_detail_item_code import ValidationErrorTypeDetailItemCode
-from ..types import UNSET, Unset
-from typing import Union
-
-
-
-
-
 
 T = TypeVar("T", bound="ValidationErrorTypeDetailItem")
 

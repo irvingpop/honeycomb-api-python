@@ -1,5 +1,6 @@
 from enum import IntEnum
 
+
 class BaseTriggerBaselineDetailsType0OffsetMinutes(IntEnum):
     VALUE_60 = 60
     VALUE_1440 = 1440

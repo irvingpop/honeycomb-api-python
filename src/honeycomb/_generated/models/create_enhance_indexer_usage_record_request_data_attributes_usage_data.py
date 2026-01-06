@@ -1,14 +1,14 @@
-from typing import Any, TypeVar, Optional, BinaryIO, TextIO, TYPE_CHECKING
+from typing import (TYPE_CHECKING, Any, BinaryIO, Optional, TextIO, TypeVar,
+                    cast)
 
 from attrs import define as _attrs_define
 from attrs import field as _attrs_field
 
 from ..types import UNSET, Unset
 
-from typing import cast
-
 if TYPE_CHECKING:
-  from ..models.create_enhance_indexer_usage_record_request_data_attributes_usage_data_resource_metrics_item import CreateEnhanceIndexerUsageRecordRequestDataAttributesUsageDataResourceMetricsItem
+  from ..models.create_enhance_indexer_usage_record_request_data_attributes_usage_data_resource_metrics_item import \
+      CreateEnhanceIndexerUsageRecordRequestDataAttributesUsageDataResourceMetricsItem
 
 
 
@@ -30,7 +30,8 @@ class CreateEnhanceIndexerUsageRecordRequestDataAttributesUsageData:
 
 
     def to_dict(self) -> dict[str, Any]:
-        from ..models.create_enhance_indexer_usage_record_request_data_attributes_usage_data_resource_metrics_item import CreateEnhanceIndexerUsageRecordRequestDataAttributesUsageDataResourceMetricsItem
+        from ..models.create_enhance_indexer_usage_record_request_data_attributes_usage_data_resource_metrics_item import \
+            CreateEnhanceIndexerUsageRecordRequestDataAttributesUsageDataResourceMetricsItem
         resource_metrics = []
         for resource_metrics_item_data in self.resource_metrics:
             resource_metrics_item = resource_metrics_item_data.to_dict()
@@ -51,7 +52,8 @@ class CreateEnhanceIndexerUsageRecordRequestDataAttributesUsageData:
 
     @classmethod
     def from_dict(cls: type[T], src_dict: dict[str, Any]) -> T:
-        from ..models.create_enhance_indexer_usage_record_request_data_attributes_usage_data_resource_metrics_item import CreateEnhanceIndexerUsageRecordRequestDataAttributesUsageDataResourceMetricsItem
+        from ..models.create_enhance_indexer_usage_record_request_data_attributes_usage_data_resource_metrics_item import \
+            CreateEnhanceIndexerUsageRecordRequestDataAttributesUsageDataResourceMetricsItem
         d = src_dict.copy()
         resource_metrics = []
         _resource_metrics = d.pop("resourceMetrics")

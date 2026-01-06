@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class QueryOrdersItemOrder(str, Enum):
     ASCENDING = "ascending"
     DESCENDING = "descending"

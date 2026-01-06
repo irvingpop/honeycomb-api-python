@@ -3,10 +3,8 @@ from typing import Any, Optional, Union, cast
 
 import httpx
 
-from ...client import AuthenticatedClient, Client
-from ...types import Response, UNSET
 from ... import errors
-
+from ...client import AuthenticatedClient, Client
 from ...models.email_recipient import EmailRecipient
 from ...models.error import Error
 from ...models.ms_teams_recipient import MSTeamsRecipient
@@ -14,9 +12,7 @@ from ...models.ms_teams_workflow_recipient import MSTeamsWorkflowRecipient
 from ...models.pager_duty_recipient import PagerDutyRecipient
 from ...models.slack_recipient import SlackRecipient
 from ...models.webhook_recipient import WebhookRecipient
-from typing import cast
-from typing import cast, Union
-
+from ...types import UNSET, Response
 
 
 def _get_kwargs(

@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class AuthType(str, Enum):
     CONFIGURATION = "configuration"
     INGEST = "ingest"

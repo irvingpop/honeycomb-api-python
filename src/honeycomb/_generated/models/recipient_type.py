@@ -1,5 +1,6 @@
 from enum import Enum
 
+
 class RecipientType(str, Enum):
     EMAIL = "email"
     MSTEAMS = "msteams"
