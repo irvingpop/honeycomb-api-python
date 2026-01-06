@@ -3,35 +3,41 @@
 ## Requirements
 
 - Python 3.10 or higher
-- pip or Poetry for package management
 
-## Using pip
+## CLI Only (No Project Install)
 
-Install the latest stable version from PyPI:
+To use the CLI without adding to a project:
 
 ```bash
-pip install honeycomb-api-python
+# Using uv (fastest)
+uv tool install honeycomb-api
+
+# OR Using pipx
+pipx install honeycomb-api
+
+# Then use the short alias
+hny triggers list
 ```
 
-## Using Poetry
+## Adding to a Project
 
-Add to your project:
+### Using uv
 
 ```bash
-poetry add honeycomb-api-python
+uv add honeycomb-api
+```
+
+### Using Poetry
+
+```bash
+poetry add honeycomb-api
 ```
 
 Or add to your `pyproject.toml`:
 
 ```toml
-[tool.poetry.dependencies]
-honeycomb-api-python = "^0.1.0"
-```
-
-Then run:
-
-```bash
-poetry install
+[project.dependencies]
+honeycomb-api = ">=0.4.0"
 ```
 
 ## Verify Installation

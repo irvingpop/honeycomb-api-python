@@ -9,13 +9,35 @@ The Honeycomb CLI provides command-line access to the Honeycomb API for managing
 
 ## Installation
 
-The CLI is included by default when you install the package:
+### Quick Run (No Install)
+
+Use `uvx` or `pipx run` to run the CLI without installing:
 
 ```bash
-pip install honeycomb-api
+# Configure authentication
+export HONEYCOMB_API_KEY=your_api_key_here
 
-# Or with Poetry
-poetry add honeycomb-api
+# Using uvx (fastest)
+uvx honeycomb-api triggers list
+
+# OR Using pipx run
+pipx run honeycomb-api triggers list
+```
+
+### Permanent Install
+
+After installing, use the shorter `hny` alias:
+
+```bash
+# Using uv (fastest)
+uv tool install honeycomb-api
+
+# OR Using pipx
+pipx install honeycomb-api
+
+# Then use the short alias
+export HONEYCOMB_API_KEY=your_api_key_here
+hny triggers list
 ```
 
 ## Quick Start
@@ -28,7 +50,7 @@ export HONEYCOMB_API_KEY=your_api_key_here
 hny triggers list
 
 # Run a quick query
-hny q run --count --last-30-minutes
+hny query run --count --last-30-minutes
 
 # Export a trigger
 hny triggers export trigger-123 --dataset my-dataset > trigger.json
@@ -160,37 +182,37 @@ honeycomb boards export-all --output-dir ./boards/
 
 ### Queries
 
-Run and manage queries. List queries default to environment-wide. Command aliases: `q`, `queries`.
+Run and manage queries. List queries default to environment-wide. Command aliases: `queries`, `query`, `q`.
 
 ```bash
 # List all saved queries (environment-wide)
-hny q list
+hny query list
 
 # List queries in specific dataset
-hny q list --dataset my-dataset
+hny query list --dataset my-dataset
 
 # Run a query using builder flags (recommended)
-hny q run --dataset my-dataset --count --last-30-minutes
-hny q run --dataset my-dataset --count --avg duration_ms --where-gte status_code,500 --last-24-hours
-hny q run --count --p99 duration_ms --where-equals service,api --group-by endpoint --last-1-hour
+hny query run --dataset my-dataset --count --last-30-minutes
+hny query run --dataset my-dataset --count --avg duration_ms --where-gte status_code,500 --last-24-hours
+hny query run --count --p99 duration_ms --where-equals service,api --group-by endpoint --last-1-hour
 
 # Run a query from JSON file
-hny q run --dataset my-dataset --from-file query.json
+hny query run --dataset my-dataset --from-file query.json
 
 # Run inline query (JSON spec)
-hny q run --dataset my-dataset --spec '{"calculations": [{"op": "COUNT"}], "time_range": 3600}'
+hny query run --dataset my-dataset --spec '{"calculations": [{"op": "COUNT"}], "time_range": 3600}'
 
 # Run existing saved query
-hny q run --dataset my-dataset --query-id query-123
+hny query run --dataset my-dataset --query-id query-123
 
 # Create (save) a query
-hny queries create --dataset my-dataset --from-file query.json
+hny query create --dataset my-dataset --from-file query.json
 
 # Get query details
-hny q get query-123
+hny query get query-123
 
 # Get query results
-hny q get-result result-123
+hny query get-result result-123
 ```
 
 #### Query Builder Flags

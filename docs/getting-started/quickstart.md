@@ -282,6 +282,28 @@ async with HoneycombClient(api_key="...") as client:
 
 See the [Error Handling guide](../advanced/error-handling.md) for more details.
 
+## CLI Quick Start
+
+For quick operations without writing Python, use the CLI:
+
+```bash
+# Run without installing (using uvx or pipx)
+export HONEYCOMB_API_KEY=your_api_key_here
+uvx honeycomb-api triggers list
+# or
+pipx run honeycomb-api triggers list
+
+# Or install and use the short alias
+uv tool install honeycomb-api
+# or
+pipx install honeycomb-api
+
+hny triggers list
+hny query run --dataset my-dataset --count --last-30-minutes
+```
+
+See the [CLI Reference](../cli.md) for full documentation.
+
 ## Next Steps
 
 - **Dive deeper**: Check out the [Usage Guides](../usage/datasets.md) for detailed examples

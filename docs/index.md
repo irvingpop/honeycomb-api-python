@@ -10,6 +10,7 @@ A modern, async-first Python client for the [Honeycomb.io](https://www.honeycomb
 
 - **Async-first design** with full sync support for maximum flexibility
 - **Fluent QueryBuilder** for constructing queries with IDE autocomplete
+- **Claude tool definitions** exposing the full Honeycomb API for Claude-based agents
 - **Pydantic models** for type-safe request/response handling
 - **Automatic retries** with exponential backoff for transient failures
 - **Comprehensive error handling** with specific exception types
@@ -58,6 +59,29 @@ asyncio.run(main())
 ## Get Started
 
 Check out the [Installation Guide](getting-started/installation.md) to get started, or jump straight to the [Quick Start](getting-started/quickstart.md) for code examples.
+
+## CLI Tool
+
+For quick operations without writing Python:
+
+```bash
+# Configure authentication
+export HONEYCOMB_API_KEY=your_api_key_here
+
+# Run without installing
+uvx honeycomb-api triggers list
+# or
+pipx run honeycomb-api triggers list
+
+# Or install and use the short alias
+uv tool install honeycomb-api
+# or
+pipx install honeycomb-api
+
+hny triggers list
+```
+
+See the [CLI Reference](cli.md) for full documentation.
 
 ## Resources Supported
 

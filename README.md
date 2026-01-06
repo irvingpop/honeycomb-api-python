@@ -13,22 +13,21 @@ A modern, async-first Python client for the [Honeycomb.io](https://www.honeycomb
 - **Async-first design** with full sync support
 - **Fluent builder pattern** for queries, triggers, SLOs, and boards
 - **CLI tool** for porting objects between environments
+- **Claude tool definitions** exposing the full Honeycomb API for Claude-based agents
 - **Pydantic models** for type-safe request/response handling
 - **Automatic retries** with exponential backoff for transient failures
 - **Comprehensive error handling** with specific exception types
 - **Dual authentication** support (API keys and Management keys)
 - **Resource-oriented API** for intuitive usage
 
-## Installation (coming soon)
+## Installation
 
 ```bash
-pip install honeycomb-api-python
-```
+# Using Poetry
+poetry add honeycomb-api
 
-Or with Poetry:
-
-```bash
-poetry add honeycomb-api-python
+# Using uv
+uv add honeycomb-api
 ```
 
 ## Quick Start
@@ -201,6 +200,28 @@ client = HoneycombClient(
 ```
 
 Management credentials are sent via the `Authorization: Bearer` header.
+
+## CLI Tool
+
+For quick operations without writing Python:
+
+```bash
+# Run without installing (using uvx or pipx)
+export HONEYCOMB_API_KEY=your_api_key_here
+uvx honeycomb-api triggers list
+# or
+pipx run honeycomb-api triggers list
+
+# Or install and use the short alias
+uv tool install honeycomb-api
+# or
+pipx install honeycomb-api
+
+hny triggers list
+hny query run --dataset my-dataset --count --last-30-minutes
+```
+
+See the [CLI Reference](https://irvingpop.github.io/honeycomb-api-python/cli/) for full documentation.
 
 ## Usage Guide
 

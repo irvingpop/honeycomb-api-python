@@ -607,4 +607,4 @@ honeycomb_delete_board
 - [Getting Started](getting-started/quickstart.md) - SDK installation and setup
 - [Usage Guides](usage/triggers.md) - Resource-specific guides
 - [API Reference](api/client.md) - Complete API documentation
-- [Anthropic Tool Use Docs](https://platform.claude.com/docs/en/agents-and-tools/tool-use) - General tool use guide
+- [Anthropic Tool Use Docs](https://platform.claude.com/docs/en/agents-and-tools/tool-use/overview) - General tool use guide
