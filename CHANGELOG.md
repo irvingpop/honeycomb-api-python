@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.2] - 2026-01-07
+
+### Miscellaneous
+
+- API file update and make it determinstic [SORRY FOR THE HORRORS] 
+
+### Other
+
+- Board views feature 
+
+* feat: OpenAPI spec update process
+
+Signed-off-by: Irving Popovetsky <irving@honeycomb.io>
+
+* conflict resolution
+
+Signed-off-by: Irving Popovetsky <irving@honeycomb.io>
+
+* pull in api spec update with board views
+
+Signed-off-by: Irving Popovetsky <irving@honeycomb.io>
+
+* adding board view functionality
+
+* add board views to claude tools and test thoroughly
+
+* lintz
+
+---------
+
+Signed-off-by: Irving Popovetsky <irving@honeycomb.io>
+
 ## [0.4.1] - 2026-01-06
 
 ### Documentation
