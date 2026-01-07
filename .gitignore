@@ -96,9 +96,6 @@ Thumbs.db
 # Claude Code secrets (test session keys, never commit)
 .claude/secrets/
 
-# Generated tool definitions (root level only, not src/honeycomb/tools/)
-/tools/
-
 # DeepEval telemetry and caches
 .deepeval/
 tests/integration/.tool_call_cache/

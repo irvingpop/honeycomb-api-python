@@ -2170,6 +2170,10 @@ def generate_query_service_map_tool() -> dict[str, Any]:
         required=False,
     )
 
+    # Add definitions if present (for nested models like ServiceMapNode)
+    if "$defs" in base_schema:
+        schema["$defs"] = base_schema["$defs"]
+
     examples: list[dict[str, Any]] = [
         # Simple: last 2 hours
         {"time_range": 7200},
