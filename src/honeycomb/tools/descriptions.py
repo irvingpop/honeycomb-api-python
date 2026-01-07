@@ -385,14 +385,16 @@ BOARD_DESCRIPTIONS = {
         "Returns the complete board configuration including all panel definitions, layout mode (auto or manual), tags, and links to visualizations."
     ),
     "honeycomb_create_board": (
-        "Creates a new board (dashboard) with inline query panels, SLO panels, and text panels in a single operation. "
+        "Creates a new board (dashboard) with inline query panels, SLO panels, text panels, board views, and preset filters in a single operation. "
         "Use this to build comprehensive dashboards for service monitoring, create SRE views, or consolidate related visualizations. "
-        "Requires a name and supports inline_query_panels (array of query definitions that will be created automatically), text_panels (markdown content), and slo_panels (SLO IDs). "
+        "Requires a name and supports inline_query_panels (array of query definitions that will be created automatically), text_panels (markdown content), slo_panels (SLO IDs), views (filtered perspectives), and preset_filters (dynamic filters). "
         "Each inline query panel needs a name, dataset, time_range, and calculations - optionally include filters, breakdowns, orders, and limit. "
         "Query panels can include calculated_fields (derived columns) - see honeycomb_create_derived_column for expression syntax. "
         "For inline SLO panels with SLI expressions: must return boolean, use $ prefix for columns. Example: LT($status_code, 500). "
+        "Board views allow creating filtered perspectives (max 50 per board): each view has a name and filters array with column, operation (=, !=, >, >=, <, <=, contains, starts-with, ends-with, exists, in), and value. "
+        "Preset filters (max 5) allow dynamic filtering of board data: each has column and alias properties. "
         "Layout defaults to auto-layout (Honeycomb arranges panels) but supports manual layout with explicit positioning. "
-        "The tool orchestrates: creating all inline queries with annotations, assembling panel configurations, and creating the board with all panels in one API call."
+        "The tool orchestrates: creating all inline queries with annotations, inline SLOs, board views, preset filters, assembling panel configurations, and creating the board with all components in one API call."
     ),
     "honeycomb_update_board": (
         "Updates an existing board's name, description, or panel configuration. "

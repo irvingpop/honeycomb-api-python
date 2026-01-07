@@ -100,6 +100,7 @@ def sync_detailed(
     """ Create a Board
 
      Create a Board comprised of one or more Panels (Query, SLO, or Text).
+    **Note**: Each board is limited to a maximum of 5 preset filters.
 
     Args:
         body (Board):
@@ -133,6 +134,7 @@ def sync(
     """ Create a Board
 
      Create a Board comprised of one or more Panels (Query, SLO, or Text).
+    **Note**: Each board is limited to a maximum of 5 preset filters.
 
     Args:
         body (Board):
@@ -161,6 +163,7 @@ async def asyncio_detailed(
     """ Create a Board
 
      Create a Board comprised of one or more Panels (Query, SLO, or Text).
+    **Note**: Each board is limited to a maximum of 5 preset filters.
 
     Args:
         body (Board):
@@ -194,6 +197,7 @@ async def asyncio(
     """ Create a Board
 
      Create a Board comprised of one or more Panels (Query, SLO, or Text).
+    **Note**: Each board is limited to a maximum of 5 preset filters.
 
     Args:
         body (Board):

@@ -20,7 +20,7 @@ T = TypeVar("T", bound="ApiKeyUpdateRequest")
 
 @_attrs_define
 class ApiKeyUpdateRequest:
-    """ 
+    """
         Attributes:
             data (Union['ConfigurationKeyRequest', 'IngestKeyRequest']):
      """

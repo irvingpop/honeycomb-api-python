@@ -104,6 +104,8 @@ def sync_detailed(
      Update a Board by specifying its ID and full details.
     **Note**: Queries can be added to, removed from, and re-ordered by updating the board itself. It is
     not possible to reference individual queries via the API.
+    **Note**: Each board is limited to a maximum of 5 preset filters. Attempting to update a board with
+    more than 5 preset filters will result in an error.
 
     Args:
         board_id (str):
@@ -142,6 +144,8 @@ def sync(
      Update a Board by specifying its ID and full details.
     **Note**: Queries can be added to, removed from, and re-ordered by updating the board itself. It is
     not possible to reference individual queries via the API.
+    **Note**: Each board is limited to a maximum of 5 preset filters. Attempting to update a board with
+    more than 5 preset filters will result in an error.
 
     Args:
         board_id (str):
@@ -175,6 +179,8 @@ async def asyncio_detailed(
      Update a Board by specifying its ID and full details.
     **Note**: Queries can be added to, removed from, and re-ordered by updating the board itself. It is
     not possible to reference individual queries via the API.
+    **Note**: Each board is limited to a maximum of 5 preset filters. Attempting to update a board with
+    more than 5 preset filters will result in an error.
 
     Args:
         board_id (str):
@@ -213,6 +219,8 @@ async def asyncio(
      Update a Board by specifying its ID and full details.
     **Note**: Queries can be added to, removed from, and re-ordered by updating the board itself. It is
     not possible to reference individual queries via the API.
+    **Note**: Each board is limited to a maximum of 5 preset filters. Attempting to update a board with
+    more than 5 preset filters will result in an error.
 
     Args:
         board_id (str):

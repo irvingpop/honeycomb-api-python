@@ -108,7 +108,9 @@ def sync_detailed(
 ) -> Response[Union[BoardViewResponse, DetailedError, Error, ValidationError]]:
     """ Create a Board View
 
-     Create a new view for a Board with the specified filters.
+     Create a new view for a board with the specified filters.
+    **Note**: Each board is limited to a maximum of 50 views. Attempting to create more than 50 views
+    will result in an error.
 
     Args:
         board_id (str):
@@ -144,7 +146,9 @@ def sync(
 ) -> Optional[Union[BoardViewResponse, DetailedError, Error, ValidationError]]:
     """ Create a Board View
 
-     Create a new view for a Board with the specified filters.
+     Create a new view for a board with the specified filters.
+    **Note**: Each board is limited to a maximum of 50 views. Attempting to create more than 50 views
+    will result in an error.
 
     Args:
         board_id (str):
@@ -175,7 +179,9 @@ async def asyncio_detailed(
 ) -> Response[Union[BoardViewResponse, DetailedError, Error, ValidationError]]:
     """ Create a Board View
 
-     Create a new view for a Board with the specified filters.
+     Create a new view for a board with the specified filters.
+    **Note**: Each board is limited to a maximum of 50 views. Attempting to create more than 50 views
+    will result in an error.
 
     Args:
         board_id (str):
@@ -211,7 +217,9 @@ async def asyncio(
 ) -> Optional[Union[BoardViewResponse, DetailedError, Error, ValidationError]]:
     """ Create a Board View
 
-     Create a new view for a Board with the specified filters.
+     Create a new view for a board with the specified filters.
+    **Note**: Each board is limited to a maximum of 50 views. Attempting to create more than 50 views
+    will result in an error.
 
     Args:
         board_id (str):

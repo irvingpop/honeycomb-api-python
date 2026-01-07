@@ -51,7 +51,7 @@ class CalcOp(str, Enum):
 
 
 class FilterOp(str, Enum):
-    """Filter operations for Honeycomb queries."""
+    """Filter operations for Honeycomb queries and board views."""
 
     EQUALS = "="
     NOT_EQUALS = "!="
@@ -61,6 +61,8 @@ class FilterOp(str, Enum):
     LESS_THAN_OR_EQUAL = "<="
     STARTS_WITH = "starts-with"
     DOES_NOT_START_WITH = "does-not-start-with"
+    ENDS_WITH = "ends-with"
+    DOES_NOT_END_WITH = "does-not-end-with"
     CONTAINS = "contains"
     DOES_NOT_CONTAIN = "does-not-contain"
     EXISTS = "exists"

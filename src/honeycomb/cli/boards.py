@@ -140,18 +140,25 @@ def export_board(
     output_file: Path | None = typer.Option(
         None, "--output-file", "-o", help="Output file (default: stdout)"
     ),
+    include_views: bool = typer.Option(True, "--views/--no-views", help="Include board views"),
 ) -> None:
     """
     Export a board as JSON.
 
     Output is suitable for importing to another environment via the 'create' command.
+    By default, includes board views. Use --no-views to exclude them.
     """
     try:
         client = get_client(profile=profile, api_key=api_key)
-        board = client.boards.get(board_id=board_id)
 
-        # Export without IDs/timestamps for portability
-        data = board.model_dump(exclude={"id", "created_at", "updated_at"}, mode="json")
+        if include_views:
+            # Use new export method that includes views
+            data = client.boards.export_with_views(board_id=board_id)
+        else:
+            # Original behavior (no views)
+            board = client.boards.get(board_id=board_id)
+            data = board.model_dump(exclude={"id", "created_at", "updated_at"}, mode="json")
+
         json_str = json.dumps(data, indent=2, default=str)
 
         if output_file:

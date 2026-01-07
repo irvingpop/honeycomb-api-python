@@ -495,6 +495,58 @@ class TestBoardExamples:
             await cleanup(client, board_id, unique_dataset)
             # Note: Unique dataset is orphaned (no need to delete)
 
+    @pytest.mark.asyncio
+    async def test_create_with_views(self, client: HoneycombClient) -> None:
+        """Test creating board with views."""
+        from docs.examples.boards.builder_board import (
+            cleanup,
+            create_board_with_views,
+        )
+
+        board_id = await create_board_with_views(client)
+        try:
+            # Verify board was created
+            board = await client.boards.get_async(board_id)
+            assert board.name == "Service Dashboard"
+
+            # Verify views were created
+            views = await client.boards.list_views_async(board_id)
+            assert len(views) == 3
+            view_names = {v.name for v in views}
+            assert "Active Services" in view_names
+            assert "Production" in view_names
+            assert "Errors" in view_names
+        finally:
+            await cleanup(client, board_id)
+
+    @pytest.mark.asyncio
+    async def test_manage_views(self, client: HoneycombClient) -> None:
+        """Test board view management (CRUD)."""
+        from docs.examples.boards.basic_board import create_basic_board
+        from docs.examples.boards.builder_board import cleanup, manage_board_views
+
+        # Create a board first
+        board_id = await create_basic_board(client)
+        try:
+            await manage_board_views(client, board_id)
+        finally:
+            await cleanup(client, board_id)
+
+    @pytest.mark.asyncio
+    async def test_export_with_views(self, client: HoneycombClient) -> None:
+        """Test exporting board with views."""
+        from docs.examples.boards.builder_board import (
+            cleanup,
+            create_board_with_views,
+            export_and_import_board,
+        )
+
+        board_id = await create_board_with_views(client)
+        try:
+            await export_and_import_board(client, board_id)
+        finally:
+            await cleanup(client, board_id)
+
 
 class TestColumnExamples:
     """Test column examples from docs/examples/columns/."""

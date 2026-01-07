@@ -146,7 +146,7 @@ TEST_CASES = [
             "params['inline_slo_panels'][0].get('dataset') == 'api-logs'",
             "params['inline_slo_panels'][0]['sli'].get('alias') == 'success_rate'",
             "'expression' in params['inline_slo_panels'][0]['sli']",
-            "params['inline_slo_panels'][0].get('target_nines') == 3",
+            "params['inline_slo_panels'][0].get('target_nines') == 3 or params['inline_slo_panels'][0].get('target_per_million') == 999000 or params['inline_slo_panels'][0].get('target_percentage') == 99.9",
             "params['inline_slo_panels'][0].get('time_period_days') == 30",
         ],
     },
@@ -191,6 +191,57 @@ TEST_CASES = [
             "'text_panels' in params",
             "any('Alerts' in str(tp.get('content', '')) for tp in params.get('text_panels', []))",
             "'tags' in params and any(t.get('key') == 'team' and t.get('value') == 'platform' for t in params['tags'])",
+        ],
+    },
+    # Board Views
+    {
+        "id": "board_create_with_views",
+        "description": "Board with inline queries and views for filtered perspectives",
+        "prompt": (
+            "Create a 'Service Monitoring' board with auto-layout containing: "
+            "query panel 'Request Count' from api-logs showing COUNT over 1 hour, "
+            "and create 3 views: "
+            "view 1 named 'Active Services' filtering where status = active, "
+            "view 2 named 'Production Only' filtering where environment = production, "
+            "view 3 named 'Errors' with two filters: status_code >= 500 AND environment = production"
+        ),
+        "expected_tool": "honeycomb_create_board",
+        "expected_params": {
+            "name": "Service Monitoring",
+            "layout_generation": "auto",
+        },
+        "assertion_checks": [
+            "'inline_query_panels' in params and len(params['inline_query_panels']) >= 1",
+            "'views' in params and len(params['views']) == 3",
+            "params['views'][0].get('name') == 'Active Services'",
+            "len(params['views'][0].get('filters', [])) == 1",
+            "params['views'][1].get('name') == 'Production Only'",
+            "params['views'][2].get('name') == 'Errors'",
+            "len(params['views'][2].get('filters', [])) == 2",
+        ],
+    },
+    {
+        "id": "board_with_complex_view_filters",
+        "description": "Board with views using various filter operations",
+        "prompt": (
+            "Create an 'API Dashboard' board with auto-layout and one query panel 'API Metrics' from api-logs. "
+            "Add these views: "
+            "1. 'Slow Requests' where duration_ms > 1000, "
+            "2. 'Auth Endpoints' where endpoint starts-with /auth/, "
+            "3. 'Multi-Environment' where environment in [prod, staging]"
+        ),
+        "expected_tool": "honeycomb_create_board",
+        "expected_params": {
+            "name": "API Dashboard",
+        },
+        "assertion_checks": [
+            "'views' in params and len(params['views']) == 3",
+            "params['views'][0].get('name') == 'Slow Requests'",
+            "any(f.get('column') == 'duration_ms' and f.get('operation') == '>' for f in params['views'][0].get('filters', []))",
+            "params['views'][1].get('name') == 'Auth Endpoints'",
+            "any(f.get('operation') == 'starts-with' for f in params['views'][1].get('filters', []))",
+            "params['views'][2].get('name') == 'Multi-Environment'",
+            "any(f.get('operation') == 'in' and isinstance(f.get('value'), list) for f in params['views'][2].get('filters', []))",
         ],
     },
 ]

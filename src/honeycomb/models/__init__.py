@@ -11,7 +11,13 @@ from .board_builder import (
     SLOBuilderPanel,
     TextPanel,
 )
-from .boards import Board, BoardCreate
+from .boards import (
+    Board,
+    BoardCreate,
+    BoardView,
+    BoardViewCreate,
+    BoardViewFilter,
+)
 from .burn_alerts import BurnAlert, BurnAlertCreate, BurnAlertRecipient, BurnAlertType
 from .columns import Column, ColumnCreate, ColumnType
 from .datasets import Dataset, DatasetCreate
@@ -94,6 +100,9 @@ __all__ = [
     "BoardBuilder",
     "BoardBundle",
     "BoardCreate",
+    "BoardView",
+    "BoardViewCreate",
+    "BoardViewFilter",
     "ExistingQueryPanel",
     "ExistingSLOPanel",
     "QueryBuilderPanel",

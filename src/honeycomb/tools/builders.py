@@ -502,6 +502,14 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
     for tag in data.get("tags", []):
         builder.tag(tag["key"], tag["value"])
 
+    # Preset filters
+    for preset in data.get("preset_filters", []):
+        builder.preset_filter(preset["column"], preset["alias"])
+
+    # Board views
+    for view in data.get("views", []):
+        builder.add_view(view["name"], view.get("filters", []))
+
     return builder
 
 

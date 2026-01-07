@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
+from honeycomb.models.boards import BoardViewCreate, BoardViewFilter
 from honeycomb.models.tags_mixin import TagsMixin
 
 if TYPE_CHECKING:
@@ -112,6 +113,7 @@ class BoardBundle:
         existing_query_panels: Panels from existing query IDs
         slo_panels: SLO panels
         text_panels: Text panels
+        views: Board views to create
     """
 
     board_name: str
@@ -125,6 +127,8 @@ class BoardBundle:
     slo_builder_panels: list[SLOBuilderPanel]
     existing_slo_panels: list[ExistingSLOPanel]
     text_panels: list[TextPanel]
+    # Views
+    views: list[BoardViewCreate]
 
 
 class BoardBuilder(TagsMixin):
@@ -171,6 +175,8 @@ class BoardBuilder(TagsMixin):
         self._slo_builder_panels: list[SLOBuilderPanel] = []
         self._existing_slo_panels: list[ExistingSLOPanel] = []
         self._text_panels: list[TextPanel] = []
+        # Views
+        self._views: list[BoardViewCreate] = []
 
     def description(self, desc: str) -> BoardBuilder:
         """Set board description (max 1024 chars).
@@ -345,6 +351,59 @@ class BoardBuilder(TagsMixin):
         return self
 
     # -------------------------------------------------------------------------
+    # Board Views
+    # -------------------------------------------------------------------------
+
+    def add_view(
+        self,
+        name: str,
+        filters: list[BoardViewFilter] | list[dict[str, Any]] | None = None,
+    ) -> BoardBuilder:
+        """Add a view to the board.
+
+        Views are filtered perspectives on board data. Each board can have up to 50 views.
+
+        Args:
+            name: View name
+            filters: List of BoardViewFilter objects or dicts with column/operation/value
+
+        Example with dict filters:
+            .add_view("Active Services", [
+                {"column": "status", "operation": "=", "value": "active"},
+                {"column": "environment", "operation": "in", "value": ["prod", "staging"]}
+            ])
+
+        Example with BoardViewFilter objects:
+            from honeycomb.models.boards import BoardViewFilter
+            from honeycomb.models.query_builder import FilterOp
+
+            .add_view("Error View", [
+                BoardViewFilter(
+                    column="status_code",
+                    operation=FilterOp.GREATER_THAN_OR_EQUAL,
+                    value=400
+                )
+            ])
+
+        Example with no filters (all data):
+            .add_view("All Data")
+        """
+        if filters is None:
+            filters = []
+
+        # Convert dict filters to BoardViewFilter objects
+        filter_objs: list[BoardViewFilter] = []
+        for f in filters:
+            if isinstance(f, BoardViewFilter):
+                filter_objs.append(f)
+            else:
+                # Convert dict to BoardViewFilter
+                filter_objs.append(BoardViewFilter.model_validate(f))
+
+        self._views.append(BoardViewCreate(name=name, filters=filter_objs))
+        return self
+
+    # -------------------------------------------------------------------------
     # Build
     # -------------------------------------------------------------------------
 
@@ -384,4 +443,5 @@ class BoardBuilder(TagsMixin):
             slo_builder_panels=self._slo_builder_panels,
             existing_slo_panels=self._existing_slo_panels,
             text_panels=self._text_panels,
+            views=self._views,
         )

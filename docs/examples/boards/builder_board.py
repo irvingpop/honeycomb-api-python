@@ -177,6 +177,98 @@ async def delete_board(client: HoneycombClient, board_id: str) -> None:
 # end_example:delete
 
 
+# start_example:create_with_views
+async def create_board_with_views(client: HoneycombClient, dataset: str = "integration-test") -> str:
+    """Create a board with multiple views for different perspectives."""
+    from honeycomb import BoardBuilder, QueryBuilder
+
+    created = await client.boards.create_from_bundle_async(
+        BoardBuilder("Service Dashboard")
+        .description("Multi-perspective service monitoring")
+        .auto_layout()
+        .query(
+            QueryBuilder("Request Metrics")
+            .dataset(dataset)
+            .last_1_hour()
+            .count()
+            .group_by("service"),
+            style="graph",
+        )
+        # View 1: Active services only
+        .add_view("Active Services", [{"column": "status", "operation": "=", "value": "active"}])
+        # View 2: Production environment
+        .add_view("Production", [{"column": "environment", "operation": "=", "value": "production"}])
+        # View 3: Errors (multi-filter)
+        .add_view(
+            "Errors",
+            [
+                {"column": "status_code", "operation": ">=", "value": 400},
+                {"column": "environment", "operation": "=", "value": "production"},
+            ],
+        )
+        .build()
+    )
+    return created.id
+# end_example:create_with_views
+
+
+# start_example:manage_views
+async def manage_board_views(client: HoneycombClient, board_id: str) -> None:
+    """List, create, get, update, and delete board views."""
+    from honeycomb.models.boards import BoardViewCreate, BoardViewFilter
+    from honeycomb.models.query_builder import FilterOp
+
+    # List all views
+    views = await client.boards.list_views_async(board_id)
+    print(f"Found {len(views)} views")
+
+    # Create a new view
+    new_view = await client.boards.create_view_async(
+        board_id,
+        BoardViewCreate(
+            name="Slow Requests",
+            filters=[
+                BoardViewFilter(column="duration_ms", operation=FilterOp.GREATER_THAN, value=1000)
+            ],
+        ),
+    )
+
+    # Get the view
+    view = await client.boards.get_view_async(board_id, new_view.id)
+    print(f"View: {view.name}")
+
+    # Update the view
+    await client.boards.update_view_async(
+        board_id,
+        new_view.id,
+        BoardViewCreate(name="Very Slow Requests", filters=view.filters),
+    )
+
+    # Delete the view
+    await client.boards.delete_view_async(board_id, new_view.id)
+# end_example:manage_views
+
+
+# start_example:export_with_views
+async def export_and_import_board(client: HoneycombClient, board_id: str) -> str:
+    """Export a board with views and import it."""
+    import json
+
+    # Export board with views
+    data = await client.boards.export_with_views_async(board_id)
+
+    # Data is portable (no IDs/timestamps)
+    assert "id" not in data
+    assert "created_at" not in data
+
+    # Save to file
+    json_str = json.dumps(data, indent=2)
+    print(f"Exported: {json_str[:100]}...")
+
+    return board_id  # Return for cleanup
+# end_example:export_with_views
+
+
 # TEST_ASSERTIONS
 async def test_lifecycle(client: HoneycombClient, board_id: str, expected_name: str) -> None:
     """Verify the full lifecycle worked."""

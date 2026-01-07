@@ -88,7 +88,8 @@ def sync_detailed(
 ) -> Response[Union[Error, list['BoardViewResponse']]]:
     """ List Board Views
 
-     Retrieve a list of all views for a Board.
+     Retrieve a list of all views for a board.
+    **Note**: Each board is limited to a maximum of 50 views.
 
     Args:
         board_id (str):
@@ -121,7 +122,8 @@ def sync(
 ) -> Optional[Union[Error, list['BoardViewResponse']]]:
     """ List Board Views
 
-     Retrieve a list of all views for a Board.
+     Retrieve a list of all views for a board.
+    **Note**: Each board is limited to a maximum of 50 views.
 
     Args:
         board_id (str):
@@ -149,7 +151,8 @@ async def asyncio_detailed(
 ) -> Response[Union[Error, list['BoardViewResponse']]]:
     """ List Board Views
 
-     Retrieve a list of all views for a Board.
+     Retrieve a list of all views for a board.
+    **Note**: Each board is limited to a maximum of 50 views.
 
     Args:
         board_id (str):
@@ -182,7 +185,8 @@ async def asyncio(
 ) -> Optional[Union[Error, list['BoardViewResponse']]]:
     """ List Board Views
 
-     Retrieve a list of all views for a Board.
+     Retrieve a list of all views for a board.
+    **Note**: Each board is limited to a maximum of 50 views.
 
     Args:
         board_id (str):

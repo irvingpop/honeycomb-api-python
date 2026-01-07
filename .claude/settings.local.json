@@ -27,7 +27,8 @@
       "Bash(poetry check:*)",
       "Bash(poetry run honeycomb:*)",
       "Bash(poetry run hny:*)",
-      "Bash(poetry run hny q --help:*)"
+      "Bash(poetry run hny q --help:*)",
+      "Bash(grep:*)"
     ]
   }
 }

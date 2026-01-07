@@ -42,8 +42,10 @@ class Board:
                 'team', 'value': 'blue'}].
             preset_filters (Union[Unset, list['PresetFilter']]): A list of preset filters to apply to the board. For
                 backwards compatibility, if no preset filters are provided, the existing preset filters will be preserved. If an
-                empty array is provided, all preset filters will be deleted. Example: [{'column': 'app.Service', 'alias':
-                'Service'}].
+                empty array is provided, all preset filters will be deleted.
+                **Note**: Each board is limited to a maximum of 5 preset filters. Attempting to create or update a board with
+                more than 5 preset filters will result in an error.
+                 Example: [{'column': 'app.Service', 'alias': 'Service'}].
      """
 
     name: str

@@ -1469,6 +1469,51 @@ def generate_create_board_tool() -> dict[str, Any]:
         },
     }
 
+    # Preset filters
+    schema["properties"]["preset_filters"] = {
+        "type": "array",
+        "description": "Array of preset filter objects for dynamic board filtering (max 5)",
+        "items": {
+            "type": "object",
+            "properties": {
+                "column": {"type": "string", "description": "Column name to filter on"},
+                "alias": {"type": "string", "description": "Display name for the filter in UI"},
+            },
+            "required": ["column", "alias"],
+        },
+    }
+
+    # Board views
+    schema["properties"]["views"] = {
+        "type": "array",
+        "description": "Array of board views (filtered perspectives on the board, max 50 per board)",
+        "items": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "View name"},
+                "filters": {
+                    "type": "array",
+                    "description": "Array of filter objects (column, operation, value)",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "column": {"type": "string", "description": "Column name to filter on"},
+                            "operation": {
+                                "type": "string",
+                                "description": "Filter operation: =, !=, >, >=, <, <=, contains, starts-with, ends-with, exists, in, etc.",
+                            },
+                            "value": {
+                                "description": "Filter value (optional for exists/does-not-exist operations)"
+                            },
+                        },
+                        "required": ["column", "operation"],
+                    },
+                },
+            },
+            "required": ["name"],
+        },
+    }
+
     examples: list[dict[str, Any]] = [
         # Simple: inline query panels with auto-layout
         {
@@ -1554,6 +1599,33 @@ def generate_create_board_tool() -> dict[str, Any]:
                 }
             ],
             "text_panels": [{"content": "## SLO Policy\nReview weekly"}],
+        },
+        # With board views for filtered perspectives
+        {
+            "name": "Service Dashboard",
+            "layout_generation": "auto",
+            "inline_query_panels": [
+                {
+                    "name": "Request Metrics",
+                    "dataset": "api-logs",
+                    "time_range": 3600,
+                    "calculations": [{"op": "COUNT"}],
+                    "breakdowns": ["service"],
+                }
+            ],
+            "views": [
+                {
+                    "name": "Active Services",
+                    "filters": [{"column": "status", "operation": "=", "value": "active"}],
+                },
+                {
+                    "name": "Production Errors",
+                    "filters": [
+                        {"column": "environment", "operation": "=", "value": "production"},
+                        {"column": "status_code", "operation": ">=", "value": 500},
+                    ],
+                },
+            ],
         },
     ]
 
