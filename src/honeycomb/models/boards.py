@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from .query_builder import FilterOp
 
@@ -107,6 +107,8 @@ class BoardViewFilter(BaseModel):
         >>> BoardViewFilter(column="status", operation=FilterOp.EQUALS, value="active")
         >>> BoardViewFilter(column="error", operation=FilterOp.EXISTS)
     """
+
+    model_config = ConfigDict(extra="forbid")
 
     column: str = Field(description="Column name to filter on")
     operation: FilterOp = Field(description="Filter operation")
