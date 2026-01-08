@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-01-08
+
+### Bug Fixes
+
+- Majorly improve Claude tool schema validation 
+
+### Features
+
+- Add --remove-delete-protection for dataset deletes, and discovered a whole host of missing functionality around dataset updating and deletion we can rectify.
+
+### Other
+
+- Make all tools easier to reason about 
+
 ## [0.4.3] - 2026-01-07
 
 ### Bug Fixes
