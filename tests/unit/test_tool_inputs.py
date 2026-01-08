@@ -235,27 +235,30 @@ class TestSLOToolInput:
     """Test SLOToolInput model."""
 
     def test_minimal_slo(self):
-        """Test minimal valid SLO."""
+        """Test minimal valid SLO with single dataset."""
         slo = SLOToolInput(
             name="API Success Rate",
             sli=SLIInput(alias="success_rate"),
+            datasets=["api-logs"],
             target_percentage=99.9,
         )
         assert slo.name == "API Success Rate"
         assert slo.target_percentage == 99.9
         assert slo.time_period_days == 30  # default
+        assert slo.datasets == ["api-logs"]
 
-    def test_slo_with_dataset(self):
-        """Test SLO with single dataset."""
+    def test_slo_with_single_dataset(self):
+        """Test SLO with single dataset as single-element list."""
         slo = SLOToolInput(
             name="Test",
             sli=SLIInput(alias="test"),
-            dataset="api-logs",
+            datasets=["api-logs"],
             target_percentage=99.9,
         )
-        assert slo.dataset == "api-logs"
+        assert slo.datasets == ["api-logs"]
+        assert len(slo.datasets) == 1
 
-    def test_slo_with_datasets(self):
+    def test_slo_with_multiple_datasets(self):
         """Test SLO with multiple datasets."""
         slo = SLOToolInput(
             name="Test",
@@ -270,10 +273,24 @@ class TestSLOToolInput:
         slo = SLOToolInput(
             name="Test",
             sli=SLIInput(alias="test"),
+            datasets=["api-logs"],
             target_percentage=99.9,
             burn_alerts=[BurnAlertInput(alert_type="exhaustion_time", exhaustion_minutes=60)],
         )
         assert len(slo.burn_alerts) == 1
+
+    def test_rejects_empty_datasets(self):
+        """Test that empty datasets list is rejected."""
+        with pytest.raises(ValidationError) as exc_info:
+            SLOToolInput(
+                name="Test",
+                sli=SLIInput(alias="test"),
+                datasets=[],  # Empty list not allowed
+                target_percentage=99.9,
+            )
+
+        error = exc_info.value
+        assert "at least 1 item" in str(error).lower() or "min_length" in str(error).lower()
 
     def test_rejects_target_nines(self):
         """Test that target_nines is not accepted (removed)."""
@@ -281,6 +298,7 @@ class TestSLOToolInput:
             SLOToolInput(
                 name="Test",
                 sli=SLIInput(alias="test"),
+                datasets=["api-logs"],
                 target_nines=3,  # Should be rejected
             )
 
@@ -293,6 +311,7 @@ class TestSLOToolInput:
             SLOToolInput(
                 name="Test",
                 sli=SLIInput(alias="test"),
+                datasets=["api-logs"],
                 target_percentage=99.9,
                 extra="field",
             )

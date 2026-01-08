@@ -120,8 +120,8 @@ TEST_CASES = [
         "assertion_checks": [
             "'inline_query_panels' in params",
             "len(params['inline_query_panels']) >= 1",
-            # Environment-wide is represented as dataset: "__all__"
-            "params['inline_query_panels'][0].get('dataset') == '__all__'",
+            # Environment-wide is represented as dataset: null (not a specific dataset)
+            "params['inline_query_panels'][0].get('dataset') is None or params['inline_query_panels'][0].get('dataset') == '__all__'",
             "any(c.get('op') == 'COUNT' for c in params['inline_query_panels'][0].get('calculations', []))",
             "any(f.get('column') in ['status_code', 'status'] and f.get('value') == 500 for f in params['inline_query_panels'][0].get('filters', []))",
         ],
@@ -146,7 +146,7 @@ TEST_CASES = [
             "params['inline_slo_panels'][0].get('dataset') == 'api-logs'",
             "params['inline_slo_panels'][0]['sli'].get('alias') == 'success_rate'",
             "'expression' in params['inline_slo_panels'][0]['sli']",
-            "params['inline_slo_panels'][0].get('target_nines') == 3 or params['inline_slo_panels'][0].get('target_per_million') == 999000 or params['inline_slo_panels'][0].get('target_percentage') == 99.9",
+            "params['inline_slo_panels'][0].get('target_percentage') == 99.9",
             "params['inline_slo_panels'][0].get('time_period_days') == 30",
         ],
     },

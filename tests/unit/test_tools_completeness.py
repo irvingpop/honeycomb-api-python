@@ -134,7 +134,7 @@ class TestTriggerBuilderMethodCoverage:
         for threshold in threshold_ops:
             data = {
                 "name": "Test Threshold",
-                "dataset": "test",
+                "datasets": ["test"],
                 "query": {"time_range": 900, "calculations": [{"op": "COUNT"}]},
                 "threshold": threshold,
                 "frequency": 900,
@@ -157,7 +157,7 @@ class TestTriggerBuilderMethodCoverage:
         for freq, method_name, time_range in frequency_tests:
             data = {
                 "name": "Test Frequency",
-                "dataset": "test",
+                "datasets": ["test"],
                 "query": {"time_range": time_range, "calculations": [{"op": "COUNT"}]},
                 "threshold": {"op": ">", "value": 100},
                 "frequency": freq,
@@ -173,7 +173,7 @@ class TestTriggerBuilderMethodCoverage:
         for alert_type in ["on_change", "on_true"]:
             data = {
                 "name": "Test Alert Type",
-                "dataset": "test",
+                "datasets": ["test"],
                 "query": {"time_range": 900, "calculations": [{"op": "COUNT"}]},
                 "threshold": {"op": ">", "value": 100},
                 "frequency": 900,
@@ -199,7 +199,7 @@ class TestTriggerBuilderMethodCoverage:
         for recipient in recipient_tests:
             data = {
                 "name": "Test Recipient",
-                "dataset": "test",
+                "datasets": ["test"],
                 "query": {"time_range": 900, "calculations": [{"op": "COUNT"}]},
                 "threshold": {"op": ">", "value": 100},
                 "frequency": 900,
@@ -219,26 +219,26 @@ class TestSLOBuilderMethodCoverage:
 
     def test_target_formats_covered(self):
         """All target specification formats must be supported."""
-        # target_per_million is the base format
+        # target_percentage is the base format
         data = {
             "name": "Test SLO",
-            "dataset": "test",
+            "datasets": ["test"],
             "sli": {"alias": "success_rate"},
-            "target_per_million": 999000,  # 99.9%
+            "target_percentage": 99.9,  # 99.9%
             "time_period_days": 30,
         }
         builder = _build_slo(data)
         bundle = builder.build()
-        assert bundle.slo.target_per_million == 999000
+        assert bundle.slo.target_per_million == 999000  # Builder converts 99.9% to 999000
 
     def test_time_period_formats_covered(self):
         """Both time_period_days and time_period_weeks must work."""
         # Test days
         data = {
             "name": "Test SLO",
-            "dataset": "test",
+            "datasets": ["test"],
             "sli": {"alias": "success_rate"},
-            "target_per_million": 999000,
+            "target_percentage": 99.9,
             "time_period_days": 7,
         }
         builder = _build_slo(data)
@@ -249,13 +249,13 @@ class TestSLOBuilderMethodCoverage:
         """SLI can create new derived columns inline."""
         data = {
             "name": "Test SLO",
-            "dataset": "test",
+            "datasets": ["test"],
             "sli": {
                 "alias": "success_rate",
                 "expression": "IF(LT($status_code, 500), 1, 0)",
                 "description": "Success rate calculation",
             },
-            "target_per_million": 999000,
+            "target_percentage": 99.9,
             "time_period_days": 30,
         }
         builder = _build_slo(data)
@@ -267,9 +267,9 @@ class TestSLOBuilderMethodCoverage:
         """SLO builder can create burn alerts inline."""
         data = {
             "name": "Test SLO",
-            "dataset": "test",
+            "datasets": ["test"],
             "sli": {"alias": "success_rate"},
-            "target_per_million": 999000,
+            "target_percentage": 99.9,
             "time_period_days": 30,
             "burn_alerts": [
                 {
@@ -305,9 +305,9 @@ class TestBurnAlertCompleteness:
 
             data = {
                 "name": "Test SLO",
-                "dataset": "test",
+                "datasets": ["test"],
                 "sli": {"alias": "success_rate"},
-                "target_per_million": 999000,
+                "target_percentage": 99.9,
                 "time_period_days": 30,
                 "burn_alerts": [alert_data],
             }

@@ -362,9 +362,9 @@ def generate_create_slo_tool() -> dict[str, Any]:
     schema = SLOToolInput.model_json_schema()
 
     examples = [
-        # Minimal with existing derived column
+        # Minimal with existing derived column (single dataset)
         {
-            "dataset": "api-logs",
+            "datasets": ["api-logs"],
             "name": "API Availability",
             "sli": {"alias": "success_rate"},
             "target_percentage": 99.9,
@@ -372,7 +372,7 @@ def generate_create_slo_tool() -> dict[str, Any]:
         },
         # With NEW derived column created inline
         {
-            "dataset": "production",
+            "datasets": ["production"],
             "name": "Request Success Rate",
             "description": "Percentage of requests that succeed (status < 500)",
             "sli": {
@@ -383,9 +383,21 @@ def generate_create_slo_tool() -> dict[str, Any]:
             "target_percentage": 99.5,
             "time_period_days": 7,
         },
+        # Multi-dataset SLO with environment-wide derived column
+        {
+            "datasets": ["api-logs", "production", "staging"],
+            "name": "Cross-Service Availability",
+            "description": "Environment-wide availability tracking",
+            "sli": {
+                "alias": "request_success",
+                "expression": "IF(LT($status_code, 400), 1, 0)",
+            },
+            "target_percentage": 99.9,
+            "time_period_days": 30,
+        },
         # With burn alerts inline (creates SLO + derived column + burn alerts in one call)
         {
-            "dataset": "api-logs",
+            "datasets": ["api-logs"],
             "name": "Critical API Availability",
             "description": "High-priority SLO with burn rate alerting",
             "sli": {

@@ -203,12 +203,10 @@ class SLOToolInput(BaseModel):
     # Optional metadata
     description: str | None = Field(default=None, description="SLO description")
 
-    # Dataset(s) - use either dataset OR datasets, not both
-    dataset: str | None = Field(
-        default=None, description="Single dataset slug (for dataset-scoped SLOs)"
-    )
-    datasets: list[str] | None = Field(
-        default=None, description="Multiple dataset slugs (for environment-wide SLOs)"
+    # Dataset(s) - always a list, even for single dataset
+    datasets: list[str] = Field(
+        min_length=1,
+        description="Dataset slug(s). Use single-element list for one dataset, multiple for environment-wide SLO",
     )
 
     # Target - only target_percentage exposed

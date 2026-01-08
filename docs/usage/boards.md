@@ -99,30 +99,67 @@ This example demonstrates all capabilities: inline QueryBuilder instances, SLO p
 |-----------|------|-------------|
 | `query` | `QueryBuilder \| str` | QueryBuilder instance with name OR existing query ID |
 | `annotation_id` | `str \| None` | Required only when using existing query ID |
-| `position` | `tuple[int, int, int, int] \| None` | Optional (x, y, width, height) for manual layout |
+| `position` | `PositionInput \| None` | Optional position for manual layout |
 | `style` | `"graph" \| "table" \| "combo"` | Display style (default: "graph") |
 | `dataset` | `str \| None` | Override QueryBuilder's dataset (rare) |
 | `visualization` | `dict \| None` | Advanced visualization configuration |
 
 ### Positioning for Manual Layout
 
-For manual layout, use tuples `(x, y, width, height)`:
+For manual layout, use `PositionInput` objects with named fields:
 
 ```python
 from honeycomb import BoardBuilder, QueryBuilder
+from honeycomb.models.tool_inputs import PositionInput
 
-# Position format: (x, y, width, height)
+# Position format: PositionInput(x_coordinate, y_coordinate, width, height)
 bundle = (
     BoardBuilder("Dashboard")
     .manual_layout()
     .query(
         QueryBuilder("Requests").dataset("api-logs").last_1_hour().count(),
-        position=(0, 0, 9, 6),  # Top left, large
+        position=PositionInput(x_coordinate=0, y_coordinate=0, width=9, height=6),  # Top left, large
     )
-    .slo("slo-id", position=(9, 0, 3, 6))  # Top right, small
-    .text("Notes", position=(0, 6, 12, 2))  # Bottom, full width
+    .slo("slo-id", position=PositionInput(x_coordinate=9, y_coordinate=0, width=3, height=6))  # Top right, small
+    .text("Notes", position=PositionInput(x_coordinate=0, y_coordinate=6, width=12, height=2))  # Bottom, full width
     .build()
 )
+```
+
+#### Understanding PositionInput
+
+`PositionInput` specifies panel position and size on the board's 24-column grid:
+
+| Field | Type | Range | Description |
+|-------|------|-------|-------------|
+| `x_coordinate` | `int` | 0-23 | Horizontal position (left edge) |
+| `y_coordinate` | `int` | 0+ | Vertical position (top edge) |
+| `width` | `int` | 1-24 | Panel width in grid units |
+| `height` | `int` | 1-24 | Panel height in grid units |
+
+**Grid Layout:**
+- Boards use a 24-column grid system
+- Panels are positioned using coordinates (0-indexed)
+- Width + x_coordinate should not exceed 24
+- Height is unlimited (boards scroll vertically)
+- Common widths: 6 (quarter), 8 (third), 12 (half), 24 (full)
+
+**Example Layouts:**
+
+```python
+from honeycomb.models.tool_inputs import PositionInput
+
+# Two panels side-by-side (12 columns each)
+left = PositionInput(x_coordinate=0, y_coordinate=0, width=12, height=6)
+right = PositionInput(x_coordinate=12, y_coordinate=0, width=12, height=6)
+
+# Three panels in a row (8 columns each)
+panel1 = PositionInput(x_coordinate=0, y_coordinate=0, width=8, height=6)
+panel2 = PositionInput(x_coordinate=8, y_coordinate=0, width=8, height=6)
+panel3 = PositionInput(x_coordinate=16, y_coordinate=0, width=8, height=6)
+
+# Full-width panel below
+bottom = PositionInput(x_coordinate=0, y_coordinate=6, width=24, height=4)
 ```
 
 ### Preset Filter Methods

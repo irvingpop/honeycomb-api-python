@@ -273,7 +273,7 @@ def _build_slo(data: dict[str, Any]) -> SLOBuilder:
 
     Example:
         >>> data = {
-        ...     "dataset": "api-logs",
+        ...     "datasets": ["api-logs"],
         ...     "name": "API Availability",
         ...     "sli": {"alias": "success_rate"},
         ...     "target_percentage": 99.9,
@@ -291,10 +291,10 @@ def _build_slo(data: dict[str, Any]) -> SLOBuilder:
     if validated.description:
         builder.description(validated.description)
 
-    # Dataset(s)
-    if validated.dataset:
-        builder.dataset(validated.dataset)
-    elif validated.datasets:
+    # Dataset(s) - always a list, use single element for one dataset
+    if len(validated.datasets) == 1:
+        builder.dataset(validated.datasets[0])
+    else:
         builder.datasets(validated.datasets)
 
     # SLI
@@ -506,11 +506,13 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
         # Convert BoardViewFilter models to dicts for builder compatibility
         filters: list[dict[str, Any]] = []
         for board_view_filter in view.filters or []:
-            filters.append({
-                "column": board_view_filter.column,
-                "operation": board_view_filter.operation,
-                "value": board_view_filter.value,
-            })
+            filters.append(
+                {
+                    "column": board_view_filter.column,
+                    "operation": board_view_filter.operation,
+                    "value": board_view_filter.value,
+                }
+            )
         builder.add_view(view.name, filters)
 
     return builder
