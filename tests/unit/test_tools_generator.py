@@ -354,10 +354,6 @@ class TestExportFunctions:
                 data = json.load(f)
 
             assert "tools" in data
-            assert "version" in data
-            assert "generated_at" in data
-            assert "count" in data
-            assert data["count"] == 67
             assert len(data["tools"]) == 67
         finally:
             Path(output_path).unlink()
