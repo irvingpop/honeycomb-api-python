@@ -207,6 +207,38 @@
             "description": "Having clauses",
             "title": "Havings"
           },
+          "calculated_fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Inline calculated fields (derived columns) for this query",
+            "title": "Calculated Fields"
+          },
+          "compare_time_offset_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Compare against historical data offset by N seconds (1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800)",
+            "title": "Compare Time Offset Seconds"
+          },
           "confidence": {
             "type": "string",
             "enum": [
@@ -793,6 +825,38 @@
             "description": "Having clauses",
             "title": "Havings"
           },
+          "calculated_fields": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Inline calculated fields (derived columns) for this query",
+            "title": "Calculated Fields"
+          },
+          "compare_time_offset_seconds": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Compare against historical data offset by N seconds (1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800)",
+            "title": "Compare Time Offset Seconds"
+          },
           "confidence": {
             "type": "string",
             "enum": [
@@ -1110,8 +1174,5 @@
         }
       ]
     }
-  ],
-  "version": "0.1.0",
-  "generated_at": "2026-01-08T05:25:00.419432+00:00",
-  "count": 3
+  ]
 }

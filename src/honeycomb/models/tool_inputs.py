@@ -46,6 +46,83 @@ class PositionInput(BaseModel):
 
 
 # =============================================================================
+# Visualization Settings
+# =============================================================================
+
+
+class ChartSettingsInput(BaseModel):
+    """Individual chart visualization settings within a query panel.
+
+    Each calculation in a query can have its own chart settings.
+    Use chart_index to target specific calculations (0-based).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    chart_index: int = Field(
+        default=0,
+        ge=0,
+        description="Chart index (0-based, for queries with multiple calculations)",
+    )
+    chart_type: Literal["default", "line", "stacked", "stat", "tsbar", "cbar", "cpie"] = Field(
+        default="default",
+        description="Chart type: default (auto), line (time series), stacked (stacked area), "
+        "stat (single value), tsbar (time series bar), cbar (categorical bar), cpie (pie)",
+    )
+    log_scale: bool = Field(default=False, description="Use logarithmic Y-axis scale")
+    omit_missing_values: bool = Field(
+        default=False, description="Skip gaps in data instead of interpolating"
+    )
+
+
+class VisualizationSettingsInput(BaseModel):
+    """Visualization settings for board query panels.
+
+    Controls how the query results are displayed on the board.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    hide_compare: bool = Field(default=False, description="Hide comparison time range overlay")
+    hide_hovers: bool = Field(default=False, description="Disable hover tooltips on data points")
+    hide_markers: bool = Field(default=False, description="Hide markers on data points")
+    utc_xaxis: bool = Field(default=False, description="Show X-axis timestamps in UTC timezone")
+    overlaid_charts: bool = Field(
+        default=False, description="Overlay multiple calculations on same chart"
+    )
+    charts: list[ChartSettingsInput] | None = Field(
+        default=None,
+        description="Per-chart settings (one entry per calculation). If omitted, defaults apply.",
+    )
+
+
+# =============================================================================
+# Calculated Fields
+# =============================================================================
+
+
+class CalculatedFieldInput(BaseModel):
+    """Inline calculated field (derived column) for queries.
+
+    Creates a computed column available only within this query.
+    For reusable derived columns, use the Derived Columns API instead.
+
+    Example expressions:
+        - "MULTIPLY($duration_ms, 1000)" - convert ms to microseconds
+        - "IF(LT($status_code, 400), 1, 0)" - success indicator
+        - "CONCAT($service, '/', $endpoint)" - combine strings
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(description="Field name/alias to reference in calculations and breakdowns")
+    expression: str = Field(
+        description="Formula expression using $column_name syntax. "
+        "See https://docs.honeycomb.io/reference/derived-column-formula/"
+    )
+
+
+# =============================================================================
 # Query Panel
 # =============================================================================
 
@@ -56,13 +133,25 @@ class QueryPanelInput(BaseModel):
     This model represents a complete query panel with FLAT structure.
     Query fields are at the top level, not nested under a 'query' object.
 
-    Example:
+    Example (simple with chart_type shorthand):
         {
             "name": "CPU Usage",
             "dataset": "metrics",
             "time_range": 3600,
             "calculations": [{"op": "AVG", "column": "cpu_percent"}],
-            "style": "graph"
+            "chart_type": "line"
+        }
+
+    Example (with full visualization settings):
+        {
+            "name": "Error Rate",
+            "dataset": "api-logs",
+            "time_range": 3600,
+            "calculations": [{"op": "COUNT"}],
+            "visualization": {
+                "utc_xaxis": true,
+                "charts": [{"chart_type": "stacked", "log_scale": true}]
+            }
         }
     """
 
@@ -74,8 +163,18 @@ class QueryPanelInput(BaseModel):
     style: Literal["graph", "table", "combo"] = Field(
         default="graph", description="Panel display style"
     )
-    visualization: dict[str, Any] | None = Field(
-        default=None, description="Visualization settings (chart-specific config)"
+    visualization: VisualizationSettingsInput | None = Field(
+        default=None,
+        description="Full visualization settings. For simple cases, use chart_type instead.",
+    )
+    chart_type: Literal["default", "line", "stacked", "stat", "tsbar", "cbar", "cpie"] | None = (
+        Field(
+            default=None,
+            description="Shorthand for visualization.charts[0].chart_type. "
+            "Use for simple single-calculation panels. "
+            "Values: line (time series), stacked (stacked area), stat (single number), "
+            "tsbar (time series bar), cbar (categorical bar), cpie (pie chart)",
+        )
     )
     position: PositionInput | None = Field(
         default=None,
@@ -108,6 +207,18 @@ class QueryPanelInput(BaseModel):
     limit: int | None = Field(default=None, description="Result limit (max 1000)")
     havings: list[Having] | None = Field(
         default=None, description="Having clauses for post-aggregation filtering"
+    )
+    calculated_fields: list[CalculatedFieldInput] | None = Field(
+        default=None,
+        description="Inline calculated fields (derived columns) for this query only",
+    )
+    compare_time_offset_seconds: (
+        Literal[1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800] | None
+    ) = Field(
+        default=None,
+        description="Compare against historical data offset by N seconds. "
+        "Values: 1800 (30min), 3600 (1hr), 7200 (2hr), 28800 (8hr), "
+        "86400 (24hr), 604800 (7d), 2419200 (28d), 15724800 (6mo)",
     )
 
 

@@ -9,6 +9,8 @@ from honeycomb.models.tool_inputs import (
     BoardViewFilter,
     BoardViewInput,
     BurnAlertInput,
+    CalculatedFieldInput,
+    ChartSettingsInput,
     PositionInput,
     PresetFilterInput,
     QueryPanelInput,
@@ -18,6 +20,7 @@ from honeycomb.models.tool_inputs import (
     SLOToolInput,
     TagInput,
     TextPanelInput,
+    VisualizationSettingsInput,
 )
 
 
@@ -121,10 +124,148 @@ class TestQueryPanelInput:
         error = exc_info.value
         assert "extra_forbidden" in str(error)
 
+    def test_accepts_chart_type(self):
+        """Test that chart_type shorthand is accepted."""
+        panel = QueryPanelInput(name="Test", chart_type="line")
+        assert panel.chart_type == "line"
+
+    def test_accepts_visualization_settings(self):
+        """Test that visualization settings are accepted."""
+        panel = QueryPanelInput(
+            name="Test",
+            visualization=VisualizationSettingsInput(
+                utc_xaxis=True,
+                charts=[ChartSettingsInput(chart_type="stacked", log_scale=True)],
+            ),
+        )
+        assert panel.visualization.utc_xaxis is True
+        assert panel.visualization.charts[0].chart_type == "stacked"
+
+    def test_accepts_calculated_fields(self):
+        """Test that calculated_fields are accepted."""
+        panel = QueryPanelInput(
+            name="Test",
+            calculated_fields=[
+                CalculatedFieldInput(
+                    name="latency_bucket", expression="IF(LTE($duration_ms, 100), 'fast', 'slow')"
+                )
+            ],
+        )
+        assert len(panel.calculated_fields) == 1
+        assert panel.calculated_fields[0].name == "latency_bucket"
+
+    def test_accepts_compare_time_offset(self):
+        """Test that compare_time_offset_seconds is accepted."""
+        panel = QueryPanelInput(name="Test", compare_time_offset_seconds=86400)
+        assert panel.compare_time_offset_seconds == 86400
+
+    def test_rejects_invalid_compare_time_offset(self):
+        """Test that invalid compare_time_offset values are rejected."""
+        with pytest.raises(ValidationError):
+            QueryPanelInput(name="Test", compare_time_offset_seconds=1234)  # Not a valid offset
+
     def test_rejects_extra_fields(self):
-        """Test that extra fields like chart_type are rejected."""
+        """Test that unknown extra fields are rejected."""
         with pytest.raises(ValidationError) as exc_info:
-            QueryPanelInput(name="Test", chart_type="line")
+            QueryPanelInput(name="Test", unknown_field="value")
+
+        error = exc_info.value
+        assert "extra_forbidden" in str(error)
+
+
+class TestChartSettingsInput:
+    """Test ChartSettingsInput model."""
+
+    def test_default_values(self):
+        """Test default values."""
+        chart = ChartSettingsInput()
+        assert chart.chart_index == 0
+        assert chart.chart_type == "default"
+        assert chart.log_scale is False
+        assert chart.omit_missing_values is False
+
+    def test_valid_chart_types(self):
+        """Test all valid chart types."""
+        for chart_type in ["default", "line", "stacked", "stat", "tsbar", "cbar", "cpie"]:
+            chart = ChartSettingsInput(chart_type=chart_type)
+            assert chart.chart_type == chart_type
+
+    def test_rejects_invalid_chart_type(self):
+        """Test that invalid chart type is rejected."""
+        with pytest.raises(ValidationError):
+            ChartSettingsInput(chart_type="invalid")
+
+    def test_rejects_extra_fields(self):
+        """Test that extra fields are rejected."""
+        with pytest.raises(ValidationError) as exc_info:
+            ChartSettingsInput(extra="field")
+
+        error = exc_info.value
+        assert "extra_forbidden" in str(error)
+
+
+class TestVisualizationSettingsInput:
+    """Test VisualizationSettingsInput model."""
+
+    def test_default_values(self):
+        """Test default values."""
+        viz = VisualizationSettingsInput()
+        assert viz.hide_compare is False
+        assert viz.hide_hovers is False
+        assert viz.hide_markers is False
+        assert viz.utc_xaxis is False
+        assert viz.overlaid_charts is False
+        assert viz.charts is None
+
+    def test_with_charts(self):
+        """Test with chart settings."""
+        viz = VisualizationSettingsInput(
+            utc_xaxis=True,
+            charts=[
+                ChartSettingsInput(chart_type="line"),
+                ChartSettingsInput(chart_index=1, chart_type="stacked"),
+            ],
+        )
+        assert viz.utc_xaxis is True
+        assert len(viz.charts) == 2
+        assert viz.charts[0].chart_type == "line"
+        assert viz.charts[1].chart_index == 1
+
+    def test_rejects_extra_fields(self):
+        """Test that extra fields are rejected."""
+        with pytest.raises(ValidationError) as exc_info:
+            VisualizationSettingsInput(extra="field")
+
+        error = exc_info.value
+        assert "extra_forbidden" in str(error)
+
+
+class TestCalculatedFieldInput:
+    """Test CalculatedFieldInput model."""
+
+    def test_valid_calculated_field(self):
+        """Test valid calculated field."""
+        field = CalculatedFieldInput(
+            name="latency_bucket",
+            expression="IF(LTE($duration_ms, 100), 'fast', 'slow')",
+        )
+        assert field.name == "latency_bucket"
+        assert "IF(" in field.expression
+
+    def test_requires_name(self):
+        """Test that name is required."""
+        with pytest.raises(ValidationError):
+            CalculatedFieldInput(expression="1+1")
+
+    def test_requires_expression(self):
+        """Test that expression is required."""
+        with pytest.raises(ValidationError):
+            CalculatedFieldInput(name="test")
+
+    def test_rejects_extra_fields(self):
+        """Test that extra fields are rejected."""
+        with pytest.raises(ValidationError) as exc_info:
+            CalculatedFieldInput(name="test", expression="1", extra="field")
 
         error = exc_info.value
         assert "extra_forbidden" in str(error)

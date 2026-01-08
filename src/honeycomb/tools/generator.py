@@ -134,14 +134,7 @@ def export_tools_json(tools: list[dict[str, Any]], output_path: str) -> None:
         tools: List of tool definitions
         output_path: Path to write JSON file
     """
-    from datetime import datetime, timezone
-
-    output = {
-        "tools": tools,
-        "version": "0.1.0",
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-        "count": len(tools),
-    }
+    output = {"tools": tools}
 
     with open(output_path, "w") as f:
         json.dump(output, f, indent=2)

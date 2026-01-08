@@ -225,6 +225,28 @@
             "title": "CalcOp",
             "type": "string"
           },
+          "CalculatedFieldInput": {
+            "additionalProperties": false,
+            "description": "Inline calculated field (derived column) for queries.\n\nCreates a computed column available only within this query.\nFor reusable derived columns, use the Derived Columns API instead.\n\nExample expressions:\n    - \"MULTIPLY($duration_ms, 1000)\" - convert ms to microseconds\n    - \"IF(LT($status_code, 400), 1, 0)\" - success indicator\n    - \"CONCAT($service, '/', $endpoint)\" - combine strings",
+            "properties": {
+              "name": {
+                "description": "Field name/alias to reference in calculations and breakdowns",
+                "title": "Name",
+                "type": "string"
+              },
+              "expression": {
+                "description": "Formula expression using $column_name syntax. See https://docs.honeycomb.io/reference/derived-column-formula/",
+                "title": "Expression",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "expression"
+            ],
+            "title": "CalculatedFieldInput",
+            "type": "object"
+          },
           "Calculation": {
             "additionalProperties": false,
             "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\", alias=\"avg_response\")",
@@ -264,6 +286,48 @@
               "op"
             ],
             "title": "Calculation",
+            "type": "object"
+          },
+          "ChartSettingsInput": {
+            "additionalProperties": false,
+            "description": "Individual chart visualization settings within a query panel.\n\nEach calculation in a query can have its own chart settings.\nUse chart_index to target specific calculations (0-based).",
+            "properties": {
+              "chart_index": {
+                "default": 0,
+                "description": "Chart index (0-based, for queries with multiple calculations)",
+                "minimum": 0,
+                "title": "Chart Index",
+                "type": "integer"
+              },
+              "chart_type": {
+                "default": "default",
+                "description": "Chart type: default (auto), line (time series), stacked (stacked area), stat (single value), tsbar (time series bar), cbar (categorical bar), cpie (pie)",
+                "enum": [
+                  "default",
+                  "line",
+                  "stacked",
+                  "stat",
+                  "tsbar",
+                  "cbar",
+                  "cpie"
+                ],
+                "title": "Chart Type",
+                "type": "string"
+              },
+              "log_scale": {
+                "default": false,
+                "description": "Use logarithmic Y-axis scale",
+                "title": "Log Scale",
+                "type": "boolean"
+              },
+              "omit_missing_values": {
+                "default": false,
+                "description": "Skip gaps in data instead of interpolating",
+                "title": "Omit Missing Values",
+                "type": "boolean"
+              }
+            },
+            "title": "ChartSettingsInput",
             "type": "object"
           },
           "Filter": {
@@ -469,7 +533,7 @@
           },
           "QueryPanelInput": {
             "additionalProperties": false,
-            "description": "Query panel specification for board tool input.\n\nThis model represents a complete query panel with FLAT structure.\nQuery fields are at the top level, not nested under a 'query' object.\n\nExample:\n    {\n        \"name\": \"CPU Usage\",\n        \"dataset\": \"metrics\",\n        \"time_range\": 3600,\n        \"calculations\": [{\"op\": \"AVG\", \"column\": \"cpu_percent\"}],\n        \"style\": \"graph\"\n    }",
+            "description": "Query panel specification for board tool input.\n\nThis model represents a complete query panel with FLAT structure.\nQuery fields are at the top level, not nested under a 'query' object.\n\nExample (simple with chart_type shorthand):\n    {\n        \"name\": \"CPU Usage\",\n        \"dataset\": \"metrics\",\n        \"time_range\": 3600,\n        \"calculations\": [{\"op\": \"AVG\", \"column\": \"cpu_percent\"}],\n        \"chart_type\": \"line\"\n    }\n\nExample (with full visualization settings):\n    {\n        \"name\": \"Error Rate\",\n        \"dataset\": \"api-logs\",\n        \"time_range\": 3600,\n        \"calculations\": [{\"op\": \"COUNT\"}],\n        \"visualization\": {\n            \"utc_xaxis\": true,\n            \"charts\": [{\"chart_type\": \"stacked\", \"log_scale\": true}]\n        }\n    }",
             "properties": {
               "name": {
                 "description": "Panel/query name",
@@ -503,16 +567,36 @@
               "visualization": {
                 "anyOf": [
                   {
-                    "additionalProperties": true,
-                    "type": "object"
+                    "$ref": "#/$defs/VisualizationSettingsInput"
                   },
                   {
                     "type": "null"
                   }
                 ],
                 "default": null,
-                "description": "Visualization settings (chart-specific config)",
-                "title": "Visualization"
+                "description": "Full visualization settings. For simple cases, use chart_type instead."
+              },
+              "chart_type": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "default",
+                      "line",
+                      "stacked",
+                      "stat",
+                      "tsbar",
+                      "cbar",
+                      "cpie"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Shorthand for visualization.charts[0].chart_type. Use for simple single-calculation panels. Values: line (time series), stacked (stacked area), stat (single number), tsbar (time series bar), cbar (categorical bar), cpie (pie chart)",
+                "title": "Chart Type"
               },
               "position": {
                 "anyOf": [
@@ -695,6 +779,45 @@
                 "default": null,
                 "description": "Having clauses for post-aggregation filtering",
                 "title": "Havings"
+              },
+              "calculated_fields": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/CalculatedFieldInput"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Inline calculated fields (derived columns) for this query only",
+                "title": "Calculated Fields"
+              },
+              "compare_time_offset_seconds": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      1800,
+                      3600,
+                      7200,
+                      28800,
+                      86400,
+                      604800,
+                      2419200,
+                      15724800
+                    ],
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Compare against historical data offset by N seconds. Values: 1800 (30min), 3600 (1hr), 7200 (2hr), 28800 (8hr), 86400 (24hr), 604800 (7d), 2419200 (28d), 15724800 (6mo)",
+                "title": "Compare Time Offset Seconds"
               }
             },
             "required": [
@@ -857,6 +980,60 @@
               "content"
             ],
             "title": "TextPanelInput",
+            "type": "object"
+          },
+          "VisualizationSettingsInput": {
+            "additionalProperties": false,
+            "description": "Visualization settings for board query panels.\n\nControls how the query results are displayed on the board.",
+            "properties": {
+              "hide_compare": {
+                "default": false,
+                "description": "Hide comparison time range overlay",
+                "title": "Hide Compare",
+                "type": "boolean"
+              },
+              "hide_hovers": {
+                "default": false,
+                "description": "Disable hover tooltips on data points",
+                "title": "Hide Hovers",
+                "type": "boolean"
+              },
+              "hide_markers": {
+                "default": false,
+                "description": "Hide markers on data points",
+                "title": "Hide Markers",
+                "type": "boolean"
+              },
+              "utc_xaxis": {
+                "default": false,
+                "description": "Show X-axis timestamps in UTC timezone",
+                "title": "Utc Xaxis",
+                "type": "boolean"
+              },
+              "overlaid_charts": {
+                "default": false,
+                "description": "Overlay multiple calculations on same chart",
+                "title": "Overlaid Charts",
+                "type": "boolean"
+              },
+              "charts": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/ChartSettingsInput"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Per-chart settings (one entry per calculation). If omitted, defaults apply.",
+                "title": "Charts"
+              }
+            },
+            "title": "VisualizationSettingsInput",
             "type": "object"
           }
         },
@@ -1475,8 +1652,5 @@
         }
       ]
     }
-  ],
-  "version": "0.1.0",
-  "generated_at": "2026-01-08T05:25:00.401022+00:00",
-  "count": 5
+  ]
 }

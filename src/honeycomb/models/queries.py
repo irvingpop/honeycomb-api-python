@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 from pydantic import BaseModel, Field, field_validator
 
 from honeycomb.models.query_builder import (
+    VALID_COMPARE_OFFSETS,
     Calculation,
     Filter,
     FilterCombination,
@@ -91,6 +92,15 @@ class QuerySpec(BaseModel):
     havings: list[Having | dict[str, Any]] | None = Field(
         default=None, description="Having clauses"
     )
+    calculated_fields: list[dict[str, str]] | None = Field(
+        default=None,
+        description="Inline calculated fields (derived columns) for this query",
+    )
+    compare_time_offset_seconds: int | None = Field(
+        default=None,
+        description="Compare against historical data offset by N seconds "
+        "(1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800)",
+    )
 
     @field_validator("limit")
     @classmethod
@@ -101,6 +111,17 @@ class QuerySpec(BaseModel):
                 "limit cannot exceed 1000 for saved queries. "
                 "The 10K limit comes from disable_series=True when executing the query. "
                 "Remove limit from QuerySpec or use limit <= 1000."
+            )
+        return v
+
+    @field_validator("compare_time_offset_seconds")
+    @classmethod
+    def validate_compare_time_offset(cls, v: int | None) -> int | None:
+        """Validate that compare_time_offset_seconds is a valid offset value."""
+        if v is not None and v not in VALID_COMPARE_OFFSETS:
+            raise ValueError(
+                f"Invalid compare_time_offset_seconds: {v}. "
+                f"Must be one of: {sorted(VALID_COMPARE_OFFSETS)}"
             )
         return v
 
