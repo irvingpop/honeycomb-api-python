@@ -3859,7 +3859,7 @@
     },
     {
       "name": "honeycomb_update_dataset",
-      "description": "Updates an existing dataset's name, description, or JSON expansion settings. Use this to correct dataset metadata, add documentation, or adjust JSON parsing behavior as your schema evolves. Requires the dataset slug and the complete updated configuration. Note: The slug itself cannot be changed. Changing expand_json_depth only affects new events, not existing data.",
+      "description": "Updates an existing dataset's name, description, JSON expansion settings, or delete protection. Use this to correct dataset metadata, add documentation, adjust JSON parsing behavior, or toggle delete protection. Requires the dataset slug. All other fields are optional - only provided fields will be updated. Set delete_protected=true to prevent accidental deletion, or delete_protected=false to allow deletion. Note: The slug itself cannot be changed. Changing expand_json_depth only affects new events, not existing data.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -3868,9 +3868,17 @@
             "description": "The dataset slug to update"
           },
           "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
             "description": "Human-readable name for the dataset",
-            "title": "Name",
-            "type": "string"
+            "title": "Name"
           },
           "description": {
             "anyOf": [
@@ -3886,12 +3894,32 @@
             "title": "Description"
           },
           "expand_json_depth": {
-            "default": 0,
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
             "description": "Depth to expand JSON fields (0-10)",
-            "maximum": 10,
-            "minimum": 0,
-            "title": "Expand Json Depth",
-            "type": "integer"
+            "title": "Expand Json Depth"
+          },
+          "delete_protected": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "If true, the dataset cannot be deleted",
+            "title": "Delete Protected"
           },
           "confidence": {
             "type": "string",
@@ -3940,8 +3968,7 @@
           }
         },
         "required": [
-          "slug",
-          "name"
+          "slug"
         ]
       },
       "input_examples": [
@@ -3952,14 +3979,21 @@
         },
         {
           "slug": "production",
-          "name": "Production",
           "expand_json_depth": 5
+        },
+        {
+          "slug": "critical-data",
+          "delete_protected": true
+        },
+        {
+          "slug": "test-dataset",
+          "delete_protected": false
         }
       ]
     },
     {
       "name": "honeycomb_delete_dataset",
-      "description": "Permanently deletes a dataset and all its data from Honeycomb. Use this when decommissioning services, cleaning up test datasets, or consolidating data storage. Requires the dataset slug parameter. Warning: This action cannot be undone. All events, columns, queries, triggers, and SLOs in this dataset will be permanently deleted.",
+      "description": "Permanently deletes a dataset and all its data from Honeycomb. Use this when decommissioning services, cleaning up test datasets, or consolidating data storage. Requires the dataset slug parameter. Warning: This action cannot be undone. All events, columns, queries, triggers, and SLOs in this dataset will be permanently deleted. Note: Datasets with delete protection enabled cannot be deleted. Use honeycomb_update_dataset to disable delete_protected first.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -9130,6 +9164,6 @@
     }
   ],
   "version": "0.1.0",
-  "generated_at": "2026-01-08T04:43:08.090854+00:00",
+  "generated_at": "2026-01-08T05:24:59.696872+00:00",
   "count": 67
 }

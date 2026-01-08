@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..models.datasets import Dataset, DatasetCreate
+from ..models.datasets import Dataset, DatasetCreate, DatasetUpdate
 from .base import BaseResource
 
 if TYPE_CHECKING:
@@ -40,6 +40,14 @@ class DatasetsResource(BaseResource):
     # Async methods
     # -------------------------------------------------------------------------
 
+    def _parse_dataset(self, data: dict) -> Dataset:
+        """Parse a dataset from API response, handling nested settings."""
+        return Dataset.from_api_response(data)
+
+    def _parse_dataset_list(self, data: list) -> list[Dataset]:
+        """Parse a list of datasets from API response."""
+        return [self._parse_dataset(item) for item in data]
+
     async def list_async(self) -> list[Dataset]:
         """List all datasets (async).
 
@@ -47,7 +55,7 @@ class DatasetsResource(BaseResource):
             List of Dataset objects.
         """
         data = await self._get_async(self._build_path())
-        return self._parse_model_list(Dataset, data)
+        return self._parse_dataset_list(data)
 
     async def get_async(self, slug: str) -> Dataset:
         """Get a specific dataset (async).
@@ -59,7 +67,7 @@ class DatasetsResource(BaseResource):
             Dataset object.
         """
         data = await self._get_async(self._build_path(slug))
-        return self._parse_model(Dataset, data)
+        return self._parse_dataset(data)
 
     async def create_async(self, dataset: DatasetCreate) -> Dataset:
         """Create a new dataset (async).
@@ -71,9 +79,9 @@ class DatasetsResource(BaseResource):
             Created Dataset object.
         """
         data = await self._post_async(self._build_path(), json=dataset.model_dump_for_api())
-        return self._parse_model(Dataset, data)
+        return self._parse_dataset(data)
 
-    async def update_async(self, slug: str, dataset: DatasetCreate) -> Dataset:
+    async def update_async(self, slug: str, dataset: DatasetCreate | DatasetUpdate) -> Dataset:
         """Update an existing dataset (async).
 
         Args:
@@ -84,7 +92,20 @@ class DatasetsResource(BaseResource):
             Updated Dataset object.
         """
         data = await self._put_async(self._build_path(slug), json=dataset.model_dump_for_api())
-        return self._parse_model(Dataset, data)
+        return self._parse_dataset(data)
+
+    async def set_delete_protected_async(self, slug: str, protected: bool) -> Dataset:
+        """Set delete protection on a dataset (async).
+
+        Args:
+            slug: Dataset slug.
+            protected: True to enable delete protection, False to disable.
+
+        Returns:
+            Updated Dataset object.
+        """
+        update = DatasetUpdate(delete_protected=protected)
+        return await self.update_async(slug=slug, dataset=update)
 
     async def delete_async(self, slug: str) -> None:
         """Delete a dataset (async).
@@ -107,7 +128,7 @@ class DatasetsResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use list_async() for async mode, or pass sync=True to client")
         data = self._get_sync(self._build_path())
-        return self._parse_model_list(Dataset, data)
+        return self._parse_dataset_list(data)
 
     def get(self, slug: str) -> Dataset:
         """Get a specific dataset.
@@ -121,7 +142,7 @@ class DatasetsResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use get_async() for async mode, or pass sync=True to client")
         data = self._get_sync(self._build_path(slug))
-        return self._parse_model(Dataset, data)
+        return self._parse_dataset(data)
 
     def create(self, dataset: DatasetCreate) -> Dataset:
         """Create a new dataset.
@@ -135,9 +156,9 @@ class DatasetsResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
         data = self._post_sync(self._build_path(), json=dataset.model_dump_for_api())
-        return self._parse_model(Dataset, data)
+        return self._parse_dataset(data)
 
-    def update(self, slug: str, dataset: DatasetCreate) -> Dataset:
+    def update(self, slug: str, dataset: DatasetCreate | DatasetUpdate) -> Dataset:
         """Update an existing dataset.
 
         Args:
@@ -150,7 +171,24 @@ class DatasetsResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
         data = self._put_sync(self._build_path(slug), json=dataset.model_dump_for_api())
-        return self._parse_model(Dataset, data)
+        return self._parse_dataset(data)
+
+    def set_delete_protected(self, slug: str, protected: bool) -> Dataset:
+        """Set delete protection on a dataset.
+
+        Args:
+            slug: Dataset slug.
+            protected: True to enable delete protection, False to disable.
+
+        Returns:
+            Updated Dataset object.
+        """
+        if not self._client.is_sync:
+            raise RuntimeError(
+                "Use set_delete_protected_async() for async mode, or pass sync=True to client"
+            )
+        update = DatasetUpdate(delete_protected=protected)
+        return self.update(slug=slug, dataset=update)
 
     def delete(self, slug: str) -> None:
         """Delete a dataset.

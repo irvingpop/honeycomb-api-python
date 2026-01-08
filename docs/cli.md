@@ -272,8 +272,17 @@ honeycomb datasets create --name "My Dataset" --slug my-dataset --description "D
 # Update dataset
 honeycomb datasets update my-dataset --name "Updated Name" --description "New description"
 
+# Enable delete protection
+honeycomb datasets update my-dataset --delete-protected
+
+# Disable delete protection
+honeycomb datasets update my-dataset --no-delete-protected
+
 # Delete dataset (WARNING: deletes all data)
 honeycomb datasets delete my-dataset
+
+# Delete a protected dataset (removes protection first)
+honeycomb datasets delete my-dataset --remove-delete-protection
 ```
 
 ### Markers

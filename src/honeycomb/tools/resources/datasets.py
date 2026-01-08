@@ -6,7 +6,7 @@ datasets resources.
 
 from typing import Any
 
-from honeycomb.models import DatasetCreate
+from honeycomb.models import DatasetCreate, DatasetUpdate
 from honeycomb.tools.schemas import add_parameter, generate_schema_from_model
 
 # ==============================================================================
@@ -34,16 +34,18 @@ DATASET_DESCRIPTIONS = {
         "The dataset slug will be automatically generated from the name and used for API operations."
     ),
     "honeycomb_update_dataset": (
-        "Updates an existing dataset's name, description, or JSON expansion settings. "
-        "Use this to correct dataset metadata, add documentation, or adjust JSON parsing behavior as your schema evolves. "
-        "Requires the dataset slug and the complete updated configuration. "
+        "Updates an existing dataset's name, description, JSON expansion settings, or delete protection. "
+        "Use this to correct dataset metadata, add documentation, adjust JSON parsing behavior, or toggle delete protection. "
+        "Requires the dataset slug. All other fields are optional - only provided fields will be updated. "
+        "Set delete_protected=true to prevent accidental deletion, or delete_protected=false to allow deletion. "
         "Note: The slug itself cannot be changed. Changing expand_json_depth only affects new events, not existing data."
     ),
     "honeycomb_delete_dataset": (
         "Permanently deletes a dataset and all its data from Honeycomb. "
         "Use this when decommissioning services, cleaning up test datasets, or consolidating data storage. "
         "Requires the dataset slug parameter. "
-        "Warning: This action cannot be undone. All events, columns, queries, triggers, and SLOs in this dataset will be permanently deleted."
+        "Warning: This action cannot be undone. All events, columns, queries, triggers, and SLOs in this dataset will be permanently deleted. "
+        "Note: Datasets with delete protection enabled cannot be deleted. Use honeycomb_update_dataset to disable delete_protected first."
     ),
 }
 
@@ -158,20 +160,21 @@ def generate_create_dataset_tool() -> dict[str, Any]:
 
 def generate_update_dataset_tool() -> dict[str, Any]:
     """Generate honeycomb_update_dataset tool definition."""
-    base_schema = generate_schema_from_model(
-        DatasetCreate,
-        exclude_fields={"created_at", "last_written_at", "slug", "regular_columns_count"},
-    )
+    # Use DatasetUpdate which supports partial updates and delete_protected
+    base_schema = generate_schema_from_model(DatasetUpdate)
 
     schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["slug"]}
     add_parameter(schema, "slug", "string", "The dataset slug to update", required=True)
 
+    # Add properties from DatasetUpdate (all optional)
     schema["properties"].update(base_schema["properties"])
-    schema["required"].extend(base_schema.get("required", []))
+    # Don't extend required - DatasetUpdate fields are all optional
 
     examples: list[dict[str, Any]] = [
         {"slug": "api-logs", "name": "API Logs", "description": "Updated description"},
-        {"slug": "production", "name": "Production", "expand_json_depth": 5},
+        {"slug": "production", "expand_json_depth": 5},
+        {"slug": "critical-data", "delete_protected": True},
+        {"slug": "test-dataset", "delete_protected": False},
     ]
 
     return create_tool_definition(

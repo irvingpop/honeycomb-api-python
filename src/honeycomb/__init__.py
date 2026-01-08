@@ -46,6 +46,7 @@ from .models import (
     ColumnType,
     Dataset,
     DatasetCreate,
+    DatasetUpdate,
     DerivedColumn,
     DerivedColumnBuilder,
     DerivedColumnCreate,
@@ -150,6 +151,7 @@ __all__ = [
     # Models - Datasets
     "Dataset",
     "DatasetCreate",
+    "DatasetUpdate",
     # Models - Boards
     "Board",
     "BoardBuilder",

@@ -13,6 +13,7 @@ from honeycomb.models import (
     BurnAlertRecipient,
     ColumnCreate,
     DatasetCreate,
+    DatasetUpdate,
     DerivedColumnCreate,
     MarkerCreate,
     MarkerSettingCreate,
@@ -617,7 +618,7 @@ async def _execute_create_dataset(client: "HoneycombClient", tool_input: dict[st
 async def _execute_update_dataset(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_update_dataset."""
     slug = tool_input.pop("slug")
-    dataset = DatasetCreate(**tool_input)
+    dataset = DatasetUpdate(**tool_input)
     updated = await client.datasets.update_async(slug=slug, dataset=dataset)
     return json.dumps(updated.model_dump(), default=str)
 

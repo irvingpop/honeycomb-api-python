@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import time
 
-from honeycomb import Dataset, DatasetCreate, HoneycombClient
+from honeycomb import Dataset, DatasetCreate, DatasetUpdate, HoneycombClient
 
 
 # start_example:list_datasets
@@ -89,18 +89,42 @@ async def update_dataset(client: HoneycombClient, slug: str) -> Dataset:
     Returns:
         The updated dataset
     """
+    # Use DatasetUpdate for partial updates - only specified fields are changed
     dataset = await client.datasets.update_async(
         slug,
-        DatasetCreate(
-            name=f"Updated {slug}",
+        DatasetUpdate(
             description="Updated description",
-            expand_json_depth=3,
         ),
     )
     return dataset
 
 
 # end_example:update_dataset
+
+
+# start_example:delete_protection
+async def toggle_delete_protection(client: HoneycombClient, slug: str) -> Dataset:
+    """Enable or disable delete protection on a dataset.
+
+    Args:
+        client: Authenticated HoneycombClient
+        slug: Dataset slug
+
+    Returns:
+        The updated dataset
+    """
+    # Enable delete protection to prevent accidental deletion
+    dataset = await client.datasets.set_delete_protected_async(slug, protected=True)
+    print(f"Delete protection enabled: {dataset.delete_protected}")
+
+    # Or disable it when you need to delete the dataset
+    dataset = await client.datasets.set_delete_protected_async(slug, protected=False)
+    print(f"Delete protection disabled: {dataset.delete_protected}")
+
+    return dataset
+
+
+# end_example:delete_protection
 
 
 # start_example:list_sync
@@ -150,8 +174,10 @@ async def cleanup(client: HoneycombClient, dataset_slug: str) -> None:
     from honeycomb import HoneycombAPIError
 
     try:
+        # Remove delete protection before deleting
+        await client.datasets.set_delete_protected_async(dataset_slug, protected=False)
         await client.datasets.delete_async(dataset_slug)
     except HoneycombAPIError as e:
-        # Datasets have delete protection by default - ignore 409 errors
-        if e.status_code != 409:
+        # Ignore 404 if dataset doesn't exist
+        if e.status_code != 404:
             raise

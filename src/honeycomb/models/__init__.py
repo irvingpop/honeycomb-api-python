@@ -20,7 +20,7 @@ from .boards import (
 )
 from .burn_alerts import BurnAlert, BurnAlertCreate, BurnAlertRecipient, BurnAlertType
 from .columns import Column, ColumnCreate, ColumnType
-from .datasets import Dataset, DatasetCreate
+from .datasets import Dataset, DatasetCreate, DatasetUpdate
 from .derived_columns import DerivedColumn, DerivedColumnBuilder, DerivedColumnCreate
 from .environments import Environment, EnvironmentColor, EnvironmentCreate, EnvironmentUpdate
 from .events import BatchEvent, BatchEventResult
@@ -95,6 +95,7 @@ __all__ = [
     # Datasets
     "Dataset",
     "DatasetCreate",
+    "DatasetUpdate",
     # Boards
     "Board",
     "BoardBuilder",
