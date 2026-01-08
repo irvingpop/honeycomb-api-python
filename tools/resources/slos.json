@@ -1,0 +1,785 @@
+{
+  "tools": [
+    {
+      "name": "honeycomb_list_slos",
+      "description": "Lists all Service Level Objectives (SLOs) defined in a Honeycomb dataset. Use this to discover existing SLOs, review service reliability targets, or before creating related burn alerts. Requires the dataset slug parameter. Returns a list of SLO objects with their IDs, names, target percentages, time periods, and SLI (Service Level Indicator) definitions.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug to list SLOs from"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs"
+        },
+        {
+          "dataset": "production"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_get_slo",
+      "description": "Retrieves detailed configuration for a specific SLO by ID. Use this to inspect an SLO's target percentage, time period, SLI expression, and associated burn alerts. Requires both the dataset slug and SLO ID. Returns the complete SLO configuration including the derived column used for the SLI calculation.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "slo_id": {
+            "type": "string",
+            "description": "The SLO ID to retrieve"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "slo_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "slo_id": "slo-123"
+        },
+        {
+          "dataset": "production",
+          "slo_id": "slo-456"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_create_slo",
+      "description": "Creates a new Service Level Objective (SLO) to track reliability targets, with automatic derived column creation if needed. IMPORTANT: Use this tool (not honeycomb_create_derived_column) when you want to create an SLO - it will create both the SLI derived column AND the SLO in one operation. Use this when defining reliability targets for services, such as 99.9% availability or p99 latency targets. Requires a dataset, SLO name, target (as percentage, per-million, or nines), time period in days, and an SLI definition. For the SLI, provide an alias and optionally an expression - if expression is provided, a new derived column is created inline; if only alias is provided, it uses an existing derived column. SLI EXPRESSION SYNTAX: Must return boolean (1/0 coerced). Use $ prefix for columns (case-sensitive). Example: LT($status_code, 500) or AND(LT($status_code, 500), LT($duration_ms, 1000)). See honeycomb_create_derived_column for full expression syntax (conditionals, comparisons, regex, etc.). You can also add burn alerts inline to notify when error budget depletes too quickly. Supports both single-dataset and multi-dataset SLOs.",
+      "input_schema": {
+        "$defs": {
+          "BurnAlertInput": {
+            "additionalProperties": false,
+            "description": "Burn alert specification for inline creation with SLOs.\n\nTwo alert types:\n- exhaustion_time: Alert when budget will be exhausted in N minutes\n- budget_rate: Alert when budget is decreasing faster than threshold",
+            "properties": {
+              "alert_type": {
+                "description": "Alert type",
+                "enum": [
+                  "exhaustion_time",
+                  "budget_rate"
+                ],
+                "title": "Alert Type",
+                "type": "string"
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Alert description",
+                "title": "Description"
+              },
+              "exhaustion_minutes": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Minutes until budget exhaustion (required for exhaustion_time)",
+                "title": "Exhaustion Minutes"
+              },
+              "budget_rate_window_minutes": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Window size in minutes (required for budget_rate)",
+                "title": "Budget Rate Window Minutes"
+              },
+              "budget_rate_decrease_threshold_per_million": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Threshold in per-million units (required for budget_rate)",
+                "title": "Budget Rate Decrease Threshold Per Million"
+              },
+              "recipients": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/RecipientInput"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Alert recipients",
+                "title": "Recipients"
+              }
+            },
+            "required": [
+              "alert_type"
+            ],
+            "title": "BurnAlertInput",
+            "type": "object"
+          },
+          "RecipientInput": {
+            "additionalProperties": false,
+            "description": "Recipient specification (shared across triggers, SLOs, burn alerts).\n\nEither reference an existing recipient by ID, OR create a new one inline\nby providing type and target.\n\nNote: Only 'email' and 'webhook' types are testable without external integrations.\nOther types ('slack', 'pagerduty', 'msteams') require service configuration.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Existing recipient ID",
+                "title": "Id"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "email",
+                      "webhook",
+                      "slack",
+                      "pagerduty",
+                      "msteams"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient type (for inline creation)",
+                "title": "Type"
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient target (email address, webhook URL, or integration ID)",
+                "title": "Target"
+              }
+            },
+            "title": "RecipientInput",
+            "type": "object"
+          },
+          "SLIInput": {
+            "additionalProperties": false,
+            "description": "SLI (Service Level Indicator) specification for tool input.\n\nAn SLI can either reference an existing column by alias, or create\na new derived column inline by providing an expression.",
+            "properties": {
+              "alias": {
+                "description": "Column alias for the SLI (e.g., 'success_rate')",
+                "title": "Alias",
+                "type": "string"
+              },
+              "expression": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Derived column expression (creates column if provided, e.g., 'LTE($duration_ms, 500)')",
+                "title": "Expression"
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "SLI description",
+                "title": "Description"
+              }
+            },
+            "required": [
+              "alias"
+            ],
+            "title": "SLIInput",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Complete SLO tool input for creating SLOs.\n\nNote: Only target_percentage is exposed to tools (most intuitive format).\nThe target_nines format has been removed entirely.",
+        "properties": {
+          "name": {
+            "description": "SLO name",
+            "title": "Name",
+            "type": "string"
+          },
+          "sli": {
+            "$ref": "#/$defs/SLIInput",
+            "description": "SLI specification"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "SLO description",
+            "title": "Description"
+          },
+          "datasets": {
+            "description": "Dataset slug(s). Use single-element list for one dataset, multiple for environment-wide SLO",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Datasets",
+            "type": "array"
+          },
+          "target_percentage": {
+            "description": "Target as percentage (e.g., 99.9 for 99.9% success rate)",
+            "title": "Target Percentage",
+            "type": "number"
+          },
+          "time_period_days": {
+            "default": 30,
+            "description": "SLO time period in days (typically 7, 14, or 30)",
+            "title": "Time Period Days",
+            "type": "integer"
+          },
+          "burn_alerts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/BurnAlertInput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Burn alerts to create with the SLO",
+            "title": "Burn Alerts"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "sli",
+          "datasets",
+          "target_percentage"
+        ],
+        "title": "SLOToolInput",
+        "type": "object"
+      },
+      "input_examples": [
+        {
+          "datasets": [
+            "api-logs"
+          ],
+          "name": "API Availability",
+          "sli": {
+            "alias": "success_rate"
+          },
+          "target_percentage": 99.9,
+          "time_period_days": 30
+        },
+        {
+          "datasets": [
+            "production"
+          ],
+          "name": "Request Success Rate",
+          "description": "Percentage of requests that succeed (status < 500)",
+          "sli": {
+            "alias": "request_success",
+            "expression": "IF(LT($status_code, 500), 1, 0)",
+            "description": "1 if status < 500, else 0"
+          },
+          "target_percentage": 99.5,
+          "time_period_days": 7
+        },
+        {
+          "datasets": [
+            "api-logs",
+            "production",
+            "staging"
+          ],
+          "name": "Cross-Service Availability",
+          "description": "Environment-wide availability tracking",
+          "sli": {
+            "alias": "request_success",
+            "expression": "IF(LT($status_code, 400), 1, 0)"
+          },
+          "target_percentage": 99.9,
+          "time_period_days": 30
+        },
+        {
+          "datasets": [
+            "api-logs"
+          ],
+          "name": "Critical API Availability",
+          "description": "High-priority SLO with burn rate alerting",
+          "sli": {
+            "alias": "api_success",
+            "expression": "IF(LT($status_code, 500), 1, 0)"
+          },
+          "target_percentage": 99.99,
+          "time_period_days": 30,
+          "burn_alerts": [
+            {
+              "alert_type": "exhaustion_time",
+              "exhaustion_minutes": 60,
+              "description": "Budget exhausting in 1 hour",
+              "recipients": [
+                {
+                  "type": "email",
+                  "target": "oncall@example.com"
+                },
+                {
+                  "type": "webhook",
+                  "target": "https://example.com/webhook"
+                }
+              ]
+            },
+            {
+              "alert_type": "budget_rate",
+              "budget_rate_window_minutes": 60,
+              "budget_rate_decrease_threshold_per_million": 10000,
+              "description": "Error budget dropping too fast",
+              "recipients": [
+                {
+                  "type": "email",
+                  "target": "sre-team@example.com"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_update_slo",
+      "description": "Updates an existing SLO's target percentage, time period, or SLI configuration. Use this to adjust reliability targets as service requirements change or to associate different derived columns. Requires the dataset slug, SLO ID, and the complete updated SLO configuration. Note: This replaces the entire SLO configuration. To update burn alerts separately, use burn alert tools instead.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "slo_id": {
+            "type": "string",
+            "description": "The SLO ID to update"
+          },
+          "name": {
+            "description": "Human-readable name for the SLO",
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Longer description",
+            "title": "Description"
+          },
+          "sli": {
+            "$ref": "#/$defs/SLI",
+            "description": "SLI configuration"
+          },
+          "time_period_days": {
+            "default": 30,
+            "description": "Time period for the SLO in days (1-90)",
+            "maximum": 90,
+            "minimum": 1,
+            "title": "Time Period Days",
+            "type": "integer"
+          },
+          "target_per_million": {
+            "description": "Target success rate per million (e.g., 999000 = 99.9%)",
+            "maximum": 1000000,
+            "minimum": 0,
+            "title": "Target Per Million",
+            "type": "integer"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "slo_id",
+          "name",
+          "sli",
+          "target_per_million"
+        ],
+        "$defs": {
+          "SLI": {
+            "description": "Service Level Indicator configuration.\n\nThe SLI references a derived column by alias. You can either:\n1. Reference an existing derived column: just provide alias\n2. Create a new derived column inline: provide alias + expression\n\nWhen expression is provided, a new derived column will be created automatically\nbefore the SLO is created.",
+            "properties": {
+              "alias": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Alias for the derived column (existing or new)",
+                "title": "Alias"
+              },
+              "expression": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "If provided, creates a new derived column with this expression. If omitted, uses an existing derived column with the given alias.",
+                "title": "Expression"
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Description for the new derived column (only used when expression is provided)",
+                "title": "Description"
+              }
+            },
+            "title": "SLI",
+            "type": "object"
+          }
+        }
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "slo_id": "slo-123",
+          "name": "API Availability (Updated)",
+          "sli": {
+            "alias": "success_rate"
+          },
+          "target_per_million": 999500,
+          "time_period_days": 30
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_delete_slo",
+      "description": "Permanently deletes an SLO from Honeycomb. Use this when decommissioning services, consolidating reliability metrics, or removing test SLOs. Requires both the dataset slug and SLO ID. Warning: This action cannot be undone. Associated burn alerts will also be deleted.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "slo_id": {
+            "type": "string",
+            "description": "The SLO ID to delete"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "slo_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "slo_id": "slo-123"
+        },
+        {
+          "dataset": "production",
+          "slo_id": "slo-456"
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0",
+  "generated_at": "2026-01-08T04:43:08.770862+00:00",
+  "count": 5
+}

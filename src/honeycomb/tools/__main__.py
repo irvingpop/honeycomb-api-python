@@ -3,6 +3,7 @@
 Usage:
     python -m honeycomb.tools generate --output tools.json
     python -m honeycomb.tools generate --resource triggers --output triggers.json
+    python -m honeycomb.tools generate --per-resource --output-dir tools/
     python -m honeycomb.tools validate tools.json
     python -m honeycomb.tools generate --format python --output definitions.py
 """
@@ -14,12 +15,16 @@ from pathlib import Path
 
 from honeycomb.tools.descriptions import validate_description
 from honeycomb.tools.generator import (
+    RESOURCE_MODULES,
     export_tools_json,
     export_tools_python,
     generate_all_tools,
     generate_tools_for_resource,
 )
 from honeycomb.tools.schemas import validate_schema, validate_tool_name
+
+# All available resources
+AVAILABLE_RESOURCES = list(RESOURCE_MODULES.keys())
 
 
 def cmd_generate(args: argparse.Namespace) -> int:
@@ -32,7 +37,28 @@ def cmd_generate(args: argparse.Namespace) -> int:
         Exit code (0 for success, 1 for error)
     """
     try:
-        # Generate tools
+        # Validate arguments
+        if not args.per_resource and not args.output:
+            print("Error: --output is required unless using --per-resource", file=sys.stderr)
+            return 1
+
+        # Handle per-resource generation
+        if args.per_resource:
+            output_dir = Path(args.output_dir)
+            output_dir.mkdir(parents=True, exist_ok=True)
+
+            total_tools = 0
+            for resource in AVAILABLE_RESOURCES:
+                tools = generate_tools_for_resource(resource)
+                output_path = output_dir / f"{resource}.json"
+                export_tools_json(tools, str(output_path))
+                total_tools += len(tools)
+                print(f"  {resource}.json: {len(tools)} tools")
+
+            print(f"Generated {total_tools} tools across {len(AVAILABLE_RESOURCES)} resource files")
+            return 0
+
+        # Generate tools (single file mode)
         if args.resource:
             tools = generate_tools_for_resource(args.resource)
             print(f"Generated {len(tools)} tool definitions for resource '{args.resource}'")
@@ -156,13 +182,12 @@ def main() -> int:
     gen_parser.add_argument(
         "--output",
         "-o",
-        required=True,
-        help="Output file path",
+        help="Output file path (required unless using --per-resource)",
     )
     gen_parser.add_argument(
         "--resource",
         "-r",
-        choices=["triggers", "slos", "burn_alerts"],
+        choices=AVAILABLE_RESOURCES,
         help="Generate tools for specific resource only",
     )
     gen_parser.add_argument(
@@ -171,6 +196,17 @@ def main() -> int:
         choices=["json", "python"],
         default="json",
         help="Output format (default: json)",
+    )
+    gen_parser.add_argument(
+        "--per-resource",
+        action="store_true",
+        help="Generate separate JSON files for each resource",
+    )
+    gen_parser.add_argument(
+        "--output-dir",
+        "-d",
+        default="tools",
+        help="Output directory for per-resource files (default: tools)",
     )
 
     # Validate command

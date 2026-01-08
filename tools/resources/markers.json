@@ -1,0 +1,409 @@
+{
+  "tools": [
+    {
+      "name": "honeycomb_list_markers",
+      "description": "Lists all markers (event annotations) in a dataset. Use this to view deployment history, configuration changes, incidents, or other significant events marked on your data. Requires the dataset slug parameter. Returns a list of marker objects including their IDs, messages, types, timestamps, colors, and URLs.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs"
+        },
+        {
+          "dataset": "production"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_create_marker",
+      "description": "Creates a new marker to annotate your data with significant events like deployments, configuration changes, or incidents. Use this to track deployments, mark maintenance windows, document configuration changes, or flag incidents for correlation with metrics. Requires dataset slug (or '__all__' for environment-wide), message, and type parameters. Optional color parameter (hex code like '#FF5733') can be provided for visual customization - if the marker setting for that type doesn't exist, it should be created first. Optional start_time and end_time (Unix timestamps) create time-range markers, otherwise defaults to current time as a point marker.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug (or '__all__' for environment-wide)"
+          },
+          "color": {
+            "type": "string",
+            "description": "Optional hex color (e.g., '#FF5733')"
+          },
+          "message": {
+            "description": "Message to describe this marker",
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "description": "Groups similar markers (e.g., 'deploy')",
+            "title": "Type",
+            "type": "string"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Unix timestamp when marker should be placed (defaults to now)",
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Unix timestamp for end of marker (for time ranges)",
+            "title": "End Time"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Target URL for the marker",
+            "title": "Url"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "message",
+          "type"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "message": "deploy v1.2.3",
+          "type": "deploy"
+        },
+        {
+          "dataset": "__all__",
+          "message": "maintenance window",
+          "type": "maintenance",
+          "start_time": 1640000000,
+          "end_time": 1640003600
+        },
+        {
+          "dataset": "production",
+          "message": "config change",
+          "type": "config",
+          "color": "#FF5733"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_update_marker",
+      "description": "Updates an existing marker's message, type, timestamps, or URL. Use this to correct marker details, update deployment notes, or adjust time ranges for maintenance windows. Requires the dataset slug, marker ID, and updated marker configuration. Note: Colors are controlled by marker settings, not directly on markers.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "marker_id": {
+            "type": "string",
+            "description": "The marker ID to update"
+          },
+          "message": {
+            "description": "Message to describe this marker",
+            "title": "Message",
+            "type": "string"
+          },
+          "type": {
+            "description": "Groups similar markers (e.g., 'deploy')",
+            "title": "Type",
+            "type": "string"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Unix timestamp when marker should be placed (defaults to now)",
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Unix timestamp for end of marker (for time ranges)",
+            "title": "End Time"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Target URL for the marker",
+            "title": "Url"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "marker_id",
+          "message",
+          "type"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "marker_id": "abc123",
+          "message": "updated deploy v1.2.4",
+          "type": "deploy"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_delete_marker",
+      "description": "Permanently deletes a marker from a dataset. Use this when removing incorrect markers, cleaning up test annotations, or removing outdated event tracking. Requires both the dataset slug and marker ID parameters. Warning: This action cannot be undone. The marker will be removed from all visualizations.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "marker_id": {
+            "type": "string",
+            "description": "The marker ID to delete"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "marker_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "marker_id": "abc123"
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0",
+  "generated_at": "2026-01-08T04:43:08.762741+00:00",
+  "count": 4
+}

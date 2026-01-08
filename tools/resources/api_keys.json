@@ -1,0 +1,382 @@
+{
+  "tools": [
+    {
+      "name": "honeycomb_list_api_keys",
+      "description": "Lists all API keys for your authenticated team with optional filtering by key type. Use this to audit team API keys, discover existing keys before creating new ones, or when migrating to management key authentication. Requires management key authentication. The team is automatically detected from your credentials (no team parameter needed). Optional key_type parameter filters by 'ingest' or 'configuration' keys. Returns a list of API key objects with their IDs, names, types, environment associations, and disabled status. Note: The key secrets are not included in list responses for security.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "key_type": {
+            "type": "string",
+            "description": "Filter by key type: 'ingest' or 'configuration'"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": []
+      },
+      "input_examples": [
+        {},
+        {
+          "key_type": "ingest"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_get_api_key",
+      "description": "Retrieves detailed information about a specific API key by ID. Use this to inspect an API key's configuration including name, type, environment, and disabled status before updating or deleting it. Requires only the key ID parameter - the team is automatically detected from your management key credentials. Returns the complete API key configuration but does NOT include the secret (only shown on creation). Use this to verify key settings or check which environment a key is associated with.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "description": "The API key ID"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "key_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "key_id": "hcaik_123"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_create_api_key",
+      "description": "Creates a new API key for your authenticated team in a specific environment. Use this when provisioning new services, creating separate keys for different applications, or rotating credentials. Requires key name, key_type ('ingest' for data sending or 'configuration' for API access), and environment_id. The team is automatically detected from your management key. CRITICAL FOR CONFIGURATION KEYS: Must include permissions object with boolean properties. Available permissions: 'create_datasets', 'send_events', 'manage_markers', 'manage_triggers', 'manage_boards', 'run_queries', 'manage_columns', 'manage_slos', 'manage_recipients', 'manage_privateBoards'. Example for full access: {'create_datasets': true, 'send_events': true, 'manage_markers': true, 'manage_triggers': true, 'manage_boards': true, 'run_queries': true, 'manage_columns': true, 'manage_slos': true, 'manage_recipients': true, 'manage_privateBoards': true}. Without permissions object, configuration keys will have NO permissions and cannot perform any actions. Ingest keys have fixed permissions (send events, optionally create datasets implicitly) and don't use permissions object. CRITICAL: The secret is only returned once during creation - save it immediately. Returns the created API key object including the secret field (only time it's available).",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Display name for the API key"
+          },
+          "key_type": {
+            "type": "string",
+            "description": "Type of key: 'ingest' or 'configuration'"
+          },
+          "environment_id": {
+            "type": "string",
+            "description": "Environment ID to scope the key to"
+          },
+          "permissions": {
+            "type": "object",
+            "description": "Permissions for configuration keys (REQUIRED for 'configuration' type). Object with boolean properties: 'create_datasets', 'send_events', 'manage_markers', 'manage_triggers', 'manage_boards', 'run_queries', 'manage_columns', 'manage_slos', 'manage_recipients', 'manage_privateBoards'. Example: {'create_datasets': true, 'send_events': true, 'manage_triggers': true}. Not needed for 'ingest' keys."
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name",
+          "key_type",
+          "environment_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "name": "Production Ingest Key",
+          "key_type": "ingest",
+          "environment_id": "hcaen_123"
+        },
+        {
+          "name": "Full Access Config Key",
+          "key_type": "configuration",
+          "environment_id": "hcaen_123",
+          "permissions": {
+            "create_datasets": true,
+            "send_events": true,
+            "manage_markers": true,
+            "manage_triggers": true,
+            "manage_boards": true,
+            "run_queries": true,
+            "manage_columns": true,
+            "manage_slos": true,
+            "manage_recipients": true,
+            "manage_privateBoards": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_update_api_key",
+      "description": "Updates an existing API key's name or disabled status. Use this to rename keys for clarity, disable compromised keys, or re-enable previously disabled keys. Requires key ID and at least one of: name (new display name) or disabled (true/false). The team is automatically detected from your credentials. Note: You cannot change the key type or environment after creation. To rotate the secret, delete and create a new key. The secret value is never returned in update responses.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "description": "The API key ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "New name for the key"
+          },
+          "disabled": {
+            "type": "boolean",
+            "description": "Set to true to disable the key"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "key_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "key_id": "hcaik_123",
+          "name": "New Name"
+        },
+        {
+          "key_id": "hcaik_123",
+          "disabled": true
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_delete_api_key",
+      "description": "Permanently deletes an API key from Honeycomb. Use this when decommissioning services, rotating credentials after a security incident, or cleaning up unused keys. Requires only the key ID parameter - the team is automatically detected from your management key. Warning: This action cannot be undone. Any services using this key will immediately lose API access. The secret cannot be recovered - you must create a new key if deleted accidentally.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "key_id": {
+            "type": "string",
+            "description": "The API key ID to delete"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "key_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "key_id": "hcaik_123"
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0",
+  "generated_at": "2026-01-08T04:43:08.747320+00:00",
+  "count": 5
+}

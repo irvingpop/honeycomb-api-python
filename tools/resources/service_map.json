@@ -1,0 +1,162 @@
+{
+  "tools": [
+    {
+      "name": "honeycomb_query_service_map",
+      "description": "Queries service dependencies and relationships from distributed trace data with automatic polling and pagination. Use this to discover service-to-service call patterns, identify dependencies, visualize system architecture, or debug cross-service issues. Requires a time range specification (time_range in seconds, or start_time/end_time as Unix timestamps). Optional filters parameter allows narrowing to specific services by name. This tool performs create + poll + paginate operations automatically: creates async query, polls until ready, fetches all pages of results (up to 64K dependencies). Warning: Large time ranges may return thousands of dependencies across hundreds of API pages - use max_pages parameter to limit.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "start_time": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Absolute start time in seconds since UNIX epoch",
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Absolute end time in seconds since UNIX epoch",
+            "title": "End Time"
+          },
+          "time_range": {
+            "default": 7200,
+            "description": "Time range in seconds (default: 7200 = 2 hours)",
+            "minimum": 1,
+            "title": "Time Range",
+            "type": "integer"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/ServiceMapNode"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Optional list of service nodes to filter dependencies by",
+            "title": "Filters"
+          },
+          "max_pages": {
+            "type": "integer",
+            "description": "Maximum pages to fetch (default: 640, up to 64K results)"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [],
+        "$defs": {
+          "ServiceMapNode": {
+            "description": "A node in the service map (typically a service).\n\nAttributes:\n    name: Name of the service or node.\n    type: Type of the node. Currently only 'service' is supported.",
+            "properties": {
+              "name": {
+                "description": "Name of the service or node",
+                "title": "Name",
+                "type": "string"
+              },
+              "type": {
+                "$ref": "#/$defs/ServiceMapNodeType",
+                "default": "service",
+                "description": "Type of the node. Currently only 'service' is supported."
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "title": "ServiceMapNode",
+            "type": "object"
+          },
+          "ServiceMapNodeType": {
+            "description": "Type of node in the service map.",
+            "enum": [
+              "service"
+            ],
+            "title": "ServiceMapNodeType",
+            "type": "string"
+          }
+        }
+      },
+      "input_examples": [
+        {
+          "time_range": 7200
+        },
+        {
+          "time_range": 3600,
+          "filters": [
+            {
+              "name": "user-service"
+            }
+          ]
+        },
+        {
+          "start_time": 1640000000,
+          "end_time": 1640003600
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0",
+  "generated_at": "2026-01-08T04:43:08.768781+00:00",
+  "count": 1
+}

@@ -1,0 +1,367 @@
+{
+  "tools": [
+    {
+      "name": "honeycomb_list_environments",
+      "description": "Lists all environments for your authenticated team. Use this to discover existing environments, understand team organization, or before creating API keys scoped to specific environments. Requires management key authentication. The team is automatically detected from your credentials (no team parameter needed). Returns a list of environment objects with their IDs, names, slugs, colors, descriptions, and delete protection status. Environments help organize your telemetry data by separating production, staging, development, etc.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": []
+      },
+      "input_examples": [
+        {}
+      ]
+    },
+    {
+      "name": "honeycomb_get_environment",
+      "description": "Retrieves detailed information about a specific environment by ID, optionally including its datasets. Use this to inspect an environment's configuration or get a complete view of an environment including all its datasets. Requires only the environment ID parameter - the team is automatically detected from your management key. Set with_datasets=true to also return the list of datasets in this environment (useful for understanding environment contents). Returns the environment configuration plus optionally a datasets array with all datasets in this environment.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "env_id": {
+            "type": "string",
+            "description": "The environment ID"
+          },
+          "with_datasets": {
+            "type": "boolean",
+            "description": "Also return list of datasets in this environment"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "env_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "env_id": "hcaen_123"
+        },
+        {
+          "env_id": "hcaen_123",
+          "with_datasets": true
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_create_environment",
+      "description": "Creates a new environment for organizing telemetry data within your authenticated team. Use this when setting up new deployment stages (production, staging, dev), isolating customer data, or creating test environments. Requires only the environment name - the team is automatically detected from your management key. Optional parameters include description for documentation and color (blue, green, gold, red, purple, or light variants) for visual distinction. The environment slug is auto-generated from the name and used for API operations and dataset scoping. New environments are delete-protected by default to prevent accidental deletion.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Environment name"
+          },
+          "description": {
+            "type": "string",
+            "description": "Environment description"
+          },
+          "color": {
+            "type": "string",
+            "description": "Display color (blue, green, gold, red, purple, or light variants)"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "input_examples": [
+        {
+          "name": "Production"
+        },
+        {
+          "name": "Staging",
+          "color": "blue",
+          "description": "Staging env"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_update_environment",
+      "description": "Updates an existing environment's description, color, or delete protection status. Use this to add documentation, change visual appearance, or enable/disable delete protection for production environments. Requires environment ID and at least one of: description, color, or delete_protected (boolean). The team is automatically detected from your credentials. Note: The name and slug cannot be changed after creation. Setting delete_protected=true prevents accidental deletion. To delete a protected environment, you must first update it with delete_protected=false.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "env_id": {
+            "type": "string",
+            "description": "The environment ID"
+          },
+          "description": {
+            "type": "string",
+            "description": "New description"
+          },
+          "color": {
+            "type": "string",
+            "description": "New color"
+          },
+          "delete_protected": {
+            "type": "boolean",
+            "description": "Enable (true) or disable (false) delete protection"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "env_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "env_id": "hcaen_123",
+          "description": "Updated description"
+        },
+        {
+          "env_id": "hcaen_123",
+          "delete_protected": false
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_delete_environment",
+      "description": "Permanently deletes an environment from Honeycomb. Use this when decommissioning deployment stages, cleaning up test environments, or reorganizing team structure. Requires only the environment ID parameter - the team is automatically detected from your management key. Warning: This action cannot be undone. The environment must not be delete-protected. All API keys scoped to this environment will become invalid. Datasets are NOT deleted automatically.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "env_id": {
+            "type": "string",
+            "description": "The environment ID to delete"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "env_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "env_id": "hcaen_123"
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0",
+  "generated_at": "2026-01-08T04:43:08.760707+00:00",
+  "count": 5
+}

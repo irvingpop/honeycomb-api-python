@@ -105,3 +105,6 @@ api.yaml.downloaded
 api.yaml.new
 api.yaml.backup.*
 .openapi-diff.txt
+
+# Claude
+.claude/settings.local.json

@@ -1,0 +1,713 @@
+{
+  "tools": [
+    {
+      "name": "honeycomb_list_burn_alerts",
+      "description": "Lists all burn alerts configured for a specific SLO. Use this to discover existing error budget alerts before creating new ones or when reviewing SLO alerting configuration. Requires both the dataset slug and SLO ID parameters. Returns a list of burn alert objects with their IDs, alert types (exhaustion_time or budget_rate), thresholds, and recipients.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "slo_id": {
+            "type": "string",
+            "description": "The SLO ID to list burn alerts for"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "slo_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "slo_id": "slo-123"
+        },
+        {
+          "dataset": "production",
+          "slo_id": "slo-456"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_get_burn_alert",
+      "description": "Retrieves detailed configuration for a specific burn alert by ID. Use this to inspect an existing burn alert's threshold, alert type, and recipient configuration. Requires both the dataset slug and burn alert ID. Returns the complete burn alert configuration including the SLO it's attached to.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "burn_alert_id": {
+            "type": "string",
+            "description": "The burn alert ID to retrieve"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "burn_alert_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "burn_alert_id": "ba-123"
+        },
+        {
+          "dataset": "production",
+          "burn_alert_id": "ba-456"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_create_burn_alert",
+      "description": "Creates a new burn alert that fires when an SLO's error budget is depleting too quickly. Use this to get early warning when service reliability is degrading, before completely exhausting your error budget. Requires a dataset, the SLO ID to attach to, alert type (exhaustion_time or budget_rate), and threshold value. For exhaustion_time alerts, specify the threshold in minutes (fires when budget will be exhausted in X minutes). For budget_rate alerts, specify threshold as percentage drop within a time window. Recipients are OPTIONAL - omit them to create a silent alert, or include inline recipients (type + target) to create and attach them automatically.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug to create the burn alert in"
+          },
+          "alert_type": {
+            "$ref": "#/$defs/BurnAlertType",
+            "description": "Type of burn alert"
+          },
+          "slo_id": {
+            "description": "ID of the SLO to monitor",
+            "title": "Slo Id",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Description of the burn alert",
+            "title": "Description"
+          },
+          "recipients": {
+            "description": "List of recipients to notify when alert fires",
+            "items": {
+              "$ref": "#/$defs/BurnAlertRecipient"
+            },
+            "title": "Recipients",
+            "type": "array"
+          },
+          "exhaustion_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Minutes until SLO budget exhaustion (for exhaustion_time alerts)",
+            "title": "Exhaustion Minutes"
+          },
+          "budget_rate_window_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Time window in minutes (for budget_rate alerts)",
+            "title": "Budget Rate Window Minutes"
+          },
+          "budget_rate_decrease_threshold_per_million": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Budget decrease threshold per million (for budget_rate alerts)",
+            "title": "Budget Rate Decrease Threshold Per Million"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "alert_type",
+          "slo_id"
+        ],
+        "$defs": {
+          "BurnAlertRecipient": {
+            "description": "A recipient for burn alert notifications.\n\nEither id (recommended) OR type+target (deprecated) must be provided.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "ID of the recipient",
+                "title": "Id"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Type of recipient (email, slack, etc)",
+                "title": "Type"
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Target address (for backwards compat)",
+                "title": "Target"
+              },
+              "details": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Additional details",
+                "title": "Details"
+              }
+            },
+            "title": "BurnAlertRecipient",
+            "type": "object"
+          },
+          "BurnAlertType": {
+            "description": "Burn alert types.",
+            "enum": [
+              "exhaustion_time",
+              "budget_rate"
+            ],
+            "title": "BurnAlertType",
+            "type": "string"
+          }
+        }
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "alert_type": "exhaustion_time",
+          "slo_id": "slo-123",
+          "exhaustion_minutes": 60
+        },
+        {
+          "dataset": "api-logs",
+          "alert_type": "exhaustion_time",
+          "slo_id": "slo-456",
+          "exhaustion_minutes": 60,
+          "recipients": [
+            {
+              "id": "recip-123"
+            }
+          ]
+        },
+        {
+          "dataset": "production",
+          "alert_type": "budget_rate",
+          "slo_id": "slo-789",
+          "budget_rate_window_minutes": 60,
+          "budget_rate_decrease_threshold_per_million": 10000,
+          "description": "Alert when error budget drops by 1% in 1 hour",
+          "recipients": [
+            {
+              "type": "email",
+              "target": "sre@example.com"
+            },
+            {
+              "type": "slack",
+              "target": "#slo-alerts"
+            }
+          ]
+        },
+        {
+          "dataset": "critical-services",
+          "alert_type": "exhaustion_time",
+          "slo_id": "slo-abc",
+          "exhaustion_minutes": 30,
+          "description": "Critical: Budget exhausting in 30 minutes",
+          "recipients": [
+            {
+              "type": "pagerduty",
+              "target": "routing-key-critical",
+              "details": {
+                "severity": "critical"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_update_burn_alert",
+      "description": "Updates an existing burn alert's threshold, recipients, or alert type. Use this to adjust alerting sensitivity as you learn about your service's error budget consumption patterns. Requires the dataset slug, burn alert ID, and the complete updated burn alert configuration. Note: This replaces the entire burn alert configuration, so include all fields you want to preserve.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "burn_alert_id": {
+            "type": "string",
+            "description": "The burn alert ID to update"
+          },
+          "alert_type": {
+            "$ref": "#/$defs/BurnAlertType",
+            "description": "Type of burn alert"
+          },
+          "slo_id": {
+            "description": "ID of the SLO to monitor",
+            "title": "Slo Id",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Description of the burn alert",
+            "title": "Description"
+          },
+          "recipients": {
+            "description": "List of recipients to notify when alert fires",
+            "items": {
+              "$ref": "#/$defs/BurnAlertRecipient"
+            },
+            "title": "Recipients",
+            "type": "array"
+          },
+          "exhaustion_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Minutes until SLO budget exhaustion (for exhaustion_time alerts)",
+            "title": "Exhaustion Minutes"
+          },
+          "budget_rate_window_minutes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Time window in minutes (for budget_rate alerts)",
+            "title": "Budget Rate Window Minutes"
+          },
+          "budget_rate_decrease_threshold_per_million": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Budget decrease threshold per million (for budget_rate alerts)",
+            "title": "Budget Rate Decrease Threshold Per Million"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "burn_alert_id",
+          "alert_type",
+          "slo_id"
+        ],
+        "$defs": {
+          "BurnAlertRecipient": {
+            "description": "A recipient for burn alert notifications.\n\nEither id (recommended) OR type+target (deprecated) must be provided.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "ID of the recipient",
+                "title": "Id"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Type of recipient (email, slack, etc)",
+                "title": "Type"
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Target address (for backwards compat)",
+                "title": "Target"
+              },
+              "details": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Additional details",
+                "title": "Details"
+              }
+            },
+            "title": "BurnAlertRecipient",
+            "type": "object"
+          },
+          "BurnAlertType": {
+            "description": "Burn alert types.",
+            "enum": [
+              "exhaustion_time",
+              "budget_rate"
+            ],
+            "title": "BurnAlertType",
+            "type": "string"
+          }
+        }
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "burn_alert_id": "ba-123",
+          "alert_type": "exhaustion_time",
+          "slo_id": "slo-123",
+          "exhaustion_minutes": 30,
+          "recipients": [
+            {
+              "id": "recip-123"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_delete_burn_alert",
+      "description": "Permanently deletes a burn alert from an SLO. Use this when adjusting SLO alerting strategy or removing redundant burn alerts. Requires both the dataset slug and burn alert ID. Warning: This action cannot be undone. The alert will stop firing immediately.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "burn_alert_id": {
+            "type": "string",
+            "description": "The burn alert ID to delete"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "burn_alert_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "burn_alert_id": "ba-123"
+        },
+        {
+          "dataset": "production",
+          "burn_alert_id": "ba-456"
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0",
+  "generated_at": "2026-01-08T04:43:08.756693+00:00",
+  "count": 5
+}

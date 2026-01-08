@@ -1,0 +1,1356 @@
+{
+  "tools": [
+    {
+      "name": "honeycomb_list_triggers",
+      "description": "Lists all triggers (alerts) configured in a Honeycomb dataset. Use this to discover existing alerting rules before creating new ones or when migrating from another observability platform. Requires the dataset slug parameter to specify which dataset's triggers to retrieve. Returns a list of trigger objects with their IDs, names, thresholds, and recipient configurations.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug to list triggers from"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs"
+        },
+        {
+          "dataset": "production"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_get_trigger",
+      "description": "Retrieves detailed configuration for a specific trigger by ID. Use this to inspect an existing trigger's query specification, threshold settings, frequency, and recipients before modifying or replicating it. Requires both the dataset slug and trigger ID parameters. Returns the complete trigger configuration including the query spec, threshold operator and value, evaluation frequency, and notification recipients.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "trigger_id": {
+            "type": "string",
+            "description": "The trigger ID to retrieve"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "trigger_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "trigger_id": "aBcD123"
+        },
+        {
+          "dataset": "production",
+          "trigger_id": "xyz789"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_create_trigger",
+      "description": "Creates a new trigger (alert) that fires when query results cross a threshold. Use this when setting up alerting rules for service health monitoring, error rates, latency thresholds, or when migrating Datadog monitors to Honeycomb. Requires a dataset, query specification with calculations and filters, threshold operator and value, and evaluation frequency in seconds. The query can be provided inline with calculations, filters, and time range. IMPORTANT: Recipients can be provided inline using the 'recipients' array - each recipient needs 'type' (email/webhook/slack/pagerduty/msteams) and 'target' (email address/URL/channel). Inline recipient creation is PREFERRED - create trigger and recipients in one call for efficiency. Alternatively, you can reference existing recipient IDs. Note: Trigger queries have a maximum time_range of 3600 seconds (1 hour) and support only a single calculation.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug to create the trigger in"
+          },
+          "name": {
+            "description": "Human-readable name for the trigger",
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Longer description",
+            "title": "Description"
+          },
+          "threshold": {
+            "$ref": "#/$defs/TriggerThreshold",
+            "description": "Threshold configuration"
+          },
+          "frequency": {
+            "default": 900,
+            "description": "Check frequency in seconds (60-86400)",
+            "maximum": 86400,
+            "minimum": 60,
+            "title": "Frequency",
+            "type": "integer"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TriggerQuery"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Inline query"
+          },
+          "query_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Reference to saved query",
+            "title": "Query Id"
+          },
+          "disabled": {
+            "default": false,
+            "description": "Whether trigger is disabled",
+            "title": "Disabled",
+            "type": "boolean"
+          },
+          "alert_type": {
+            "$ref": "#/$defs/TriggerAlertType",
+            "default": "on_change",
+            "description": "When to send alerts"
+          },
+          "recipients": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Notification recipients",
+            "title": "Recipients"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Tags for organizing triggers (max 10)",
+            "title": "Tags"
+          },
+          "baseline_details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Baseline threshold configuration for comparing against historical data",
+            "title": "Baseline Details"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "name",
+          "threshold"
+        ],
+        "$defs": {
+          "CalcOp": {
+            "description": "Calculation operations for Honeycomb queries.",
+            "enum": [
+              "COUNT",
+              "SUM",
+              "AVG",
+              "MIN",
+              "MAX",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P25",
+              "P50",
+              "P75",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "COUNT_DISTINCT",
+              "CONCURRENCY",
+              "HEATMAP",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "CalcOp",
+            "type": "string"
+          },
+          "Calculation": {
+            "additionalProperties": false,
+            "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\", alias=\"avg_response\")",
+            "properties": {
+              "op": {
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Column to calculate on",
+                "title": "Column"
+              },
+              "alias": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Alias for the result column",
+                "title": "Alias"
+              }
+            },
+            "required": [
+              "op"
+            ],
+            "title": "Calculation",
+            "type": "object"
+          },
+          "Filter": {
+            "additionalProperties": false,
+            "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS, value=True)\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
+            "properties": {
+              "column": {
+                "description": "Column to filter on",
+                "title": "Column",
+                "type": "string"
+              },
+              "op": {
+                "$ref": "#/$defs/FilterOp",
+                "description": "Filter operator (=, !=, >, <, contains, etc.)"
+              },
+              "value": {
+                "description": "Filter value",
+                "title": "Value"
+              }
+            },
+            "required": [
+              "column",
+              "op",
+              "value"
+            ],
+            "title": "Filter",
+            "type": "object"
+          },
+          "FilterCombination": {
+            "description": "How to combine multiple filters.",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "FilterCombination",
+            "type": "string"
+          },
+          "FilterOp": {
+            "description": "Filter operations for Honeycomb queries and board views.",
+            "enum": [
+              "=",
+              "!=",
+              ">",
+              ">=",
+              "<",
+              "<=",
+              "starts-with",
+              "does-not-start-with",
+              "ends-with",
+              "does-not-end-with",
+              "contains",
+              "does-not-contain",
+              "exists",
+              "does-not-exist",
+              "in",
+              "not-in"
+            ],
+            "title": "FilterOp",
+            "type": "string"
+          },
+          "TriggerAlertType": {
+            "description": "How often to fire an alert when threshold is crossed.",
+            "enum": [
+              "on_change",
+              "on_true"
+            ],
+            "title": "TriggerAlertType",
+            "type": "string"
+          },
+          "TriggerQuery": {
+            "description": "Inline query specification for a trigger.\n\nAccepts both typed models and dicts for flexibility:\n    >>> # Using typed models\n    >>> TriggerQuery(calculations=[Calculation(op=CalcOp.P99, column=\"duration_ms\")])\n\n    >>> # Using dicts\n    >>> TriggerQuery(calculations=[{\"op\": \"P99\", \"column\": \"duration_ms\"}])",
+            "properties": {
+              "time_range": {
+                "default": 900,
+                "description": "Query time range in seconds (300-3600, i.e. 5 min to 1 hour)",
+                "maximum": 3600,
+                "minimum": 300,
+                "title": "Time Range",
+                "type": "integer"
+              },
+              "granularity": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Time granularity in seconds",
+                "title": "Granularity"
+              },
+              "calculations": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/Calculation"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Calculations to perform",
+                "title": "Calculations"
+              },
+              "filters": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/Filter"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Query filters",
+                "title": "Filters"
+              },
+              "breakdowns": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Columns to group by",
+                "title": "Breakdowns"
+              },
+              "filter_combination": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/FilterCombination"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "How to combine filters (AND/OR)",
+                "title": "Filter Combination"
+              }
+            },
+            "title": "TriggerQuery",
+            "type": "object"
+          },
+          "TriggerThreshold": {
+            "description": "Threshold configuration for a trigger.",
+            "properties": {
+              "op": {
+                "$ref": "#/$defs/TriggerThresholdOp",
+                "description": "Comparison operator"
+              },
+              "value": {
+                "description": "Threshold value",
+                "title": "Value",
+                "type": "number"
+              },
+              "exceeded_limit": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Number of times threshold must be exceeded",
+                "title": "Exceeded Limit"
+              }
+            },
+            "required": [
+              "op",
+              "value"
+            ],
+            "title": "TriggerThreshold",
+            "type": "object"
+          },
+          "TriggerThresholdOp": {
+            "description": "Threshold comparison operators.",
+            "enum": [
+              ">",
+              ">=",
+              "<",
+              "<="
+            ],
+            "title": "TriggerThresholdOp",
+            "type": "string"
+          }
+        }
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "name": "High Error Rate",
+          "query": {
+            "time_range": 900,
+            "calculations": [
+              {
+                "op": "COUNT"
+              }
+            ],
+            "filters": [
+              {
+                "column": "status_code",
+                "op": ">=",
+                "value": 500
+              }
+            ]
+          },
+          "threshold": {
+            "op": ">",
+            "value": 100
+          },
+          "frequency": 900
+        },
+        {
+          "dataset": "production",
+          "name": "P99 Latency Alert",
+          "description": "Alerts when P99 latency exceeds 2 seconds",
+          "query": {
+            "time_range": 3600,
+            "calculations": [
+              {
+                "op": "P99",
+                "column": "duration_ms"
+              }
+            ]
+          },
+          "threshold": {
+            "op": ">=",
+            "value": 2000
+          },
+          "frequency": 3600,
+          "recipients": [
+            {
+              "type": "email",
+              "target": "oncall@example.com"
+            }
+          ],
+          "alert_type": "on_change"
+        },
+        {
+          "dataset": "api-logs",
+          "name": "API Gateway Errors",
+          "description": "Monitors error rates for specific service with path filtering",
+          "query": {
+            "time_range": 1800,
+            "calculations": [
+              {
+                "op": "COUNT"
+              }
+            ],
+            "filters": [
+              {
+                "column": "status_code",
+                "op": ">=",
+                "value": 500
+              },
+              {
+                "column": "service_name",
+                "op": "=",
+                "value": "api-gateway"
+              },
+              {
+                "column": "path",
+                "op": "starts-with",
+                "value": "/api/v2"
+              }
+            ],
+            "filter_combination": "AND",
+            "breakdowns": [
+              "endpoint"
+            ]
+          },
+          "threshold": {
+            "op": ">",
+            "value": 50,
+            "exceeded_limit": 2
+          },
+          "frequency": 900,
+          "recipients": [
+            {
+              "type": "slack",
+              "target": "#alerts"
+            },
+            {
+              "type": "pagerduty",
+              "target": "routing-key-123",
+              "details": {
+                "severity": "critical"
+              }
+            }
+          ],
+          "tags": [
+            {
+              "key": "team",
+              "value": "platform"
+            },
+            {
+              "key": "severity",
+              "value": "high"
+            }
+          ]
+        },
+        {
+          "dataset": "traces",
+          "name": "Request Duration Distribution",
+          "query": {
+            "time_range": 3600,
+            "calculations": [
+              {
+                "op": "HEATMAP",
+                "column": "duration_ms"
+              }
+            ]
+          },
+          "threshold": {
+            "op": ">",
+            "value": 1000
+          },
+          "frequency": 3600
+        },
+        {
+          "dataset": "api-logs",
+          "name": "Unique Error Messages",
+          "query": {
+            "time_range": 3600,
+            "calculations": [
+              {
+                "op": "COUNT_DISTINCT",
+                "column": "error_message"
+              }
+            ],
+            "filters": [
+              {
+                "column": "level",
+                "op": "=",
+                "value": "error"
+              }
+            ]
+          },
+          "threshold": {
+            "op": ">",
+            "value": 10
+          },
+          "frequency": 1800
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_update_trigger",
+      "description": "Updates an existing trigger's configuration including its query, threshold, frequency, or recipients. Use this to adjust alerting thresholds, change notification targets, or update query filters as service behavior evolves. Requires the dataset slug, trigger ID, and the complete updated trigger configuration. Note: This replaces the entire trigger configuration, so include all fields you want to preserve.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "trigger_id": {
+            "type": "string",
+            "description": "The trigger ID to update"
+          },
+          "name": {
+            "description": "Human-readable name for the trigger",
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Longer description",
+            "title": "Description"
+          },
+          "threshold": {
+            "$ref": "#/$defs/TriggerThreshold",
+            "description": "Threshold configuration"
+          },
+          "frequency": {
+            "default": 900,
+            "description": "Check frequency in seconds (60-86400)",
+            "maximum": 86400,
+            "minimum": 60,
+            "title": "Frequency",
+            "type": "integer"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TriggerQuery"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Inline query"
+          },
+          "query_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Reference to saved query",
+            "title": "Query Id"
+          },
+          "disabled": {
+            "default": false,
+            "description": "Whether trigger is disabled",
+            "title": "Disabled",
+            "type": "boolean"
+          },
+          "alert_type": {
+            "$ref": "#/$defs/TriggerAlertType",
+            "default": "on_change",
+            "description": "When to send alerts"
+          },
+          "recipients": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": true,
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Notification recipients",
+            "title": "Recipients"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Tags for organizing triggers (max 10)",
+            "title": "Tags"
+          },
+          "baseline_details": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Baseline threshold configuration for comparing against historical data",
+            "title": "Baseline Details"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "trigger_id",
+          "name",
+          "threshold"
+        ],
+        "$defs": {
+          "CalcOp": {
+            "description": "Calculation operations for Honeycomb queries.",
+            "enum": [
+              "COUNT",
+              "SUM",
+              "AVG",
+              "MIN",
+              "MAX",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P25",
+              "P50",
+              "P75",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "COUNT_DISTINCT",
+              "CONCURRENCY",
+              "HEATMAP",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "CalcOp",
+            "type": "string"
+          },
+          "Calculation": {
+            "additionalProperties": false,
+            "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\", alias=\"avg_response\")",
+            "properties": {
+              "op": {
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Column to calculate on",
+                "title": "Column"
+              },
+              "alias": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Alias for the result column",
+                "title": "Alias"
+              }
+            },
+            "required": [
+              "op"
+            ],
+            "title": "Calculation",
+            "type": "object"
+          },
+          "Filter": {
+            "additionalProperties": false,
+            "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS, value=True)\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
+            "properties": {
+              "column": {
+                "description": "Column to filter on",
+                "title": "Column",
+                "type": "string"
+              },
+              "op": {
+                "$ref": "#/$defs/FilterOp",
+                "description": "Filter operator (=, !=, >, <, contains, etc.)"
+              },
+              "value": {
+                "description": "Filter value",
+                "title": "Value"
+              }
+            },
+            "required": [
+              "column",
+              "op",
+              "value"
+            ],
+            "title": "Filter",
+            "type": "object"
+          },
+          "FilterCombination": {
+            "description": "How to combine multiple filters.",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "FilterCombination",
+            "type": "string"
+          },
+          "FilterOp": {
+            "description": "Filter operations for Honeycomb queries and board views.",
+            "enum": [
+              "=",
+              "!=",
+              ">",
+              ">=",
+              "<",
+              "<=",
+              "starts-with",
+              "does-not-start-with",
+              "ends-with",
+              "does-not-end-with",
+              "contains",
+              "does-not-contain",
+              "exists",
+              "does-not-exist",
+              "in",
+              "not-in"
+            ],
+            "title": "FilterOp",
+            "type": "string"
+          },
+          "TriggerAlertType": {
+            "description": "How often to fire an alert when threshold is crossed.",
+            "enum": [
+              "on_change",
+              "on_true"
+            ],
+            "title": "TriggerAlertType",
+            "type": "string"
+          },
+          "TriggerQuery": {
+            "description": "Inline query specification for a trigger.\n\nAccepts both typed models and dicts for flexibility:\n    >>> # Using typed models\n    >>> TriggerQuery(calculations=[Calculation(op=CalcOp.P99, column=\"duration_ms\")])\n\n    >>> # Using dicts\n    >>> TriggerQuery(calculations=[{\"op\": \"P99\", \"column\": \"duration_ms\"}])",
+            "properties": {
+              "time_range": {
+                "default": 900,
+                "description": "Query time range in seconds (300-3600, i.e. 5 min to 1 hour)",
+                "maximum": 3600,
+                "minimum": 300,
+                "title": "Time Range",
+                "type": "integer"
+              },
+              "granularity": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Time granularity in seconds",
+                "title": "Granularity"
+              },
+              "calculations": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/Calculation"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "description": "Calculations to perform",
+                "title": "Calculations"
+              },
+              "filters": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "anyOf": [
+                        {
+                          "$ref": "#/$defs/Filter"
+                        },
+                        {
+                          "additionalProperties": true,
+                          "type": "object"
+                        }
+                      ]
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Query filters",
+                "title": "Filters"
+              },
+              "breakdowns": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Columns to group by",
+                "title": "Breakdowns"
+              },
+              "filter_combination": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/FilterCombination"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "How to combine filters (AND/OR)",
+                "title": "Filter Combination"
+              }
+            },
+            "title": "TriggerQuery",
+            "type": "object"
+          },
+          "TriggerThreshold": {
+            "description": "Threshold configuration for a trigger.",
+            "properties": {
+              "op": {
+                "$ref": "#/$defs/TriggerThresholdOp",
+                "description": "Comparison operator"
+              },
+              "value": {
+                "description": "Threshold value",
+                "title": "Value",
+                "type": "number"
+              },
+              "exceeded_limit": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Number of times threshold must be exceeded",
+                "title": "Exceeded Limit"
+              }
+            },
+            "required": [
+              "op",
+              "value"
+            ],
+            "title": "TriggerThreshold",
+            "type": "object"
+          },
+          "TriggerThresholdOp": {
+            "description": "Threshold comparison operators.",
+            "enum": [
+              ">",
+              ">=",
+              "<",
+              "<="
+            ],
+            "title": "TriggerThresholdOp",
+            "type": "string"
+          }
+        }
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "trigger_id": "abc123",
+          "name": "Updated High Error Rate",
+          "query": {
+            "time_range": 900,
+            "calculations": [
+              {
+                "op": "COUNT"
+              }
+            ],
+            "filters": [
+              {
+                "column": "status_code",
+                "op": ">=",
+                "value": 500
+              }
+            ]
+          },
+          "threshold": {
+            "op": ">",
+            "value": 150
+          },
+          "frequency": 900
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_delete_trigger",
+      "description": "Permanently deletes a trigger from Honeycomb. Use this when decommissioning services, consolidating redundant alerts, or cleaning up test triggers. Requires both the dataset slug and trigger ID. Warning: This action cannot be undone. The trigger will stop firing immediately and historical alert data will be lost.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "trigger_id": {
+            "type": "string",
+            "description": "The trigger ID to delete"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "trigger_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "trigger_id": "abc123"
+        },
+        {
+          "dataset": "production",
+          "trigger_id": "xyz789"
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0",
+  "generated_at": "2026-01-08T04:43:08.775466+00:00",
+  "count": 5
+}
