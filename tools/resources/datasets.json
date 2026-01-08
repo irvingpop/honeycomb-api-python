@@ -1,0 +1,400 @@
+{
+  "tools": [
+    {
+      "name": "honeycomb_list_datasets",
+      "description": "Lists all datasets in your Honeycomb environment (no parameters required). Use this to discover existing datasets before creating new ones, when setting up observability for a new service, or when migrating data from another platform. This operation requires no parameters - it automatically lists all datasets you have access to. Returns a list of dataset objects including their slugs, names, descriptions, and metadata like creation timestamps and column counts.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": []
+      },
+      "input_examples": [
+        {}
+      ]
+    },
+    {
+      "name": "honeycomb_get_dataset",
+      "description": "Retrieves detailed information about a specific dataset by its slug. Use this to inspect a dataset's configuration including its name, description, JSON expansion settings, and usage statistics. Requires the dataset slug parameter. Returns the complete dataset configuration including creation timestamp, last written timestamp, and regular columns count.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "The dataset slug to retrieve"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "slug"
+        ]
+      },
+      "input_examples": [
+        {
+          "slug": "api-logs"
+        },
+        {
+          "slug": "production"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_create_dataset",
+      "description": "Creates a new dataset to store telemetry data in Honeycomb. Use this when setting up observability for a new service, creating test environments, or segmenting data by application or team. Requires a name parameter which will be converted to a URL-safe slug. Optional parameters include description for documentation and expand_json_depth (0-10) to automatically expand nested JSON fields into separate columns. The dataset slug will be automatically generated from the name and used for API operations.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "description": "Human-readable name for the dataset",
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Longer description",
+            "title": "Description"
+          },
+          "expand_json_depth": {
+            "default": 0,
+            "description": "Depth to expand JSON fields (0-10)",
+            "maximum": 10,
+            "minimum": 0,
+            "title": "Expand Json Depth",
+            "type": "integer"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "input_examples": [
+        {
+          "name": "api-logs"
+        },
+        {
+          "name": "production-logs",
+          "description": "Production API logs from main services"
+        },
+        {
+          "name": "trace-data",
+          "description": "Distributed traces with nested JSON",
+          "expand_json_depth": 3
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_update_dataset",
+      "description": "Updates an existing dataset's name, description, or JSON expansion settings. Use this to correct dataset metadata, add documentation, or adjust JSON parsing behavior as your schema evolves. Requires the dataset slug and the complete updated configuration. Note: The slug itself cannot be changed. Changing expand_json_depth only affects new events, not existing data.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "The dataset slug to update"
+          },
+          "name": {
+            "description": "Human-readable name for the dataset",
+            "title": "Name",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Longer description",
+            "title": "Description"
+          },
+          "expand_json_depth": {
+            "default": 0,
+            "description": "Depth to expand JSON fields (0-10)",
+            "maximum": 10,
+            "minimum": 0,
+            "title": "Expand Json Depth",
+            "type": "integer"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "slug",
+          "name"
+        ]
+      },
+      "input_examples": [
+        {
+          "slug": "api-logs",
+          "name": "API Logs",
+          "description": "Updated description"
+        },
+        {
+          "slug": "production",
+          "name": "Production",
+          "expand_json_depth": 5
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_delete_dataset",
+      "description": "Permanently deletes a dataset and all its data from Honeycomb. Use this when decommissioning services, cleaning up test datasets, or consolidating data storage. Requires the dataset slug parameter. Warning: This action cannot be undone. All events, columns, queries, triggers, and SLOs in this dataset will be permanently deleted.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "slug": {
+            "type": "string",
+            "description": "The dataset slug to delete"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "slug"
+        ]
+      },
+      "input_examples": [
+        {
+          "slug": "test-dataset"
+        },
+        {
+          "slug": "old-logs"
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0",
+  "generated_at": "2026-01-08T04:43:08.759041+00:00",
+  "count": 5
+}

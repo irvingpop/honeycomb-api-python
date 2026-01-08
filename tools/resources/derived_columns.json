@@ -1,0 +1,433 @@
+{
+  "tools": [
+    {
+      "name": "honeycomb_list_derived_columns",
+      "description": "Lists all derived columns (calculated fields) in a dataset. Use this to discover existing calculated fields before creating new ones, understand available computed metrics, or audit data transformations. Requires the dataset slug parameter (use '__all__' to list environment-wide derived columns). Returns a list of derived column objects including their IDs, aliases, expressions, and descriptions.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug to list derived columns from (use '__all__' for environment-wide)"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs"
+        },
+        {
+          "dataset": "__all__"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_get_derived_column",
+      "description": "Retrieves detailed configuration for a specific derived column by ID. Use this to inspect a derived column's expression syntax, alias, and description before modifying it. Requires both the dataset slug and derived column ID parameters. Returns the complete derived column configuration including the calculation expression and metadata.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "derived_column_id": {
+            "type": "string",
+            "description": "The derived column ID to retrieve"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "derived_column_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "derived_column_id": "dc-123"
+        },
+        {
+          "dataset": "__all__",
+          "derived_column_id": "dc-456"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_create_derived_column",
+      "description": "Creates a new standalone derived column that calculates values from event fields using expressions. Use this for general-purpose computed metrics, data normalization, or calculations that will be used in multiple queries. NOTE: If you are creating a derived column specifically for an SLO, use honeycomb_create_slo instead with an inline SLI expression - it creates both in one operation. Requires the dataset slug (use '__all__' for environment-wide), an alias (the column name), and an expression. Optional description parameter documents the column's purpose for team members. \nEXPRESSION SYNTAX REFERENCE:\n- Column refs: $column_name or $\"column with spaces\" (CASE-SENSITIVE)\n- Strings: double quotes (\"value\")\n- Regex patterns: backticks (`pattern`)\n- DCs operate on ONE ROW at a time - they are NOT aggregation functions\n\nCONDITIONALS:\n- IF(cond, true_val, false_val) - e.g., IF(LT($status, 400), \"ok\", \"error\")\n- SWITCH($field, \"case1\", result1, \"case2\", result2, default) - string matching\n- COALESCE(a, b, c) - first non-null value\n\nCOMPARISONS (return bool):\n- LT, LTE, GT, GTE - e.g., LT($duration_ms, 1000)\n- EQUALS($a, $b) - e.g., EQUALS($method, \"GET\")\n- IN($field, val1, val2, ...) - e.g., IN($status, 200, 201, 204)\n\nBOOLEAN:\n- EXISTS($field) - true if field is non-null\n- NOT(cond), AND(a, b, ...), OR(a, b, ...)\n\nMATH: MIN, MAX, SUM, SUB, MUL, DIV, MOD, LOG10\n\nSTRING:\n- CONCAT($a, \" \", $b) - join strings\n- STARTS_WITH($str, \"prefix\"), ENDS_WITH, CONTAINS - return bool\n- TO_LOWER($str), LENGTH($str)\n\nREGEX (use backticks for patterns):\n- REG_MATCH($str, `pattern`) - returns bool\n- REG_VALUE($str, `^/api/(.+)`) - extracts first capture group\n- REG_COUNT($str, `pattern`) - count matches\n\nTIME:\n- EVENT_TIMESTAMP() - event time as Unix timestamp\n- UNIX_TIMESTAMP($field) - parse field as timestamp\n- FORMAT_TIME(\"%Y-%m-%d\", $timestamp_field) - strftime formatting\n\nDATA: BUCKET($val, size) - numeric bucketing\n\nTYPE CONVERSION: INT(), FLOAT(), BOOL(), STRING()\n\nCOMMON PATTERNS:\n- SLI for SLOs (MUST return boolean; 1/0 coerced to true/false): LT($status_code, 500)\n- Root span detection: NOT(EXISTS($trace.parent_id))\n- Error classification: IF(GTE($status, 500), \"server_error\", IF(GTE($status, 400), \"client_error\", \"success\"))\n",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug (use '__all__' for environment-wide)"
+          },
+          "alias": {
+            "description": "Name of the derived column",
+            "title": "Alias",
+            "type": "string"
+          },
+          "expression": {
+            "description": "Expression to calculate the value. See https://docs.honeycomb.io/reference/derived-column-formula/",
+            "title": "Expression",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Human-readable description",
+            "title": "Description"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "alias",
+          "expression"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "alias": "is_error",
+          "expression": "IF(GTE($status_code, 500), 1, 0)",
+          "description": "1 if error, 0 otherwise"
+        },
+        {
+          "dataset": "api-logs",
+          "alias": "status_category",
+          "expression": "IF(LT($status_code, 400), 'success', IF(LT($status_code, 500), 'client_error', 'server_error'))"
+        },
+        {
+          "dataset": "__all__",
+          "alias": "request_success",
+          "expression": "IF(LT($status_code, 400), 1, 0)",
+          "description": "Success indicator for all datasets"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_update_derived_column",
+      "description": "Updates an existing derived column's alias, expression, or description. Use this to fix calculation logic, rename computed fields, or improve documentation as your understanding evolves. Requires the dataset slug, derived column ID, and the complete updated configuration. Note: Changing the expression only affects new queries - existing query results are not recalculated. \nEXPRESSION SYNTAX REFERENCE:\n- Column refs: $column_name or $\"column with spaces\" (CASE-SENSITIVE)\n- Strings: double quotes (\"value\")\n- Regex patterns: backticks (`pattern`)\n- DCs operate on ONE ROW at a time - they are NOT aggregation functions\n\nCONDITIONALS:\n- IF(cond, true_val, false_val) - e.g., IF(LT($status, 400), \"ok\", \"error\")\n- SWITCH($field, \"case1\", result1, \"case2\", result2, default) - string matching\n- COALESCE(a, b, c) - first non-null value\n\nCOMPARISONS (return bool):\n- LT, LTE, GT, GTE - e.g., LT($duration_ms, 1000)\n- EQUALS($a, $b) - e.g., EQUALS($method, \"GET\")\n- IN($field, val1, val2, ...) - e.g., IN($status, 200, 201, 204)\n\nBOOLEAN:\n- EXISTS($field) - true if field is non-null\n- NOT(cond), AND(a, b, ...), OR(a, b, ...)\n\nMATH: MIN, MAX, SUM, SUB, MUL, DIV, MOD, LOG10\n\nSTRING:\n- CONCAT($a, \" \", $b) - join strings\n- STARTS_WITH($str, \"prefix\"), ENDS_WITH, CONTAINS - return bool\n- TO_LOWER($str), LENGTH($str)\n\nREGEX (use backticks for patterns):\n- REG_MATCH($str, `pattern`) - returns bool\n- REG_VALUE($str, `^/api/(.+)`) - extracts first capture group\n- REG_COUNT($str, `pattern`) - count matches\n\nTIME:\n- EVENT_TIMESTAMP() - event time as Unix timestamp\n- UNIX_TIMESTAMP($field) - parse field as timestamp\n- FORMAT_TIME(\"%Y-%m-%d\", $timestamp_field) - strftime formatting\n\nDATA: BUCKET($val, size) - numeric bucketing\n\nTYPE CONVERSION: INT(), FLOAT(), BOOL(), STRING()\n\nCOMMON PATTERNS:\n- SLI for SLOs (MUST return boolean; 1/0 coerced to true/false): LT($status_code, 500)\n- Root span detection: NOT(EXISTS($trace.parent_id))\n- Error classification: IF(GTE($status, 500), \"server_error\", IF(GTE($status, 400), \"client_error\", \"success\"))\n",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "derived_column_id": {
+            "type": "string",
+            "description": "The derived column ID to update"
+          },
+          "alias": {
+            "description": "Name of the derived column",
+            "title": "Alias",
+            "type": "string"
+          },
+          "expression": {
+            "description": "Expression to calculate the value. See https://docs.honeycomb.io/reference/derived-column-formula/",
+            "title": "Expression",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Human-readable description",
+            "title": "Description"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "derived_column_id",
+          "alias",
+          "expression"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "derived_column_id": "dc-123",
+          "alias": "is_error",
+          "expression": "IF(GTE($status_code, 500), 1, 0)",
+          "description": "Updated error flag"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_delete_derived_column",
+      "description": "Permanently deletes a derived column from a dataset. Use this when removing unused calculated fields or cleaning up temporary analysis columns. Requires both the dataset slug and derived column ID parameters. Warning: This action cannot be undone. SLOs, triggers, or queries using this derived column may break if they reference it.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "derived_column_id": {
+            "type": "string",
+            "description": "The derived column ID to delete"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "derived_column_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "derived_column_id": "dc-123"
+        },
+        {
+          "dataset": "__all__",
+          "derived_column_id": "dc-456"
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0",
+  "generated_at": "2026-01-08T04:43:08.759951+00:00",
+  "count": 5
+}

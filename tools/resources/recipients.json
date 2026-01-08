@@ -1,0 +1,486 @@
+{
+  "tools": [
+    {
+      "name": "honeycomb_list_recipients",
+      "description": "Lists all notification recipients configured in your Honeycomb environment (no parameters required). Use this to discover existing notification targets before creating triggers, avoid duplicate recipients, or audit alerting destinations. This operation requires no parameters - it automatically lists all recipients across all types (email, Slack, PagerDuty, webhooks, MS Teams). Returns a list of recipient objects including their IDs, types, and configuration details.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": []
+      },
+      "input_examples": [
+        {}
+      ]
+    },
+    {
+      "name": "honeycomb_get_recipient",
+      "description": "Retrieves detailed configuration for a specific recipient by ID. Use this to inspect a recipient's type and delivery details before updating it or when troubleshooting notification issues. Requires the recipient ID parameter. Returns the complete recipient configuration including type-specific details like email addresses, Slack channels, or webhook URLs.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "recipient_id": {
+            "type": "string",
+            "description": "The recipient ID to retrieve"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "recipient_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "recipient_id": "rec-123"
+        },
+        {
+          "recipient_id": "rec-456"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_create_recipient",
+      "description": "Creates a new notification recipient for alert delivery. Use this when setting up alerting for triggers or burn alerts, adding new on-call notification channels, or migrating alert destinations from another platform. Requires a type (email, slack, pagerduty, webhook, msteams) and type-specific details object. For email: provide 'email_address'. For Slack: provide 'channel'. For PagerDuty: provide 'routing_key'. For webhooks: provide 'url' and optionally 'secret'. Recipients can be referenced by ID when creating or updating triggers and burn alerts.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "$ref": "#/$defs/RecipientType",
+            "description": "Type of recipient"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Recipient-specific configuration (varies by type)",
+            "title": "Details",
+            "type": "object"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "type",
+          "details"
+        ],
+        "$defs": {
+          "RecipientType": {
+            "description": "Recipient notification types.",
+            "enum": [
+              "email",
+              "slack",
+              "pagerduty",
+              "webhook",
+              "msteams",
+              "msteams_workflow"
+            ],
+            "title": "RecipientType",
+            "type": "string"
+          }
+        }
+      },
+      "input_examples": [
+        {
+          "type": "email",
+          "details": {
+            "email_address": "alerts@example.com"
+          }
+        },
+        {
+          "type": "slack",
+          "details": {
+            "channel": "#alerts"
+          }
+        },
+        {
+          "type": "pagerduty",
+          "details": {
+            "routing_key": "abc123def456"
+          }
+        },
+        {
+          "type": "webhook",
+          "details": {
+            "url": "https://hooks.example.com/alerts",
+            "secret": "webhook-secret-key"
+          }
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_update_recipient",
+      "description": "Updates an existing recipient's configuration including its type or delivery details. Use this to change notification destinations, update Slack channels, rotate webhook secrets, or fix incorrect email addresses. Requires the recipient ID and the complete updated recipient configuration. Note: This replaces the entire recipient configuration, so include all fields you want to preserve.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "recipient_id": {
+            "type": "string",
+            "description": "The recipient ID to update"
+          },
+          "type": {
+            "$ref": "#/$defs/RecipientType",
+            "description": "Type of recipient"
+          },
+          "details": {
+            "additionalProperties": true,
+            "description": "Recipient-specific configuration (varies by type)",
+            "title": "Details",
+            "type": "object"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "recipient_id",
+          "type",
+          "details"
+        ],
+        "$defs": {
+          "RecipientType": {
+            "description": "Recipient notification types.",
+            "enum": [
+              "email",
+              "slack",
+              "pagerduty",
+              "webhook",
+              "msteams",
+              "msteams_workflow"
+            ],
+            "title": "RecipientType",
+            "type": "string"
+          }
+        }
+      },
+      "input_examples": [
+        {
+          "recipient_id": "rec-123",
+          "type": "email",
+          "details": {
+            "email_address": "new-alerts@example.com"
+          }
+        },
+        {
+          "recipient_id": "rec-456",
+          "type": "slack",
+          "details": {
+            "channel": "#new-alerts"
+          }
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_delete_recipient",
+      "description": "Permanently deletes a recipient from Honeycomb. Use this when removing unused notification channels, cleaning up test recipients, or decommissioning alert destinations. Requires the recipient ID parameter. Warning: This action cannot be undone. Any triggers or burn alerts using this recipient will have it removed from their notification list.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "recipient_id": {
+            "type": "string",
+            "description": "The recipient ID to delete"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "recipient_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "recipient_id": "rec-123"
+        },
+        {
+          "recipient_id": "rec-456"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_get_recipient_triggers",
+      "description": "Retrieves all triggers that are configured to send notifications to a specific recipient. Use this before deleting a recipient to understand impact, when auditing alert routing, or troubleshooting why notifications aren't being sent. Requires the recipient ID parameter. Returns a list of trigger objects that reference this recipient, showing which datasets and alerts would be affected by changes.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "recipient_id": {
+            "type": "string",
+            "description": "The recipient ID to get associated triggers for"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "recipient_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "recipient_id": "rec-123"
+        },
+        {
+          "recipient_id": "rec-456"
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0",
+  "generated_at": "2026-01-08T04:43:08.767782+00:00",
+  "count": 6
+}

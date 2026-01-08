@@ -1,0 +1,391 @@
+{
+  "tools": [
+    {
+      "name": "honeycomb_list_marker_settings",
+      "description": "Lists all marker type-to-color mappings for a dataset. Use this as the primary way to view all marker settings, see which marker types have custom colors, or audit marker visualization configuration. Requires the dataset slug parameter (or '__all__' for environment-wide settings). Returns a list of all marker settings showing type names (e.g., 'deploy', 'incident') and their associated hex color codes.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug (or '__all__' for environment-wide)"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs"
+        },
+        {
+          "dataset": "__all__"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_get_marker_setting",
+      "description": "Retrieves a specific marker setting by its ID. Use this rarely when you need a specific setting by ID - prefer list_marker_settings to view all settings. Requires both the dataset slug and setting ID parameters. Returns the marker setting configuration including type name and color code.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "setting_id": {
+            "type": "string",
+            "description": "The marker setting ID"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "setting_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "setting_id": "set-123"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_create_marker_setting",
+      "description": "Creates a new marker type-to-color mapping. Use this to assign colors to marker types for visual consistency (e.g., deployments in green, incidents in red). Requires the dataset slug (or '__all__' for environment-wide), marker type name, and hex color code (e.g., '#00FF00'). Once created, all markers of this type will display in the specified color on graphs and timelines.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug (or '__all__' for environment-wide)"
+          },
+          "type": {
+            "description": "Marker type to configure",
+            "title": "Type",
+            "type": "string"
+          },
+          "color": {
+            "description": "Hex color code (e.g., '#F96E11')",
+            "title": "Color",
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "type",
+          "color"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "type": "deploy",
+          "color": "#00FF00"
+        },
+        {
+          "dataset": "__all__",
+          "type": "incident",
+          "color": "#FF0000"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_update_marker_setting",
+      "description": "Updates an existing marker setting's type or color. Use this to change marker colors for better visual distinction or rename marker types. Requires the dataset slug, setting ID, and updated configuration (type and color). The color change applies immediately to all existing and future markers of this type.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "setting_id": {
+            "type": "string",
+            "description": "The marker setting ID to update"
+          },
+          "type": {
+            "description": "Marker type to configure",
+            "title": "Type",
+            "type": "string"
+          },
+          "color": {
+            "description": "Hex color code (e.g., '#F96E11')",
+            "title": "Color",
+            "type": "string"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "setting_id",
+          "type",
+          "color"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "setting_id": "set-123",
+          "type": "deploy",
+          "color": "#0000FF"
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_delete_marker_setting",
+      "description": "Permanently deletes a marker setting. Use this when removing unused marker types or resetting color customizations. Requires both the dataset slug and setting ID parameters. Warning: Existing markers of this type will lose their custom color and revert to default visualization.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "type": "string",
+            "description": "The dataset slug"
+          },
+          "setting_id": {
+            "type": "string",
+            "description": "The marker setting ID to delete"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "dataset",
+          "setting_id"
+        ]
+      },
+      "input_examples": [
+        {
+          "dataset": "api-logs",
+          "setting_id": "set-123"
+        }
+      ]
+    }
+  ],
+  "version": "0.1.0",
+  "generated_at": "2026-01-08T04:43:08.761813+00:00",
+  "count": 5
+}

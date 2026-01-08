@@ -41,7 +41,7 @@ help:
 	@echo "  make validate-docs  Validate all documentation code examples"
 	@echo ""
 	@echo "Claude Tools:"
-	@echo "  make generate-tools Generate Claude tool definitions (JSON)"
+	@echo "  make generate-tools Generate Claude tool definitions (all + per-resource JSON)"
 	@echo "  make validate-tools Validate generated tool definitions"
 	@echo ""
 	@echo "OpenAPI Spec Management:"
@@ -173,8 +173,15 @@ validate-docs:
 
 generate-tools:
 	@mkdir -p tools
+	@echo "Generating monolithic tool definitions..."
 	poetry run python -m honeycomb.tools generate --output tools/honeycomb_tools.json
-	@echo "Generated: tools/honeycomb_tools.json"
+	@echo ""
+	@echo "Generating per-resource tool definitions..."
+	poetry run python -m honeycomb.tools generate --per-resource --output-dir tools/resources
+	@echo ""
+	@echo "Generated:"
+	@echo "  - tools/honeycomb_tools.json (all tools)"
+	@echo "  - tools/resources/*.json (per-resource)"
 
 validate-tools:
 	@if [ ! -f tools/honeycomb_tools.json ]; then \
