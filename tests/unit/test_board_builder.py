@@ -313,13 +313,22 @@ class TestBoardBuilderComplexScenarios:
 
     def test_complete_manual_layout_board(self):
         """Test complete board with manual layout."""
+        from honeycomb.models.tool_inputs import PositionInput
+
         bundle = (
             BoardBuilder("Custom Layout")
             .description("Precisely positioned dashboard")
             .manual_layout()
-            .query("query-1", "annot-1", position=(0, 0, 8, 6))
-            .slo("slo-1", position=(8, 0, 4, 6))
-            .text("## Notes", position=(0, 6, 12, 2))
+            .query(
+                "query-1",
+                "annot-1",
+                position=PositionInput(x_coordinate=0, y_coordinate=0, width=8, height=6),
+            )
+            .slo("slo-1", position=PositionInput(x_coordinate=8, y_coordinate=0, width=4, height=6))
+            .text(
+                "## Notes",
+                position=PositionInput(x_coordinate=0, y_coordinate=6, width=12, height=2),
+            )
             .build()
         )
 
@@ -330,9 +339,26 @@ class TestBoardBuilderComplexScenarios:
         assert len(bundle.text_panels) == 1
 
         # Verify all panels have positions
-        assert bundle.existing_query_panels[0].position == (0, 0, 8, 6)
-        assert bundle.existing_slo_panels[0].position == (8, 0, 4, 6)
-        assert bundle.text_panels[0].position == (0, 6, 12, 2)
+        pos1 = bundle.existing_query_panels[0].position
+        assert pos1 is not None
+        assert pos1.x_coordinate == 0
+        assert pos1.y_coordinate == 0
+        assert pos1.width == 8
+        assert pos1.height == 6
+
+        pos2 = bundle.existing_slo_panels[0].position
+        assert pos2 is not None
+        assert pos2.x_coordinate == 8
+        assert pos2.y_coordinate == 0
+        assert pos2.width == 4
+        assert pos2.height == 6
+
+        pos3 = bundle.text_panels[0].position
+        assert pos3 is not None
+        assert pos3.x_coordinate == 0
+        assert pos3.y_coordinate == 6
+        assert pos3.width == 12
+        assert pos3.height == 2
 
 
 class TestBoardBuilderViews:

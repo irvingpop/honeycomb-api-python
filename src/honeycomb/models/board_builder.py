@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from honeycomb.models.boards import BoardViewCreate, BoardViewFilter
 from honeycomb.models.tags_mixin import TagsMixin
+from honeycomb.models.tool_inputs import PositionInput
 
 if TYPE_CHECKING:
     from honeycomb.models.query_builder import QueryBuilder
@@ -24,14 +25,14 @@ class QueryBuilderPanel:
 
     Attributes:
         builder: QueryBuilder instance with .name() set
-        position: Optional (x, y, width, height) for manual layout
+        position: Optional PositionInput for manual layout
         style: Display style (graph, table, combo)
         visualization: Optional visualization settings dict
         dataset_override: Optional dataset override
     """
 
     builder: QueryBuilder
-    position: tuple[int, int, int, int] | None
+    position: PositionInput | None
     style: Literal["graph", "table", "combo"]
     visualization: dict[str, Any] | None
     dataset_override: str | None
@@ -44,7 +45,7 @@ class ExistingQueryPanel:
     Attributes:
         query_id: ID of saved query
         annotation_id: Annotation ID of query
-        position: Optional (x, y, width, height) for manual layout
+        position: Optional PositionInput for manual layout
         style: Display style (graph, table, combo)
         visualization: Optional visualization settings dict
         dataset: Optional dataset name
@@ -52,7 +53,7 @@ class ExistingQueryPanel:
 
     query_id: str
     annotation_id: str
-    position: tuple[int, int, int, int] | None
+    position: PositionInput | None
     style: Literal["graph", "table", "combo"]
     visualization: dict[str, Any] | None
     dataset: str | None
@@ -64,11 +65,11 @@ class SLOBuilderPanel:
 
     Attributes:
         builder: SLOBuilder instance
-        position: Optional (x, y, width, height) for manual layout
+        position: Optional PositionInput for manual layout
     """
 
     builder: SLOBuilder
-    position: tuple[int, int, int, int] | None
+    position: PositionInput | None
 
 
 @dataclass
@@ -77,11 +78,11 @@ class ExistingSLOPanel:
 
     Attributes:
         slo_id: ID of the SLO
-        position: Optional (x, y, width, height) for manual layout
+        position: Optional PositionInput for manual layout
     """
 
     slo_id: str
-    position: tuple[int, int, int, int] | None
+    position: PositionInput | None
 
 
 @dataclass
@@ -90,11 +91,11 @@ class TextPanel:
 
     Attributes:
         content: Markdown text content
-        position: Optional (x, y, width, height) for manual layout
+        position: Optional PositionInput for manual layout
     """
 
     content: str
-    position: tuple[int, int, int, int] | None
+    position: PositionInput | None
 
 
 @dataclass
@@ -150,15 +151,17 @@ class BoardBuilder(TagsMixin):
             .build()
         )
 
-    Example - Manual layout with tuple positioning:
+    Example - Manual layout with PositionInput:
+        from honeycomb.models.tool_inputs import PositionInput
+
         board = await client.boards.create_from_bundle_async(
             BoardBuilder("Custom Layout")
             .manual_layout()
             .query(
                 QueryBuilder("Requests").dataset("api-logs").last_1_hour().count(),
-                position=(0, 0, 8, 6)
+                position=PositionInput(x_coordinate=0, y_coordinate=0, width=8, height=6)
             )
-            .slo("slo-id-1", position=(8, 0, 4, 6))
+            .slo("slo-id-1", position=PositionInput(x_coordinate=8, y_coordinate=0, width=4, height=6))
             .build()
         )
     """
@@ -236,7 +239,7 @@ class BoardBuilder(TagsMixin):
         query: QueryBuilder | str,
         annotation_id: str | None = None,
         *,
-        position: tuple[int, int, int, int] | None = None,
+        position: PositionInput | None = None,
         style: Literal["graph", "table", "combo"] = "graph",
         visualization: dict[str, Any] | None = None,
         dataset: str | None = None,
@@ -246,12 +249,14 @@ class BoardBuilder(TagsMixin):
         Args:
             query: QueryBuilder with .name() OR existing query_id string
             annotation_id: Required only if query is string
-            position: (x, y, width, height) for manual layout
+            position: PositionInput for manual layout
             style: graph | table | combo
             visualization: {"hide_markers": True, "utc_xaxis": True, ...}
             dataset: Override QueryBuilder's dataset
 
         Example - Inline QueryBuilder:
+            from honeycomb.models.tool_inputs import PositionInput
+
             .query(
                 QueryBuilder("Request Count")
                     .dataset("api-logs")
@@ -259,7 +264,7 @@ class BoardBuilder(TagsMixin):
                     .count()
                     .group_by("service")
                     .description("Requests by service over 24h"),
-                position=(0, 0, 9, 6),
+                position=PositionInput(x_coordinate=0, y_coordinate=0, width=9, height=6),
                 style="graph",
                 visualization={"hide_markers": True, "utc_xaxis": True}
             )
@@ -302,25 +307,27 @@ class BoardBuilder(TagsMixin):
         self,
         slo: SLOBuilder | str,
         *,
-        position: tuple[int, int, int, int] | None = None,
+        position: PositionInput | None = None,
     ) -> BoardBuilder:
         """Add an SLO panel.
 
         Args:
             slo: SLOBuilder instance OR existing SLO ID string
-            position: (x, y, width, height) for manual layout
+            position: PositionInput for manual layout
 
         Example - Inline SLOBuilder:
+            from honeycomb.models.tool_inputs import PositionInput
+
             .slo(
                 SLOBuilder("API Availability")
                     .dataset("api-logs")
-                    .target_nines(3)
+                    .target_percentage(99.9)
                     .sli(alias="success_rate"),
-                position=(9, 0, 3, 6)
+                position=PositionInput(x_coordinate=9, y_coordinate=0, width=3, height=6)
             )
 
         Example - Existing SLO:
-            .slo("slo-id-123", position=(8, 0, 4, 6))
+            .slo("slo-id-123", position=PositionInput(x_coordinate=8, y_coordinate=0, width=4, height=6))
         """
         from honeycomb.models.slo_builder import SLOBuilder
 
@@ -334,16 +341,21 @@ class BoardBuilder(TagsMixin):
         self,
         content: str,
         *,
-        position: tuple[int, int, int, int] | None = None,
+        position: PositionInput | None = None,
     ) -> BoardBuilder:
         """Add a text panel (supports markdown, max 10000 chars).
 
         Args:
             content: Markdown text content
-            position: (x, y, width, height) for manual layout
+            position: PositionInput for manual layout
 
         Example:
-            .text("## Service Status\\n\\nAll systems operational", position=(0, 6, 12, 2))
+            from honeycomb.models.tool_inputs import PositionInput
+
+            .text(
+                "## Service Status\\n\\nAll systems operational",
+                position=PositionInput(x_coordinate=0, y_coordinate=6, width=12, height=2)
+            )
         """
         if len(content) > 10000:
             raise ValueError(f"Text content must be <= 10000 characters, got {len(content)}")
@@ -429,7 +441,7 @@ class BoardBuilder(TagsMixin):
                 if panel.position is None:
                     raise ValueError(
                         f"Manual layout requires position for all panels. "
-                        f"Panel {i} missing position. Use position=(x, y, width, height)"
+                        f"Panel {i} missing position. Use position=PositionInput(x_coordinate=..., y_coordinate=..., width=..., height=...)"
                     )
 
         return BoardBundle(

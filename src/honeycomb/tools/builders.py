@@ -13,6 +13,35 @@ from honeycomb.models import (
     SLOBuilder,
     TriggerBuilder,
 )
+from honeycomb.models.tool_inputs import PositionInput
+
+
+def _to_position_input(position: dict[str, Any] | list | tuple | None) -> PositionInput | None:
+    """Convert position dict/tuple/list to PositionInput.
+
+    Args:
+        position: Position as dict (x_coordinate, y_coordinate, width, height),
+                  tuple/list (x, y, w, h), or None
+
+    Returns:
+        PositionInput or None
+    """
+    if position is None:
+        return None
+    if isinstance(position, dict):
+        return PositionInput(
+            x_coordinate=position["x_coordinate"],
+            y_coordinate=position["y_coordinate"],
+            width=position["width"],
+            height=position["height"],
+        )
+    # tuple or list (x, y, w, h)
+    return PositionInput(
+        x_coordinate=position[0],
+        y_coordinate=position[1],
+        width=position[2],
+        height=position[3],
+    )
 
 
 def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
@@ -280,8 +309,6 @@ def _build_slo(data: dict[str, Any]) -> SLOBuilder:
         builder.target_per_million(data["target_per_million"])
     elif "target_percentage" in data:
         builder.target_percentage(data["target_percentage"])
-    elif "target_nines" in data:
-        builder.target_nines(data["target_nines"])
 
     # Time period
     if "time_period_days" in data:
@@ -423,7 +450,9 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
         # Add to board with position and style
         builder.query(
             qb,
-            position=tuple(query_panel["position"]) if "position" in query_panel else None,
+            position=_to_position_input(query_panel["position"])
+            if "position" in query_panel
+            else None,
             style=query_panel.get("style", "graph"),
             visualization=query_panel.get("visualization"),
         )
@@ -432,14 +461,14 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
     for text_panel in data.get("text_panels", []):
         content = text_panel["content"] if isinstance(text_panel, dict) else text_panel
         position = text_panel.get("position") if isinstance(text_panel, dict) else None
-        builder.text(content, position=tuple(position) if position else None)
+        builder.text(content, position=_to_position_input(position) if position else None)
 
     # Existing query panels (by ID)
     for existing in data.get("existing_query_panels", []):
         builder.query(
             existing["query_id"],
             existing["annotation_id"],
-            position=tuple(existing["position"]) if "position" in existing else None,
+            position=_to_position_input(existing["position"]) if "position" in existing else None,
             style=existing.get("style", "graph"),
         )
 
@@ -471,8 +500,6 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
             slo_builder.target_per_million(slo_panel["target_per_million"])
         elif "target_percentage" in slo_panel:
             slo_builder.target_percentage(slo_panel["target_percentage"])
-        elif "target_nines" in slo_panel:
-            slo_builder.target_nines(slo_panel["target_nines"])
 
         # Time period
         if "time_period_days" in slo_panel:
@@ -485,7 +512,7 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
         # Add to board
         builder.slo(
             slo_builder,
-            position=tuple(slo_panel["position"]) if "position" in slo_panel else None,
+            position=_to_position_input(slo_panel["position"]) if "position" in slo_panel else None,
         )
 
     # Existing SLO panels (by ID)
@@ -493,7 +520,7 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
         if isinstance(slo, dict) and "slo_id" in slo:
             builder.slo(
                 slo["slo_id"],
-                position=tuple(slo["position"]) if "position" in slo else None,
+                position=_to_position_input(slo["position"]) if "position" in slo else None,
             )
         else:
             builder.slo(slo)  # Just an ID string

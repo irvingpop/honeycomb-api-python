@@ -168,7 +168,7 @@ class TestSLOBuilderBasics:
         bundle = (
             SLOBuilder("API Availability")
             .dataset("api-logs")
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(alias="success_rate")
             .build()
         )
@@ -190,7 +190,7 @@ class TestSLOBuilderBasics:
             SLOBuilder("API Availability")
             .description("Track API success rate")
             .dataset("api-logs")
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(alias="success_rate")
             .build()
         )
@@ -201,7 +201,8 @@ class TestSLOBuilderBasics:
         """Test that methods return self for chaining."""
         builder = SLOBuilder("Test SLO")
         assert builder.dataset("test-dataset") is builder
-        assert builder.target_nines(3) is builder
+        assert builder.target_percentage(99.9) is builder
+        assert builder.target_per_million(999000) is builder
         assert builder.sli(alias="test") is builder
         assert builder.description("test") is builder
 
@@ -229,24 +230,6 @@ class TestSLOBuilderTargets:
 
         assert bundle.slo.target_per_million == 999500
 
-    def test_target_nines_2(self):
-        """Test setting target with 2 nines (99%)."""
-        bundle = SLOBuilder("Test SLO").dataset("test").target_nines(2).sli(alias="test").build()
-
-        assert bundle.slo.target_per_million == 990000
-
-    def test_target_nines_3(self):
-        """Test setting target with 3 nines (99.9%)."""
-        bundle = SLOBuilder("Test SLO").dataset("test").target_nines(3).sli(alias="test").build()
-
-        assert bundle.slo.target_per_million == 999000
-
-    def test_target_nines_4(self):
-        """Test setting target with 4 nines (99.99%)."""
-        bundle = SLOBuilder("Test SLO").dataset("test").target_nines(4).sli(alias="test").build()
-
-        assert bundle.slo.target_per_million == 999900
-
     def test_target_per_million(self):
         """Test setting target directly as per-million value."""
         bundle = (
@@ -268,7 +251,7 @@ class TestSLOBuilderTimePeriod:
         bundle = (
             SLOBuilder("Test SLO")
             .dataset("test")
-            .target_nines(3)
+            .target_percentage(99.9)
             .time_period_days(7)
             .sli(alias="test")
             .build()
@@ -281,7 +264,7 @@ class TestSLOBuilderTimePeriod:
         bundle = (
             SLOBuilder("Test SLO")
             .dataset("test")
-            .target_nines(3)
+            .target_percentage(99.9)
             .time_period_weeks(4)
             .sli(alias="test")
             .build()
@@ -295,7 +278,7 @@ class TestSLOBuilderTimePeriod:
             (
                 SLOBuilder("Test SLO")
                 .dataset("test")
-                .target_nines(3)
+                .target_percentage(99.9)
                 .time_period_days(0)
                 .sli(alias="test")
                 .build()
@@ -307,7 +290,7 @@ class TestSLOBuilderTimePeriod:
             (
                 SLOBuilder("Test SLO")
                 .dataset("test")
-                .target_nines(3)
+                .target_percentage(99.9)
                 .time_period_days(91)
                 .sli(alias="test")
                 .build()
@@ -315,7 +298,9 @@ class TestSLOBuilderTimePeriod:
 
     def test_default_time_period(self):
         """Test that default time period is 30 days."""
-        bundle = SLOBuilder("Test SLO").dataset("test").target_nines(3).sli(alias="test").build()
+        bundle = (
+            SLOBuilder("Test SLO").dataset("test").target_percentage(99.9).sli(alias="test").build()
+        )
 
         assert bundle.slo.time_period_days == 30
 
@@ -326,7 +311,11 @@ class TestSLOBuilderDatasets:
     def test_single_dataset(self):
         """Test single dataset scope."""
         bundle = (
-            SLOBuilder("Test SLO").dataset("api-logs").target_nines(3).sli(alias="test").build()
+            SLOBuilder("Test SLO")
+            .dataset("api-logs")
+            .target_percentage(99.9)
+            .sli(alias="test")
+            .build()
         )
 
         assert bundle.datasets == ["api-logs"]
@@ -337,7 +326,7 @@ class TestSLOBuilderDatasets:
         bundle = (
             SLOBuilder("Test SLO")
             .datasets(["api-logs", "web-logs", "worker-logs"])
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(alias="test")
             .build()
         )
@@ -351,7 +340,7 @@ class TestSLOBuilderDatasets:
             SLOBuilder("Test SLO")
             .datasets(["api-logs", "web-logs"])
             .dataset("single-dataset")
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(alias="test")
             .build()
         )
@@ -367,7 +356,7 @@ class TestSLOBuilderSLI:
         bundle = (
             SLOBuilder("Test SLO")
             .dataset("test")
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(alias="existing_column")
             .build()
         )
@@ -380,7 +369,7 @@ class TestSLOBuilderSLI:
         bundle = (
             SLOBuilder("Test SLO")
             .dataset("test")
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(
                 alias="new_column",
                 expression="IF(LT($status, 400), 1, 0)",
@@ -400,7 +389,7 @@ class TestSLOBuilderSLI:
         bundle = (
             SLOBuilder("Test SLO")
             .dataset("test")
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(alias="new_column", expression="IF(LT($status, 400), 1, 0)")
             .build()
         )
@@ -429,7 +418,7 @@ class TestSLOBuilderBurnAlerts:
         bundle = (
             SLOBuilder("Test SLO")
             .dataset("test")
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(alias="test")
             .exhaustion_alert(alert)
             .build()
@@ -448,7 +437,7 @@ class TestSLOBuilderBurnAlerts:
         bundle = (
             SLOBuilder("Test SLO")
             .dataset("test")
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(alias="test")
             .budget_rate_alert(alert)
             .build()
@@ -469,7 +458,7 @@ class TestSLOBuilderBurnAlerts:
         bundle = (
             SLOBuilder("Test SLO")
             .dataset("test")
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(alias="test")
             .exhaustion_alert(exhaustion)
             .budget_rate_alert(budget_rate)
@@ -492,7 +481,7 @@ class TestSLOBuilderBurnAlerts:
         bundle = (
             SLOBuilder("Test SLO")
             .dataset("test")
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(alias="test")
             .exhaustion_alert(alert)
             .build()
@@ -512,7 +501,7 @@ class TestSLOBuilderBurnAlerts:
             (
                 SLOBuilder("Test SLO")
                 .dataset("test")
-                .target_nines(3)
+                .target_percentage(99.9)
                 .sli(alias="test")
                 .exhaustion_alert(alert)
                 .build()
@@ -528,7 +517,7 @@ class TestSLOBuilderBurnAlerts:
             (
                 SLOBuilder("Test SLO")
                 .dataset("test")
-                .target_nines(3)
+                .target_percentage(99.9)
                 .sli(alias="test")
                 .budget_rate_alert(alert)
                 .build()
@@ -544,13 +533,13 @@ class TestSLOBuilderValidation:
             ValueError,
             match="At least one dataset is required. Use dataset\\(\\) or datasets\\(\\).",
         ):
-            SLOBuilder("Test SLO").target_nines(3).sli(alias="test").build()
+            SLOBuilder("Test SLO").target_percentage(99.9).sli(alias="test").build()
 
     def test_build_without_target_raises_error(self):
         """Test that building without target raises error."""
         with pytest.raises(
             ValueError,
-            match="Target is required. Use target_percentage\\(\\), target_nines\\(\\), or target_per_million\\(\\).",
+            match="Target is required. Use target_percentage\\(\\) or target_per_million\\(\\).",
         ):
             SLOBuilder("Test SLO").dataset("test").sli(alias="test").build()
 
@@ -559,7 +548,7 @@ class TestSLOBuilderValidation:
         with pytest.raises(
             ValueError, match="SLI is required. Use sli\\(alias=...\\) to define it."
         ):
-            SLOBuilder("Test SLO").dataset("test").target_nines(3).build()
+            SLOBuilder("Test SLO").dataset("test").target_percentage(99.9).build()
 
 
 class TestSLOBuilderComplexScenarios:
@@ -632,7 +621,7 @@ class TestSLOBuilderComplexScenarios:
             SLOBuilder("Cross-Service Availability")
             .description("Overall service availability")
             .datasets(["api-logs", "web-logs", "worker-logs"])
-            .target_nines(3)
+            .target_percentage(99.9)
             .time_period_weeks(4)
             .sli(
                 alias="service_success",
