@@ -2,7 +2,8 @@
 
 Coverage:
 - 5 tools (list, get, create, update, delete)
-- 10 test cases with inline SLO creation, environment-wide queries, and comprehensive assertions
+- 16 test cases with inline SLO creation, environment-wide queries, chart types,
+  visualization settings, calculated fields, compare time offset, and comprehensive assertions
 """
 
 TEST_CASES = [
@@ -242,6 +243,92 @@ TEST_CASES = [
             "any(f.get('operation') == 'starts-with' for f in params['views'][1].get('filters', []))",
             "params['views'][2].get('name') == 'Multi-Environment'",
             "any(f.get('operation') == 'in' and isinstance(f.get('value'), list) for f in params['views'][2].get('filters', []))",
+        ],
+    },
+    # Chart type and visualization settings
+    {
+        "id": "board_create_with_chart_type",
+        "description": "Board with chart_type shorthand for visualization",
+        "prompt": (
+            "Create an 'Error Trends' board with auto-layout containing: "
+            "a line chart panel named 'Error Rate Over Time' from api-logs showing COUNT of errors (status_code >= 500) over 1 hour, "
+            "and a bar chart panel named 'Errors by Endpoint' from api-logs counting errors grouped by endpoint over 1 hour"
+        ),
+        "expected_tool": "honeycomb_create_board",
+        "expected_params": {
+            "name": "Error Trends",
+            "layout_generation": "auto",
+        },
+        "assertion_checks": [
+            "'inline_query_panels' in params",
+            "len(params['inline_query_panels']) >= 2",
+            "any(p.get('name') == 'Error Rate Over Time' and p.get('chart_type') == 'line' for p in params['inline_query_panels'])",
+            "any(p.get('name') == 'Errors by Endpoint' and p.get('chart_type') in ['bar', 'cbar', 'tsbar'] for p in params['inline_query_panels'])",
+        ],
+    },
+    {
+        "id": "board_create_with_visualization_settings",
+        "description": "Board with full visualization settings (log scale, UTC timezone)",
+        "prompt": (
+            "Create a 'Latency Analysis' board with auto-layout containing: "
+            "a query panel named 'P99 Latency (Log Scale)' from api-logs showing P99 of duration_ms over 1 hour "
+            "with logarithmic Y-axis scale and UTC timestamps on the X-axis"
+        ),
+        "expected_tool": "honeycomb_create_board",
+        "expected_params": {
+            "name": "Latency Analysis",
+        },
+        "assertion_checks": [
+            "'inline_query_panels' in params",
+            "len(params['inline_query_panels']) >= 1",
+            "params['inline_query_panels'][0].get('name') == 'P99 Latency (Log Scale)'",
+            # Check for visualization settings - either full object or chart_type with log_scale
+            "(params['inline_query_panels'][0].get('visualization') is not None and "
+            "(params['inline_query_panels'][0]['visualization'].get('utc_xaxis') == True or "
+            "any(c.get('log_scale') == True for c in params['inline_query_panels'][0]['visualization'].get('charts', []))))"
+            " or params['inline_query_panels'][0].get('chart_type') is not None",
+        ],
+    },
+    {
+        "id": "board_create_with_calculated_fields",
+        "description": "Board with inline calculated fields (derived columns)",
+        "prompt": (
+            "Create a 'Request Classification' board with auto-layout containing: "
+            "a query panel named 'Fast vs Slow Requests' from api-logs over 1 hour "
+            "with a calculated field named 'latency_bucket' using expression IF(LTE($duration_ms, 100), 'fast', 'slow'), "
+            "then count requests grouped by this latency_bucket field"
+        ),
+        "expected_tool": "honeycomb_create_board",
+        "expected_params": {
+            "name": "Request Classification",
+        },
+        "assertion_checks": [
+            "'inline_query_panels' in params",
+            "len(params['inline_query_panels']) >= 1",
+            "'calculated_fields' in params['inline_query_panels'][0]",
+            "len(params['inline_query_panels'][0].get('calculated_fields', [])) >= 1",
+            "any(cf.get('name') == 'latency_bucket' for cf in params['inline_query_panels'][0].get('calculated_fields', []))",
+            "any('IF(' in cf.get('expression', '') or 'LTE(' in cf.get('expression', '') for cf in params['inline_query_panels'][0].get('calculated_fields', []))",
+            "'breakdowns' in params['inline_query_panels'][0] and 'latency_bucket' in params['inline_query_panels'][0]['breakdowns']",
+        ],
+    },
+    {
+        "id": "board_create_with_compare_time_offset",
+        "description": "Board with historical comparison (compare to 24 hours ago)",
+        "prompt": (
+            "Create a 'Day-over-Day Comparison' board with auto-layout containing: "
+            "a query panel named 'Request Count vs Yesterday' from api-logs showing COUNT over 1 hour "
+            "with comparison to the same time 24 hours ago"
+        ),
+        "expected_tool": "honeycomb_create_board",
+        "expected_params": {
+            "name": "Day-over-Day Comparison",
+        },
+        "assertion_checks": [
+            "'inline_query_panels' in params",
+            "len(params['inline_query_panels']) >= 1",
+            "'compare_time_offset_seconds' in params['inline_query_panels'][0]",
+            "params['inline_query_panels'][0].get('compare_time_offset_seconds') == 86400",
         ],
     },
 ]

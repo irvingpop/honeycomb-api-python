@@ -13,7 +13,68 @@ from honeycomb.models import (
     SLOBuilder,
     TriggerBuilder,
 )
-from honeycomb.models.tool_inputs import BoardToolInput, PositionInput, SLOToolInput
+from honeycomb.models.tool_inputs import (
+    BoardToolInput,
+    PositionInput,
+    SLOToolInput,
+    VisualizationSettingsInput,
+)
+
+
+def _build_visualization_dict(
+    visualization: VisualizationSettingsInput | None,
+    chart_type: str | None,
+) -> dict[str, Any] | None:
+    """Build visualization settings dict from typed model and/or chart_type shorthand.
+
+    Args:
+        visualization: Typed VisualizationSettingsInput model or None
+        chart_type: Shorthand chart_type (e.g., "line", "stacked") or None
+
+    Returns:
+        Dict for API or None if no settings provided
+
+    Priority:
+        - If visualization is set, use it (converted to dict)
+        - If chart_type is set but visualization is None, create minimal dict
+        - If both are set, chart_type is ignored (visualization takes precedence)
+    """
+    if visualization is not None:
+        # Convert typed model to dict, excluding None values
+        result: dict[str, Any] = {}
+        if visualization.hide_compare:
+            result["hide_compare"] = True
+        if visualization.hide_hovers:
+            result["hide_hovers"] = True
+        if visualization.hide_markers:
+            result["hide_markers"] = True
+        if visualization.utc_xaxis:
+            result["utc_xaxis"] = True
+        if visualization.overlaid_charts:
+            result["overlaid_charts"] = True
+        if visualization.charts:
+            result["charts"] = [
+                {
+                    k: v
+                    for k, v in {
+                        "chart_index": chart.chart_index,
+                        "chart_type": chart.chart_type,
+                        "log_scale": chart.log_scale if chart.log_scale else None,
+                        "omit_missing_values": (
+                            chart.omit_missing_values if chart.omit_missing_values else None
+                        ),
+                    }.items()
+                    if v is not None
+                }
+                for chart in visualization.charts
+            ]
+        return result if result else None
+
+    if chart_type is not None:
+        # Shorthand: create minimal visualization with just chart_type
+        return {"charts": [{"chart_type": chart_type}]}
+
+    return None
 
 
 def _to_position_input(position: dict[str, Any] | list | tuple | None) -> PositionInput | None:
@@ -446,12 +507,23 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
         if query_panel.limit:
             qb.limit(query_panel.limit)
 
+        # Calculated fields (inline derived columns)
+        for calc_field in query_panel.calculated_fields or []:
+            qb.calculated_field(calc_field.name, calc_field.expression)
+
+        # Compare time offset for historical comparison
+        if query_panel.compare_time_offset_seconds:
+            qb.compare_time_offset(query_panel.compare_time_offset_seconds)
+
+        # Build visualization dict from typed model or chart_type shorthand
+        viz_dict = _build_visualization_dict(query_panel.visualization, query_panel.chart_type)
+
         # Add to board with position and style
         builder.query(
             qb,
             position=query_panel.position,  # Already a PositionInput or None
             style=query_panel.style,
-            visualization=query_panel.visualization,
+            visualization=viz_dict,
         )
 
     # Text panels (validated TextPanelInput models)

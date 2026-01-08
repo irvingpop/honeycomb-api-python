@@ -17,6 +17,12 @@ if TYPE_CHECKING:
     from honeycomb.models.queries import QuerySpec
     from honeycomb.models.triggers import TriggerQuery
 
+# Valid time offset values for compare queries (in seconds)
+# 30min, 1hr, 2hr, 8hr, 24hr, 7d, 28d, 6mo
+VALID_COMPARE_OFFSETS: frozenset[int] = frozenset(
+    {1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800}
+)
+
 
 # =============================================================================
 # Enums
@@ -243,6 +249,8 @@ class QueryBuilder:
         self._orders: list[Order] = []
         self._limit: int | None = None
         self._havings: list[Having] = []
+        self._calculated_fields: list[dict[str, str]] = []
+        self._compare_time_offset_seconds: int | None = None
         # Query metadata (for board integration)
         self._dataset: str | None = None
         self._query_name: str | None = name
@@ -679,6 +687,62 @@ class QueryBuilder:
         return self
 
     # -------------------------------------------------------------------------
+    # Calculated Fields (Inline Derived Columns)
+    # -------------------------------------------------------------------------
+
+    def calculated_field(self, name: str, expression: str) -> QueryBuilder:
+        """Add an inline calculated field (derived column) for this query only.
+
+        Creates a computed column available within this query. For reusable
+        derived columns, use the Derived Columns API instead.
+
+        Args:
+            name: Field name/alias to reference in calculations and breakdowns
+            expression: Formula using $column_name syntax
+                       See https://docs.honeycomb.io/reference/derived-column-formula/
+
+        Returns:
+            self for chaining
+
+        Example:
+            >>> (QueryBuilder()
+            ...     .calculated_field("latency_bucket",
+            ...         "IF(LTE($duration_ms, 100), 'fast', 'slow')")
+            ...     .group_by("latency_bucket")
+            ...     .count())
+        """
+        self._calculated_fields.append({"name": name, "expression": expression})
+        return self
+
+    # -------------------------------------------------------------------------
+    # Compare Time Offset (Historical Comparison)
+    # -------------------------------------------------------------------------
+
+    def compare_time_offset(self, seconds: int) -> QueryBuilder:
+        """Compare against historical data offset by N seconds.
+
+        When set, the query results will include comparison data from
+        the specified time in the past.
+
+        Args:
+            seconds: Offset in seconds. Must be one of:
+                     1800 (30min), 3600 (1hr), 7200 (2hr), 28800 (8hr),
+                     86400 (24hr), 604800 (7d), 2419200 (28d), 15724800 (6mo)
+
+        Returns:
+            self for chaining
+
+        Example:
+            >>> QueryBuilder().last_1_hour().count().compare_time_offset(86400)  # Compare to 24h ago
+        """
+        if seconds not in VALID_COMPARE_OFFSETS:
+            raise ValueError(
+                f"Invalid compare_time_offset: {seconds}. Must be one of: {sorted(VALID_COMPARE_OFFSETS)}"
+            )
+        self._compare_time_offset_seconds = seconds
+        return self
+
+    # -------------------------------------------------------------------------
     # Dataset Scoping
     # -------------------------------------------------------------------------
 
@@ -803,6 +867,8 @@ class QueryBuilder:
             orders=self._orders if self._orders else None,
             limit=self._limit,
             havings=self._havings if self._havings else None,
+            calculated_fields=self._calculated_fields if self._calculated_fields else None,
+            compare_time_offset_seconds=self._compare_time_offset_seconds,
         )
 
     def build_for_trigger(self) -> TriggerQuery:

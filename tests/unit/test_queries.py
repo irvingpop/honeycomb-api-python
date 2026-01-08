@@ -409,3 +409,34 @@ class TestQuerySpec:
             calculations=[{"op": "COUNT"}],
         )
         assert spec.limit is None
+
+    def test_compare_time_offset_validation_valid_values(self):
+        """Test that valid compare_time_offset_seconds values are accepted."""
+        valid_offsets = [1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800]
+        for offset in valid_offsets:
+            spec = QuerySpec(
+                time_range=3600,
+                calculations=[{"op": "COUNT"}],
+                compare_time_offset_seconds=offset,
+            )
+            assert spec.compare_time_offset_seconds == offset
+
+    def test_compare_time_offset_validation_invalid_values(self):
+        """Test that invalid compare_time_offset_seconds values raise error."""
+        invalid_offsets = [0, 100, 1799, 1801, 3601, 99999, -3600]
+        for offset in invalid_offsets:
+            with pytest.raises(ValueError, match="Invalid compare_time_offset_seconds"):
+                QuerySpec(
+                    time_range=3600,
+                    calculations=[{"op": "COUNT"}],
+                    compare_time_offset_seconds=offset,
+                )
+
+    def test_compare_time_offset_validation_allows_none(self):
+        """Test that compare_time_offset_seconds = None is allowed."""
+        spec = QuerySpec(
+            time_range=3600,
+            calculations=[{"op": "COUNT"}],
+            compare_time_offset_seconds=None,
+        )
+        assert spec.compare_time_offset_seconds is None

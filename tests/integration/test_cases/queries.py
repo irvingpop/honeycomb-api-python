@@ -2,7 +2,7 @@
 
 Coverage:
 - 3 tools (create, get, run)
-- 12 test cases focusing on query_run complexity
+- 16 test cases focusing on query_run complexity, calculated fields, and compare time offset
 """
 
 TEST_CASES = [
@@ -231,6 +231,85 @@ TEST_CASES = [
             "'filters' in params",
             "any(f.get('column') == 'status_code' and f.get('op') == '>=' and f.get('value') == 500 for f in params['filters'])",
             "any(c.get('op') == 'COUNT' for c in params.get('calculations', []))",
+        ],
+    },
+    # Calculated fields (inline derived columns)
+    {
+        "id": "query_run_calculated_field",
+        "description": "Query with inline calculated field",
+        "prompt": (
+            "Run a query on api-logs for the past hour: "
+            "create a calculated field named 'latency_bucket' with expression IF(LTE($duration_ms, 100), 'fast', 'slow'), "
+            "then count requests grouped by this latency_bucket"
+        ),
+        "expected_tool": "honeycomb_run_query",
+        "expected_params": {
+            "dataset": "api-logs",
+            "time_range": 3600,
+        },
+        "assertion_checks": [
+            "'calculated_fields' in params",
+            "len(params.get('calculated_fields', [])) >= 1",
+            "any(cf.get('name') == 'latency_bucket' for cf in params.get('calculated_fields', []))",
+            "any('IF(' in cf.get('expression', '') or 'LTE(' in cf.get('expression', '') for cf in params.get('calculated_fields', []))",
+            "'breakdowns' in params and 'latency_bucket' in params['breakdowns']",
+        ],
+    },
+    {
+        "id": "query_run_calculated_field_success_indicator",
+        "description": "Query with calculated field for success rate",
+        "prompt": (
+            "Analyze api-logs over the past 2 hours: "
+            "create a calculated field named 'is_success' using expression IF(LT($status_code, 400), 1, 0), "
+            "then calculate the average of is_success to get the success rate"
+        ),
+        "expected_tool": "honeycomb_run_query",
+        "expected_params": {
+            "dataset": "api-logs",
+            "time_range": 7200,
+        },
+        "assertion_checks": [
+            "'calculated_fields' in params",
+            "any(cf.get('name') == 'is_success' for cf in params.get('calculated_fields', []))",
+            "any('IF(' in cf.get('expression', '') and 'status_code' in cf.get('expression', '') for cf in params.get('calculated_fields', []))",
+            "any(c.get('op') == 'AVG' and c.get('column') == 'is_success' for c in params.get('calculations', []))",
+        ],
+    },
+    # Compare time offset (historical comparison)
+    {
+        "id": "query_run_compare_24h",
+        "description": "Query with 24-hour historical comparison",
+        "prompt": (
+            "Run a query on api-logs showing request count over the past hour "
+            "and compare to the same time yesterday (24 hours ago)"
+        ),
+        "expected_tool": "honeycomb_run_query",
+        "expected_params": {
+            "dataset": "api-logs",
+            "time_range": 3600,
+        },
+        "assertion_checks": [
+            "'compare_time_offset_seconds' in params",
+            "params.get('compare_time_offset_seconds') == 86400",
+            "any(c.get('op') == 'COUNT' for c in params.get('calculations', []))",
+        ],
+    },
+    {
+        "id": "query_run_compare_7d",
+        "description": "Query with 7-day historical comparison",
+        "prompt": (
+            "Analyze api-logs P99 latency over the past 4 hours "
+            "and compare it to the same time period one week ago"
+        ),
+        "expected_tool": "honeycomb_run_query",
+        "expected_params": {
+            "dataset": "api-logs",
+            "time_range": 14400,
+        },
+        "assertion_checks": [
+            "'compare_time_offset_seconds' in params",
+            "params.get('compare_time_offset_seconds') == 604800",
+            "any(c.get('op') == 'P99' and c.get('column') in ['duration_ms', 'duration', 'latency'] for c in params.get('calculations', []))",
         ],
     },
 ]
