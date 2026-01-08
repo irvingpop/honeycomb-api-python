@@ -216,9 +216,9 @@ class TestBuildSLO:
         """Can build SLO with minimal fields."""
         data = {
             "name": "Test SLO",
-            "dataset": "test-dataset",
+            "datasets": ["test-dataset"],
             "sli": {"alias": "success_rate"},
-            "target_per_million": 999000,
+            "target_percentage": 99.9,
             "time_period_days": 30,
         }
 
@@ -226,7 +226,7 @@ class TestBuildSLO:
         bundle = builder.build()
 
         assert bundle.slo.name == "Test SLO"
-        assert bundle.slo.target_per_million == 999000
+        assert bundle.slo.target_per_million == 999000  # Builder converts 99.9% to 999000
         assert bundle.slo.time_period_days == 30
         assert "test-dataset" in bundle.datasets
 
@@ -234,13 +234,13 @@ class TestBuildSLO:
         """Can build SLO that creates new derived column."""
         data = {
             "name": "Test SLO",
-            "dataset": "test",
+            "datasets": ["test"],
             "sli": {
                 "alias": "success_rate",
                 "expression": "IF(LT($status_code, 500), 1, 0)",
                 "description": "Success rate",
             },
-            "target_per_million": 999000,
+            "target_percentage": 99.9,
             "time_period_days": 30,
         }
 
@@ -255,9 +255,9 @@ class TestBuildSLO:
         """Can build SLO with burn alerts."""
         data = {
             "name": "Test SLO",
-            "dataset": "test",
+            "datasets": ["test"],
             "sli": {"alias": "success_rate"},
-            "target_per_million": 999000,
+            "target_percentage": 99.9,
             "time_period_days": 30,
             "burn_alerts": [
                 {
@@ -269,7 +269,7 @@ class TestBuildSLO:
                     "alert_type": "budget_rate",
                     "budget_rate_window_minutes": 60,
                     "budget_rate_decrease_threshold_per_million": 10000,
-                    "recipients": [{"type": "slack", "target": "#alerts"}],
+                    "recipients": [{"type": "email", "target": "oncall@example.com"}],
                 },
             ],
         }
@@ -287,9 +287,9 @@ class TestBuildSLO:
         data = {
             "name": "Test SLO",
             "description": "Testing SLO builder",
-            "dataset": "test",
+            "datasets": ["test"],
             "sli": {"alias": "success_rate"},
-            "target_per_million": 999000,
+            "target_percentage": 99.9,
             "time_period_days": 30,
         }
 

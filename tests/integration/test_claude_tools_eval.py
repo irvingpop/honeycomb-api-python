@@ -176,7 +176,7 @@ def call_claude_with_tools(client, prompt: str, use_cache: bool = True) -> dict:
 
     response = client.beta.messages.create(
         model="claude-sonnet-4-5-20250929",
-        max_tokens=1024,
+        max_tokens=4096,
         betas=["advanced-tool-use-2025-11-20"],
         tools=HONEYCOMB_TOOLS,
         system=SYSTEM_PROMPT,
@@ -367,7 +367,8 @@ class TestToolSchemas:
     def test_all_tools_accepted(self, anthropic_client):
         """Claude should parse all tool definitions without error."""
         result = call_claude_with_tools(anthropic_client, "What tools do you have?")
-        assert result["stop_reason"] in ("end_turn", "tool_use")
+        # max_tokens is acceptable - means tools were accepted, response was just truncated
+        assert result["stop_reason"] in ("end_turn", "tool_use", "max_tokens")
 
     def test_system_prompt_encourages_tool_use(self, anthropic_client):
         """System prompt should bias toward tool usage."""

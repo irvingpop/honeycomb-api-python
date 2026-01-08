@@ -6,6 +6,7 @@ import builtins
 from typing import TYPE_CHECKING, Any
 
 from ..models.boards import Board, BoardCreate, BoardView, BoardViewCreate
+from ..models.tool_inputs import PositionInput
 from .base import BaseResource
 
 if TYPE_CHECKING:
@@ -231,7 +232,7 @@ class BoardsResource(BaseResource):
         self,
         query_id: str,
         annotation_id: str,
-        position: tuple[int, int, int, int] | None,
+        position: PositionInput | None,
         style: str,
         visualization: dict[str, Any] | None,
     ) -> dict[str, Any]:
@@ -251,42 +252,42 @@ class BoardsResource(BaseResource):
         }
         if position:
             panel["position"] = {
-                "x_coordinate": position[0],
-                "y_coordinate": position[1],
-                "width": position[2],
-                "height": position[3],
+                "x_coordinate": position.x_coordinate,
+                "y_coordinate": position.y_coordinate,
+                "width": position.width,
+                "height": position.height,
             }
         return panel
 
     def _build_slo_panel_dict(
         self,
         slo_id: str,
-        position: tuple[int, int, int, int] | None,
+        position: PositionInput | None,
     ) -> dict[str, Any]:
         """Build SLO panel dictionary for API."""
         panel = {"type": "slo", "slo_panel": {"slo_id": slo_id}}
         if position:
             panel["position"] = {
-                "x_coordinate": position[0],
-                "y_coordinate": position[1],
-                "width": position[2],
-                "height": position[3],
+                "x_coordinate": position.x_coordinate,
+                "y_coordinate": position.y_coordinate,
+                "width": position.width,
+                "height": position.height,
             }
         return panel
 
     def _build_text_panel_dict(
         self,
         content: str,
-        position: tuple[int, int, int, int] | None,
+        position: PositionInput | None,
     ) -> dict[str, Any]:
         """Build text panel dictionary for API."""
         panel = {"type": "text", "text_panel": {"content": content}}
         if position:
             panel["position"] = {
-                "x_coordinate": position[0],
-                "y_coordinate": position[1],
-                "width": position[2],
-                "height": position[3],
+                "x_coordinate": position.x_coordinate,
+                "y_coordinate": position.y_coordinate,
+                "width": position.width,
+                "height": position.height,
             }
         return panel
 

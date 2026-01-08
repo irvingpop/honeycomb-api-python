@@ -64,9 +64,10 @@ async def create_complex_board(client: HoneycombClient, dataset: str = "my-datas
     - Text panel for notes
     - Advanced visualization settings (hiding markers, UTC time)
     - Preset filters for dynamic filtering
-    - Manual layout with precise positioning using tuples
+    - Manual layout with precise positioning using PositionInput
     """
     from honeycomb import BoardBuilder, QueryBuilder, SLOBuilder
+    from honeycomb.models.tool_inputs import PositionInput
 
     # Single fluent call with inline builders and manual positioning
     created = await client.boards.create_from_bundle_async(
@@ -86,7 +87,7 @@ async def create_complex_board(client: HoneycombClient, dataset: str = "my-datas
             .count()
             .group_by("service")
             .description("Total requests by service over 24 hours"),
-            position=(0, 0, 9, 6),
+            position=PositionInput(x_coordinate=0, y_coordinate=0, width=9, height=6),
             style="graph",
             visualization={"hide_markers": True, "utc_xaxis": True},
         )
@@ -94,14 +95,14 @@ async def create_complex_board(client: HoneycombClient, dataset: str = "my-datas
         .slo(
             SLOBuilder("API Availability")
             .dataset(dataset)
-            .target_nines(3)
+            .target_percentage(99.9)
             .sli(
                 alias="board_sli_success",
                 expression="IF(LT($status_code, 400), 1, 0)",
                 description="Success rate: 1 if status < 400, 0 otherwise",
             )
             .description("API success rate SLO"),
-            position=(9, 0, 3, 6),
+            position=PositionInput(x_coordinate=9, y_coordinate=0, width=3, height=6),
         )
         # Middle left: Latency table (environment-wide)
         .query(
@@ -112,7 +113,7 @@ async def create_complex_board(client: HoneycombClient, dataset: str = "my-datas
             .group_by("endpoint")
             .limit(10)
             .description("Top 10 endpoints by average latency"),
-            position=(0, 6, 6, 5),
+            position=PositionInput(x_coordinate=0, y_coordinate=6, width=6, height=5),
             style="table",
         )
         # Middle right: Error rate combo view (dataset-scoped)
@@ -124,13 +125,13 @@ async def create_complex_board(client: HoneycombClient, dataset: str = "my-datas
             .gte("status_code", 400)
             .group_by("status_code")
             .description("HTTP errors by status code"),
-            position=(6, 6, 6, 5),
+            position=PositionInput(x_coordinate=6, y_coordinate=6, width=6, height=5),
             style="combo",
         )
         # Bottom: Notes panel (full width)
         .text(
             "## Monitoring Guidelines\n\n- Watch for latency > 500ms\n- Error rate should stay < 1%\n- Check SLO during peak hours",
-            position=(0, 11, 12, 3),
+            position=PositionInput(x_coordinate=0, y_coordinate=11, width=12, height=3),
         )
         .build()
     )

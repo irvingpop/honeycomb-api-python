@@ -23,7 +23,7 @@ async def create_simple_slo(client: HoneycombClient, dataset: str, sli_alias: st
         SLOBuilder("API Availability")
         .description("Track API request success rate")
         .dataset(dataset)
-        .target_nines(3)  # 99.9%
+        .target_percentage(99.9)
         .time_period_days(30)
         .sli(alias=sli_alias)  # Use existing derived column
         .build()
@@ -79,7 +79,7 @@ async def create_slo_with_burn_alerts(
         SLOBuilder("Critical API SLO")
         .description("High-priority API availability tracking")
         .dataset(dataset)
-        .target_nines(4)  # 99.99%
+        .target_percentage(99.99)
         .time_period_days(30)
         .sli(alias=sli_alias)
         # Add exhaustion time alert with existing recipient

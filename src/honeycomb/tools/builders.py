@@ -13,6 +13,35 @@ from honeycomb.models import (
     SLOBuilder,
     TriggerBuilder,
 )
+from honeycomb.models.tool_inputs import BoardToolInput, PositionInput, SLOToolInput
+
+
+def _to_position_input(position: dict[str, Any] | list | tuple | None) -> PositionInput | None:
+    """Convert position dict/tuple/list to PositionInput.
+
+    Args:
+        position: Position as dict (x_coordinate, y_coordinate, width, height),
+                  tuple/list (x, y, w, h), or None
+
+    Returns:
+        PositionInput or None
+    """
+    if position is None:
+        return None
+    if isinstance(position, dict):
+        return PositionInput(
+            x_coordinate=position["x_coordinate"],
+            y_coordinate=position["y_coordinate"],
+            width=position["width"],
+            height=position["height"],
+        )
+    # tuple or list (x, y, w, h)
+    return PositionInput(
+        x_coordinate=position[0],
+        y_coordinate=position[1],
+        width=position[2],
+        height=position[3],
+    )
 
 
 def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
@@ -231,7 +260,7 @@ def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
 
 
 def _build_slo(data: dict[str, Any]) -> SLOBuilder:
-    """Convert tool input to SLOBuilder.
+    """Convert tool input to SLOBuilder with Pydantic validation.
 
     Args:
         data: Tool input dict from Claude (includes dataset, name, sli, target, etc.)
@@ -239,94 +268,89 @@ def _build_slo(data: dict[str, Any]) -> SLOBuilder:
     Returns:
         Configured SLOBuilder instance ready to build()
 
+    Raises:
+        ValidationError: If input data doesn't match SLOToolInput schema
+
     Example:
         >>> data = {
-        ...     "dataset": "api-logs",
+        ...     "datasets": ["api-logs"],
         ...     "name": "API Availability",
         ...     "sli": {"alias": "success_rate"},
-        ...     "target_per_million": 999000,
+        ...     "target_percentage": 99.9,
         ...     "time_period_days": 30
         ... }
         >>> builder = _build_slo(data)
         >>> bundle = builder.build()
     """
-    builder = SLOBuilder(data["name"])
+    # Validate input with Pydantic (raises ValidationError on invalid input)
+    validated = SLOToolInput.model_validate(data)
+
+    builder = SLOBuilder(validated.name)
 
     # Description
-    if "description" in data:
-        builder.description(data["description"])
+    if validated.description:
+        builder.description(validated.description)
 
-    # Dataset(s)
-    if "dataset" in data:
-        builder.dataset(data["dataset"])
-    elif "datasets" in data:
-        builder.datasets(data["datasets"])
+    # Dataset(s) - always a list, use single element for one dataset
+    if len(validated.datasets) == 1:
+        builder.dataset(validated.datasets[0])
+    else:
+        builder.datasets(validated.datasets)
 
     # SLI
-    sli = data["sli"]
-    alias = sli["alias"]
+    alias = validated.sli.alias
 
-    if "expression" in sli:
+    if validated.sli.expression:
         # New derived column
-        expression = sli["expression"]
-        description = sli.get("description")
-        builder.sli(alias, expression, description)
+        builder.sli(alias, validated.sli.expression, validated.sli.description)
     else:
         # Existing derived column
         builder.sli(alias)
 
-    # Target
-    if "target_per_million" in data:
-        builder.target_per_million(data["target_per_million"])
-    elif "target_percentage" in data:
-        builder.target_percentage(data["target_percentage"])
-    elif "target_nines" in data:
-        builder.target_nines(data["target_nines"])
+    # Target (target_percentage is required in SLOToolInput)
+    builder.target_percentage(validated.target_percentage)
 
     # Time period
-    if "time_period_days" in data:
-        builder.time_period_days(data["time_period_days"])
-    elif "time_period_weeks" in data:
-        builder.time_period_weeks(data["time_period_weeks"])
+    builder.time_period_days(validated.time_period_days)
 
-    # Burn alerts
-    burn_alerts = data.get("burn_alerts", [])
+    # Burn alerts (validated as BurnAlertInput models)
+    burn_alerts = validated.burn_alerts or []
     for alert_data in burn_alerts:
-        alert_type_str = alert_data["alert_type"]
-        alert_type = BurnAlertType(alert_type_str)
+        alert_type = BurnAlertType(alert_data.alert_type)
 
         burn_builder = BurnAlertBuilder(alert_type)
 
-        if "description" in alert_data:
-            burn_builder.description(alert_data["description"])
+        if alert_data.description:
+            burn_builder.description(alert_data.description)
 
         if alert_type == BurnAlertType.EXHAUSTION_TIME:
-            burn_builder.exhaustion_minutes(alert_data["exhaustion_minutes"])
+            if alert_data.exhaustion_minutes:
+                burn_builder.exhaustion_minutes(alert_data.exhaustion_minutes)
         elif alert_type == BurnAlertType.BUDGET_RATE:
-            burn_builder.window_minutes(alert_data["budget_rate_window_minutes"])
-            # Convert from per_million to percent
-            threshold_per_million = alert_data["budget_rate_decrease_threshold_per_million"]
-            threshold_percent = threshold_per_million / 10000  # e.g., 10000 → 1%
-            burn_builder.threshold_percent(threshold_percent)
+            if alert_data.budget_rate_window_minutes:
+                burn_builder.window_minutes(alert_data.budget_rate_window_minutes)
+            if alert_data.budget_rate_decrease_threshold_per_million:
+                # Convert from per_million to percent
+                threshold_per_million = alert_data.budget_rate_decrease_threshold_per_million
+                threshold_percent = threshold_per_million / 10000  # e.g., 10000 → 1%
+                burn_builder.threshold_percent(threshold_percent)
 
-        # Recipients for burn alert
-        recipients = alert_data.get("recipients", [])
+        # Recipients for burn alert (validated as RecipientInput models)
+        recipients = alert_data.recipients or []
         for recip in recipients:
-            if "id" in recip:
-                burn_builder.recipient_id(recip["id"])
-            elif recip.get("type") == "email":
-                burn_builder.email(recip["target"])
-            elif recip.get("type") == "slack":
-                burn_builder.slack(recip["target"])
-            elif recip.get("type") == "pagerduty":
-                severity = recip.get("details", {}).get("severity", "critical")
-                burn_builder.pagerduty(recip["target"], severity=severity)
-            elif recip.get("type") == "webhook":
-                name = recip.get("name", "Webhook")
-                secret = recip.get("details", {}).get("secret")
-                burn_builder.webhook(recip["target"], name=name, secret=secret)
-            elif recip.get("type") in ("msteams", "msteams_workflow"):
-                burn_builder.msteams(recip["target"])
+            if recip.id:
+                burn_builder.recipient_id(recip.id)
+            elif recip.type == "email" and recip.target:
+                burn_builder.email(recip.target)
+            elif recip.type == "slack" and recip.target:
+                burn_builder.slack(recip.target)
+            elif recip.type == "pagerduty" and recip.target:
+                # Note: RecipientInput doesn't have details field, default to critical
+                burn_builder.pagerduty(recip.target, severity="critical")
+            elif recip.type == "webhook" and recip.target:
+                burn_builder.webhook(recip.target, name="Webhook", secret=None)
+            elif recip.type in ("msteams", "msteams_workflow") and recip.target:
+                burn_builder.msteams(recip.target)
 
         # Add burn alert using the appropriate method based on type
         if alert_type == BurnAlertType.EXHAUSTION_TIME:
@@ -338,13 +362,16 @@ def _build_slo(data: dict[str, Any]) -> SLOBuilder:
 
 
 def _build_board(data: dict[str, Any]) -> BoardBuilder:
-    """Convert tool input to BoardBuilder with inline panel creation.
+    """Convert tool input to BoardBuilder with Pydantic validation and inline panel creation.
 
     Args:
         data: Tool input dict from Claude (includes name, inline_query_panels, etc.)
 
     Returns:
         Configured BoardBuilder instance ready to build()
+
+    Raises:
+        ValidationError: If input data doesn't match BoardToolInput schema
 
     Example:
         >>> data = {
@@ -365,150 +392,128 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
     """
     from honeycomb.models.query_builder import QueryBuilder
 
-    builder = BoardBuilder(data["name"])
+    # Validate input with Pydantic (raises ValidationError on invalid input)
+    validated = BoardToolInput.model_validate(data)
+
+    builder = BoardBuilder(validated.name)
 
     # Description
-    if "description" in data:
-        builder.description(data["description"])
+    if validated.description:
+        builder.description(validated.description)
 
     # Layout generation
-    layout = data.get("layout_generation", "auto")
-    if layout == "auto":
+    if validated.layout_generation == "auto":
         builder.auto_layout()
     else:
         builder.manual_layout()
 
-    # Inline query panels (create QueryBuilder instances)
-    for query_panel in data.get("inline_query_panels", []):
-        # Build QueryBuilder from panel data
-        qb = QueryBuilder(query_panel["name"])
+    # Inline query panels (create QueryBuilder instances from validated models)
+    for query_panel in validated.inline_query_panels or []:
+        # Build QueryBuilder from validated QueryPanelInput model
+        qb = QueryBuilder(query_panel.name)
 
-        if "description" in query_panel:
-            qb.description(query_panel["description"])
+        if query_panel.description:
+            qb.description(query_panel.description)
 
         # Dataset - optional for environment-wide queries
-        if "dataset" in query_panel:
-            qb.dataset(query_panel["dataset"])
+        if query_panel.dataset:
+            qb.dataset(query_panel.dataset)
         else:
             qb.environment_wide()  # Default to environment-wide
 
         # Time range
-        if "time_range" in query_panel:
-            qb.time_range(query_panel["time_range"])
+        if query_panel.time_range:
+            qb.time_range(query_panel.time_range)
 
-        # Calculations - directly append to _calculations
-        from honeycomb.models.query_builder import Calculation
+        # Calculations - these are already validated Calculation models
+        for calc in query_panel.calculations or []:
+            qb._calculations.append(calc)
 
-        for calc in query_panel.get("calculations", []):
-            qb._calculations.append(Calculation(**calc))
-
-        # Filters
-        for filt in query_panel.get("filters", []):
-            qb.filter(filt["column"], filt["op"], filt.get("value"))
+        # Filters - these are already validated Filter models
+        for filt in query_panel.filters or []:
+            qb.filter(filt.column, filt.op, filt.value)
 
         # Breakdowns
-        for breakdown in query_panel.get("breakdowns", []):
+        for breakdown in query_panel.breakdowns or []:
             qb.group_by(breakdown)
 
-        # Orders
-        for order in query_panel.get("orders", []):
-            qb.order_by(
-                order.get("column", order.get("op", "COUNT")), order.get("order", "descending")
-            )
+        # Orders - these are already validated Order models
+        for order in query_panel.orders or []:
+            # Order model has 'op' (CalcOp) and 'order' (OrderDirection) fields
+            qb.order_by(order.column or order.op, order.order)
 
         # Limit
-        if "limit" in query_panel:
-            qb.limit(query_panel["limit"])
+        if query_panel.limit:
+            qb.limit(query_panel.limit)
 
         # Add to board with position and style
         builder.query(
             qb,
-            position=tuple(query_panel["position"]) if "position" in query_panel else None,
-            style=query_panel.get("style", "graph"),
-            visualization=query_panel.get("visualization"),
+            position=query_panel.position,  # Already a PositionInput or None
+            style=query_panel.style,
+            visualization=query_panel.visualization,
         )
 
-    # Text panels
-    for text_panel in data.get("text_panels", []):
-        content = text_panel["content"] if isinstance(text_panel, dict) else text_panel
-        position = text_panel.get("position") if isinstance(text_panel, dict) else None
-        builder.text(content, position=tuple(position) if position else None)
+    # Text panels (validated TextPanelInput models)
+    for text_panel in validated.text_panels or []:
+        builder.text(text_panel.content, position=text_panel.position)
 
-    # Existing query panels (by ID)
-    for existing in data.get("existing_query_panels", []):
-        builder.query(
-            existing["query_id"],
-            existing["annotation_id"],
-            position=tuple(existing["position"]) if "position" in existing else None,
-            style=existing.get("style", "graph"),
-        )
-
-    # Inline SLO panels (create SLOBuilder instances)
-    for slo_panel in data.get("inline_slo_panels", []):
-        # Build SLOBuilder from panel data
+    # Inline SLO panels (create SLOBuilder instances from validated SLOPanelInput models)
+    for slo_panel in validated.inline_slo_panels or []:
+        # Build SLOBuilder from validated SLOPanelInput model
         from honeycomb.models import SLOBuilder
 
-        slo_builder = SLOBuilder(slo_panel["name"])
+        slo_builder = SLOBuilder(slo_panel.name)
 
-        if "description" in slo_panel:
-            slo_builder.description(slo_panel["description"])
+        if slo_panel.description:
+            slo_builder.description(slo_panel.description)
 
-        # Dataset
-        slo_builder.dataset(slo_panel["dataset"])
+        # Dataset (required in SLOPanelInput)
+        slo_builder.dataset(slo_panel.dataset)
 
-        # SLI
-        sli = slo_panel["sli"]
-        alias = sli["alias"]
-        if "expression" in sli:
+        # SLI (validated SLIInput model)
+        alias = slo_panel.sli.alias
+        if slo_panel.sli.expression:
             # Inline derived column
-            slo_builder.sli(alias, sli["expression"], sli.get("description"))
+            slo_builder.sli(alias, slo_panel.sli.expression, slo_panel.sli.description)
         else:
             # Existing derived column
             slo_builder.sli(alias)
 
-        # Target
-        if "target_per_million" in slo_panel:
-            slo_builder.target_per_million(slo_panel["target_per_million"])
-        elif "target_percentage" in slo_panel:
-            slo_builder.target_percentage(slo_panel["target_percentage"])
-        elif "target_nines" in slo_panel:
-            slo_builder.target_nines(slo_panel["target_nines"])
+        # Target (target_percentage is required in SLOPanelInput)
+        slo_builder.target_percentage(slo_panel.target_percentage)
 
         # Time period
-        if "time_period_days" in slo_panel:
-            slo_builder.time_period_days(slo_panel["time_period_days"])
-        elif "time_period_weeks" in slo_panel:
-            slo_builder.time_period_weeks(slo_panel["time_period_weeks"])
-        else:
-            slo_builder.time_period_days(30)  # Default
+        slo_builder.time_period_days(slo_panel.time_period_days)
 
         # Add to board
-        builder.slo(
-            slo_builder,
-            position=tuple(slo_panel["position"]) if "position" in slo_panel else None,
-        )
+        builder.slo(slo_builder, position=slo_panel.position)
 
-    # Existing SLO panels (by ID)
-    for slo in data.get("slo_panels", []):
-        if isinstance(slo, dict) and "slo_id" in slo:
-            builder.slo(
-                slo["slo_id"],
-                position=tuple(slo["position"]) if "position" in slo else None,
+    # Existing SLO panels (by ID - list of strings)
+    for slo_id in validated.slo_panels or []:
+        builder.slo(slo_id)
+
+    # Tags (validated TagInput models)
+    for tag in validated.tags or []:
+        builder.tag(tag.key, tag.value)
+
+    # Preset filters (validated PresetFilterInput models)
+    for preset in validated.preset_filters or []:
+        builder.preset_filter(preset.column, preset.alias)
+
+    # Board views (validated BoardViewInput models)
+    for view in validated.views or []:
+        # Convert BoardViewFilter models to dicts for builder compatibility
+        filters: list[dict[str, Any]] = []
+        for board_view_filter in view.filters or []:
+            filters.append(
+                {
+                    "column": board_view_filter.column,
+                    "operation": board_view_filter.operation,
+                    "value": board_view_filter.value,
+                }
             )
-        else:
-            builder.slo(slo)  # Just an ID string
-
-    # Tags
-    for tag in data.get("tags", []):
-        builder.tag(tag["key"], tag["value"])
-
-    # Preset filters
-    for preset in data.get("preset_filters", []):
-        builder.preset_filter(preset["column"], preset["alias"])
-
-    # Board views
-    for view in data.get("views", []):
-        builder.add_view(view["name"], view.get("filters", []))
+        builder.add_view(view.name, filters)
 
     return builder
 

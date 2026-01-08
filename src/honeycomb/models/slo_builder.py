@@ -195,7 +195,7 @@ class SLOBuilder:
         slo = (
             SLOBuilder("Cross-Service Availability")
             .datasets(["api-logs", "web-logs", "worker-logs"])
-            .target_nines(3)  # 99.9%
+            .target_percentage(99.9)
             .sli(
                 alias="service_success",
                 expression="IF(EQUALS($status, 200), 1, 0)",
@@ -266,20 +266,6 @@ class SLOBuilder:
         """
         self._target_per_million = int(percent * 10000)
         return self
-
-    def target_nines(self, nines: int) -> SLOBuilder:
-        """Set target by number of nines.
-
-        Examples:
-            2 nines = 99%
-            3 nines = 99.9%
-            4 nines = 99.99%
-
-        Args:
-            nines: Number of nines (1-5)
-        """
-        percentage = 100 - (100 / (10**nines))
-        return self.target_percentage(percentage)
 
     def target_per_million(self, value: int) -> SLOBuilder:
         """Set target directly as per-million value.
@@ -422,10 +408,7 @@ class SLOBuilder:
             raise ValueError("At least one dataset is required. Use dataset() or datasets().")
 
         if self._target_per_million is None:
-            raise ValueError(
-                "Target is required. Use target_percentage(), "
-                "target_nines(), or target_per_million()."
-            )
+            raise ValueError("Target is required. Use target_percentage() or target_per_million().")
 
         if self._sli is None:
             raise ValueError("SLI is required. Use sli(alias=...) to define it.")

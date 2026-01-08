@@ -19,10 +19,10 @@ help:
 	@echo "Testing:"
 	@echo "  make test           Run all tests"
 	@echo "  make test-cov       Run tests with coverage report"
-	@echo "  make test-live      Run live API tests (requires HONEYCOMB_API_KEY)"
 	@echo "  make test-unit      Run only unit tests"
 	@echo "  make test-eval      Run evaluation tests (requires ANTHROPIC_API_KEY)"
 	@echo "  make test-eval-debug Run evaluation tests with no cache or parallelism (requires ANTHROPIC_API_KEY)"
+	@echo "  make test-live      Run live Claude tool tests (requires ANTHROPIC_API_KEY and HONEYCOMB_MANAGEMENT_KEY)"
 	@echo ""
 	@echo "Build & Publish:"
 	@echo "  make build          Build distribution packages"
@@ -107,19 +107,14 @@ test-cov:
 	poetry run pytest tests/ -v --cov=honeycomb --cov-report=term-missing --cov-report=html
 
 test-live:
-	@if [ -z "$$HONEYCOMB_API_KEY" ]; then \
-		echo "Error: HONEYCOMB_API_KEY environment variable is not set"; \
-		echo "Run 'direnv allow' or export HONEYCOMB_API_KEY=your-key"; \
-		exit 1; \
-	fi
-	poetry run python scripts/test_live_api.py
+	direnv exec . poetry run pytest tests/integration/test_claude_tools_live.py -v -s
 
 test-eval:
-	rm -rf tests/integration/.tool_call_cache/
+	rm -rf tests/integration/.tool_call_cache/*.json
 	direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v -n 4
 
 test-eval-debug:
-	rm -rf tests/integration/.tool_call_cache/
+	rm -rf tests/integration/.tool_call_cache/*.json
 	EVAL_USE_CACHE=false direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v
 
 # =============================================================================

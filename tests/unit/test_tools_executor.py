@@ -288,7 +288,7 @@ class TestExecuteSLOTools:
                     "id": "slo1",
                     "name": "API Availability",
                     "sli": {"alias": "success_rate"},
-                    "target_per_million": 999000,
+                    "target_per_million": 999000,  # API returns per_million
                     "time_period_days": 30,
                 },
             ]
@@ -306,17 +306,17 @@ class TestExecuteSLOTools:
             json={
                 "id": "new-slo",
                 "name": "API Availability",
-                "target_per_million": 999000,
+                "target_per_million": 999000,  # API returns per_million
                 "time_period_days": 30,
                 "sli": {"alias": "success_rate"},
             }
         )
 
         tool_input = {
-            "dataset": "test-dataset",
+            "datasets": ["test-dataset"],
             "name": "API Availability",
             "sli": {"alias": "success_rate"},
-            "target_per_million": 999000,
+            "target_percentage": 99.9,
             "time_period_days": 30,
         }
 
@@ -343,26 +343,26 @@ class TestExecuteSLOTools:
             }
         )
 
-        # Mock SLO creation
+        # Mock SLO creation (API returns target_per_million, not target_percentage)
         respx_mock.post("https://api.honeycomb.io/1/slos/test-dataset").respond(
             json={
                 "id": "new-slo",
                 "name": "Request Success Rate",
-                "target_per_million": 999000,
+                "target_per_million": 999000,  # API uses per_million
                 "time_period_days": 30,
                 "sli": {"alias": "request_success"},
             }
         )
 
         tool_input = {
-            "dataset": "test-dataset",
+            "datasets": ["test-dataset"],
             "name": "Request Success Rate",
             "sli": {
                 "alias": "request_success",
                 "expression": "IF(LT($status_code, 500), 1, 0)",
                 "description": "1 if success, 0 if error",
             },
-            "target_per_million": 999000,
+            "target_percentage": 99.9,
             "time_period_days": 30,
         }
 

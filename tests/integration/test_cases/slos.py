@@ -16,13 +16,13 @@ TEST_CASES = [
         ),
         "expected_tool": "honeycomb_create_slo",
         "expected_params": {
-            "dataset": "api-logs",
-            "target_per_million": 999000,
+            "datasets": ["api-logs"],
+            "target_percentage": 99.9,
             "time_period_days": 30,
             "sli": {"alias": "success_rate"},
         },
         "assertion_checks": [
-            "params['target_per_million'] == 999000",
+            "params['target_percentage'] == 99.9",
             "params['time_period_days'] == 30",
         ],
     },
@@ -36,9 +36,9 @@ TEST_CASES = [
         ),
         "expected_tool": "honeycomb_create_slo",
         "expected_params": {
-            "dataset": "api-logs",
+            "datasets": ["api-logs"],
             "name": "API Availability",
-            "target_per_million": 995000,
+            "target_percentage": 99.5,
         },
         "assertion_checks": [
             "'sli' in params",
@@ -49,17 +49,18 @@ TEST_CASES = [
     },
     {
         "id": "slo_percentage_conversion",
-        "description": "Percentage to per-million conversion (99.99%)",
+        "description": "Percentage validation (99.99%)",
         "prompt": (
             "Create an SLO in dataset 'api-logs' with 99.99% target over 7 days "
             "using existing column success_rate"
         ),
         "expected_tool": "honeycomb_create_slo",
         "expected_params": {
-            "dataset": "api-logs",
+            "datasets": ["api-logs"],
         },
         "assertion_checks": [
-            "999000 <= params['target_per_million'] <= 1000000",
+            "99.0 <= params['target_percentage'] <= 100.0",
+            "len(params['datasets']) == 1",
         ],
     },
     {

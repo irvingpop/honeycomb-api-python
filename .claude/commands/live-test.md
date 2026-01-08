@@ -10,4 +10,6 @@ Prerequisites:
 - HONEYCOMB_API_KEY or HONEYCOMB_MANAGEMENT_KEY must be set in .envrc
 - Run 'direnv allow' if you've updated .envrc
 
-!`direnv exec . poetry run python scripts/test_live_api.py ${1:-all}`
+!`rm tests/integration/.tool_call_cache/*.json`
+!`direnv exec . make test-eval`
+!`direnv exec . make test-live`

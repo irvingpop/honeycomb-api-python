@@ -11,7 +11,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 if TYPE_CHECKING:
     from honeycomb.models.queries import QuerySpec
@@ -99,14 +99,15 @@ class Calculation(BaseModel):
         >>> Calculation(op="AVG", column="response_time", alias="avg_response")
     """
 
-    op: CalcOp | str = Field(description="Calculation operation (COUNT, AVG, P99, etc.)")
+    model_config = ConfigDict(extra="forbid")
+
+    op: CalcOp = Field(description="Calculation operation (COUNT, AVG, P99, etc.)")
     column: str | None = Field(default=None, description="Column to calculate on")
     alias: str | None = Field(default=None, description="Alias for the result column")
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to API dict format."""
-        op_value = self.op.value if isinstance(self.op, CalcOp) else self.op
-        result: dict[str, Any] = {"op": op_value}
+        result: dict[str, Any] = {"op": self.op.value}
         if self.column is not None:
             result["column"] = self.column
         if self.alias is not None:
@@ -123,14 +124,15 @@ class Filter(BaseModel):
         >>> Filter(column="service", op="in", value=["api", "web"])
     """
 
+    model_config = ConfigDict(extra="forbid")
+
     column: str = Field(description="Column to filter on")
-    op: FilterOp | str = Field(description="Filter operator (=, !=, >, <, contains, etc.)")
+    op: FilterOp = Field(description="Filter operator (=, !=, >, <, contains, etc.)")
     value: Any = Field(description="Filter value")
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to API dict format."""
-        op_value = self.op.value if isinstance(self.op, FilterOp) else self.op
-        return {"column": self.column, "op": op_value, "value": self.value}
+        return {"column": self.column, "op": self.op.value, "value": self.value}
 
 
 class Order(BaseModel):
@@ -141,17 +143,15 @@ class Order(BaseModel):
         >>> Order(op=CalcOp.AVG, column="duration_ms", order=OrderDirection.ASCENDING)
     """
 
-    op: CalcOp | str = Field(description="Calculation to order by")
+    model_config = ConfigDict(extra="forbid")
+
+    op: CalcOp = Field(description="Calculation to order by")
     column: str | None = Field(default=None, description="Column for the calculation")
-    order: OrderDirection | str = Field(
-        default=OrderDirection.DESCENDING, description="Sort direction"
-    )
+    order: OrderDirection = Field(default=OrderDirection.DESCENDING, description="Sort direction")
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to API dict format."""
-        op_value = self.op.value if isinstance(self.op, CalcOp) else self.op
-        order_value = self.order.value if isinstance(self.order, OrderDirection) else self.order
-        result: dict[str, Any] = {"op": op_value, "order": order_value}
+        result: dict[str, Any] = {"op": self.op.value, "order": self.order.value}
         if self.column is not None:
             result["column"] = self.column
         return result
@@ -165,20 +165,18 @@ class Having(BaseModel):
         >>> Having(calculate_op=CalcOp.AVG, column="duration_ms", op=">", value=500.0)
     """
 
-    calculate_op: CalcOp | str = Field(description="Calculation to filter on")
+    model_config = ConfigDict(extra="forbid")
+
+    calculate_op: CalcOp = Field(description="Calculation to filter on")
     column: str | None = Field(default=None, description="Column for the calculation")
-    op: FilterOp | str = Field(description="Comparison operator")
+    op: FilterOp = Field(description="Comparison operator")
     value: float = Field(description="Threshold value")
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to API dict format."""
-        calc_op_value = (
-            self.calculate_op.value if isinstance(self.calculate_op, CalcOp) else self.calculate_op
-        )
-        op_value = self.op.value if isinstance(self.op, FilterOp) else self.op
         result: dict[str, Any] = {
-            "calculate_op": calc_op_value,
-            "op": op_value,
+            "calculate_op": self.calculate_op.value,
+            "op": self.op.value,
             "value": self.value,
         }
         if self.column is not None:

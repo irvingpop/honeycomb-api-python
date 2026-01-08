@@ -480,32 +480,19 @@ async def _execute_get_slo(client: "HoneycombClient", tool_input: dict[str, Any]
 async def _execute_create_slo(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_create_slo.
 
-    If SLI expression is provided or burn_alerts are included, uses SLOBuilder
-    and create_from_bundle_async for orchestration. Otherwise uses simple create_async.
+    Always uses SLOBuilder with Pydantic validation and automatic target_percentage conversion.
+    Handles SLI expressions, burn alerts, and dataset list processing transparently.
     """
-    dataset = tool_input.pop("dataset")
+    # Validate and build (tool_input now contains datasets: list[str])
+    builder = _build_slo(tool_input)
+    bundle = builder.build()
 
-    # Check if we need bundle orchestration
-    sli = tool_input.get("sli", {})
-    burn_alerts = tool_input.get("burn_alerts", [])
-    needs_bundle = ("expression" in sli) or burn_alerts
+    # Create via bundle (handles derived columns, burn alerts, and all conversions)
+    created_slos = await client.slos.create_from_bundle_async(bundle)
 
-    if needs_bundle:
-        # Use builder for orchestration
-        builder = _build_slo({"dataset": dataset, **tool_input})
-        bundle = builder.build()
-
-        # Create via bundle (handles derived columns + burn alerts)
-        created_slos = await client.slos.create_from_bundle_async(bundle)
-
-        # Return the main SLO (first one created)
-        main_slo = list(created_slos.values())[0]
-        return json.dumps(main_slo.model_dump(), default=str)
-    else:
-        # Simple SLO creation (existing derived column, no burn alerts)
-        slo = SLOCreate(**tool_input)
-        created = await client.slos.create_async(dataset=dataset, slo=slo)
-        return json.dumps(created.model_dump(), default=str)
+    # Return the main SLO (first one created)
+    main_slo = list(created_slos.values())[0]
+    return json.dumps(main_slo.model_dump(), default=str)
 
 
 async def _execute_update_slo(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:

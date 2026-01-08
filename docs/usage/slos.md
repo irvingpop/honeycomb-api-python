@@ -100,9 +100,8 @@ Create an SLO across multiple datasets with an environment-wide derived column:
 
 | Method | Description |
 |--------|-------------|
-| `.target_percentage(percent)` | Set target as percentage (e.g., 99.9) |
-| `.target_nines(nines)` | Set target by number of nines (2-5) |
-| `.target_per_million(value)` | Set target directly as per-million value |
+| `.target_percentage(percent)` | Set target as percentage (e.g., 99.9 for 99.9%) |
+| `.target_per_million(value)` | Set target directly as per-million value (e.g., 999000 for 99.9%) |
 
 ### Time Period Methods
 

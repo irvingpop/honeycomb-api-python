@@ -1153,19 +1153,12 @@
             "type": "string"
           },
           "Calculation": {
+            "additionalProperties": false,
             "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\", alias=\"avg_response\")",
             "properties": {
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/CalcOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Calculation operation (COUNT, AVG, P99, etc.)",
-                "title": "Op"
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
               },
               "column": {
                 "anyOf": [
@@ -1201,6 +1194,7 @@
             "type": "object"
           },
           "Filter": {
+            "additionalProperties": false,
             "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS, value=True)\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
             "properties": {
               "column": {
@@ -1209,16 +1203,8 @@
                 "type": "string"
               },
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/FilterOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Filter operator (=, !=, >, <, contains, etc.)",
-                "title": "Op"
+                "$ref": "#/$defs/FilterOp",
+                "description": "Filter operator (=, !=, >, <, contains, etc.)"
               },
               "value": {
                 "description": "Filter value",
@@ -1799,19 +1785,12 @@
             "type": "string"
           },
           "Calculation": {
+            "additionalProperties": false,
             "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\", alias=\"avg_response\")",
             "properties": {
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/CalcOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Calculation operation (COUNT, AVG, P99, etc.)",
-                "title": "Op"
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
               },
               "column": {
                 "anyOf": [
@@ -1847,6 +1826,7 @@
             "type": "object"
           },
           "Filter": {
+            "additionalProperties": false,
             "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS, value=True)\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
             "properties": {
               "column": {
@@ -1855,16 +1835,8 @@
                 "type": "string"
               },
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/FilterOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Filter operator (=, !=, >, <, contains, etc.)",
-                "title": "Op"
+                "$ref": "#/$defs/FilterOp",
+                "description": "Filter operator (=, !=, >, <, contains, etc.)"
               },
               "value": {
                 "description": "Filter value",
@@ -2326,16 +2298,203 @@
       "name": "honeycomb_create_slo",
       "description": "Creates a new Service Level Objective (SLO) to track reliability targets, with automatic derived column creation if needed. IMPORTANT: Use this tool (not honeycomb_create_derived_column) when you want to create an SLO - it will create both the SLI derived column AND the SLO in one operation. Use this when defining reliability targets for services, such as 99.9% availability or p99 latency targets. Requires a dataset, SLO name, target (as percentage, per-million, or nines), time period in days, and an SLI definition. For the SLI, provide an alias and optionally an expression - if expression is provided, a new derived column is created inline; if only alias is provided, it uses an existing derived column. SLI EXPRESSION SYNTAX: Must return boolean (1/0 coerced). Use $ prefix for columns (case-sensitive). Example: LT($status_code, 500) or AND(LT($status_code, 500), LT($duration_ms, 1000)). See honeycomb_create_derived_column for full expression syntax (conditionals, comparisons, regex, etc.). You can also add burn alerts inline to notify when error budget depletes too quickly. Supports both single-dataset and multi-dataset SLOs.",
       "input_schema": {
-        "type": "object",
-        "properties": {
-          "dataset": {
-            "type": "string",
-            "description": "The dataset slug to create the SLO in"
+        "$defs": {
+          "BurnAlertInput": {
+            "additionalProperties": false,
+            "description": "Burn alert specification for inline creation with SLOs.\n\nTwo alert types:\n- exhaustion_time: Alert when budget will be exhausted in N minutes\n- budget_rate: Alert when budget is decreasing faster than threshold",
+            "properties": {
+              "alert_type": {
+                "description": "Alert type",
+                "enum": [
+                  "exhaustion_time",
+                  "budget_rate"
+                ],
+                "title": "Alert Type",
+                "type": "string"
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Alert description",
+                "title": "Description"
+              },
+              "exhaustion_minutes": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Minutes until budget exhaustion (required for exhaustion_time)",
+                "title": "Exhaustion Minutes"
+              },
+              "budget_rate_window_minutes": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Window size in minutes (required for budget_rate)",
+                "title": "Budget Rate Window Minutes"
+              },
+              "budget_rate_decrease_threshold_per_million": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Threshold in per-million units (required for budget_rate)",
+                "title": "Budget Rate Decrease Threshold Per Million"
+              },
+              "recipients": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/RecipientInput"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Alert recipients",
+                "title": "Recipients"
+              }
+            },
+            "required": [
+              "alert_type"
+            ],
+            "title": "BurnAlertInput",
+            "type": "object"
           },
+          "RecipientInput": {
+            "additionalProperties": false,
+            "description": "Recipient specification (shared across triggers, SLOs, burn alerts).\n\nEither reference an existing recipient by ID, OR create a new one inline\nby providing type and target.\n\nNote: Only 'email' and 'webhook' types are testable without external integrations.\nOther types ('slack', 'pagerduty', 'msteams') require service configuration.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Existing recipient ID",
+                "title": "Id"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "email",
+                      "webhook",
+                      "slack",
+                      "pagerduty",
+                      "msteams"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient type (for inline creation)",
+                "title": "Type"
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient target (email address, webhook URL, or integration ID)",
+                "title": "Target"
+              }
+            },
+            "title": "RecipientInput",
+            "type": "object"
+          },
+          "SLIInput": {
+            "additionalProperties": false,
+            "description": "SLI (Service Level Indicator) specification for tool input.\n\nAn SLI can either reference an existing column by alias, or create\na new derived column inline by providing an expression.",
+            "properties": {
+              "alias": {
+                "description": "Column alias for the SLI (e.g., 'success_rate')",
+                "title": "Alias",
+                "type": "string"
+              },
+              "expression": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Derived column expression (creates column if provided, e.g., 'LTE($duration_ms, 500)')",
+                "title": "Expression"
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "SLI description",
+                "title": "Description"
+              }
+            },
+            "required": [
+              "alias"
+            ],
+            "title": "SLIInput",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Complete SLO tool input for creating SLOs.\n\nNote: Only target_percentage is exposed to tools (most intuitive format).\nThe target_nines format has been removed entirely.",
+        "properties": {
           "name": {
-            "description": "Human-readable name for the SLO",
+            "description": "SLO name",
             "title": "Name",
             "type": "string"
+          },
+          "sli": {
+            "$ref": "#/$defs/SLIInput",
+            "description": "SLI specification"
           },
           "description": {
             "anyOf": [
@@ -2347,27 +2506,44 @@
               }
             ],
             "default": null,
-            "description": "Longer description",
+            "description": "SLO description",
             "title": "Description"
           },
-          "sli": {
-            "$ref": "#/$defs/SLI",
-            "description": "SLI configuration"
+          "datasets": {
+            "description": "Dataset slug(s). Use single-element list for one dataset, multiple for environment-wide SLO",
+            "items": {
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Datasets",
+            "type": "array"
+          },
+          "target_percentage": {
+            "description": "Target as percentage (e.g., 99.9 for 99.9% success rate)",
+            "title": "Target Percentage",
+            "type": "number"
           },
           "time_period_days": {
             "default": 30,
-            "description": "Time period for the SLO in days (1-90)",
-            "maximum": 90,
-            "minimum": 1,
+            "description": "SLO time period in days (typically 7, 14, or 30)",
             "title": "Time Period Days",
             "type": "integer"
           },
-          "target_per_million": {
-            "description": "Target success rate per million (e.g., 999000 = 99.9%)",
-            "maximum": 1000000,
-            "minimum": 0,
-            "title": "Target Per Million",
-            "type": "integer"
+          "burn_alerts": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/BurnAlertInput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Burn alerts to create with the SLO",
+            "title": "Burn Alerts"
           },
           "confidence": {
             "type": "string",
@@ -2416,72 +2592,30 @@
           }
         },
         "required": [
-          "dataset",
           "name",
           "sli",
-          "target_per_million"
+          "datasets",
+          "target_percentage"
         ],
-        "$defs": {
-          "SLI": {
-            "description": "Service Level Indicator configuration.\n\nThe SLI references a derived column by alias. You can either:\n1. Reference an existing derived column: just provide alias\n2. Create a new derived column inline: provide alias + expression\n\nWhen expression is provided, a new derived column will be created automatically\nbefore the SLO is created.",
-            "properties": {
-              "alias": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Alias for the derived column (existing or new)",
-                "title": "Alias"
-              },
-              "expression": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "If provided, creates a new derived column with this expression. If omitted, uses an existing derived column with the given alias.",
-                "title": "Expression"
-              },
-              "description": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Description for the new derived column (only used when expression is provided)",
-                "title": "Description"
-              }
-            },
-            "title": "SLI",
-            "type": "object"
-          }
-        }
+        "title": "SLOToolInput",
+        "type": "object"
       },
       "input_examples": [
         {
-          "dataset": "api-logs",
+          "datasets": [
+            "api-logs"
+          ],
           "name": "API Availability",
           "sli": {
             "alias": "success_rate"
           },
-          "target_per_million": 999000,
+          "target_percentage": 99.9,
           "time_period_days": 30
         },
         {
-          "dataset": "production",
+          "datasets": [
+            "production"
+          ],
           "name": "Request Success Rate",
           "description": "Percentage of requests that succeed (status < 500)",
           "sli": {
@@ -2489,18 +2623,35 @@
             "expression": "IF(LT($status_code, 500), 1, 0)",
             "description": "1 if status < 500, else 0"
           },
-          "target_per_million": 995000,
+          "target_percentage": 99.5,
           "time_period_days": 7
         },
         {
-          "dataset": "api-logs",
+          "datasets": [
+            "api-logs",
+            "production",
+            "staging"
+          ],
+          "name": "Cross-Service Availability",
+          "description": "Environment-wide availability tracking",
+          "sli": {
+            "alias": "request_success",
+            "expression": "IF(LT($status_code, 400), 1, 0)"
+          },
+          "target_percentage": 99.9,
+          "time_period_days": 30
+        },
+        {
+          "datasets": [
+            "api-logs"
+          ],
           "name": "Critical API Availability",
           "description": "High-priority SLO with burn rate alerting",
           "sli": {
             "alias": "api_success",
             "expression": "IF(LT($status_code, 500), 1, 0)"
           },
-          "target_per_million": 999900,
+          "target_percentage": 99.99,
           "time_period_days": 30,
           "burn_alerts": [
             {
@@ -2513,8 +2664,8 @@
                   "target": "oncall@example.com"
                 },
                 {
-                  "type": "slack",
-                  "target": "#critical-alerts"
+                  "type": "webhook",
+                  "target": "https://example.com/webhook"
                 }
               ]
             },
@@ -2525,8 +2676,8 @@
               "description": "Error budget dropping too fast",
               "recipients": [
                 {
-                  "type": "pagerduty",
-                  "target": "routing-key-123"
+                  "type": "email",
+                  "target": "sre-team@example.com"
                 }
               ]
             }
@@ -5537,19 +5688,12 @@
             "type": "string"
           },
           "Calculation": {
+            "additionalProperties": false,
             "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\", alias=\"avg_response\")",
             "properties": {
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/CalcOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Calculation operation (COUNT, AVG, P99, etc.)",
-                "title": "Op"
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
               },
               "column": {
                 "anyOf": [
@@ -5585,6 +5729,7 @@
             "type": "object"
           },
           "Filter": {
+            "additionalProperties": false,
             "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS, value=True)\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
             "properties": {
               "column": {
@@ -5593,16 +5738,8 @@
                 "type": "string"
               },
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/FilterOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Filter operator (=, !=, >, <, contains, etc.)",
-                "title": "Op"
+                "$ref": "#/$defs/FilterOp",
+                "description": "Filter operator (=, !=, >, <, contains, etc.)"
               },
               "value": {
                 "description": "Filter value",
@@ -5650,19 +5787,12 @@
             "type": "string"
           },
           "Having": {
+            "additionalProperties": false,
             "description": "A having clause for post-aggregation filtering.\n\nExamples:\n    >>> Having(calculate_op=CalcOp.COUNT, op=FilterOp.GREATER_THAN, value=100)\n    >>> Having(calculate_op=CalcOp.AVG, column=\"duration_ms\", op=\">\", value=500.0)",
             "properties": {
               "calculate_op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/CalcOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Calculation to filter on",
-                "title": "Calculate Op"
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation to filter on"
               },
               "column": {
                 "anyOf": [
@@ -5678,16 +5808,8 @@
                 "title": "Column"
               },
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/FilterOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Comparison operator",
-                "title": "Op"
+                "$ref": "#/$defs/FilterOp",
+                "description": "Comparison operator"
               },
               "value": {
                 "description": "Threshold value",
@@ -5704,19 +5826,12 @@
             "type": "object"
           },
           "Order": {
+            "additionalProperties": false,
             "description": "An ordering specification for query results.\n\nExamples:\n    >>> Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)\n    >>> Order(op=CalcOp.AVG, column=\"duration_ms\", order=OrderDirection.ASCENDING)",
             "properties": {
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/CalcOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Calculation to order by",
-                "title": "Op"
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation to order by"
               },
               "column": {
                 "anyOf": [
@@ -5732,17 +5847,9 @@
                 "title": "Column"
               },
               "order": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/OrderDirection"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
+                "$ref": "#/$defs/OrderDirection",
                 "default": "descending",
-                "description": "Sort direction",
-                "title": "Order"
+                "description": "Sort direction"
               }
             },
             "required": [
@@ -6167,19 +6274,12 @@
             "type": "string"
           },
           "Calculation": {
+            "additionalProperties": false,
             "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\", alias=\"avg_response\")",
             "properties": {
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/CalcOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Calculation operation (COUNT, AVG, P99, etc.)",
-                "title": "Op"
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
               },
               "column": {
                 "anyOf": [
@@ -6215,6 +6315,7 @@
             "type": "object"
           },
           "Filter": {
+            "additionalProperties": false,
             "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS, value=True)\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
             "properties": {
               "column": {
@@ -6223,16 +6324,8 @@
                 "type": "string"
               },
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/FilterOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Filter operator (=, !=, >, <, contains, etc.)",
-                "title": "Op"
+                "$ref": "#/$defs/FilterOp",
+                "description": "Filter operator (=, !=, >, <, contains, etc.)"
               },
               "value": {
                 "description": "Filter value",
@@ -6280,19 +6373,12 @@
             "type": "string"
           },
           "Having": {
+            "additionalProperties": false,
             "description": "A having clause for post-aggregation filtering.\n\nExamples:\n    >>> Having(calculate_op=CalcOp.COUNT, op=FilterOp.GREATER_THAN, value=100)\n    >>> Having(calculate_op=CalcOp.AVG, column=\"duration_ms\", op=\">\", value=500.0)",
             "properties": {
               "calculate_op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/CalcOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Calculation to filter on",
-                "title": "Calculate Op"
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation to filter on"
               },
               "column": {
                 "anyOf": [
@@ -6308,16 +6394,8 @@
                 "title": "Column"
               },
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/FilterOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Comparison operator",
-                "title": "Op"
+                "$ref": "#/$defs/FilterOp",
+                "description": "Comparison operator"
               },
               "value": {
                 "description": "Threshold value",
@@ -6334,19 +6412,12 @@
             "type": "object"
           },
           "Order": {
+            "additionalProperties": false,
             "description": "An ordering specification for query results.\n\nExamples:\n    >>> Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)\n    >>> Order(op=CalcOp.AVG, column=\"duration_ms\", order=OrderDirection.ASCENDING)",
             "properties": {
               "op": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/CalcOp"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
-                "description": "Calculation to order by",
-                "title": "Op"
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation to order by"
               },
               "column": {
                 "anyOf": [
@@ -6362,17 +6433,9 @@
                 "title": "Column"
               },
               "order": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/OrderDirection"
-                  },
-                  {
-                    "type": "string"
-                  }
-                ],
+                "$ref": "#/$defs/OrderDirection",
                 "default": "descending",
-                "description": "Sort direction",
-                "title": "Order"
+                "description": "Sort direction"
               }
             },
             "required": [
@@ -6579,238 +6642,877 @@
       "name": "honeycomb_create_board",
       "description": "Creates a new board (dashboard) with inline query panels, SLO panels, text panels, board views, and preset filters in a single operation. Use this to build comprehensive dashboards for service monitoring, create SRE views, or consolidate related visualizations. Requires a name and supports inline_query_panels (array of query definitions that will be created automatically), text_panels (markdown content), slo_panels (SLO IDs), views (filtered perspectives), and preset_filters (dynamic filters). Each inline query panel needs a name, dataset, time_range, and calculations - optionally include filters, breakdowns, orders, and limit. Query panels can include calculated_fields (derived columns) - see honeycomb_create_derived_column for expression syntax. For inline SLO panels with SLI expressions: must return boolean, use $ prefix for columns. Example: LT($status_code, 500). Board views allow creating filtered perspectives (max 50 per board): each view has a name and filters array with column, operation (=, !=, >, >=, <, <=, contains, starts-with, ends-with, exists, in), and value. Preset filters (max 5) allow dynamic filtering of board data: each has column and alias properties. Layout defaults to auto-layout (Honeycomb arranges panels) but supports manual layout with explicit positioning. The tool orchestrates: creating all inline queries with annotations, inline SLOs, board views, preset filters, assembling panel configurations, and creating the board with all components in one API call.",
       "input_schema": {
-        "type": "object",
+        "$defs": {
+          "BoardViewFilter": {
+            "additionalProperties": false,
+            "description": "Filter for board views.\n\nBoard views allow saved filter configurations that users can switch between.",
+            "properties": {
+              "column": {
+                "description": "Column name to filter on",
+                "title": "Column",
+                "type": "string"
+              },
+              "operation": {
+                "$ref": "#/$defs/FilterOp",
+                "description": "Filter operation"
+              },
+              "value": {
+                "anyOf": [
+                  {},
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Filter value (optional for exists/does-not-exist operations)",
+                "title": "Value"
+              }
+            },
+            "required": [
+              "column",
+              "operation"
+            ],
+            "title": "BoardViewFilter",
+            "type": "object"
+          },
+          "BoardViewInput": {
+            "additionalProperties": false,
+            "description": "Named view with filters for boards.",
+            "properties": {
+              "name": {
+                "description": "View name",
+                "title": "Name",
+                "type": "string"
+              },
+              "filters": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/BoardViewFilter"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "View filters",
+                "title": "Filters"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "title": "BoardViewInput",
+            "type": "object"
+          },
+          "CalcOp": {
+            "description": "Calculation operations for Honeycomb queries.",
+            "enum": [
+              "COUNT",
+              "SUM",
+              "AVG",
+              "MIN",
+              "MAX",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P25",
+              "P50",
+              "P75",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "COUNT_DISTINCT",
+              "CONCURRENCY",
+              "HEATMAP",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "CalcOp",
+            "type": "string"
+          },
+          "Calculation": {
+            "additionalProperties": false,
+            "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\", alias=\"avg_response\")",
+            "properties": {
+              "op": {
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Column to calculate on",
+                "title": "Column"
+              },
+              "alias": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Alias for the result column",
+                "title": "Alias"
+              }
+            },
+            "required": [
+              "op"
+            ],
+            "title": "Calculation",
+            "type": "object"
+          },
+          "Filter": {
+            "additionalProperties": false,
+            "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS, value=True)\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
+            "properties": {
+              "column": {
+                "description": "Column to filter on",
+                "title": "Column",
+                "type": "string"
+              },
+              "op": {
+                "$ref": "#/$defs/FilterOp",
+                "description": "Filter operator (=, !=, >, <, contains, etc.)"
+              },
+              "value": {
+                "description": "Filter value",
+                "title": "Value"
+              }
+            },
+            "required": [
+              "column",
+              "op",
+              "value"
+            ],
+            "title": "Filter",
+            "type": "object"
+          },
+          "FilterCombination": {
+            "description": "How to combine multiple filters.",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "FilterCombination",
+            "type": "string"
+          },
+          "FilterOp": {
+            "description": "Filter operations for Honeycomb queries and board views.",
+            "enum": [
+              "=",
+              "!=",
+              ">",
+              ">=",
+              "<",
+              "<=",
+              "starts-with",
+              "does-not-start-with",
+              "ends-with",
+              "does-not-end-with",
+              "contains",
+              "does-not-contain",
+              "exists",
+              "does-not-exist",
+              "in",
+              "not-in"
+            ],
+            "title": "FilterOp",
+            "type": "string"
+          },
+          "Having": {
+            "additionalProperties": false,
+            "description": "A having clause for post-aggregation filtering.\n\nExamples:\n    >>> Having(calculate_op=CalcOp.COUNT, op=FilterOp.GREATER_THAN, value=100)\n    >>> Having(calculate_op=CalcOp.AVG, column=\"duration_ms\", op=\">\", value=500.0)",
+            "properties": {
+              "calculate_op": {
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation to filter on"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Column for the calculation",
+                "title": "Column"
+              },
+              "op": {
+                "$ref": "#/$defs/FilterOp",
+                "description": "Comparison operator"
+              },
+              "value": {
+                "description": "Threshold value",
+                "title": "Value",
+                "type": "number"
+              }
+            },
+            "required": [
+              "calculate_op",
+              "op",
+              "value"
+            ],
+            "title": "Having",
+            "type": "object"
+          },
+          "Order": {
+            "additionalProperties": false,
+            "description": "An ordering specification for query results.\n\nExamples:\n    >>> Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)\n    >>> Order(op=CalcOp.AVG, column=\"duration_ms\", order=OrderDirection.ASCENDING)",
+            "properties": {
+              "op": {
+                "$ref": "#/$defs/CalcOp",
+                "description": "Calculation to order by"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Column for the calculation",
+                "title": "Column"
+              },
+              "order": {
+                "$ref": "#/$defs/OrderDirection",
+                "default": "descending",
+                "description": "Sort direction"
+              }
+            },
+            "required": [
+              "op"
+            ],
+            "title": "Order",
+            "type": "object"
+          },
+          "OrderDirection": {
+            "description": "Order directions for query results.",
+            "enum": [
+              "ascending",
+              "descending"
+            ],
+            "title": "OrderDirection",
+            "type": "string"
+          },
+          "PositionInput": {
+            "additionalProperties": false,
+            "description": "Panel position on the board grid (API-native structure).\n\nNote: This uses the API's named field structure instead of tuples.\nBoard grid is 24 units wide, panels can be 1-24 units in width/height.",
+            "properties": {
+              "x_coordinate": {
+                "description": "X position on grid (0-based)",
+                "minimum": 0,
+                "title": "X Coordinate",
+                "type": "integer"
+              },
+              "y_coordinate": {
+                "description": "Y position on grid (0-based)",
+                "minimum": 0,
+                "title": "Y Coordinate",
+                "type": "integer"
+              },
+              "width": {
+                "description": "Panel width in grid units (1-24)",
+                "maximum": 24,
+                "minimum": 1,
+                "title": "Width",
+                "type": "integer"
+              },
+              "height": {
+                "description": "Panel height in grid units (1-24)",
+                "maximum": 24,
+                "minimum": 1,
+                "title": "Height",
+                "type": "integer"
+              }
+            },
+            "required": [
+              "x_coordinate",
+              "y_coordinate",
+              "width",
+              "height"
+            ],
+            "title": "PositionInput",
+            "type": "object"
+          },
+          "PresetFilterInput": {
+            "additionalProperties": false,
+            "description": "Preset filter column for boards.\n\nPreset filters allow users to filter board results by specific columns\nusing the board UI controls.",
+            "properties": {
+              "column": {
+                "description": "Column name to filter on",
+                "title": "Column",
+                "type": "string"
+              },
+              "alias": {
+                "description": "Display alias for the filter control",
+                "title": "Alias",
+                "type": "string"
+              }
+            },
+            "required": [
+              "column",
+              "alias"
+            ],
+            "title": "PresetFilterInput",
+            "type": "object"
+          },
+          "QueryPanelInput": {
+            "additionalProperties": false,
+            "description": "Query panel specification for board tool input.\n\nThis model represents a complete query panel with FLAT structure.\nQuery fields are at the top level, not nested under a 'query' object.\n\nExample:\n    {\n        \"name\": \"CPU Usage\",\n        \"dataset\": \"metrics\",\n        \"time_range\": 3600,\n        \"calculations\": [{\"op\": \"AVG\", \"column\": \"cpu_percent\"}],\n        \"style\": \"graph\"\n    }",
+            "properties": {
+              "name": {
+                "description": "Panel/query name",
+                "title": "Name",
+                "type": "string"
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Panel description",
+                "title": "Description"
+              },
+              "style": {
+                "default": "graph",
+                "description": "Panel display style",
+                "enum": [
+                  "graph",
+                  "table",
+                  "combo"
+                ],
+                "title": "Style",
+                "type": "string"
+              },
+              "visualization": {
+                "anyOf": [
+                  {
+                    "additionalProperties": true,
+                    "type": "object"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Visualization settings (chart-specific config)",
+                "title": "Visualization"
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/PositionInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Panel position for manual layout (required if layout_generation=manual)"
+              },
+              "dataset": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Dataset slug (None = environment-wide query)",
+                "title": "Dataset"
+              },
+              "time_range": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Time range in seconds (relative time)",
+                "title": "Time Range"
+              },
+              "start_time": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Absolute start time (Unix timestamp, use with end_time)",
+                "title": "Start Time"
+              },
+              "end_time": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Absolute end time (Unix timestamp, use with start_time)",
+                "title": "End Time"
+              },
+              "granularity": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Time granularity in seconds",
+                "title": "Granularity"
+              },
+              "calculations": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Calculation"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Calculations to perform (e.g., COUNT, AVG, P99)",
+                "title": "Calculations"
+              },
+              "filters": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Filter"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Query filters",
+                "title": "Filters"
+              },
+              "breakdowns": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Columns to group by",
+                "title": "Breakdowns"
+              },
+              "filter_combination": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/FilterCombination"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "How to combine filters (AND or OR)"
+              },
+              "orders": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Order"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Result ordering",
+                "title": "Orders"
+              },
+              "limit": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Result limit (max 1000)",
+                "title": "Limit"
+              },
+              "havings": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Having"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Having clauses for post-aggregation filtering",
+                "title": "Havings"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "title": "QueryPanelInput",
+            "type": "object"
+          },
+          "SLIInput": {
+            "additionalProperties": false,
+            "description": "SLI (Service Level Indicator) specification for tool input.\n\nAn SLI can either reference an existing column by alias, or create\na new derived column inline by providing an expression.",
+            "properties": {
+              "alias": {
+                "description": "Column alias for the SLI (e.g., 'success_rate')",
+                "title": "Alias",
+                "type": "string"
+              },
+              "expression": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Derived column expression (creates column if provided, e.g., 'LTE($duration_ms, 500)')",
+                "title": "Expression"
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "SLI description",
+                "title": "Description"
+              }
+            },
+            "required": [
+              "alias"
+            ],
+            "title": "SLIInput",
+            "type": "object"
+          },
+          "SLOPanelInput": {
+            "additionalProperties": false,
+            "description": "Inline SLO panel for boards.\n\nCreates an SLO and adds it to the board in one operation.",
+            "properties": {
+              "name": {
+                "description": "SLO name",
+                "title": "Name",
+                "type": "string"
+              },
+              "description": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "SLO description",
+                "title": "Description"
+              },
+              "dataset": {
+                "description": "Dataset slug",
+                "title": "Dataset",
+                "type": "string"
+              },
+              "sli": {
+                "$ref": "#/$defs/SLIInput",
+                "description": "SLI specification"
+              },
+              "target_percentage": {
+                "description": "Target as percentage (e.g., 99.9)",
+                "title": "Target Percentage",
+                "type": "number"
+              },
+              "time_period_days": {
+                "default": 30,
+                "description": "Time period in days",
+                "title": "Time Period Days",
+                "type": "integer"
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/PositionInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Panel position (required for manual layout)"
+              }
+            },
+            "required": [
+              "name",
+              "dataset",
+              "sli",
+              "target_percentage"
+            ],
+            "title": "SLOPanelInput",
+            "type": "object"
+          },
+          "TagInput": {
+            "additionalProperties": false,
+            "description": "Tag for boards.",
+            "properties": {
+              "key": {
+                "description": "Tag key",
+                "title": "Key",
+                "type": "string"
+              },
+              "value": {
+                "description": "Tag value",
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "value"
+            ],
+            "title": "TagInput",
+            "type": "object"
+          },
+          "TextPanelInput": {
+            "additionalProperties": false,
+            "description": "Text/markdown panel for boards.",
+            "properties": {
+              "content": {
+                "description": "Markdown content for the panel",
+                "title": "Content",
+                "type": "string"
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/PositionInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Panel position (required for manual layout)"
+              }
+            },
+            "required": [
+              "content"
+            ],
+            "title": "TextPanelInput",
+            "type": "object"
+          }
+        },
+        "additionalProperties": false,
+        "description": "Complete board tool input for creating boards.\n\nSupports three layout modes:\n- auto: Automatically arranges panels (position not required)\n- manual: User-specified positions (position required for all panels)\n\nPanel types:\n- inline_query_panels: Query panels (creates queries inline)\n- inline_slo_panels: SLO panels (creates SLOs inline)\n- text_panels: Markdown/text panels\n- slo_panels: Reference existing SLOs by ID",
         "properties": {
           "name": {
-            "type": "string",
-            "description": "Board name"
+            "description": "Board name",
+            "title": "Name",
+            "type": "string"
           },
           "description": {
-            "type": "string",
-            "description": "Board description"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Board description",
+            "title": "Description"
           },
           "layout_generation": {
-            "type": "string",
-            "description": "Layout mode: 'auto' or 'manual' (default: auto)"
+            "default": "auto",
+            "description": "Layout mode (auto or manual)",
+            "enum": [
+              "auto",
+              "manual"
+            ],
+            "title": "Layout Generation",
+            "type": "string"
           },
           "inline_query_panels": {
-            "type": "array",
-            "description": "Array of query panels to create inline (each creates a new query)",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "description": "Panel/query name"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryPanelInput"
                 },
-                "dataset": {
-                  "type": "string",
-                  "description": "Dataset slug"
-                },
-                "time_range": {
-                  "type": "integer",
-                  "description": "Time range in seconds"
-                },
-                "calculations": {
-                  "type": "array",
-                  "description": "Array of calculation objects",
-                  "items": {
-                    "type": "object"
-                  }
-                },
-                "filters": {
-                  "type": "array",
-                  "description": "Array of filter objects",
-                  "items": {
-                    "type": "object"
-                  }
-                },
-                "breakdowns": {
-                  "type": "array",
-                  "description": "Fields to group by",
-                  "items": {
-                    "type": "string"
-                  }
-                },
-                "orders": {
-                  "type": "array",
-                  "description": "Ordering specifications",
-                  "items": {
-                    "type": "object"
-                  }
-                },
-                "limit": {
-                  "type": "integer",
-                  "description": "Result limit"
-                },
-                "style": {
-                  "type": "string",
-                  "description": "Panel style: graph, table, or combo"
-                }
+                "type": "array"
               },
-              "required": [
-                "name"
-              ]
-            }
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Query panels to create inline",
+            "title": "Inline Query Panels"
           },
           "inline_slo_panels": {
-            "type": "array",
-            "description": "Array of SLO definitions to create inline",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "description": "SLO name"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/SLOPanelInput"
                 },
-                "dataset": {
-                  "type": "string",
-                  "description": "Dataset slug"
-                },
-                "sli": {
-                  "type": "object",
-                  "description": "SLI definition (alias + optional expression for inline creation)",
-                  "properties": {
-                    "alias": {
-                      "type": "string",
-                      "description": "Derived column alias"
-                    },
-                    "expression": {
-                      "type": "string",
-                      "description": "Optional expression (creates derived column inline)"
-                    },
-                    "description": {
-                      "type": "string"
-                    }
-                  },
-                  "required": [
-                    "alias"
-                  ]
-                },
-                "target_per_million": {
-                  "type": "integer"
-                },
-                "target_percentage": {
-                  "type": "number"
-                },
-                "target_nines": {
-                  "type": "integer"
-                },
-                "time_period_days": {
-                  "type": "integer"
-                },
-                "time_period_weeks": {
-                  "type": "integer"
-                },
-                "description": {
-                  "type": "string"
-                }
+                "type": "array"
               },
-              "required": [
-                "name",
-                "dataset",
-                "sli"
-              ]
-            }
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "SLO panels to create inline",
+            "title": "Inline Slo Panels"
           },
           "text_panels": {
-            "type": "array",
-            "description": "Array of markdown text panels",
-            "items": {
-              "type": "object",
-              "properties": {
-                "content": {
-                  "type": "string",
-                  "description": "Markdown text content"
-                }
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TextPanelInput"
+                },
+                "type": "array"
               },
-              "required": [
-                "content"
-              ]
-            }
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Text/markdown panels",
+            "title": "Text Panels"
           },
           "slo_panels": {
-            "type": "array",
-            "description": "Array of existing SLO IDs to display as panels",
-            "items": {
-              "type": "string"
-            }
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Existing SLO IDs to add as panels",
+            "title": "Slo Panels"
           },
           "tags": {
-            "type": "array",
-            "description": "Array of tag objects",
-            "items": {
-              "type": "object",
-              "properties": {
-                "key": {
-                  "type": "string"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TagInput"
                 },
-                "value": {
-                  "type": "string"
-                }
+                "type": "array"
+              },
+              {
+                "type": "null"
               }
-            }
+            ],
+            "default": null,
+            "description": "Board tags (key-value pairs)",
+            "title": "Tags"
           },
           "preset_filters": {
-            "type": "array",
-            "description": "Array of preset filter objects for dynamic board filtering (max 5)",
-            "items": {
-              "type": "object",
-              "properties": {
-                "column": {
-                  "type": "string",
-                  "description": "Column name to filter on"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/PresetFilterInput"
                 },
-                "alias": {
-                  "type": "string",
-                  "description": "Display name for the filter in UI"
-                }
+                "type": "array"
               },
-              "required": [
-                "column",
-                "alias"
-              ]
-            }
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Preset filter columns for board UI",
+            "title": "Preset Filters"
           },
           "views": {
-            "type": "array",
-            "description": "Array of board views (filtered perspectives on the board, max 50 per board)",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "description": "View name"
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/BoardViewInput"
                 },
-                "filters": {
-                  "type": "array",
-                  "description": "Array of filter objects (column, operation, value)",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "column": {
-                        "type": "string",
-                        "description": "Column name to filter on"
-                      },
-                      "operation": {
-                        "type": "string",
-                        "description": "Filter operation: =, !=, >, >=, <, <=, contains, starts-with, ends-with, exists, in, etc."
-                      },
-                      "value": {
-                        "description": "Filter value (optional for exists/does-not-exist operations)"
-                      }
-                    },
-                    "required": [
-                      "column",
-                      "operation"
-                    ]
-                  }
-                }
+                "type": "array"
               },
-              "required": [
-                "name"
-              ]
-            }
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Named views with saved filter configurations",
+            "title": "Views"
           },
           "confidence": {
             "type": "string",
@@ -6860,7 +7562,9 @@
         },
         "required": [
           "name"
-        ]
+        ],
+        "title": "BoardToolInput",
+        "type": "object"
       },
       "input_examples": [
         {
@@ -6996,7 +7700,7 @@
                 "expression": "IF(LT($status_code, 400), 1, 0)",
                 "description": "1 if successful, 0 if error"
               },
-              "target_nines": 3,
+              "target_percentage": 99.9,
               "time_period_days": 30,
               "description": "99.9% availability target"
             }
@@ -8426,6 +9130,6 @@
     }
   ],
   "version": "0.1.0",
-  "generated_at": "2026-01-07T20:21:19.225177+00:00",
+  "generated_at": "2026-01-08T03:47:04.418257+00:00",
   "count": 67
 }
