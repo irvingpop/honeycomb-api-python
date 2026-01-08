@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-01-08
+
+### Bug Fixes
+
+- Fix issue where board and query tool inputs were missing Visualization settings, Chart settings and calculated fields 
+
+* fix issue where board and query tool inputs were missing certain inputs, back them up with pydantic models
+
+## Summary
+- Add typed `VisualizationSettingsInput` model for board query panels with proper schema validation
+- Add `chart_type` convenience field at the panel level (transforms to `visualization_settings.charts[].chart_type`)
+- Add `calculated_fields` support for inline derived columns in queries
+- Add `compare_time_offset_seconds` field with validation for historical comparisons
+- Add field validator to `QuerySpec` ensuring only valid compare offset values are accepted
+
+## Test plan
+- [x] Unit tests for new Pydantic models (`ChartSettingsInput`, `VisualizationSettingsInput`, `CalculatedFieldInput`)
+- [x] Unit tests for `QuerySpec.compare_time_offset_seconds` validation
+- [x] Integration test cases for boards with chart_type, visualization settings, calculated fields, and compare offsets
+- [x] Integration test cases for queries with calculated fields and compare offsets
+- [x] CI passes (736 unit tests)
+
+* we don't actually want those extra tool fields in our generators
+
 ## [0.5.0] - 2026-01-08
 
 ### Bug Fixes
