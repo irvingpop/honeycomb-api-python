@@ -20,6 +20,7 @@ from honeycomb.models import (
     SLOCreate,
     TriggerCreate,
 )
+from honeycomb.models.tool_inputs import BoardToolInput, SLOToolInput
 from honeycomb.tools.descriptions import get_description, validate_description
 from honeycomb.tools.schemas import (
     add_metadata_fields,
@@ -357,21 +358,8 @@ def generate_get_slo_tool() -> dict[str, Any]:
 
 def generate_create_slo_tool() -> dict[str, Any]:
     """Generate honeycomb_create_slo tool definition."""
-    base_schema = generate_schema_from_model(
-        SLOCreate,
-        exclude_fields={"created_at", "updated_at", "id"},
-    )
-
-    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
-    add_parameter(
-        schema, "dataset", "string", "The dataset slug to create the SLO in", required=True
-    )
-
-    schema["properties"].update(base_schema["properties"])
-    schema["required"].extend(base_schema.get("required", []))
-
-    if "$defs" in base_schema:
-        schema["$defs"] = base_schema["$defs"]
+    # Use Pydantic model for schema generation with strict validation
+    schema = SLOToolInput.model_json_schema()
 
     examples = [
         # Minimal with existing derived column
@@ -379,7 +367,7 @@ def generate_create_slo_tool() -> dict[str, Any]:
             "dataset": "api-logs",
             "name": "API Availability",
             "sli": {"alias": "success_rate"},
-            "target_per_million": 999000,  # 99.9%
+            "target_percentage": 99.9,
             "time_period_days": 30,
         },
         # With NEW derived column created inline
@@ -392,7 +380,7 @@ def generate_create_slo_tool() -> dict[str, Any]:
                 "expression": "IF(LT($status_code, 500), 1, 0)",
                 "description": "1 if status < 500, else 0",
             },
-            "target_per_million": 995000,  # 99.5%
+            "target_percentage": 99.5,
             "time_period_days": 7,
         },
         # With burn alerts inline (creates SLO + derived column + burn alerts in one call)
@@ -404,7 +392,7 @@ def generate_create_slo_tool() -> dict[str, Any]:
                 "alias": "api_success",
                 "expression": "IF(LT($status_code, 500), 1, 0)",
             },
-            "target_per_million": 999900,  # 99.99%
+            "target_percentage": 99.99,
             "time_period_days": 30,
             "burn_alerts": [
                 {
@@ -413,7 +401,7 @@ def generate_create_slo_tool() -> dict[str, Any]:
                     "description": "Budget exhausting in 1 hour",
                     "recipients": [
                         {"type": "email", "target": "oncall@example.com"},
-                        {"type": "slack", "target": "#critical-alerts"},
+                        {"type": "webhook", "target": "https://example.com/webhook"},
                     ],
                 },
                 {
@@ -421,7 +409,7 @@ def generate_create_slo_tool() -> dict[str, Any]:
                     "budget_rate_window_minutes": 60,
                     "budget_rate_decrease_threshold_per_million": 10000,  # 1% drop in 1 hour
                     "description": "Error budget dropping too fast",
-                    "recipients": [{"type": "pagerduty", "target": "routing-key-123"}],
+                    "recipients": [{"type": "email", "target": "sre-team@example.com"}],
                 },
             ],
         },
@@ -1346,173 +1334,8 @@ def generate_get_board_tool() -> dict[str, Any]:
 
 def generate_create_board_tool() -> dict[str, Any]:
     """Generate honeycomb_create_board tool definition."""
-    # Build schema manually for complex nested structure
-    schema: dict[str, Any] = {
-        "type": "object",
-        "properties": {},
-        "required": ["name"],
-    }
-
-    add_parameter(schema, "name", "string", "Board name", required=True)
-    add_parameter(schema, "description", "string", "Board description", required=False)
-    add_parameter(
-        schema,
-        "layout_generation",
-        "string",
-        "Layout mode: 'auto' or 'manual' (default: auto)",
-        required=False,
-    )
-
-    # Inline query panels array
-    schema["properties"]["inline_query_panels"] = {
-        "type": "array",
-        "description": "Array of query panels to create inline (each creates a new query)",
-        "items": {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "description": "Panel/query name"},
-                "dataset": {"type": "string", "description": "Dataset slug"},
-                "time_range": {"type": "integer", "description": "Time range in seconds"},
-                "calculations": {
-                    "type": "array",
-                    "description": "Array of calculation objects",
-                    "items": {"type": "object"},
-                },
-                "filters": {
-                    "type": "array",
-                    "description": "Array of filter objects",
-                    "items": {"type": "object"},
-                },
-                "breakdowns": {
-                    "type": "array",
-                    "description": "Fields to group by",
-                    "items": {"type": "string"},
-                },
-                "orders": {
-                    "type": "array",
-                    "description": "Ordering specifications",
-                    "items": {"type": "object"},
-                },
-                "limit": {"type": "integer", "description": "Result limit"},
-                "style": {
-                    "type": "string",
-                    "description": "Panel style: graph, table, or combo",
-                },
-            },
-            "required": ["name"],  # dataset is optional (defaults to environment-wide)
-        },
-    }
-
-    # Inline SLO panels array
-    schema["properties"]["inline_slo_panels"] = {
-        "type": "array",
-        "description": "Array of SLO definitions to create inline",
-        "items": {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "description": "SLO name"},
-                "dataset": {"type": "string", "description": "Dataset slug"},
-                "sli": {
-                    "type": "object",
-                    "description": "SLI definition (alias + optional expression for inline creation)",
-                    "properties": {
-                        "alias": {"type": "string", "description": "Derived column alias"},
-                        "expression": {
-                            "type": "string",
-                            "description": "Optional expression (creates derived column inline)",
-                        },
-                        "description": {"type": "string"},
-                    },
-                    "required": ["alias"],
-                },
-                "target_per_million": {"type": "integer"},
-                "target_percentage": {"type": "number"},
-                "target_nines": {"type": "integer"},
-                "time_period_days": {"type": "integer"},
-                "time_period_weeks": {"type": "integer"},
-                "description": {"type": "string"},
-            },
-            "required": ["name", "dataset", "sli"],
-        },
-    }
-
-    # Text panels array
-    schema["properties"]["text_panels"] = {
-        "type": "array",
-        "description": "Array of markdown text panels",
-        "items": {
-            "type": "object",
-            "properties": {
-                "content": {"type": "string", "description": "Markdown text content"},
-            },
-            "required": ["content"],
-        },
-    }
-
-    # SLO panels array (IDs)
-    schema["properties"]["slo_panels"] = {
-        "type": "array",
-        "description": "Array of existing SLO IDs to display as panels",
-        "items": {"type": "string"},
-    }
-
-    # Tags
-    schema["properties"]["tags"] = {
-        "type": "array",
-        "description": "Array of tag objects",
-        "items": {
-            "type": "object",
-            "properties": {
-                "key": {"type": "string"},
-                "value": {"type": "string"},
-            },
-        },
-    }
-
-    # Preset filters
-    schema["properties"]["preset_filters"] = {
-        "type": "array",
-        "description": "Array of preset filter objects for dynamic board filtering (max 5)",
-        "items": {
-            "type": "object",
-            "properties": {
-                "column": {"type": "string", "description": "Column name to filter on"},
-                "alias": {"type": "string", "description": "Display name for the filter in UI"},
-            },
-            "required": ["column", "alias"],
-        },
-    }
-
-    # Board views
-    schema["properties"]["views"] = {
-        "type": "array",
-        "description": "Array of board views (filtered perspectives on the board, max 50 per board)",
-        "items": {
-            "type": "object",
-            "properties": {
-                "name": {"type": "string", "description": "View name"},
-                "filters": {
-                    "type": "array",
-                    "description": "Array of filter objects (column, operation, value)",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "column": {"type": "string", "description": "Column name to filter on"},
-                            "operation": {
-                                "type": "string",
-                                "description": "Filter operation: =, !=, >, >=, <, <=, contains, starts-with, ends-with, exists, in, etc.",
-                            },
-                            "value": {
-                                "description": "Filter value (optional for exists/does-not-exist operations)"
-                            },
-                        },
-                        "required": ["column", "operation"],
-                    },
-                },
-            },
-            "required": ["name"],
-        },
-    }
+    # Use Pydantic model for schema generation (replaces 300+ lines of manual schema building)
+    schema = BoardToolInput.model_json_schema()
 
     examples: list[dict[str, Any]] = [
         # Simple: inline query panels with auto-layout
@@ -1593,7 +1416,7 @@ def generate_create_board_tool() -> dict[str, Any]:
                         "expression": "IF(LT($status_code, 400), 1, 0)",
                         "description": "1 if successful, 0 if error",
                     },
-                    "target_nines": 3,
+                    "target_percentage": 99.9,
                     "time_period_days": 30,
                     "description": "99.9% availability target",
                 }
