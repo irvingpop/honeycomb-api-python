@@ -12,11 +12,13 @@ from honeycomb.tools.generator import (
     export_tools_json,
     export_tools_python,
     generate_all_tools,
-    generate_create_burn_alert_tool,
-    generate_create_slo_tool,
+    generate_tools_for_resource,
+)
+from honeycomb.tools.resources.burn_alerts import generate_create_burn_alert_tool
+from honeycomb.tools.resources.slos import generate_create_slo_tool
+from honeycomb.tools.resources.triggers import (
     generate_create_trigger_tool,
     generate_list_triggers_tool,
-    generate_tools_for_resource,
 )
 from honeycomb.tools.schemas import (
     CONFIDENCE_SCHEMA,
@@ -489,7 +491,7 @@ class TestSchemaModelAlignment:
 
     def test_batch_events_schema_uses_time_not_timestamp(self):
         """Batch events schema should use 'time' field to match BatchEvent model."""
-        from honeycomb.tools.generator import generate_send_batch_events_tool
+        from honeycomb.tools.resources.events import generate_send_batch_events_tool
 
         tool = generate_send_batch_events_tool()
         event_schema = tool["input_schema"]["properties"]["events"]["items"]
@@ -504,7 +506,7 @@ class TestSchemaModelAlignment:
 
     def test_batch_events_examples_use_time_field(self):
         """Batch events examples should show 'time' field usage."""
-        from honeycomb.tools.generator import generate_send_batch_events_tool
+        from honeycomb.tools.resources.events import generate_send_batch_events_tool
 
         tool = generate_send_batch_events_tool()
         examples = tool.get("input_examples", [])
