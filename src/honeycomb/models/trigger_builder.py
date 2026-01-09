@@ -40,6 +40,14 @@ class TriggerBundle:
     trigger: TriggerCreate
     inline_recipients: list[dict[str, Any]]
 
+    def model_dump_for_api(self) -> dict[str, Any]:
+        """Serialize for API request by delegating to inner trigger.
+
+        Returns:
+            Dictionary suitable for API submission.
+        """
+        return self.trigger.model_dump_for_api()
+
 
 class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
     """Fluent builder for triggers with integrated query building.
