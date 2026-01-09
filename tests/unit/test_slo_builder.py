@@ -221,7 +221,9 @@ class TestSLOBuilderTags:
             .build()
         )
 
-        assert bundle.slo.tags == [{"key": "team", "value": "platform"}]
+        assert len(bundle.slo.tags) == 1
+        assert bundle.slo.tags[0].key == "team"
+        assert bundle.slo.tags[0].value == "platform"
 
     def test_slo_with_multiple_tags(self):
         """Test adding multiple tags to SLO."""
@@ -236,11 +238,13 @@ class TestSLOBuilderTags:
             .build()
         )
 
-        assert bundle.slo.tags == [
-            {"key": "team", "value": "platform"},
-            {"key": "service", "value": "api"},
-            {"key": "criticality", "value": "high"},
-        ]
+        assert len(bundle.slo.tags) == 3
+        assert bundle.slo.tags[0].key == "team"
+        assert bundle.slo.tags[0].value == "platform"
+        assert bundle.slo.tags[1].key == "service"
+        assert bundle.slo.tags[1].value == "api"
+        assert bundle.slo.tags[2].key == "criticality"
+        assert bundle.slo.tags[2].value == "high"
 
     def test_tag_method_chaining(self):
         """Test that tag() returns self for chaining."""

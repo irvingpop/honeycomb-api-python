@@ -36,9 +36,13 @@ def load_test_credentials() -> tuple[str, str]:
     Raises:
         pytest.skip: If credentials are not available
     """
+    import time
+
     # First check environment variables (may be set by direnv)
     api_key = os.environ.get("HONEYCOMB_API_KEY")
-    test_dataset = os.environ.get("HONEYCOMB_TEST_DATASET", "integration-test")
+    # Use unique dataset name per test session to avoid conflicts
+    default_dataset = f"integration-test-{int(time.time())}"
+    test_dataset = os.environ.get("HONEYCOMB_TEST_DATASET", default_dataset)
 
     if api_key:
         return api_key, test_dataset

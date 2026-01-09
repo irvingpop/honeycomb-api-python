@@ -243,10 +243,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
+                  "$ref": "#/$defs/TagInput"
                 },
                 "type": "array"
               },
@@ -438,6 +435,28 @@
             ],
             "title": "FilterOp",
             "type": "string"
+          },
+          "TagInput": {
+            "additionalProperties": false,
+            "description": "Tag for boards.",
+            "properties": {
+              "key": {
+                "description": "Tag key",
+                "title": "Key",
+                "type": "string"
+              },
+              "value": {
+                "description": "Tag value",
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "value"
+            ],
+            "title": "TagInput",
+            "type": "object"
           },
           "TriggerAlertType": {
             "description": "How often to fire an alert when threshold is crossed.",
@@ -864,10 +883,7 @@
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
+                  "$ref": "#/$defs/TagInput"
                 },
                 "type": "array"
               },
@@ -1060,6 +1076,28 @@
             ],
             "title": "FilterOp",
             "type": "string"
+          },
+          "TagInput": {
+            "additionalProperties": false,
+            "description": "Tag for boards.",
+            "properties": {
+              "key": {
+                "description": "Tag key",
+                "title": "Key",
+                "type": "string"
+              },
+              "value": {
+                "description": "Tag value",
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "value"
+            ],
+            "title": "TagInput",
+            "type": "object"
           },
           "TriggerAlertType": {
             "description": "How often to fire an alert when threshold is crossed.",

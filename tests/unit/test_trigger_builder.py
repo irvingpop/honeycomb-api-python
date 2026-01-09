@@ -544,7 +544,9 @@ class TestTriggerBuilderTags:
             .tag("team", "backend")
             .build()
         )
-        assert bundle.trigger.tags == [{"key": "team", "value": "backend"}]
+        assert len(bundle.trigger.tags) == 1
+        assert bundle.trigger.tags[0].key == "team"
+        assert bundle.trigger.tags[0].value == "backend"
 
     def test_multiple_tags(self):
         """Test adding multiple tags."""
@@ -802,10 +804,11 @@ class TestTriggerBuilderPhase25Integration:
             .email("oncall@example.com")
             .build()
         )
-        assert bundle.trigger.tags == [
-            {"key": "team", "value": "backend"},
-            {"key": "severity", "value": "high"},
-        ]
+        assert len(bundle.trigger.tags) == 2
+        assert bundle.trigger.tags[0].key == "team"
+        assert bundle.trigger.tags[0].value == "backend"
+        assert bundle.trigger.tags[1].key == "severity"
+        assert bundle.trigger.tags[1].value == "high"
         assert bundle.trigger.baseline_details == {"offset_minutes": 60, "type": "percentage"}
         assert bundle.trigger.frequency == 600
 

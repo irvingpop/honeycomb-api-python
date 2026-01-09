@@ -14,6 +14,7 @@ from honeycomb.models.query_builder import (
     Filter,
     FilterCombination,
 )
+from honeycomb.models.tool_inputs import TagInput
 
 
 class TriggerThresholdOp(str, Enum):
@@ -136,7 +137,7 @@ class TriggerCreate(BaseModel):
         description="When to send alerts",
     )
     recipients: list[dict] | None = Field(default=None, description="Notification recipients")
-    tags: list[dict[str, str]] | None = Field(
+    tags: list[TagInput] | None = Field(
         default=None, description="Tags for organizing triggers (max 10)"
     )
     baseline_details: dict[str, Any] | None = Field(
@@ -196,7 +197,7 @@ class TriggerCreate(BaseModel):
             data["recipients"] = self.recipients
 
         if self.tags:
-            data["tags"] = self.tags
+            data["tags"] = [{"key": tag.key, "value": tag.value} for tag in self.tags]
 
         if self.baseline_details:
             data["baseline_details"] = self.baseline_details

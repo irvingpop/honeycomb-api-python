@@ -7,6 +7,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from honeycomb.models.tool_inputs import TagInput
+
 
 class SLI(BaseModel):
     """Service Level Indicator configuration.
@@ -50,7 +52,7 @@ class SLOCreate(BaseModel):
         le=999999,
         description="Target success rate per million (e.g., 999000 = 99.9%)",
     )
-    tags: list[dict[str, str]] | None = Field(
+    tags: list[TagInput] | None = Field(
         default=None,
         description="Key-value pairs for organizing SLOs (max 10 tags)",
     )
@@ -75,7 +77,7 @@ class SLOCreate(BaseModel):
             data["sli"]["alias"] = self.sli.alias
 
         if self.tags:
-            data["tags"] = self.tags
+            data["tags"] = [{"key": tag.key, "value": tag.value} for tag in self.tags]
 
         if self.dataset_slugs:
             data["dataset_slugs"] = self.dataset_slugs

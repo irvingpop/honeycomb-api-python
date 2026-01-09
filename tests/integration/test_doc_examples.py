@@ -460,40 +460,21 @@ class TestBoardExamples:
     async def test_builder_complex_board(
         self,
         client: HoneycombClient,
+        ensure_dataset: str,
+        ensure_columns: list[str],  # noqa: ARG002
     ) -> None:
         """Test comprehensive board with inline QueryBuilder and SLOBuilder."""
-        import time
-
         from docs.examples.boards.builder_board import (
             cleanup,
             create_complex_board,
             test_lifecycle,
         )
 
-        # Use unique dataset per test run to avoid derived column conflicts
-        unique_dataset = f"board-test-{int(time.time())}"
-
-        # Send event to create dataset with columns needed for queries
-        await client.events.send_async(
-            unique_dataset,
-            data={
-                "status_code": 200,
-                "duration_ms": 100,
-                "endpoint": "/api/test",
-                "service": "test-service",
-            },
-        )
-        # Wait for dataset to be created
-        import asyncio
-
-        await asyncio.sleep(2)
-
-        board_id = await create_complex_board(client, unique_dataset)
+        board_id = await create_complex_board(client, ensure_dataset)
         try:
             await test_lifecycle(client, board_id, "Production Monitoring Dashboard")
         finally:
-            await cleanup(client, board_id, unique_dataset)
-            # Note: Unique dataset is orphaned (no need to delete)
+            await cleanup(client, board_id, ensure_dataset)
 
     @pytest.mark.asyncio
     async def test_create_with_views(self, client: HoneycombClient) -> None:
