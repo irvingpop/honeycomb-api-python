@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.2] - 2026-01-09
+
+### Bug Fixes
+
+- QueryBuilder incorrectly added the `alias` property to calcuation when it shouldn't have been there
+- SLOBuilder API conformance issues - missing tags, and MD-SLO behavior
+- Triggers API conformance
+- Recipients API conformance improvements
+
 ## [0.5.1] - 2026-01-08
 
 ### Bug Fixes
