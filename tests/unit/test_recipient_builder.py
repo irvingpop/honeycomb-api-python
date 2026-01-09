@@ -63,6 +63,42 @@ class TestRecipientBuilder:
             "webhook_secret": "secret123",
         }
 
+    def test_webhook_with_headers(self):
+        """Test creating webhook recipient with custom HTTP headers."""
+        recipient = RecipientBuilder.webhook(
+            "https://example.com/webhook",
+            headers=[
+                {"header": "Authorization", "value": "Bearer token123"},
+                {"header": "X-Custom-Header", "value": "custom-value"},
+            ],
+        )
+        assert recipient.type == RecipientType.WEBHOOK
+        assert recipient.details["webhook_headers"] == [
+            {"header": "Authorization", "value": "Bearer token123"},
+            {"header": "X-Custom-Header", "value": "custom-value"},
+        ]
+
+    def test_webhook_with_payload_templates(self):
+        """Test creating webhook recipient with all 3 payload template types."""
+        recipient = RecipientBuilder.webhook(
+            "https://example.com/webhook",
+            template_variables=[{"name": "environment", "default_value": "production"}],
+            payload_templates={
+                "trigger": {"body": '{"env": "{{.environment}}", "type": "trigger"}'},
+                "budget_rate": {"body": '{"env": "{{.environment}}", "type": "budget_rate"}'},
+                "exhaustion_time": {"body": '{"env": "{{.environment}}", "type": "exhaustion"}'},
+            },
+        )
+        assert recipient.type == RecipientType.WEBHOOK
+        assert "webhook_payloads" in recipient.details
+        assert recipient.details["webhook_payloads"]["template_variables"] == [
+            {"name": "environment", "default_value": "production"}
+        ]
+        templates = recipient.details["webhook_payloads"]["payload_templates"]
+        assert "trigger" in templates
+        assert "budget_rate" in templates
+        assert "exhaustion_time" in templates
+
     def test_msteams(self):
         """Test creating MS Teams workflow recipient."""
         recipient = RecipientBuilder.msteams("https://outlook.office.com/webhook/...")
@@ -153,6 +189,17 @@ class TestRecipientMixin:
                 "webhook_secret": "secret123",
             },
         }
+
+    def test_webhook_with_headers(self):
+        """Test adding webhook with custom headers (inline format for triggers)."""
+        mixin = RecipientMixin()
+        mixin.webhook(
+            "https://example.com/webhook",
+            headers=[{"header": "Authorization", "value": "Bearer xyz"}],
+        )
+        assert mixin._new_recipients[0]["details"]["webhook_headers"] == [
+            {"header": "Authorization", "value": "Bearer xyz"}
+        ]
 
     def test_msteams(self):
         """Test adding MS Teams workflow recipient."""

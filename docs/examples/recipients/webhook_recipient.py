@@ -48,6 +48,66 @@ async def create_webhook_recipient_manual(client: HoneycombClient) -> str:
 # end_example:webhook_manual
 
 
+# start_example:webhook_with_auth_headers
+async def create_webhook_with_auth_headers(client: HoneycombClient) -> str:
+    """Create a webhook recipient with authentication headers.
+
+    Useful for webhooks that require API keys or bearer tokens for authentication.
+
+    Returns:
+        The created recipient ID
+    """
+    recipient = RecipientBuilder.webhook(
+        url="https://api.example.com/notifications",
+        name="Authenticated Webhook",
+        headers=[
+            {"header": "Authorization", "value": "Bearer api-key-xyz123"},
+            {"header": "X-Environment", "value": "production"},
+        ],
+    )
+    created = await client.recipients.create_async(recipient)
+    return created.id
+
+
+# end_example:webhook_with_auth_headers
+
+
+# start_example:webhook_with_custom_payload
+async def create_webhook_with_custom_payload(client: HoneycombClient) -> str:
+    """Create a webhook recipient with custom payload templates.
+
+    Advanced feature for customizing the JSON payload sent to the webhook
+    using template variables.
+
+    Returns:
+        The created recipient ID
+    """
+    recipient = RecipientBuilder.webhook(
+        url="https://your-webhook.example.com/alerts",
+        name="Custom Payload Webhook",
+        template_variables=[
+            {"name": "environment", "default_value": "production"},
+            {"name": "severity", "default_value": "warning"},
+        ],
+        payload_templates={
+            "trigger": {
+                "body": '{"env": "{{.environment}}", "level": "{{.severity}}", "type": "trigger"}'
+            },
+            "budget_rate": {
+                "body": '{"env": "{{.environment}}", "level": "critical", "type": "budget_rate"}'
+            },
+            "exhaustion_time": {
+                "body": '{"env": "{{.environment}}", "level": "critical", "type": "exhaustion_time"}'
+            },
+        },
+    )
+    created = await client.recipients.create_async(recipient)
+    return created.id
+
+
+# end_example:webhook_with_custom_payload
+
+
 # TEST_ASSERTIONS
 async def test_assertions(client: HoneycombClient, recipient_id: str) -> None:
     """Verify the example worked correctly."""

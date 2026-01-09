@@ -6,7 +6,7 @@ recipients resources.
 
 from typing import Any
 
-from honeycomb.models import RecipientCreate
+from honeycomb.models.tool_inputs import RecipientCreateToolInput
 from honeycomb.tools.schemas import add_parameter, generate_schema_from_model
 
 # ==============================================================================
@@ -29,8 +29,12 @@ RECIPIENT_DESCRIPTIONS = {
     "honeycomb_create_recipient": (
         "Creates a new notification recipient for alert delivery. "
         "Use this when setting up alerting for triggers or burn alerts, adding new on-call notification channels, or migrating alert destinations from another platform. "
-        "Requires a type (email, slack, pagerduty, webhook, msteams) and type-specific details object. "
-        "For email: provide 'email_address'. For Slack: provide 'channel'. For PagerDuty: provide 'routing_key'. For webhooks: provide 'url' and optionally 'secret'. "
+        "Requires a type (email, slack, pagerduty, webhook, msteams_workflow) and type-specific details object. "
+        "For email: provide 'email_address'. "
+        "For Slack: provide 'slack_channel'. "
+        "For PagerDuty: provide 'pagerduty_integration_key' and 'pagerduty_integration_name'. "
+        "For webhooks: provide 'webhook_url' and 'webhook_name', optionally 'webhook_secret', 'webhook_headers' (max 5, for auth), and 'webhook_payloads' (for custom JSON templates with variables). "
+        "For MS Teams: provide 'webhook_url' and 'webhook_name'. "
         "Recipients can be referenced by ID when creating or updating triggers and burn alerts."
     ),
     "honeycomb_update_recipient": (
@@ -129,7 +133,7 @@ def generate_get_recipient_tool() -> dict[str, Any]:
 def generate_create_recipient_tool() -> dict[str, Any]:
     """Generate honeycomb_create_recipient tool definition."""
     base_schema = generate_schema_from_model(
-        RecipientCreate,
+        RecipientCreateToolInput,
         exclude_fields={"id", "created_at", "updated_at"},
     )
 
@@ -150,19 +154,43 @@ def generate_create_recipient_tool() -> dict[str, Any]:
         # Slack channel
         {
             "type": "slack",
-            "details": {"channel": "#alerts"},
+            "details": {"slack_channel": "#alerts"},
         },
         # PagerDuty
         {
             "type": "pagerduty",
-            "details": {"routing_key": "abc123def456"},
+            "details": {
+                "pagerduty_integration_key": "1234567890abcdef1234567890abcdef",
+                "pagerduty_integration_name": "Production Alerts",
+            },
         },
-        # Webhook
+        # Basic webhook
         {
             "type": "webhook",
             "details": {
-                "url": "https://hooks.example.com/alerts",
-                "secret": "webhook-secret-key",
+                "webhook_url": "https://hooks.example.com/alerts",
+                "webhook_name": "Alert Webhook",
+                "webhook_secret": "webhook-secret-key",
+            },
+        },
+        # Advanced webhook with auth header
+        {
+            "type": "webhook",
+            "details": {
+                "webhook_url": "https://api.example.com/notifications",
+                "webhook_name": "Authenticated Webhook",
+                "webhook_headers": [
+                    {"header": "Authorization", "value": "Bearer api-key-123"},
+                    {"header": "X-Environment", "value": "production"},
+                ],
+            },
+        },
+        # MS Teams workflow
+        {
+            "type": "msteams_workflow",
+            "details": {
+                "webhook_url": "https://test.logic.azure.com/workflows/abc/triggers/manual/paths/invoke",
+                "webhook_name": "Team Alerts Channel",
             },
         },
     ]
@@ -178,7 +206,7 @@ def generate_create_recipient_tool() -> dict[str, Any]:
 def generate_update_recipient_tool() -> dict[str, Any]:
     """Generate honeycomb_update_recipient tool definition."""
     base_schema = generate_schema_from_model(
-        RecipientCreate,
+        RecipientCreateToolInput,
         exclude_fields={"id", "created_at", "updated_at"},
     )
 

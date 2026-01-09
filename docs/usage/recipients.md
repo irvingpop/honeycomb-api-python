@@ -73,7 +73,7 @@ triggers = await client.recipients.get_triggers_async(recipient_id)
 
 ### Webhook Recipient
 
-=== "With RecipientBuilder"
+=== "Basic Webhook"
 
     ```python
     {%
@@ -83,26 +83,78 @@ triggers = await client.recipients.get_triggers_async(recipient_id)
     %}
     ```
 
-=== "Manual Construction"
+=== "With Authentication Headers"
 
     ```python
     {%
        include "../examples/recipients/webhook_recipient.py"
-       start="# start_example:webhook_manual"
-       end="# end_example:webhook_manual"
+       start="# start_example:webhook_with_auth_headers"
+       end="# end_example:webhook_with_auth_headers"
+    %}
+    ```
+
+=== "With Custom Payload Templates"
+
+    ```python
+    {%
+       include "../examples/recipients/webhook_recipient.py"
+       start="# start_example:webhook_with_custom_payload"
+       end="# end_example:webhook_with_custom_payload"
     %}
     ```
 
 ## Recipient Types Reference
 
-| Type | Details Structure |
-|------|-------------------|
-| `EMAIL` | `{"email_address": "..."}` |
-| `SLACK` | `{"slack_channel": "#..."}` |
-| `PAGERDUTY` | `{"integration_key": "...", "integration_name": "..."}` |
-| `WEBHOOK` | `{"url": "https://...", "name": "...", "secret": "..."}` |
-| `MSTEAMS_WORKFLOW` | `{"workflow_url": "https://...", "workflow_name": "..."}` |
-| `MSTEAMS` | (deprecated, use `MSTEAMS_WORKFLOW`) |
+### Basic Details Structure
+
+| Type | Required Fields | Optional Fields |
+|------|----------------|-----------------|
+| `EMAIL` | `email_address` | - |
+| `SLACK` | `slack_channel` | - |
+| `PAGERDUTY` | `pagerduty_integration_key` (32 chars), `pagerduty_integration_name` | - |
+| `WEBHOOK` | `webhook_url`, `webhook_name` | `webhook_secret`, `webhook_headers`, `webhook_payloads` |
+| `MSTEAMS_WORKFLOW` | `webhook_url`, `webhook_name` | - |
+| `MSTEAMS` | (deprecated, use `MSTEAMS_WORKFLOW`) | - |
+
+### Webhook Advanced Features
+
+**HTTP Headers** (max 5):
+```python
+webhook_headers=[
+    {"header": "Authorization", "value": "Bearer token"},
+    {"header": "X-Custom-Header", "value": "custom-value"}
+]
+```
+
+**Payload Templates** (for customizing webhook JSON):
+```python
+# Define template variables
+template_variables=[
+    {"name": "environment", "default_value": "production"},
+    {"name": "severity", "default_value": "warning"}
+]
+
+# Define payload templates for each alert type (trigger, budget_rate, exhaustion_time)
+payload_templates={
+    "trigger": {"body": '{"env": "{{.environment}}", "level": "{{.severity}}"}'},
+    "budget_rate": {"body": '{"env": "{{.environment}}", "level": "critical"}'},
+    "exhaustion_time": {"body": '{"env": "{{.environment}}", "level": "critical"}'}
+}
+
+# Use in RecipientBuilder
+RecipientBuilder.webhook(
+    url="https://example.com/webhook",
+    template_variables=template_variables,
+    payload_templates=payload_templates
+)
+```
+
+**Template Variable Syntax**: Uses Go template syntax with dot prefix: `{{.variableName}}`
+
+**For complete webhook template reference**, see Honeycomb's documentation:
+- [Webhook Template Variables](https://docs.honeycomb.io/notify/webhooks/variables/) - All available variables for triggers and burn alerts
+- [Webhook Template Functions](https://docs.honeycomb.io/notify/webhooks/functions/) - Functions like `toJson`, `date`, `upper`, `join`, etc.
+- [Example Webhook Templates](https://docs.honeycomb.io/notify/webhooks/example-templates/) - Complete examples for Discord, Slack, incident.io, etc.
 
 **RecipientBuilder** provides static factory methods: `.email()`, `.slack()`, `.pagerduty()`, `.webhook()`, `.msteams()`
 

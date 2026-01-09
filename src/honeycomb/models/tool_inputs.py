@@ -337,6 +337,162 @@ class SLOToolInput(BaseModel):
 
 
 # =============================================================================
+# Recipient Detail Models (for Recipients API)
+# =============================================================================
+
+
+class EmailRecipientDetailsInput(BaseModel):
+    """Email recipient details for tool input."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    email_address: str = Field(description="Email address to notify")
+
+
+class SlackRecipientDetailsInput(BaseModel):
+    """Slack recipient details for tool input."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    slack_channel: str = Field(description="Slack channel (e.g., '#alerts')")
+
+
+class PagerDutyRecipientDetailsInput(BaseModel):
+    """PagerDuty recipient details for tool input."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    pagerduty_integration_key: str = Field(
+        min_length=32,
+        max_length=32,
+        description="PagerDuty integration key (exactly 32 characters)",
+    )
+    pagerduty_integration_name: str = Field(description="Name for this PagerDuty integration")
+
+
+class WebhookHeaderInput(BaseModel):
+    """HTTP header for webhook recipient."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    header: str = Field(max_length=64, description="Header name (e.g., 'Authorization')")
+    value: str | None = Field(
+        default=None, max_length=750, description="Header value (e.g., 'Bearer token')"
+    )
+
+
+class WebhookTemplateVariableInput(BaseModel):
+    """Template variable for webhook payload customization."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    name: str = Field(
+        max_length=64,
+        pattern=r"^[a-z](?:[a-zA-Z0-9]+$)?$",
+        description="Variable name (must start with lowercase, alphanumeric only)",
+    )
+    default_value: str | None = Field(
+        default=None, max_length=256, description="Default value for this variable"
+    )
+
+
+class WebhookPayloadTemplateInput(BaseModel):
+    """Payload template for specific alert type."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    body: str | None = Field(
+        default=None, description="JSON template string with {{variable}} placeholders"
+    )
+
+
+class WebhookPayloadTemplatesInput(BaseModel):
+    """Payload templates for different alert types.
+
+    Each alert type (trigger, budget_rate, exhaustion_time) can have a custom
+    JSON payload template with variable substitution.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    trigger: WebhookPayloadTemplateInput | None = Field(
+        default=None, description="Payload template for trigger alerts"
+    )
+    budget_rate: WebhookPayloadTemplateInput | None = Field(
+        default=None, description="Payload template for budget rate burn alerts"
+    )
+    exhaustion_time: WebhookPayloadTemplateInput | None = Field(
+        default=None, description="Payload template for exhaustion time burn alerts"
+    )
+
+
+class WebhookPayloadsInput(BaseModel):
+    """Webhook payload customization with templates and variables."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    template_variables: list[WebhookTemplateVariableInput] | None = Field(
+        default=None, description="Template variables for payload substitution (max 10)"
+    )
+    payload_templates: WebhookPayloadTemplatesInput | None = Field(
+        default=None,
+        description="Custom payload templates for different alert types (trigger, budget_rate, exhaustion_time)",
+    )
+
+
+class WebhookRecipientDetailsInput(BaseModel):
+    """Webhook recipient details for tool input."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    webhook_url: str = Field(max_length=2048, description="Webhook URL to POST to")
+    webhook_name: str = Field(max_length=255, description="Name for this webhook")
+    webhook_secret: str | None = Field(
+        default=None, max_length=255, description="Optional secret for webhook signing"
+    )
+    webhook_headers: list[WebhookHeaderInput] | None = Field(
+        default=None, description="Optional HTTP headers for authentication (max 5)"
+    )
+    webhook_payloads: WebhookPayloadsInput | None = Field(
+        default=None,
+        description="Optional custom payload templates with template variables",
+    )
+
+
+class MSTeamsRecipientDetailsInput(BaseModel):
+    """MS Teams workflow recipient details for tool input."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    webhook_url: str = Field(
+        max_length=2048, description="Azure Logic Apps workflow URL for MS Teams"
+    )
+    webhook_name: str = Field(max_length=255, description="Name for this MS Teams recipient")
+
+
+class RecipientCreateToolInput(BaseModel):
+    """Recipient creation specification for Recipients API tools.
+
+    This model is used for tool schema generation to provide proper validation
+    of recipient details. The details schema varies by type - use the appropriate
+    typed model for each recipient type.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    type: Literal["email", "slack", "pagerduty", "webhook", "msteams_workflow"] = Field(
+        description="Type of recipient notification"
+    )
+    details: (
+        EmailRecipientDetailsInput
+        | SlackRecipientDetailsInput
+        | PagerDutyRecipientDetailsInput
+        | WebhookRecipientDetailsInput
+        | MSTeamsRecipientDetailsInput
+    ) = Field(description="Recipient-specific configuration (schema varies by type)")
+
+
+# =============================================================================
 # Board Panels
 # =============================================================================
 

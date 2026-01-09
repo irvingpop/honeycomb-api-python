@@ -78,13 +78,22 @@ class RecipientMixin:
         )
         return self
 
-    def webhook(self, url: str, name: str = "Webhook", secret: str | None = None) -> Self:
+    def webhook(
+        self,
+        url: str,
+        name: str = "Webhook",
+        secret: str | None = None,
+        headers: list[dict[str, str]] | None = None,
+    ) -> Self:
         """Add a webhook recipient (inline format for triggers/burn alerts).
 
         Args:
             url: Webhook URL to POST to.
             name: A name for this webhook (default: "Webhook").
             secret: Optional webhook secret for signing.
+            headers: Optional HTTP headers (max 5). Each dict should have
+                    'header' (required) and optionally 'value'.
+                    Example: [{"header": "Authorization", "value": "Bearer xyz"}]
 
         Returns:
             Self for method chaining.
@@ -99,6 +108,8 @@ class RecipientMixin:
         }
         if secret:
             details["webhook_secret"] = secret
+        if headers:
+            details["webhook_headers"] = headers
 
         self._new_recipients.append(
             {
@@ -209,16 +220,43 @@ class RecipientBuilder:
         url: str,
         name: str = "Webhook",
         secret: str | None = None,
+        headers: list[dict[str, str]] | None = None,
+        payload_templates: dict[str, dict[str, str]] | None = None,
+        template_variables: list[dict[str, str]] | None = None,
     ) -> RecipientCreate:
         """Create a webhook recipient.
 
         Args:
-            url: Webhook URL to POST to.
-            name: A name for this webhook.
-            secret: Optional webhook secret for signing.
+            url: Webhook URL to POST to (max 2048 chars).
+            name: A name for this webhook (max 255 chars).
+            secret: Optional webhook secret for signing (max 255 chars).
+            headers: Optional HTTP headers (max 5). Each dict should have
+                    'header' (required, max 64 chars) and optionally 'value' (max 750 chars).
+                    Example: [{"header": "Authorization", "value": "Bearer xyz"}]
+            payload_templates: Optional custom payload templates for different alert types.
+                    Example: {"trigger": {"body": "{\"custom\": \"json\"}"}}
+            template_variables: Optional template variables for payload substitution (max 10).
+                    Example: [{"name": "severity", "default_value": "warning"}]
 
         Returns:
             RecipientCreate object.
+
+        Example:
+            >>> # Basic webhook
+            >>> RecipientBuilder.webhook("https://example.com/webhook")
+
+            >>> # Webhook with auth header
+            >>> RecipientBuilder.webhook(
+            ...     "https://example.com/webhook",
+            ...     headers=[{"header": "Authorization", "value": "Bearer token123"}]
+            ... )
+
+            >>> # Advanced webhook with custom payload
+            >>> RecipientBuilder.webhook(
+            ...     "https://example.com/webhook",
+            ...     template_variables=[{"name": "env", "default_value": "prod"}],
+            ...     payload_templates={"trigger": {"body": "{\"environment\": \"{{env}}\"}"}}
+            ... )
         """
         details: dict[str, Any] = {
             "webhook_url": url,
@@ -226,6 +264,15 @@ class RecipientBuilder:
         }
         if secret:
             details["webhook_secret"] = secret
+        if headers:
+            details["webhook_headers"] = headers
+        if template_variables or payload_templates:
+            webhook_payloads: dict[str, Any] = {}
+            if template_variables:
+                webhook_payloads["template_variables"] = template_variables
+            if payload_templates:
+                webhook_payloads["payload_templates"] = payload_templates
+            details["webhook_payloads"] = webhook_payloads
         return RecipientCreate(type=RecipientType.WEBHOOK, details=details)
 
     @staticmethod

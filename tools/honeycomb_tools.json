@@ -4674,19 +4674,42 @@
     },
     {
       "name": "honeycomb_create_recipient",
-      "description": "Creates a new notification recipient for alert delivery. Use this when setting up alerting for triggers or burn alerts, adding new on-call notification channels, or migrating alert destinations from another platform. Requires a type (email, slack, pagerduty, webhook, msteams) and type-specific details object. For email: provide 'email_address'. For Slack: provide 'channel'. For PagerDuty: provide 'routing_key'. For webhooks: provide 'url' and optionally 'secret'. Recipients can be referenced by ID when creating or updating triggers and burn alerts.",
+      "description": "Creates a new notification recipient for alert delivery. Use this when setting up alerting for triggers or burn alerts, adding new on-call notification channels, or migrating alert destinations from another platform. Requires a type (email, slack, pagerduty, webhook, msteams_workflow) and type-specific details object. For email: provide 'email_address'. For Slack: provide 'slack_channel'. For PagerDuty: provide 'pagerduty_integration_key' and 'pagerduty_integration_name'. For webhooks: provide 'webhook_url' and 'webhook_name', optionally 'webhook_secret', 'webhook_headers' (max 5, for auth), and 'webhook_payloads' (for custom JSON templates with variables). For MS Teams: provide 'webhook_url' and 'webhook_name'. Recipients can be referenced by ID when creating or updating triggers and burn alerts.",
       "input_schema": {
         "type": "object",
         "properties": {
           "type": {
-            "$ref": "#/$defs/RecipientType",
-            "description": "Type of recipient"
+            "description": "Type of recipient notification",
+            "enum": [
+              "email",
+              "slack",
+              "pagerduty",
+              "webhook",
+              "msteams_workflow"
+            ],
+            "title": "Type",
+            "type": "string"
           },
           "details": {
-            "additionalProperties": true,
-            "description": "Recipient-specific configuration (varies by type)",
-            "title": "Details",
-            "type": "object"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/EmailRecipientDetailsInput"
+              },
+              {
+                "$ref": "#/$defs/SlackRecipientDetailsInput"
+              },
+              {
+                "$ref": "#/$defs/PagerDutyRecipientDetailsInput"
+              },
+              {
+                "$ref": "#/$defs/WebhookRecipientDetailsInput"
+              },
+              {
+                "$ref": "#/$defs/MSTeamsRecipientDetailsInput"
+              }
+            ],
+            "description": "Recipient-specific configuration (schema varies by type)",
+            "title": "Details"
           },
           "confidence": {
             "type": "string",
@@ -4739,18 +4762,315 @@
           "details"
         ],
         "$defs": {
-          "RecipientType": {
-            "description": "Recipient notification types.",
-            "enum": [
-              "email",
-              "slack",
-              "pagerduty",
-              "webhook",
-              "msteams",
-              "msteams_workflow"
+          "EmailRecipientDetailsInput": {
+            "additionalProperties": false,
+            "description": "Email recipient details for tool input.",
+            "properties": {
+              "email_address": {
+                "description": "Email address to notify",
+                "title": "Email Address",
+                "type": "string"
+              }
+            },
+            "required": [
+              "email_address"
             ],
-            "title": "RecipientType",
-            "type": "string"
+            "title": "EmailRecipientDetailsInput",
+            "type": "object"
+          },
+          "MSTeamsRecipientDetailsInput": {
+            "additionalProperties": false,
+            "description": "MS Teams workflow recipient details for tool input.",
+            "properties": {
+              "webhook_url": {
+                "description": "Azure Logic Apps workflow URL for MS Teams",
+                "maxLength": 2048,
+                "title": "Webhook Url",
+                "type": "string"
+              },
+              "webhook_name": {
+                "description": "Name for this MS Teams recipient",
+                "maxLength": 255,
+                "title": "Webhook Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "webhook_url",
+              "webhook_name"
+            ],
+            "title": "MSTeamsRecipientDetailsInput",
+            "type": "object"
+          },
+          "PagerDutyRecipientDetailsInput": {
+            "additionalProperties": false,
+            "description": "PagerDuty recipient details for tool input.",
+            "properties": {
+              "pagerduty_integration_key": {
+                "description": "PagerDuty integration key (exactly 32 characters)",
+                "maxLength": 32,
+                "minLength": 32,
+                "title": "Pagerduty Integration Key",
+                "type": "string"
+              },
+              "pagerduty_integration_name": {
+                "description": "Name for this PagerDuty integration",
+                "title": "Pagerduty Integration Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "pagerduty_integration_key",
+              "pagerduty_integration_name"
+            ],
+            "title": "PagerDutyRecipientDetailsInput",
+            "type": "object"
+          },
+          "SlackRecipientDetailsInput": {
+            "additionalProperties": false,
+            "description": "Slack recipient details for tool input.",
+            "properties": {
+              "slack_channel": {
+                "description": "Slack channel (e.g., '#alerts')",
+                "title": "Slack Channel",
+                "type": "string"
+              }
+            },
+            "required": [
+              "slack_channel"
+            ],
+            "title": "SlackRecipientDetailsInput",
+            "type": "object"
+          },
+          "WebhookHeaderInput": {
+            "additionalProperties": false,
+            "description": "HTTP header for webhook recipient.",
+            "properties": {
+              "header": {
+                "description": "Header name (e.g., 'Authorization')",
+                "maxLength": 64,
+                "title": "Header",
+                "type": "string"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "maxLength": 750,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Header value (e.g., 'Bearer token')",
+                "title": "Value"
+              }
+            },
+            "required": [
+              "header"
+            ],
+            "title": "WebhookHeaderInput",
+            "type": "object"
+          },
+          "WebhookPayloadTemplateInput": {
+            "additionalProperties": false,
+            "description": "Payload template for specific alert type.",
+            "properties": {
+              "body": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "JSON template string with {{variable}} placeholders",
+                "title": "Body"
+              }
+            },
+            "title": "WebhookPayloadTemplateInput",
+            "type": "object"
+          },
+          "WebhookPayloadTemplatesInput": {
+            "additionalProperties": false,
+            "description": "Payload templates for different alert types.\n\nEach alert type (trigger, budget_rate, exhaustion_time) can have a custom\nJSON payload template with variable substitution.",
+            "properties": {
+              "trigger": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/WebhookPayloadTemplateInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Payload template for trigger alerts"
+              },
+              "budget_rate": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/WebhookPayloadTemplateInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Payload template for budget rate burn alerts"
+              },
+              "exhaustion_time": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/WebhookPayloadTemplateInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Payload template for exhaustion time burn alerts"
+              }
+            },
+            "title": "WebhookPayloadTemplatesInput",
+            "type": "object"
+          },
+          "WebhookPayloadsInput": {
+            "additionalProperties": false,
+            "description": "Webhook payload customization with templates and variables.",
+            "properties": {
+              "template_variables": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/WebhookTemplateVariableInput"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Template variables for payload substitution (max 10)",
+                "title": "Template Variables"
+              },
+              "payload_templates": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/WebhookPayloadTemplatesInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Custom payload templates for different alert types (trigger, budget_rate, exhaustion_time)"
+              }
+            },
+            "title": "WebhookPayloadsInput",
+            "type": "object"
+          },
+          "WebhookRecipientDetailsInput": {
+            "additionalProperties": false,
+            "description": "Webhook recipient details for tool input.",
+            "properties": {
+              "webhook_url": {
+                "description": "Webhook URL to POST to",
+                "maxLength": 2048,
+                "title": "Webhook Url",
+                "type": "string"
+              },
+              "webhook_name": {
+                "description": "Name for this webhook",
+                "maxLength": 255,
+                "title": "Webhook Name",
+                "type": "string"
+              },
+              "webhook_secret": {
+                "anyOf": [
+                  {
+                    "maxLength": 255,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional secret for webhook signing",
+                "title": "Webhook Secret"
+              },
+              "webhook_headers": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/WebhookHeaderInput"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional HTTP headers for authentication (max 5)",
+                "title": "Webhook Headers"
+              },
+              "webhook_payloads": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/WebhookPayloadsInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional custom payload templates with template variables"
+              }
+            },
+            "required": [
+              "webhook_url",
+              "webhook_name"
+            ],
+            "title": "WebhookRecipientDetailsInput",
+            "type": "object"
+          },
+          "WebhookTemplateVariableInput": {
+            "additionalProperties": false,
+            "description": "Template variable for webhook payload customization.",
+            "properties": {
+              "name": {
+                "description": "Variable name (must start with lowercase, alphanumeric only)",
+                "maxLength": 64,
+                "pattern": "^[a-z](?:[a-zA-Z0-9]+$)?$",
+                "title": "Name",
+                "type": "string"
+              },
+              "default_value": {
+                "anyOf": [
+                  {
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Default value for this variable",
+                "title": "Default Value"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "title": "WebhookTemplateVariableInput",
+            "type": "object"
           }
         }
       },
@@ -4764,20 +5084,46 @@
         {
           "type": "slack",
           "details": {
-            "channel": "#alerts"
+            "slack_channel": "#alerts"
           }
         },
         {
           "type": "pagerduty",
           "details": {
-            "routing_key": "abc123def456"
+            "pagerduty_integration_key": "1234567890abcdef1234567890abcdef",
+            "pagerduty_integration_name": "Production Alerts"
           }
         },
         {
           "type": "webhook",
           "details": {
-            "url": "https://hooks.example.com/alerts",
-            "secret": "webhook-secret-key"
+            "webhook_url": "https://hooks.example.com/alerts",
+            "webhook_name": "Alert Webhook",
+            "webhook_secret": "webhook-secret-key"
+          }
+        },
+        {
+          "type": "webhook",
+          "details": {
+            "webhook_url": "https://api.example.com/notifications",
+            "webhook_name": "Authenticated Webhook",
+            "webhook_headers": [
+              {
+                "header": "Authorization",
+                "value": "Bearer api-key-123"
+              },
+              {
+                "header": "X-Environment",
+                "value": "production"
+              }
+            ]
+          }
+        },
+        {
+          "type": "msteams_workflow",
+          "details": {
+            "webhook_url": "https://test.logic.azure.com/workflows/abc/triggers/manual/paths/invoke",
+            "webhook_name": "Team Alerts Channel"
           }
         }
       ]
@@ -4793,14 +5139,37 @@
             "description": "The recipient ID to update"
           },
           "type": {
-            "$ref": "#/$defs/RecipientType",
-            "description": "Type of recipient"
+            "description": "Type of recipient notification",
+            "enum": [
+              "email",
+              "slack",
+              "pagerduty",
+              "webhook",
+              "msteams_workflow"
+            ],
+            "title": "Type",
+            "type": "string"
           },
           "details": {
-            "additionalProperties": true,
-            "description": "Recipient-specific configuration (varies by type)",
-            "title": "Details",
-            "type": "object"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/EmailRecipientDetailsInput"
+              },
+              {
+                "$ref": "#/$defs/SlackRecipientDetailsInput"
+              },
+              {
+                "$ref": "#/$defs/PagerDutyRecipientDetailsInput"
+              },
+              {
+                "$ref": "#/$defs/WebhookRecipientDetailsInput"
+              },
+              {
+                "$ref": "#/$defs/MSTeamsRecipientDetailsInput"
+              }
+            ],
+            "description": "Recipient-specific configuration (schema varies by type)",
+            "title": "Details"
           },
           "confidence": {
             "type": "string",
@@ -4854,18 +5223,315 @@
           "details"
         ],
         "$defs": {
-          "RecipientType": {
-            "description": "Recipient notification types.",
-            "enum": [
-              "email",
-              "slack",
-              "pagerduty",
-              "webhook",
-              "msteams",
-              "msteams_workflow"
+          "EmailRecipientDetailsInput": {
+            "additionalProperties": false,
+            "description": "Email recipient details for tool input.",
+            "properties": {
+              "email_address": {
+                "description": "Email address to notify",
+                "title": "Email Address",
+                "type": "string"
+              }
+            },
+            "required": [
+              "email_address"
             ],
-            "title": "RecipientType",
-            "type": "string"
+            "title": "EmailRecipientDetailsInput",
+            "type": "object"
+          },
+          "MSTeamsRecipientDetailsInput": {
+            "additionalProperties": false,
+            "description": "MS Teams workflow recipient details for tool input.",
+            "properties": {
+              "webhook_url": {
+                "description": "Azure Logic Apps workflow URL for MS Teams",
+                "maxLength": 2048,
+                "title": "Webhook Url",
+                "type": "string"
+              },
+              "webhook_name": {
+                "description": "Name for this MS Teams recipient",
+                "maxLength": 255,
+                "title": "Webhook Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "webhook_url",
+              "webhook_name"
+            ],
+            "title": "MSTeamsRecipientDetailsInput",
+            "type": "object"
+          },
+          "PagerDutyRecipientDetailsInput": {
+            "additionalProperties": false,
+            "description": "PagerDuty recipient details for tool input.",
+            "properties": {
+              "pagerduty_integration_key": {
+                "description": "PagerDuty integration key (exactly 32 characters)",
+                "maxLength": 32,
+                "minLength": 32,
+                "title": "Pagerduty Integration Key",
+                "type": "string"
+              },
+              "pagerduty_integration_name": {
+                "description": "Name for this PagerDuty integration",
+                "title": "Pagerduty Integration Name",
+                "type": "string"
+              }
+            },
+            "required": [
+              "pagerduty_integration_key",
+              "pagerduty_integration_name"
+            ],
+            "title": "PagerDutyRecipientDetailsInput",
+            "type": "object"
+          },
+          "SlackRecipientDetailsInput": {
+            "additionalProperties": false,
+            "description": "Slack recipient details for tool input.",
+            "properties": {
+              "slack_channel": {
+                "description": "Slack channel (e.g., '#alerts')",
+                "title": "Slack Channel",
+                "type": "string"
+              }
+            },
+            "required": [
+              "slack_channel"
+            ],
+            "title": "SlackRecipientDetailsInput",
+            "type": "object"
+          },
+          "WebhookHeaderInput": {
+            "additionalProperties": false,
+            "description": "HTTP header for webhook recipient.",
+            "properties": {
+              "header": {
+                "description": "Header name (e.g., 'Authorization')",
+                "maxLength": 64,
+                "title": "Header",
+                "type": "string"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "maxLength": 750,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Header value (e.g., 'Bearer token')",
+                "title": "Value"
+              }
+            },
+            "required": [
+              "header"
+            ],
+            "title": "WebhookHeaderInput",
+            "type": "object"
+          },
+          "WebhookPayloadTemplateInput": {
+            "additionalProperties": false,
+            "description": "Payload template for specific alert type.",
+            "properties": {
+              "body": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "JSON template string with {{variable}} placeholders",
+                "title": "Body"
+              }
+            },
+            "title": "WebhookPayloadTemplateInput",
+            "type": "object"
+          },
+          "WebhookPayloadTemplatesInput": {
+            "additionalProperties": false,
+            "description": "Payload templates for different alert types.\n\nEach alert type (trigger, budget_rate, exhaustion_time) can have a custom\nJSON payload template with variable substitution.",
+            "properties": {
+              "trigger": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/WebhookPayloadTemplateInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Payload template for trigger alerts"
+              },
+              "budget_rate": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/WebhookPayloadTemplateInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Payload template for budget rate burn alerts"
+              },
+              "exhaustion_time": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/WebhookPayloadTemplateInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Payload template for exhaustion time burn alerts"
+              }
+            },
+            "title": "WebhookPayloadTemplatesInput",
+            "type": "object"
+          },
+          "WebhookPayloadsInput": {
+            "additionalProperties": false,
+            "description": "Webhook payload customization with templates and variables.",
+            "properties": {
+              "template_variables": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/WebhookTemplateVariableInput"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Template variables for payload substitution (max 10)",
+                "title": "Template Variables"
+              },
+              "payload_templates": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/WebhookPayloadTemplatesInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Custom payload templates for different alert types (trigger, budget_rate, exhaustion_time)"
+              }
+            },
+            "title": "WebhookPayloadsInput",
+            "type": "object"
+          },
+          "WebhookRecipientDetailsInput": {
+            "additionalProperties": false,
+            "description": "Webhook recipient details for tool input.",
+            "properties": {
+              "webhook_url": {
+                "description": "Webhook URL to POST to",
+                "maxLength": 2048,
+                "title": "Webhook Url",
+                "type": "string"
+              },
+              "webhook_name": {
+                "description": "Name for this webhook",
+                "maxLength": 255,
+                "title": "Webhook Name",
+                "type": "string"
+              },
+              "webhook_secret": {
+                "anyOf": [
+                  {
+                    "maxLength": 255,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional secret for webhook signing",
+                "title": "Webhook Secret"
+              },
+              "webhook_headers": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/WebhookHeaderInput"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional HTTP headers for authentication (max 5)",
+                "title": "Webhook Headers"
+              },
+              "webhook_payloads": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/WebhookPayloadsInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Optional custom payload templates with template variables"
+              }
+            },
+            "required": [
+              "webhook_url",
+              "webhook_name"
+            ],
+            "title": "WebhookRecipientDetailsInput",
+            "type": "object"
+          },
+          "WebhookTemplateVariableInput": {
+            "additionalProperties": false,
+            "description": "Template variable for webhook payload customization.",
+            "properties": {
+              "name": {
+                "description": "Variable name (must start with lowercase, alphanumeric only)",
+                "maxLength": 64,
+                "pattern": "^[a-z](?:[a-zA-Z0-9]+$)?$",
+                "title": "Name",
+                "type": "string"
+              },
+              "default_value": {
+                "anyOf": [
+                  {
+                    "maxLength": 256,
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Default value for this variable",
+                "title": "Default Value"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "title": "WebhookTemplateVariableInput",
+            "type": "object"
           }
         }
       },
