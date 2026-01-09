@@ -979,9 +979,10 @@
           },
           "frequency": {
             "default": 900,
-            "description": "Check frequency in seconds (60-86400)",
+            "description": "Check frequency in seconds (60-86400, must be multiple of 60)",
             "maximum": 86400,
             "minimum": 60,
+            "multipleOf": 60,
             "title": "Frequency",
             "type": "integer"
           },
@@ -1369,6 +1370,8 @@
               "exceeded_limit": {
                 "anyOf": [
                   {
+                    "maximum": 5,
+                    "minimum": 1,
                     "type": "integer"
                   },
                   {
@@ -1376,7 +1379,7 @@
                   }
                 ],
                 "default": null,
-                "description": "Number of times threshold must be exceeded",
+                "description": "Number of times threshold must be exceeded (1-5, default 1)",
                 "title": "Exceeded Limit"
               }
             },
@@ -1597,9 +1600,10 @@
           },
           "frequency": {
             "default": 900,
-            "description": "Check frequency in seconds (60-86400)",
+            "description": "Check frequency in seconds (60-86400, must be multiple of 60)",
             "maximum": 86400,
             "minimum": 60,
+            "multipleOf": 60,
             "title": "Frequency",
             "type": "integer"
           },
@@ -1988,6 +1992,8 @@
               "exceeded_limit": {
                 "anyOf": [
                   {
+                    "maximum": 5,
+                    "minimum": 1,
                     "type": "integer"
                   },
                   {
@@ -1995,7 +2001,7 @@
                   }
                 ],
                 "default": null,
-                "description": "Number of times threshold must be exceeded",
+                "description": "Number of times threshold must be exceeded (1-5, default 1)",
                 "title": "Exceeded Limit"
               }
             },

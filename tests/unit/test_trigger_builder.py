@@ -4,10 +4,13 @@ import pytest
 
 from honeycomb import (
     CalcOp,
+    Calculation,
     TriggerAlertType,
     TriggerBuilder,
     TriggerBundle,
     TriggerCreate,
+    TriggerQuery,
+    TriggerThreshold,
     TriggerThresholdOp,
 )
 
@@ -187,6 +190,16 @@ class TestTriggerBuilderFrequency:
         with pytest.raises(ValueError, match="must be between 60 and 86400"):
             TriggerBuilder("Test").frequency(100000)
 
+    def test_frequency_not_multiple_of_60_raises_error(self):
+        """Test that frequency not divisible by 60 raises error."""
+        with pytest.raises(ValueError, match="must be a multiple of 60"):
+            TriggerCreate(
+                name="Test",
+                threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100),
+                frequency=61,  # Invalid - not multiple of 60
+                query=TriggerQuery(time_range=900),
+            )
+
 
 class TestTriggerBuilderAlertBehavior:
     """Tests for alert behavior configuration."""
@@ -272,7 +285,7 @@ class TestTriggerBuilderQueryIntegration:
         assert bundle.trigger.query.calculations[0].op == CalcOp.P99
 
     def test_multiple_calculations_raise_error(self):
-        """Test that multiple calculations raise error."""
+        """Test that multiple calculations raise error in builder."""
         with pytest.raises(ValueError, match="can only have one calculation"):
             (
                 TriggerBuilder("Test")
@@ -281,6 +294,17 @@ class TestTriggerBuilderQueryIntegration:
                 .p99("duration_ms")
                 .threshold_gt(100)
                 .build()
+            )
+
+    def test_multiple_calculations_rejected_by_model(self):
+        """Test that TriggerQuery model validates single calculation."""
+        with pytest.raises(ValueError, match="only a single calculation"):
+            TriggerQuery(
+                time_range=900,
+                calculations=[
+                    Calculation(op=CalcOp.COUNT),
+                    Calculation(op=CalcOp.P99, column="duration_ms"),
+                ],
             )
 
     def test_time_range_within_limit(self):
@@ -689,19 +713,41 @@ class TestTriggerBuilderValidationConstraints:
             )
             assert bundle.trigger.threshold.exceeded_limit == limit
 
+    def test_exceeded_limit_model_validation_max(self):
+        """Test that TriggerThreshold model validates exceeded_limit max."""
+        from honeycomb.models.triggers import TriggerThreshold, TriggerThresholdOp
+
+        with pytest.raises(ValueError, match="less than or equal to 5"):
+            TriggerThreshold(
+                op=TriggerThresholdOp.GREATER_THAN,
+                value=100,
+                exceeded_limit=10,  # Too high
+            )
+
+    def test_exceeded_limit_model_validation_min(self):
+        """Test that TriggerThreshold model validates exceeded_limit min."""
+        from honeycomb.models.triggers import TriggerThreshold, TriggerThresholdOp
+
+        with pytest.raises(ValueError, match="greater than or equal to 1"):
+            TriggerThreshold(
+                op=TriggerThresholdOp.GREATER_THAN,
+                value=100,
+                exceeded_limit=0,  # Too low
+            )
+
     def test_frequency_vs_duration_valid(self):
         """Test that duration <= frequency * 4 passes."""
-        # 30 minutes (1800s) with every_minute (60s): 1800 <= 60 * 4 = 240 (FAILS)
-        # So we need frequency of at least 450s for 30 min duration
+        # 30 minutes (1800s) requires frequency >= 450s (1800/4)
+        # Use 480s (8 minutes) which is valid and a multiple of 60
         bundle = (
             TriggerBuilder("Test")
             .last_30_minutes()  # 1800s
             .count()
             .threshold_gt(100)
-            .frequency(450)  # 1800 <= 450 * 4 = 1800 (OK)
+            .frequency(480)  # 1800 <= 480 * 4 = 1920 (OK), and 480 % 60 = 0
             .build()
         )
-        assert bundle.trigger.frequency == 450
+        assert bundle.trigger.frequency == 480
 
     def test_frequency_vs_duration_invalid(self):
         """Test that duration > frequency * 4 raises error."""

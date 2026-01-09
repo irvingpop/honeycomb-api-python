@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from honeycomb.models.query_builder import (
     CalcOp,
@@ -38,7 +38,10 @@ class TriggerThreshold(BaseModel):
     op: TriggerThresholdOp = Field(description="Comparison operator")
     value: float = Field(description="Threshold value")
     exceeded_limit: int | None = Field(
-        default=None, description="Number of times threshold must be exceeded"
+        default=None,
+        ge=1,
+        le=5,
+        description="Number of times threshold must be exceeded (1-5, default 1)",
     )
 
 
@@ -75,6 +78,19 @@ class TriggerQuery(BaseModel):
         default=None, description="How to combine filters (AND/OR)"
     )
 
+    @field_validator("calculations")
+    @classmethod
+    def validate_single_calculation(
+        cls, v: list[Calculation | dict[str, Any]] | None
+    ) -> list[Calculation | dict[str, Any]] | None:
+        """Validate that only one calculation is provided (trigger limitation)."""
+        if v is not None and len(v) > 1:
+            raise ValueError(
+                f"Triggers support only a single calculation, got {len(v)}. "
+                "Use multiple triggers or a saved query if you need multiple calculations."
+            )
+        return v
+
 
 def _normalize_calculation(calc: Calculation | dict[str, Any]) -> dict[str, Any]:
     """Convert a Calculation or dict to API dict format."""
@@ -109,7 +125,8 @@ class TriggerCreate(BaseModel):
         default=900,
         ge=60,
         le=86400,
-        description="Check frequency in seconds (60-86400)",
+        description="Check frequency in seconds (60-86400, must be multiple of 60)",
+        json_schema_extra={"multipleOf": 60},
     )
     query: TriggerQuery | None = Field(default=None, description="Inline query")
     query_id: str | None = Field(default=None, description="Reference to saved query")
@@ -126,6 +143,14 @@ class TriggerCreate(BaseModel):
         default=None,
         description="Baseline threshold configuration for comparing against historical data",
     )
+
+    @field_validator("frequency")
+    @classmethod
+    def validate_frequency_multiple(cls, v: int) -> int:
+        """Validate that frequency is a multiple of 60."""
+        if v % 60 != 0:
+            raise ValueError(f"Frequency must be a multiple of 60 seconds, got {v}")
+        return v
 
     def model_dump_for_api(self) -> dict[str, Any]:
         """Serialize for API request, handling nested models."""
