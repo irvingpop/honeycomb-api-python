@@ -207,6 +207,59 @@ class TestSLOBuilderBasics:
         assert builder.description("test") is builder
 
 
+class TestSLOBuilderTags:
+    """Tests for tag support in SLOBuilder."""
+
+    def test_slo_with_single_tag(self):
+        """Test adding a single tag to SLO."""
+        bundle = (
+            SLOBuilder("API Availability")
+            .dataset("api-logs")
+            .target_percentage(99.9)
+            .sli(alias="success_rate")
+            .tag("team", "platform")
+            .build()
+        )
+
+        assert bundle.slo.tags == [{"key": "team", "value": "platform"}]
+
+    def test_slo_with_multiple_tags(self):
+        """Test adding multiple tags to SLO."""
+        bundle = (
+            SLOBuilder("API Availability")
+            .dataset("api-logs")
+            .target_percentage(99.9)
+            .sli(alias="success_rate")
+            .tag("team", "platform")
+            .tag("service", "api")
+            .tag("criticality", "high")
+            .build()
+        )
+
+        assert bundle.slo.tags == [
+            {"key": "team", "value": "platform"},
+            {"key": "service", "value": "api"},
+            {"key": "criticality", "value": "high"},
+        ]
+
+    def test_tag_method_chaining(self):
+        """Test that tag() returns self for chaining."""
+        builder = SLOBuilder("Test SLO")
+        assert builder.tag("key", "value") is builder
+
+    def test_slo_without_tags(self):
+        """Test that SLO without tags has None."""
+        bundle = (
+            SLOBuilder("API Availability")
+            .dataset("api-logs")
+            .target_percentage(99.9)
+            .sli(alias="success_rate")
+            .build()
+        )
+
+        assert bundle.slo.tags is None
+
+
 class TestSLOBuilderTargets:
     """Tests for target configuration methods."""
 
@@ -346,6 +399,30 @@ class TestSLOBuilderDatasets:
         )
 
         assert bundle.datasets == ["single-dataset"]
+
+    def test_single_dataset_no_dataset_slugs(self):
+        """Test that single dataset SLO does not set dataset_slugs."""
+        bundle = (
+            SLOBuilder("Test SLO")
+            .dataset("api-logs")
+            .target_percentage(99.9)
+            .sli(alias="test")
+            .build()
+        )
+
+        assert bundle.slo.dataset_slugs is None
+
+    def test_multiple_datasets_sets_dataset_slugs(self):
+        """Test that multi-dataset SLO sets dataset_slugs."""
+        bundle = (
+            SLOBuilder("Test SLO")
+            .datasets(["api-logs", "web-logs", "worker-logs"])
+            .target_percentage(99.9)
+            .sli(alias="test")
+            .build()
+        )
+
+        assert bundle.slo.dataset_slugs == ["api-logs", "web-logs", "worker-logs"]
 
 
 class TestSLOBuilderSLI:

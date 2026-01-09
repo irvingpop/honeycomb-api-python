@@ -47,8 +47,16 @@ class SLOCreate(BaseModel):
     )
     target_per_million: int = Field(
         ge=0,
-        le=1000000,
+        le=999999,
         description="Target success rate per million (e.g., 999000 = 99.9%)",
+    )
+    tags: list[dict[str, str]] | None = Field(
+        default=None,
+        description="Key-value pairs for organizing SLOs (max 10 tags)",
+    )
+    dataset_slugs: list[str] | None = Field(
+        default=None,
+        description="Dataset slugs for multi-dataset SLOs (used with __all__ endpoint)",
     )
 
     def model_dump_for_api(self) -> dict[str, Any]:
@@ -65,6 +73,12 @@ class SLOCreate(BaseModel):
 
         if self.sli.alias:
             data["sli"]["alias"] = self.sli.alias
+
+        if self.tags:
+            data["tags"] = self.tags
+
+        if self.dataset_slugs:
+            data["dataset_slugs"] = self.dataset_slugs
 
         return data
 

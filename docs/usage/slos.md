@@ -82,6 +82,18 @@ Create an SLO with both exhaustion time and budget rate burn alerts:
 %}
 ```
 
+### SLOs with Tags
+
+Organize and categorize SLOs using tags for team, service, environment, or criticality:
+
+```python
+{%
+   include "../examples/slos/builder_slo.py"
+   start="# start_example:create_with_tags"
+   end="# end_example:create_with_tags"
+%}
+```
+
 ### Multi-Dataset SLOs
 
 Create an SLO across multiple datasets with an environment-wide derived column:
@@ -122,7 +134,14 @@ Create an SLO across multiple datasets with an environment-wide derived column:
 | Method | Description |
 |--------|-------------|
 | `.dataset(slug)` | Scope SLO to single dataset |
-| `.datasets([slug1, slug2])` | Scope SLO to multiple datasets (creates environment-wide DC) |
+| `.datasets([slug1, slug2])` | Scope SLO to multiple datasets (creates one SLO via __all__ endpoint) |
+
+### Organization Methods
+
+| Method | Description |
+|--------|-------------|
+| `.description(desc)` | Set SLO description |
+| `.tag(key, value)` | Add a tag key-value pair for organizing/filtering SLOs (max 10 tags) |
 
 ### Burn Alert Methods
 

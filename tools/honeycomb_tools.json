@@ -2705,10 +2705,45 @@
           },
           "target_per_million": {
             "description": "Target success rate per million (e.g., 999000 = 99.9%)",
-            "maximum": 1000000,
+            "maximum": 999999,
             "minimum": 0,
             "title": "Target Per Million",
             "type": "integer"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Key-value pairs for organizing SLOs (max 10 tags)",
+            "title": "Tags"
+          },
+          "dataset_slugs": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Dataset slugs for multi-dataset SLOs (used with __all__ endpoint)",
+            "title": "Dataset Slugs"
           },
           "confidence": {
             "type": "string",

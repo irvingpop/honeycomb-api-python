@@ -105,15 +105,45 @@ async def create_slo_with_burn_alerts(
 # end_example:create_with_burn_alerts
 
 
+# start_example:create_with_tags
+async def create_slo_with_tags(client: HoneycombClient, dataset: str, sli_alias: str) -> str:
+    """Create an SLO with tags for organization.
+
+    Tags help categorize and filter SLOs by team, service, environment,
+    criticality, or any other dimension. Useful for large deployments
+    with many SLOs.
+    """
+    bundle = (
+        SLOBuilder("API Availability")
+        .description("Track API request success rate")
+        .dataset(dataset)
+        .target_percentage(99.9)
+        .sli(alias=sli_alias)
+        .tag("team", "platform")
+        .tag("service", "api")
+        .tag("environment", "production")
+        .tag("criticality", "high")
+        .build()
+    )
+
+    slos = await client.slos.create_from_bundle_async(bundle)
+    return slos[dataset].id
+# end_example:create_with_tags
+
+
 # start_example:create_multi_dataset
 async def create_multi_dataset_slo(
     client: HoneycombClient, datasets: list[str]
 ) -> dict[str, str]:
     """Create an SLO across multiple datasets using SLOBuilder.
 
-    When creating an SLO for multiple datasets, any new derived column
-    will be created as environment-wide. This allows the same SLI to be
-    used across all datasets.
+    Multi-dataset SLOs create a SINGLE SLO that spans multiple datasets.
+    The builder automatically:
+    1. Creates environment-wide derived column (if using inline expression)
+    2. Creates ONE SLO via the __all__ endpoint with dataset_slugs
+    3. Creates burn alerts in the first dataset
+
+    Returns dict mapping each dataset to the same SLO ID.
     """
     bundle = (
         SLOBuilder("Cross-Service Availability")
@@ -126,6 +156,8 @@ async def create_multi_dataset_slo(
             expression="IF(EQUALS($status, 200), 1, 0)",
             description="1 for success, 0 for failure",
         )
+        .tag("team", "platform")
+        .tag("criticality", "high")
         .budget_rate_alert(
             BurnAlertBuilder(BurnAlertType.BUDGET_RATE)
             .window_minutes(60)
@@ -136,7 +168,7 @@ async def create_multi_dataset_slo(
     )
 
     slos = await client.slos.create_from_bundle_async(bundle)
-    # Return SLO IDs for each dataset
+    # Return SLO IDs for each dataset (all point to the same SLO)
     return {dataset: slo.id for dataset, slo in slos.items()}
 # end_example:create_multi_dataset
 

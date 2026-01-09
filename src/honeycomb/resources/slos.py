@@ -115,14 +115,16 @@ class SLOsResource(BaseResource):
 
         This method handles the full orchestration of creating an SLO bundle:
         1. Creates derived column if needed (environment-wide or dataset-scoped)
-        2. Creates SLO in each specified dataset
-        3. Creates burn alerts for each SLO (if configured)
+        2. Creates SLO (single-dataset or multi-dataset)
+        3. Creates burn alerts for the SLO (if configured)
 
         Args:
             bundle: SLOBundle from SLOBuilder.build()
 
         Returns:
-            Dictionary mapping dataset slugs to created SLO objects
+            Dictionary mapping dataset slugs to created SLO objects.
+            For single-dataset SLOs: {"dataset": slo}
+            For multi-dataset SLOs: {"dataset1": slo, "dataset2": slo, ...} (same SLO object)
 
         Example:
             >>> bundle = (
@@ -153,39 +155,50 @@ class SLOsResource(BaseResource):
                     bundle.datasets[0], bundle.derived_column
                 )
 
-        # Step 2: Create SLO in each dataset
-        for dataset in bundle.datasets:
+        # Step 2: Create SLO
+        is_multi_dataset = bundle.slo.dataset_slugs is not None
+        if is_multi_dataset:
+            # Multi-dataset SLO: create once via __all__ endpoint
+            slo = await self.create_async("__all__", bundle.slo)
+            # Add to dict for each dataset
+            for dataset in bundle.datasets:
+                created_slos[dataset] = slo
+        else:
+            # Single-dataset SLO: create in the specified dataset
+            dataset = bundle.datasets[0]
             slo = await self.create_async(dataset, bundle.slo)
             created_slos[dataset] = slo
 
-            # Step 3: Create burn alerts for this SLO
-            for alert_def in bundle.burn_alerts:
-                # Process inline recipients with idempotent handling
-                from ._recipient_utils import process_inline_recipients
+        # Step 3: Create burn alerts for the SLO
+        # For multi-dataset SLOs, create burn alerts in the first dataset
+        burn_alert_dataset = bundle.datasets[0]
+        for alert_def in bundle.burn_alerts:
+            # Process inline recipients with idempotent handling
+            from ._recipient_utils import process_inline_recipients
 
-                processed_recipients = await process_inline_recipients(
-                    self._client, alert_def.recipients.copy()
-                )
+            processed_recipients = await process_inline_recipients(
+                self._client, alert_def.recipients.copy()
+            )
 
-                # Convert recipients to BurnAlertRecipient format
-                recipients = [BurnAlertRecipient(**recipient) for recipient in processed_recipients]
+            # Convert recipients to BurnAlertRecipient format
+            recipients = [BurnAlertRecipient(**recipient) for recipient in processed_recipients]
 
-                # Convert budget rate percent to per-million if needed
-                budget_rate_threshold = None
-                if alert_def.budget_rate_decrease_percent is not None:
-                    budget_rate_threshold = int(alert_def.budget_rate_decrease_percent * 10000)
+            # Convert budget rate percent to per-million if needed
+            budget_rate_threshold = None
+            if alert_def.budget_rate_decrease_percent is not None:
+                budget_rate_threshold = int(alert_def.budget_rate_decrease_percent * 10000)
 
-                burn_alert = BurnAlertCreate(
-                    alert_type=alert_def.alert_type,
-                    slo_id=slo.id,
-                    description=alert_def.description,
-                    exhaustion_minutes=alert_def.exhaustion_minutes,
-                    budget_rate_window_minutes=alert_def.budget_rate_window_minutes,
-                    budget_rate_decrease_threshold_per_million=budget_rate_threshold,
-                    recipients=recipients if recipients else [],
-                )
+            burn_alert = BurnAlertCreate(
+                alert_type=alert_def.alert_type,
+                slo_id=slo.id,
+                description=alert_def.description,
+                exhaustion_minutes=alert_def.exhaustion_minutes,
+                budget_rate_window_minutes=alert_def.budget_rate_window_minutes,
+                budget_rate_decrease_threshold_per_million=budget_rate_threshold,
+                recipients=recipients if recipients else [],
+            )
 
-                await self._client.burn_alerts.create_async(dataset, burn_alert)
+            await self._client.burn_alerts.create_async(burn_alert_dataset, burn_alert)
 
         return created_slos
 
@@ -273,14 +286,16 @@ class SLOsResource(BaseResource):
 
         This method handles the full orchestration of creating an SLO bundle:
         1. Creates derived column if needed (environment-wide or dataset-scoped)
-        2. Creates SLO in each specified dataset
-        3. Creates burn alerts for each SLO (if configured)
+        2. Creates SLO (single-dataset or multi-dataset)
+        3. Creates burn alerts for the SLO (if configured)
 
         Args:
             bundle: SLOBundle from SLOBuilder.build()
 
         Returns:
-            Dictionary mapping dataset slugs to created SLO objects
+            Dictionary mapping dataset slugs to created SLO objects.
+            For single-dataset SLOs: {"dataset": slo}
+            For multi-dataset SLOs: {"dataset1": slo, "dataset2": slo, ...} (same SLO object)
 
         Example:
             >>> bundle = (
@@ -314,40 +329,51 @@ class SLOsResource(BaseResource):
                 # Create in first dataset (single-dataset SLO)
                 self._client.derived_columns.create(bundle.datasets[0], bundle.derived_column)
 
-        # Step 2: Create SLO in each dataset
-        for dataset in bundle.datasets:
+        # Step 2: Create SLO
+        is_multi_dataset = bundle.slo.dataset_slugs is not None
+        if is_multi_dataset:
+            # Multi-dataset SLO: create once via __all__ endpoint
+            slo = self.create("__all__", bundle.slo)
+            # Add to dict for each dataset
+            for dataset in bundle.datasets:
+                created_slos[dataset] = slo
+        else:
+            # Single-dataset SLO: create in the specified dataset
+            dataset = bundle.datasets[0]
             slo = self.create(dataset, bundle.slo)
             created_slos[dataset] = slo
 
-            # Step 3: Create burn alerts for this SLO
-            for alert_def in bundle.burn_alerts:
-                # Process inline recipients with idempotent handling
-                import asyncio
+        # Step 3: Create burn alerts for the SLO
+        # For multi-dataset SLOs, create burn alerts in the first dataset
+        burn_alert_dataset = bundle.datasets[0]
+        for alert_def in bundle.burn_alerts:
+            # Process inline recipients with idempotent handling
+            import asyncio
 
-                from ._recipient_utils import process_inline_recipients
+            from ._recipient_utils import process_inline_recipients
 
-                processed_recipients = asyncio.run(
-                    process_inline_recipients(self._client, alert_def.recipients.copy())
-                )
+            processed_recipients = asyncio.run(
+                process_inline_recipients(self._client, alert_def.recipients.copy())
+            )
 
-                # Convert recipients to BurnAlertRecipient format
-                recipients = [BurnAlertRecipient(**recipient) for recipient in processed_recipients]
+            # Convert recipients to BurnAlertRecipient format
+            recipients = [BurnAlertRecipient(**recipient) for recipient in processed_recipients]
 
-                # Convert budget rate percent to per-million if needed
-                budget_rate_threshold = None
-                if alert_def.budget_rate_decrease_percent is not None:
-                    budget_rate_threshold = int(alert_def.budget_rate_decrease_percent * 10000)
+            # Convert budget rate percent to per-million if needed
+            budget_rate_threshold = None
+            if alert_def.budget_rate_decrease_percent is not None:
+                budget_rate_threshold = int(alert_def.budget_rate_decrease_percent * 10000)
 
-                burn_alert = BurnAlertCreate(
-                    alert_type=alert_def.alert_type,
-                    slo_id=slo.id,
-                    description=alert_def.description,
-                    exhaustion_minutes=alert_def.exhaustion_minutes,
-                    budget_rate_window_minutes=alert_def.budget_rate_window_minutes,
-                    budget_rate_decrease_threshold_per_million=budget_rate_threshold,
-                    recipients=recipients if recipients else [],
-                )
+            burn_alert = BurnAlertCreate(
+                alert_type=alert_def.alert_type,
+                slo_id=slo.id,
+                description=alert_def.description,
+                exhaustion_minutes=alert_def.exhaustion_minutes,
+                budget_rate_window_minutes=alert_def.budget_rate_window_minutes,
+                budget_rate_decrease_threshold_per_million=budget_rate_threshold,
+                recipients=recipients if recipients else [],
+            )
 
-                self._client.burn_alerts.create(dataset, burn_alert)
+            self._client.burn_alerts.create(burn_alert_dataset, burn_alert)
 
         return created_slos

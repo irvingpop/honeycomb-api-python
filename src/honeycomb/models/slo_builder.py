@@ -219,6 +219,7 @@ class SLOBuilder:
         self._time_period_days: int = 30
         self._sli: SLIDefinition | None = None
         self._burn_alerts: list[BurnAlertDefinition] = []
+        self._tags: list[dict[str, str]] = []
 
     # -------------------------------------------------------------------------
     # Basic configuration
@@ -227,6 +228,25 @@ class SLOBuilder:
     def description(self, desc: str) -> SLOBuilder:
         """Set SLO description."""
         self._description = desc
+        return self
+
+    def tag(self, key: str, value: str) -> SLOBuilder:
+        """Add a tag key-value pair for organizing the SLO.
+
+        Tags are useful for filtering and grouping SLOs by team, service,
+        criticality, or other dimensions.
+
+        Args:
+            key: Tag key (lowercase letters, max 32 chars)
+            value: Tag value (alphanumeric, /, -, max 128 chars)
+
+        Example:
+            >>> builder.tag("team", "platform").tag("service", "api")
+
+        Returns:
+            self for chaining
+        """
+        self._tags.append({"key": key, "value": value})
         return self
 
     # -------------------------------------------------------------------------
@@ -435,6 +455,8 @@ class SLOBuilder:
             sli=SLI(alias=self._sli.alias),
             time_period_days=self._time_period_days,
             target_per_million=self._target_per_million,
+            tags=self._tags if self._tags else None,
+            dataset_slugs=self._datasets if is_multi_dataset else None,
         )
 
         return SLOBundle(
