@@ -102,22 +102,19 @@ class Calculation(BaseModel):
     Examples:
         >>> Calculation(op=CalcOp.COUNT)
         >>> Calculation(op=CalcOp.P99, column="duration_ms")
-        >>> Calculation(op="AVG", column="response_time", alias="avg_response")
+        >>> Calculation(op="AVG", column="response_time")
     """
 
     model_config = ConfigDict(extra="forbid")
 
     op: CalcOp = Field(description="Calculation operation (COUNT, AVG, P99, etc.)")
     column: str | None = Field(default=None, description="Column to calculate on")
-    alias: str | None = Field(default=None, description="Alias for the result column")
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to API dict format."""
         result: dict[str, Any] = {"op": self.op.value}
         if self.column is not None:
             result["column"] = self.column
-        if self.alias is not None:
-            result["alias"] = self.alias
         return result
 
 
@@ -389,69 +386,66 @@ class QueryBuilder:
     # Calculation Methods (additive - each call adds to the list)
     # -------------------------------------------------------------------------
 
-    def calculate(
-        self, op: CalcOp | str, column: str | None = None, alias: str | None = None
-    ) -> QueryBuilder:
+    def calculate(self, op: CalcOp | str, column: str | None = None) -> QueryBuilder:
         """Add a calculation to the query.
 
         Args:
             op: Calculation operation (e.g., CalcOp.COUNT, "AVG")
             column: Column to calculate on (optional for COUNT)
-            alias: Alias for the result column
 
         Returns:
             self for chaining
         """
-        self._calculations.append(Calculation(op=op, column=column, alias=alias))
+        self._calculations.append(Calculation(op=op, column=column))
         return self
 
-    def count(self, alias: str | None = None) -> QueryBuilder:
+    def count(self) -> QueryBuilder:
         """Add a COUNT calculation."""
-        return self.calculate(CalcOp.COUNT, alias=alias)
+        return self.calculate(CalcOp.COUNT)
 
-    def sum(self, column: str, alias: str | None = None) -> QueryBuilder:
+    def sum(self, column: str) -> QueryBuilder:
         """Add a SUM calculation on a column."""
-        return self.calculate(CalcOp.SUM, column=column, alias=alias)
+        return self.calculate(CalcOp.SUM, column=column)
 
-    def avg(self, column: str, alias: str | None = None) -> QueryBuilder:
+    def avg(self, column: str) -> QueryBuilder:
         """Add an AVG calculation on a column."""
-        return self.calculate(CalcOp.AVG, column=column, alias=alias)
+        return self.calculate(CalcOp.AVG, column=column)
 
-    def min(self, column: str, alias: str | None = None) -> QueryBuilder:
+    def min(self, column: str) -> QueryBuilder:
         """Add a MIN calculation on a column."""
-        return self.calculate(CalcOp.MIN, column=column, alias=alias)
+        return self.calculate(CalcOp.MIN, column=column)
 
-    def max(self, column: str, alias: str | None = None) -> QueryBuilder:
+    def max(self, column: str) -> QueryBuilder:
         """Add a MAX calculation on a column."""
-        return self.calculate(CalcOp.MAX, column=column, alias=alias)
+        return self.calculate(CalcOp.MAX, column=column)
 
-    def count_distinct(self, column: str, alias: str | None = None) -> QueryBuilder:
+    def count_distinct(self, column: str) -> QueryBuilder:
         """Add a COUNT_DISTINCT calculation on a column."""
-        return self.calculate(CalcOp.COUNT_DISTINCT, column=column, alias=alias)
+        return self.calculate(CalcOp.COUNT_DISTINCT, column=column)
 
-    def p50(self, column: str, alias: str | None = None) -> QueryBuilder:
+    def p50(self, column: str) -> QueryBuilder:
         """Add a P50 (median) calculation on a column."""
-        return self.calculate(CalcOp.P50, column=column, alias=alias)
+        return self.calculate(CalcOp.P50, column=column)
 
-    def p90(self, column: str, alias: str | None = None) -> QueryBuilder:
+    def p90(self, column: str) -> QueryBuilder:
         """Add a P90 calculation on a column."""
-        return self.calculate(CalcOp.P90, column=column, alias=alias)
+        return self.calculate(CalcOp.P90, column=column)
 
-    def p95(self, column: str, alias: str | None = None) -> QueryBuilder:
+    def p95(self, column: str) -> QueryBuilder:
         """Add a P95 calculation on a column."""
-        return self.calculate(CalcOp.P95, column=column, alias=alias)
+        return self.calculate(CalcOp.P95, column=column)
 
-    def p99(self, column: str, alias: str | None = None) -> QueryBuilder:
+    def p99(self, column: str) -> QueryBuilder:
         """Add a P99 calculation on a column."""
-        return self.calculate(CalcOp.P99, column=column, alias=alias)
+        return self.calculate(CalcOp.P99, column=column)
 
-    def heatmap(self, column: str, alias: str | None = None) -> QueryBuilder:
+    def heatmap(self, column: str) -> QueryBuilder:
         """Add a HEATMAP calculation on a column."""
-        return self.calculate(CalcOp.HEATMAP, column=column, alias=alias)
+        return self.calculate(CalcOp.HEATMAP, column=column)
 
-    def concurrency(self, alias: str | None = None) -> QueryBuilder:
+    def concurrency(self) -> QueryBuilder:
         """Add a CONCURRENCY calculation."""
-        return self.calculate(CalcOp.CONCURRENCY, alias=alias)
+        return self.calculate(CalcOp.CONCURRENCY)
 
     # -------------------------------------------------------------------------
     # Filter Methods

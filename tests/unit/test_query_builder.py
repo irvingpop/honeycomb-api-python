@@ -25,18 +25,12 @@ class TestCalculation:
         calc = Calculation(op=CalcOp.COUNT)
         assert calc.op == CalcOp.COUNT
         assert calc.column is None
-        assert calc.alias is None
 
     def test_create_with_string(self):
         """Test creating Calculation with string op."""
         calc = Calculation(op="P99", column="duration_ms")
         assert calc.op == "P99"
         assert calc.column == "duration_ms"
-
-    def test_create_with_alias(self):
-        """Test creating Calculation with alias."""
-        calc = Calculation(op=CalcOp.AVG, column="duration_ms", alias="avg_duration")
-        assert calc.alias == "avg_duration"
 
     def test_to_dict_basic(self):
         """Test converting Calculation to dict."""
@@ -49,12 +43,6 @@ class TestCalculation:
         calc = Calculation(op=CalcOp.P99, column="duration_ms")
         d = calc.to_dict()
         assert d == {"op": "P99", "column": "duration_ms"}
-
-    def test_to_dict_with_alias(self):
-        """Test converting Calculation with alias to dict."""
-        calc = Calculation(op=CalcOp.AVG, column="duration_ms", alias="avg")
-        d = calc.to_dict()
-        assert d == {"op": "AVG", "column": "duration_ms", "alias": "avg"}
 
 
 class TestFilter:
@@ -201,11 +189,6 @@ class TestQueryBuilder:
         assert len(spec.calculations) == 1
         assert spec.calculations[0].op == CalcOp.COUNT
 
-    def test_count_with_alias(self):
-        """Test adding COUNT with alias."""
-        spec = QueryBuilder().count(alias="total").build()
-        assert spec.calculations[0].alias == "total"
-
     def test_multiple_calculations(self):
         """Test adding multiple calculations."""
         spec = QueryBuilder().count().p99("duration_ms").avg("duration_ms").build()
@@ -311,7 +294,7 @@ class TestQueryBuilder:
             .granularity(300)
             .count()
             .p99("duration_ms")
-            .avg("duration_ms", alias="avg_duration")
+            .avg("duration_ms")
             .where("status", FilterOp.GREATER_THAN_OR_EQUAL, 500)
             .where_exists("error")
             .filter_with(FilterCombination.AND)

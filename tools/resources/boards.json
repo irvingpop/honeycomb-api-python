@@ -249,7 +249,7 @@
           },
           "Calculation": {
             "additionalProperties": false,
-            "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\", alias=\"avg_response\")",
+            "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
             "properties": {
               "op": {
                 "$ref": "#/$defs/CalcOp",
@@ -267,19 +267,6 @@
                 "default": null,
                 "description": "Column to calculate on",
                 "title": "Column"
-              },
-              "alias": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Alias for the result column",
-                "title": "Alias"
               }
             },
             "required": [
