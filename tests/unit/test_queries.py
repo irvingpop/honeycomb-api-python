@@ -384,6 +384,34 @@ class TestQuerySpec:
         assert "granularity" not in data
         assert "calculations" not in data
 
+    def test_model_dump_includes_calculated_fields(self):
+        """Test that calculated_fields are included in model_dump_for_api."""
+        spec = QuerySpec(
+            time_range=3600,
+            calculations=[{"op": "COUNT"}],
+            calculated_fields=[
+                {"name": "is_error", "expression": "IF(GTE($status_code, 500), 1, 0)"}
+            ],
+        )
+        data = spec.model_dump_for_api()
+
+        assert "calculated_fields" in data
+        assert len(data["calculated_fields"]) == 1
+        assert data["calculated_fields"][0]["name"] == "is_error"
+        assert "status_code" in data["calculated_fields"][0]["expression"]
+
+    def test_model_dump_includes_compare_time_offset(self):
+        """Test that compare_time_offset_seconds is included in model_dump_for_api."""
+        spec = QuerySpec(
+            time_range=3600,
+            calculations=[{"op": "COUNT"}],
+            compare_time_offset_seconds=3600,
+        )
+        data = spec.model_dump_for_api()
+
+        assert "compare_time_offset_seconds" in data
+        assert data["compare_time_offset_seconds"] == 3600
+
     def test_limit_validation_max_1000(self):
         """Test that limit > 1000 raises validation error."""
         with pytest.raises(ValueError, match="limit cannot exceed 1000"):

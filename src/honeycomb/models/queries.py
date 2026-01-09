@@ -167,6 +167,10 @@ class QuerySpec(BaseModel):
             data["limit"] = self.limit
         if self.havings:
             data["havings"] = [_normalize_having(h) for h in self.havings]
+        if self.calculated_fields:
+            data["calculated_fields"] = self.calculated_fields
+        if self.compare_time_offset_seconds is not None:
+            data["compare_time_offset_seconds"] = self.compare_time_offset_seconds
 
         return data
 

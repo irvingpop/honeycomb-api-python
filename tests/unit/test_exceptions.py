@@ -122,6 +122,31 @@ class TestValidationError:
 
         assert "name: required" in str(error)
 
+    def test_str_with_detail_errors(self):
+        """Test string representation handles detail/title format."""
+        detail_errors = [{"detail": 'missing unknown column or derived column "is_error"'}]
+        error = HoneycombValidationError("Validation failed", 422, errors=detail_errors)
+
+        assert "is_error" in str(error)
+        assert "missing unknown column" in str(error)
+
+    def test_str_with_dict_errors(self):
+        """Test string representation handles arbitrary dict format."""
+        dict_errors = [{"some_key": "some_value", "another": "field"}]
+        error = HoneycombValidationError("Validation failed", 422, errors=dict_errors)
+
+        # Should stringify the dict
+        error_str = str(error)
+        assert "some_key" in error_str or "some_value" in error_str
+
+    def test_str_with_string_errors(self):
+        """Test string representation handles plain string errors."""
+        string_errors = ["Invalid time range", "Missing dataset"]
+        error = HoneycombValidationError("Validation failed", 422, errors=string_errors)
+
+        assert "Invalid time range" in str(error)
+        assert "Missing dataset" in str(error)
+
 
 class TestRateLimitError:
     """Tests for HoneycombRateLimitError."""

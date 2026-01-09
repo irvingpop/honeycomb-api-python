@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 
 class HoneycombAPIError(Exception):
     """Base exception for all Honeycomb API errors.
@@ -75,6 +77,7 @@ class HoneycombValidationError(HoneycombAPIError):
 
     Attributes:
         errors: List of field-level validation errors (if available).
+                Can be dicts, strings, or other types depending on API response format.
     """
 
     def __init__(
@@ -83,7 +86,7 @@ class HoneycombValidationError(HoneycombAPIError):
         status_code: int = 422,
         request_id: str | None = None,
         response_body: dict | None = None,
-        errors: list[dict] | None = None,
+        errors: list[Any] | None = None,
     ) -> None:
         super().__init__(message, status_code, request_id, response_body)
         self.errors = errors or []
@@ -91,10 +94,30 @@ class HoneycombValidationError(HoneycombAPIError):
     def __str__(self) -> str:
         base = super().__str__()
         if self.errors:
-            error_details = "; ".join(
-                f"{e.get('field', 'unknown')}: {e.get('message', 'invalid')}" for e in self.errors
-            )
-            return f"{base} - {error_details}"
+            # Handle various error formats from Honeycomb API
+            error_parts = []
+            for e in self.errors:
+                if isinstance(e, dict):
+                    # Format 1: {"field": "...", "message": "..."}
+                    if "field" in e and "message" in e:
+                        error_parts.append(f"{e['field']}: {e['message']}")
+                    # Format 2: {"detail": "...", "title": "..."}
+                    elif "detail" in e or "title" in e:
+                        detail = e.get("detail", e.get("title", ""))
+                        error_parts.append(str(detail))
+                    # Format 3: Any other dict - just stringify it
+                    else:
+                        error_parts.append(str(e))
+                elif isinstance(e, str):
+                    # Format 4: Plain string
+                    error_parts.append(e)
+                else:
+                    # Format 5: Other types - stringify
+                    error_parts.append(str(e))
+
+            if error_parts:
+                error_details = "; ".join(error_parts)
+                return f"{base} - {error_details}"
         return base
 
 
@@ -196,7 +219,7 @@ def raise_for_status(
 
     # Extract error message from response body
     message = "Unknown error"
-    errors: list[dict] | None = None
+    errors: list[Any] | None = None
     retry_after: int | None = None
 
     if response_body:
