@@ -30,7 +30,7 @@ hny = "honeycomb.cli:app"
 honeycomb-api = "honeycomb.cli:app"  # Matches package name for uvx/pipx
 
 [tool.poetry]
-version = "0.5.2"
+version = "0.5.3"
 packages = [{ include = "honeycomb", from = "src" }]
 
 [tool.poetry.dependencies]
