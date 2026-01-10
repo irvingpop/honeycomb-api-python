@@ -331,7 +331,7 @@ class TestSLOBuilderTimePeriod:
 
     def test_time_period_days_validation_too_low(self):
         """Test that time period < 1 day raises error."""
-        with pytest.raises(ValueError, match="Time period must be between 1 and 90 days"):
+        with pytest.raises(ValueError, match="must be 1-90 days"):
             (
                 SLOBuilder("Test SLO")
                 .dataset("test")
@@ -343,7 +343,7 @@ class TestSLOBuilderTimePeriod:
 
     def test_time_period_days_validation_too_high(self):
         """Test that time period > 90 days raises error."""
-        with pytest.raises(ValueError, match="Time period must be between 1 and 90 days"):
+        with pytest.raises(ValueError, match="must be 1-90 days"):
             (
                 SLOBuilder("Test SLO")
                 .dataset("test")

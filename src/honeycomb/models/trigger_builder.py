@@ -7,6 +7,13 @@ from typing import TYPE_CHECKING, Any, Literal
 
 from typing_extensions import Self
 
+from honeycomb.validation.triggers import (
+    validate_exceeded_limit,
+    validate_time_range_frequency_ratio,
+    validate_trigger_frequency,
+    validate_trigger_time_range,
+)
+
 from .query_builder import QueryBuilder
 from .recipient_builder import RecipientMixin
 from .tags_mixin import TagsMixin
@@ -215,8 +222,7 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
         Raises:
             ValueError: If times is not between 1 and 5.
         """
-        if not 1 <= times <= 5:
-            raise ValueError("exceeded_limit must be between 1 and 5")
+        validate_exceeded_limit(times)
         self._exceeded_limit = times
         return self
 
@@ -281,8 +287,7 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
         Raises:
             ValueError: If frequency is outside valid range.
         """
-        if not 60 <= seconds <= 86400:
-            raise ValueError("Frequency must be between 60 and 86400 seconds")
+        validate_trigger_frequency(seconds)
         self._frequency = seconds
         return self
 
@@ -439,22 +444,15 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
                 "Use time_range() or time presets like last_30_minutes()."
             )
 
-        # Validate time range
+        # Validate time range using shared validation
         time_range = self._time_range or 3600  # Default 1 hour
-        if time_range > 3600:
-            raise ValueError(
-                f"Trigger time range must be <= 3600 seconds (1 hour), got {time_range}. "
-                "Use a shorter time preset like last_30_minutes()."
-            )
+        validate_trigger_time_range(time_range)
 
-        # Validate frequency vs duration constraint
-        # API rule: duration <= frequency * 4
-        if time_range > self._frequency * 4:
-            raise ValueError(
-                f"Time range ({time_range}s) cannot be more than 4x frequency ({self._frequency}s). "
-                f"Maximum time range for this frequency: {self._frequency * 4}s. "
-                f"Either increase frequency or decrease time range."
-            )
+        # Validate frequency using shared validation
+        validate_trigger_frequency(self._frequency)
+
+        # Validate frequency vs duration constraint using shared validation
+        validate_time_range_frequency_ratio(time_range, self._frequency)
 
         # Validate threshold
         if self._threshold_op is None or self._threshold_value is None:

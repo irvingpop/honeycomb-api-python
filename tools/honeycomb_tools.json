@@ -2515,7 +2515,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "Complete SLO tool input for creating SLOs.\n\nNote: Only target_percentage is exposed to tools (most intuitive format).\nThe target_nines format has been removed entirely.",
+        "description": "Complete SLO tool input for creating SLOs.\n    ",
         "properties": {
           "name": {
             "description": "SLO name",
@@ -2555,7 +2555,9 @@
           },
           "time_period_days": {
             "default": 30,
-            "description": "SLO time period in days (typically 7, 14, or 30)",
+            "description": "SLO time period in days (1-90, typically 7, 14, or 30)",
+            "maximum": 90,
+            "minimum": 1,
             "title": "Time Period Days",
             "type": "integer"
           },

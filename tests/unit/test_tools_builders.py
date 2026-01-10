@@ -116,7 +116,7 @@ class TestBuildTrigger:
                 {"id": "recip-123"},
                 {"type": "email", "target": "oncall@example.com"},
                 {"type": "slack", "target": "#alerts"},
-                {"type": "pagerduty", "target": "routing-key", "details": {"severity": "critical"}},
+                {"type": "pagerduty", "target": "routing-key"},
                 {"type": "webhook", "target": "https://example.com/webhook"},
                 {"type": "msteams", "target": "https://teams.webhook.url"},
             ],

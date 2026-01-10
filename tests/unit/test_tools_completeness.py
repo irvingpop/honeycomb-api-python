@@ -134,7 +134,7 @@ class TestTriggerBuilderMethodCoverage:
         for threshold in threshold_ops:
             data = {
                 "name": "Test Threshold",
-                "datasets": ["test"],
+                "dataset": "test",
                 "query": {"time_range": 900, "calculations": [{"op": "COUNT"}]},
                 "threshold": threshold,
                 "frequency": 900,
@@ -157,7 +157,7 @@ class TestTriggerBuilderMethodCoverage:
         for freq, method_name, time_range in frequency_tests:
             data = {
                 "name": "Test Frequency",
-                "datasets": ["test"],
+                "dataset": "test",
                 "query": {"time_range": time_range, "calculations": [{"op": "COUNT"}]},
                 "threshold": {"op": ">", "value": 100},
                 "frequency": freq,
@@ -173,7 +173,7 @@ class TestTriggerBuilderMethodCoverage:
         for alert_type in ["on_change", "on_true"]:
             data = {
                 "name": "Test Alert Type",
-                "datasets": ["test"],
+                "dataset": "test",
                 "query": {"time_range": 900, "calculations": [{"op": "COUNT"}]},
                 "threshold": {"op": ">", "value": 100},
                 "frequency": 900,
@@ -189,17 +189,13 @@ class TestTriggerBuilderMethodCoverage:
             {"id": "recip-123"},  # ID-based
             {"type": "email", "target": "user@example.com"},  # Inline email
             {"type": "slack", "target": "#alerts"},  # Inline slack
-            {
-                "type": "pagerduty",
-                "target": "routing-key",
-                "details": {"severity": "critical"},
-            },  # Inline pagerduty
+            {"type": "pagerduty", "target": "routing-key"},  # Inline pagerduty
         ]
 
         for recipient in recipient_tests:
             data = {
                 "name": "Test Recipient",
-                "datasets": ["test"],
+                "dataset": "test",
                 "query": {"time_range": 900, "calculations": [{"op": "COUNT"}]},
                 "threshold": {"op": ">", "value": 100},
                 "frequency": 900,

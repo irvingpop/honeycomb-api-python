@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 from honeycomb.models.burn_alerts import BurnAlertType
 from honeycomb.models.recipient_builder import RecipientMixin
 from honeycomb.models.slos import SLI, SLOCreate
+from honeycomb.validation.slos import validate_slo_target_percentage, validate_slo_time_period
 
 if TYPE_CHECKING:
     from honeycomb.models.derived_columns import DerivedColumnCreate
@@ -283,7 +284,11 @@ class SLOBuilder:
 
         Args:
             percent: Target percentage (e.g., 99.9)
+
+        Raises:
+            ValueError: If percent is outside 0-100 range
         """
+        validate_slo_target_percentage(percent)
         self._target_per_million = int(percent * 10000)
         return self
 
@@ -309,8 +314,7 @@ class SLOBuilder:
         Raises:
             ValueError: If days not in range 1-90
         """
-        if not 1 <= days <= 90:
-            raise ValueError("Time period must be between 1 and 90 days")
+        validate_slo_time_period(days)
         self._time_period_days = days
         return self
 

@@ -12,7 +12,6 @@ These models are used by:
 
 from __future__ import annotations
 
-import json
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -301,11 +300,7 @@ class BurnAlertInput(BaseModel):
 
 
 class SLOToolInput(BaseModel):
-    """Complete SLO tool input for creating SLOs.
-
-    Note: Only target_percentage is exposed to tools (most intuitive format).
-    The target_nines format has been removed entirely.
-    """
+    """Complete SLO tool input for creating SLOs."""
 
     model_config = ConfigDict(extra="forbid")
 
@@ -329,13 +324,168 @@ class SLOToolInput(BaseModel):
 
     # Time period
     time_period_days: int = Field(
-        default=30, description="SLO time period in days (typically 7, 14, or 30)"
+        default=30,
+        ge=1,
+        le=90,
+        description="SLO time period in days (1-90, typically 7, 14, or 30)",
     )
 
     # Inline burn alerts
     burn_alerts: list[BurnAlertInput] | None = Field(
         default=None, description="Burn alerts to create with the SLO"
     )
+
+    # Tags
+    tags: list[TagInput] | None = Field(default=None, description="SLO tags")
+
+    @model_validator(mode="after")
+    def validate_slo_constraints(self) -> Self:
+        """Validate SLO-specific constraints using shared validation logic.
+
+        Raises:
+            ValueError: If constraints are violated:
+                - time_period_days outside 1-90 range
+                - target_percentage outside 0-100 range
+        """
+        from honeycomb.validation.slos import (
+            validate_slo_target_percentage,
+            validate_slo_time_period,
+        )
+
+        # Validate time period
+        validate_slo_time_period(self.time_period_days)
+
+        # Validate target percentage
+        validate_slo_target_percentage(self.target_percentage)
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_tags_limit(self) -> Self:
+        """Validate that tags don't exceed the maximum limit of 10."""
+        if self.tags and len(self.tags) > 10:
+            raise ValueError(
+                f"Too many tags: {len(self.tags)} provided, but maximum is 10.\n"
+                "Honeycomb limits resources to 10 tags each.\n"
+                "Remove some tags to proceed."
+            )
+        return self
+
+
+# =============================================================================
+# Trigger Tool Input
+# =============================================================================
+
+
+class TriggerQueryInput(BaseModel):
+    """Query specification for trigger tool input.
+
+    Triggers support a subset of query features:
+    - Single calculation only
+    - Relative time ranges only (no absolute start/end times)
+    - Maximum time range of 3600 seconds (1 hour)
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    time_range: int = Field(description="Query time range in seconds (max 3600 for triggers)")
+    calculations: list[Calculation] = Field(
+        min_length=1,
+        max_length=1,
+        description="Calculation (triggers support exactly one calculation)",
+    )
+    filters: list[Filter] | None = Field(default=None, description="Query filters")
+    breakdowns: list[str] | None = Field(default=None, description="Columns to group by")
+    filter_combination: FilterCombination | None = Field(
+        default=None, description="How to combine filters (AND or OR)"
+    )
+    granularity: int | None = Field(default=None, description="Time granularity in seconds")
+
+
+class TriggerThresholdInput(BaseModel):
+    """Threshold specification for trigger tool input."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    op: Literal[">", ">=", "<", "<="] = Field(description="Threshold comparison operator")
+    value: float = Field(description="Threshold value")
+    exceeded_limit: int | None = Field(
+        default=None,
+        ge=1,
+        le=5,
+        description="Consecutive evaluations that must exceed threshold (1-5)",
+    )
+
+
+class TriggerToolInput(BaseModel):
+    """Complete trigger tool input with cross-field validation.
+
+    This model validates trigger constraints before builder execution,
+    using shared validation functions that are also used by TriggerBuilder.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Required fields
+    name: str = Field(description="Trigger name")
+    dataset: str = Field(description="Dataset slug")
+    query: TriggerQueryInput = Field(description="Query specification")
+    threshold: TriggerThresholdInput = Field(description="Threshold configuration")
+    frequency: int = Field(
+        default=900,
+        ge=60,
+        le=86400,
+        description="Evaluation frequency in seconds (60-86400, typically 60, 300, 900, 1800, or 3600)",
+    )
+
+    # Optional fields
+    description: str | None = Field(default=None, description="Trigger description")
+    disabled: bool = Field(default=False, description="Whether trigger is disabled")
+    alert_type: Literal["on_change", "on_true"] = Field(
+        default="on_change", description="When to send alerts"
+    )
+    recipients: list[RecipientInput] | None = Field(
+        default=None, description="Notification recipients (inline or by ID)"
+    )
+    tags: list[TagInput] | None = Field(default=None, description="Trigger tags")
+
+    @model_validator(mode="after")
+    def validate_trigger_constraints(self) -> Self:
+        """Validate trigger-specific constraints using shared validation logic.
+
+        Raises:
+            ValueError: If constraints are violated:
+                - time_range > 3600 seconds
+                - frequency outside 60-86400 range
+                - time_range > frequency * 4
+        """
+        from honeycomb.validation.triggers import (
+            validate_time_range_frequency_ratio,
+            validate_trigger_frequency,
+            validate_trigger_time_range,
+        )
+
+        # Validate time range
+        validate_trigger_time_range(self.query.time_range)
+
+        # Validate frequency
+        validate_trigger_frequency(self.frequency)
+
+        # Validate time range vs frequency ratio
+        validate_time_range_frequency_ratio(self.query.time_range, self.frequency)
+
+        return self
+
+    @model_validator(mode="after")
+    def validate_tags_limit(self) -> Self:
+        """Validate that tags don't exceed the maximum limit of 10."""
+        if self.tags and len(self.tags) > 10:
+            raise ValueError(
+                f"Too many tags: {len(self.tags)} provided, but maximum is 10.\n"
+                "Honeycomb limits resources to 10 tags each.\n"
+                "Remove some tags to proceed."
+            )
+        return self
 
 
 # =============================================================================
@@ -611,110 +761,6 @@ class BoardViewInput(BaseModel):
 # =============================================================================
 
 
-def _generate_query_signature(panel: QueryPanelInput) -> str:
-    """Generate a signature for the core query specification.
-
-    This signature represents the fields that Honeycomb uses to generate a QueryID.
-    Two queries with the same signature will have the same QueryID and cannot both
-    be added to the same board.
-
-    Fields that affect QueryID:
-    - dataset
-    - calculations
-    - filters
-    - breakdowns
-    - time_range / start_time / end_time
-    - granularity
-    - filter_combination
-    - havings
-    - calculated_fields
-
-    Fields that do NOT affect QueryID (visualization only):
-    - name, description
-    - orders, limit
-    - chart_type, visualization settings
-    - position, style
-    """
-    # Sort filters and breakdowns for consistent comparison
-    filters_sorted = None
-    if panel.filters:
-        filters_sorted = sorted(
-            [f.model_dump() for f in panel.filters], key=lambda x: x.get("column", "")
-        )
-
-    breakdowns_sorted = None
-    if panel.breakdowns:
-        breakdowns_sorted = sorted(panel.breakdowns)
-
-    calculated_fields_sorted = None
-    if panel.calculated_fields:
-        calculated_fields_sorted = sorted(
-            [cf.model_dump() for cf in panel.calculated_fields], key=lambda x: x["name"]
-        )
-
-    havings_sorted = None
-    if panel.havings:
-        havings_sorted = sorted([h.model_dump() for h in panel.havings], key=str)
-
-    # Build signature dict with only QueryID-affecting fields
-    sig = {
-        "dataset": panel.dataset,
-        "calculations": [c.model_dump() for c in panel.calculations]
-        if panel.calculations
-        else None,
-        "filters": filters_sorted,
-        "breakdowns": breakdowns_sorted,
-        "time_range": panel.time_range,
-        "start_time": panel.start_time,
-        "end_time": panel.end_time,
-        "granularity": panel.granularity,
-        "filter_combination": panel.filter_combination,
-        "havings": havings_sorted,
-        "calculated_fields": calculated_fields_sorted,
-    }
-
-    return json.dumps(sig, sort_keys=True)
-
-
-def _format_query_spec(panel: QueryPanelInput) -> str:
-    """Format a query spec summary for error messages."""
-    parts = []
-
-    # Dataset
-    if panel.dataset:
-        parts.append(f"dataset={panel.dataset}")
-
-    # Calculations
-    if panel.calculations:
-        calc_str = ", ".join(
-            f"{c.op}" + (f"({c.column})" if c.column else "") for c in panel.calculations
-        )
-        parts.append(f"calculations=[{calc_str}]")
-
-    # Filters
-    if panel.filters:
-        filter_str = ", ".join(
-            f"{f.column} {f.op} {f.value}"
-            for f in panel.filters[:2]  # Show first 2
-        )
-        if len(panel.filters) > 2:
-            filter_str += f", ... ({len(panel.filters)} total)"
-        parts.append(f"filters=[{filter_str}]")
-
-    # Breakdowns
-    if panel.breakdowns:
-        breakdown_str = ", ".join(panel.breakdowns[:2])  # Show first 2
-        if len(panel.breakdowns) > 2:
-            breakdown_str += f", ... ({len(panel.breakdowns)} total)"
-        parts.append(f"breakdowns=[{breakdown_str}]")
-
-    # Time range
-    if panel.time_range:
-        parts.append(f"time_range={panel.time_range}s")
-
-    return ", ".join(parts)
-
-
 class BoardToolInput(BaseModel):
     """Complete board tool input for creating boards.
 
@@ -765,57 +811,16 @@ class BoardToolInput(BaseModel):
     def validate_no_duplicate_queries(self) -> Self:
         """Validate that no duplicate query specifications exist in inline_query_panels.
 
-        Honeycomb generates QueryIDs based on the core query specification (dataset,
-        calculations, filters, breakdowns, time_range, etc.). A board cannot have
-        multiple panels with the same QueryID, even if they have different names or
-        visualization settings.
+        Uses shared validation logic from honeycomb.validation.boards.
 
         Raises:
             ValueError: If duplicate query specifications are detected, with details
                        about which panels are duplicates and how to fix them.
         """
-        if not self.inline_query_panels:
-            return self
+        if self.inline_query_panels:
+            from honeycomb.validation.boards import validate_no_duplicate_query_panels
 
-        # Track query signatures and the panels that use them
-        signatures: dict[str, list[QueryPanelInput]] = {}
-        for panel in self.inline_query_panels:
-            sig = _generate_query_signature(panel)
-            if sig not in signatures:
-                signatures[sig] = []
-            signatures[sig].append(panel)
-
-        # Find duplicates
-        duplicates = {sig: panels for sig, panels in signatures.items() if len(panels) > 1}
-
-        if duplicates:
-            # Build detailed error message
-            error_lines = [
-                "Duplicate query specifications detected.",
-                "A board cannot have multiple panels with identical query specs "
-                "(same dataset, calculations, filters, breakdowns, time_range).",
-                "",
-                "Duplicates found:",
-            ]
-
-            for _sig, panels in duplicates.items():
-                # Show which panels are duplicates
-                panel_names = [f'"{p.name}"' for p in panels]
-                error_lines.append(f"  • Panels {' and '.join(panel_names)}")
-
-                # Show the common query spec
-                spec_summary = _format_query_spec(panels[0])
-                error_lines.append(f"    → Both query: {spec_summary}")
-
-            error_lines.extend(
-                [
-                    "",
-                    "To fix: Make queries different by changing calculations, filters, breakdowns, or time_range.",
-                    "Note: Different panel names, orders, limits, or chart_types do NOT make queries unique.",
-                ]
-            )
-
-            raise ValueError("\n".join(error_lines))
+            validate_no_duplicate_query_panels(self.inline_query_panels)
 
         return self
 

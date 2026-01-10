@@ -17,6 +17,7 @@ from honeycomb.models.tool_inputs import (
     BoardToolInput,
     PositionInput,
     SLOToolInput,
+    TriggerToolInput,
     VisualizationSettingsInput,
 )
 
@@ -106,13 +107,19 @@ def _to_position_input(position: dict[str, Any] | list | tuple | None) -> Positi
 
 
 def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
-    """Convert tool input to TriggerBuilder.
+    """Convert tool input to TriggerBuilder with validation.
+
+    Validates input using TriggerToolInput before building, ensuring fail-fast
+    validation with clear error messages for Claude.
 
     Args:
         data: Tool input dict from Claude (includes dataset, name, query, threshold, etc.)
 
     Returns:
         Configured TriggerBuilder instance ready to build()
+
+    Raises:
+        ValidationError: If input validation fails (duplicate queries, invalid tags, etc.)
 
     Example:
         >>> data = {
@@ -129,39 +136,39 @@ def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
         >>> builder = _build_trigger(data)
         >>> trigger = builder.build()
     """
-    builder = TriggerBuilder(data["name"])
+    # Validate input using TriggerToolInput (fail-fast with shared validators)
+    validated = TriggerToolInput.model_validate(data)
+
+    # Build from validated input
+    builder = TriggerBuilder(validated.name)
 
     # Set description if provided
-    if "description" in data:
-        builder.description(data["description"])
+    if validated.description:
+        builder.description(validated.description)
 
-    # Set dataset if provided
-    if "dataset" in data:
-        builder.dataset(data["dataset"])
+    # Set dataset
+    builder.dataset(validated.dataset)
 
-    # Parse query
-    query = data.get("query", {})
+    # Parse query from validated model
+    query = validated.query
 
-    # Time range
-    if "time_range" in query:
-        time_range = query["time_range"]
-        # Use preset if matches common values
-        if time_range == 600:
-            builder.last_10_minutes()
-        elif time_range == 1800:
-            builder.last_30_minutes()
-        elif time_range == 3600:
-            builder.last_1_hour()
-        else:
-            # Use generic time_range for non-standard values (including 900)
-            builder.time_range(time_range)
+    # Time range - use preset if matches common values
+    time_range = query.time_range
+    if time_range == 600:
+        builder.last_10_minutes()
+    elif time_range == 1800:
+        builder.last_30_minutes()
+    elif time_range == 3600:
+        builder.last_1_hour()
+    else:
+        # Use generic time_range for non-standard values (including 900)
+        builder.time_range(time_range)
 
-    # Calculations (trigger supports only ONE)
-    calculations = query.get("calculations", [])
-    if calculations:
-        calc = calculations[0]  # Only use first calculation
-        op = calc.get("op", "COUNT").upper()
-        column = calc.get("column")
+    # Calculations (trigger supports only ONE - already validated)
+    if query.calculations:
+        calc = query.calculations[0]  # Only one allowed
+        op = calc.op
+        column = calc.column
 
         if op == "COUNT":
             builder.count()
@@ -194,127 +201,110 @@ def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
             # For other percentiles, would need to use generic calculation
             # but trigger builder doesn't support that, so skip
 
-    # Filters
-    filters = query.get("filters", [])
-    for filt in filters:
-        column = filt["column"]
-        op_str = filt["op"]
-        value = filt.get("value")
-
-        # Use shorthand methods when possible for all filter types
-        if op_str == "=":
-            builder.eq(column, value)
-        elif op_str == "!=":
-            builder.ne(column, value)
-        elif op_str == ">":
-            builder.gt(column, value)
-        elif op_str == ">=":
-            builder.gte(column, value)
-        elif op_str == "<":
-            builder.lt(column, value)
-        elif op_str == "<=":
-            builder.lte(column, value)
-        elif op_str == "starts-with":
-            builder.starts_with(column, value)
-        elif op_str == "does-not-start-with":
-            # Use generic where() - no direct method for does-not-start-with
-            builder.where(column, op_str, value)
-        elif op_str == "contains":
-            builder.contains(column, value)
-        elif op_str == "does-not-contain":
-            # Use generic where() - no direct method for does-not-contain
-            builder.where(column, op_str, value)
-        elif op_str == "exists":
-            builder.exists(column)
-        elif op_str == "does-not-exist":
-            builder.does_not_exist(column)
-        elif op_str == "in":
-            builder.is_in(column, value)
-        elif op_str == "not-in":
-            # Use generic where() - no direct method for not-in
-            builder.where(column, op_str, value)
-        else:
-            # Use generic filter method for any other operators
-            builder.where(column, op_str, value)
+    # Filters from validated model
+    if query.filters:
+        for filt in query.filters:
+            # Use shorthand methods when possible for all filter types
+            if filt.op == "=":
+                builder.eq(filt.column, filt.value)
+            elif filt.op == "!=":
+                builder.ne(filt.column, filt.value)
+            elif filt.op == ">":
+                builder.gt(filt.column, filt.value)
+            elif filt.op == ">=":
+                builder.gte(filt.column, filt.value)
+            elif filt.op == "<":
+                builder.lt(filt.column, filt.value)
+            elif filt.op == "<=":
+                builder.lte(filt.column, filt.value)
+            elif filt.op == "starts-with":
+                builder.starts_with(filt.column, filt.value)
+            elif filt.op == "does-not-start-with":
+                builder.where(filt.column, filt.op, filt.value)
+            elif filt.op == "contains":
+                builder.contains(filt.column, filt.value)
+            elif filt.op == "does-not-contain":
+                builder.where(filt.column, filt.op, filt.value)
+            elif filt.op == "exists":
+                builder.exists(filt.column)
+            elif filt.op == "does-not-exist":
+                builder.does_not_exist(filt.column)
+            elif filt.op == "in":
+                builder.is_in(filt.column, filt.value)
+            elif filt.op == "not-in":
+                builder.where(filt.column, filt.op, filt.value)
+            else:
+                builder.where(filt.column, filt.op, filt.value)
 
     # Filter combination
-    if "filter_combination" in query:
-        builder.filter_with(query["filter_combination"])
+    if query.filter_combination:
+        builder.filter_with(query.filter_combination)
 
     # Breakdowns (grouping)
-    if "breakdowns" in query:
-        for breakdown in query["breakdowns"]:
+    if query.breakdowns:
+        for breakdown in query.breakdowns:
             builder.breakdown(breakdown)
 
-    # Threshold
-    threshold = data["threshold"]
-    op = threshold["op"]
-    value = threshold["value"]
-
-    if op == ">":
-        builder.threshold_gt(value)
-    elif op == ">=":
-        builder.threshold_gte(value)
-    elif op == "<":
-        builder.threshold_lt(value)
-    elif op == "<=":
-        builder.threshold_lte(value)
+    # Threshold from validated model
+    threshold = validated.threshold
+    if threshold.op == ">":
+        builder.threshold_gt(threshold.value)
+    elif threshold.op == ">=":
+        builder.threshold_gte(threshold.value)
+    elif threshold.op == "<":
+        builder.threshold_lt(threshold.value)
+    elif threshold.op == "<=":
+        builder.threshold_lte(threshold.value)
 
     # Exceeded limit
-    if "exceeded_limit" in threshold:
-        builder.exceeded_limit(threshold["exceeded_limit"])
+    if threshold.exceeded_limit:
+        builder.exceeded_limit(threshold.exceeded_limit)
 
-    # Frequency
-    if "frequency" in data:
-        freq = data["frequency"]
-        # Use presets when possible
-        if freq == 60:
-            builder.every_minute()
-        elif freq == 300:
-            builder.every_5_minutes()
-        elif freq == 900:
-            builder.every_15_minutes()
-        elif freq == 1800:
-            builder.every_30_minutes()
-        elif freq == 3600:
-            builder.every_hour()
-        else:
-            builder.frequency(freq)
+    # Frequency from validated model - use presets when possible
+    freq = validated.frequency
+    if freq == 60:
+        builder.every_minute()
+    elif freq == 300:
+        builder.every_5_minutes()
+    elif freq == 900:
+        builder.every_15_minutes()
+    elif freq == 1800:
+        builder.every_30_minutes()
+    elif freq == 3600:
+        builder.every_hour()
+    else:
+        builder.frequency(freq)
 
     # Alert type
-    if "alert_type" in data:
-        if data["alert_type"] == "on_change":
-            builder.alert_on_change()
-        elif data["alert_type"] == "on_true":
-            builder.alert_on_true()
+    if validated.alert_type == "on_change":
+        builder.alert_on_change()
+    elif validated.alert_type == "on_true":
+        builder.alert_on_true()
 
-    # Recipients
-    recipients = data.get("recipients", [])
-    for recip in recipients:
-        if "id" in recip:
-            # ID-based recipient (recommended)
-            builder.recipient_id(recip["id"])
-        elif recip.get("type") == "email":
-            builder.email(recip["target"])
-        elif recip.get("type") == "slack":
-            builder.slack(recip["target"])
-        elif recip.get("type") == "pagerduty":
-            severity = recip.get("details", {}).get("severity", "critical")
-            builder.pagerduty(recip["target"], severity=severity)
-        elif recip.get("type") == "webhook":
-            name = recip.get("name", "Webhook")
-            secret = recip.get("details", {}).get("secret")
-            builder.webhook(recip["target"], name=name, secret=secret)
-        elif recip.get("type") in ("msteams", "msteams_workflow"):
-            builder.msteams(recip["target"])
+    # Recipients from validated model
+    if validated.recipients:
+        for recip in validated.recipients:
+            if recip.id:
+                # ID-based recipient (recommended)
+                builder.recipient_id(recip.id)
+            elif recip.type == "email" and recip.target:
+                builder.email(recip.target)
+            elif recip.type == "slack" and recip.target:
+                builder.slack(recip.target)
+            elif recip.type == "pagerduty" and recip.target:
+                builder.pagerduty(recip.target, severity="critical")
+            elif recip.type == "webhook" and recip.target:
+                builder.webhook(recip.target, name="Webhook", secret=None)
+            elif recip.type in ("msteams", "msteams_workflow") and recip.target:
+                builder.msteams(recip.target)
 
-    # Tags
-    tags = data.get("tags", [])
-    for tag in tags:
-        builder.tag(tag["key"], tag["value"])
+    # Tags from validated model
+    if validated.tags:
+        for tag in validated.tags:
+            builder.tag(tag.key, tag.value)
 
     # Disabled flag
-    if data.get("disabled", False):
+    if validated.disabled:
         builder.disabled()
 
     return builder

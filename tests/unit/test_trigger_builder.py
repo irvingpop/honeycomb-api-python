@@ -182,12 +182,12 @@ class TestTriggerBuilderFrequency:
 
     def test_frequency_too_low_raises_error(self):
         """Test that frequency < 60 raises error."""
-        with pytest.raises(ValueError, match="must be between 60 and 86400"):
+        with pytest.raises(ValueError, match="must be 60-86400"):
             TriggerBuilder("Test").frequency(30)
 
     def test_frequency_too_high_raises_error(self):
         """Test that frequency > 86400 raises error."""
-        with pytest.raises(ValueError, match="must be between 60 and 86400"):
+        with pytest.raises(ValueError, match="must be 60-86400"):
             TriggerBuilder("Test").frequency(100000)
 
     def test_frequency_not_multiple_of_60_raises_error(self):
@@ -314,7 +314,7 @@ class TestTriggerBuilderQueryIntegration:
 
     def test_time_range_exceeds_limit_raises_error(self):
         """Test that time range > 3600 raises error."""
-        with pytest.raises(ValueError, match="must be <= 3600 seconds"):
+        with pytest.raises(ValueError, match="must be ≤ 3600 seconds"):
             (
                 TriggerBuilder("Test")
                 .last_2_hours()  # 7200 seconds
@@ -694,12 +694,12 @@ class TestTriggerBuilderValidationConstraints:
 
     def test_exceeded_limit_range_min(self):
         """Test that exceeded_limit < 1 raises error."""
-        with pytest.raises(ValueError, match="must be between 1 and 5"):
+        with pytest.raises(ValueError, match="must be 1-5"):
             TriggerBuilder("Test").exceeded_limit(0)
 
     def test_exceeded_limit_range_max(self):
         """Test that exceeded_limit > 5 raises error."""
-        with pytest.raises(ValueError, match="must be between 1 and 5"):
+        with pytest.raises(ValueError, match="must be 1-5"):
             TriggerBuilder("Test").exceeded_limit(6)
 
     def test_exceeded_limit_valid_range(self):
