@@ -245,6 +245,10 @@ def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
         for breakdown in query.breakdowns:
             builder.breakdown(breakdown)
 
+    # Granularity
+    if query.granularity:
+        builder.granularity(query.granularity)
+
     # Threshold from validated model
     threshold = validated.threshold
     if threshold.op == ">":
@@ -409,6 +413,11 @@ def _build_slo(data: dict[str, Any]) -> SLOBuilder:
         elif alert_type == BurnAlertType.BUDGET_RATE:
             builder.budget_rate_alert(burn_builder)
 
+    # Tags from validated model
+    if validated.tags:
+        for tag in validated.tags:
+            builder.tag(tag.key, tag.value)
+
     return builder
 
 
@@ -484,9 +493,17 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
         for filt in query_panel.filters or []:
             qb.filter(filt.column, filt.op, filt.value)
 
+        # Filter combination
+        if query_panel.filter_combination:
+            qb.filter_with(query_panel.filter_combination)
+
         # Breakdowns
         for breakdown in query_panel.breakdowns or []:
             qb.group_by(breakdown)
+
+        # Granularity
+        if query_panel.granularity:
+            qb.granularity(query_panel.granularity)
 
         # Orders - these are already validated Order models
         for order in query_panel.orders or []:
@@ -496,6 +513,10 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
         # Limit
         if query_panel.limit:
             qb.limit(query_panel.limit)
+
+        # Havings
+        for having in query_panel.havings or []:
+            qb._havings.append(having)
 
         # Calculated fields (inline derived columns)
         for calc_field in query_panel.calculated_fields or []:

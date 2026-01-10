@@ -20,7 +20,10 @@ from honeycomb.validation.slos import (
 from honeycomb.validation.triggers import (
     validate_exceeded_limit,
     validate_time_range_frequency_ratio,
+    validate_trigger_calculation_not_heatmap,
     validate_trigger_frequency,
+    validate_trigger_no_limit,
+    validate_trigger_no_orders,
     validate_trigger_time_range,
 )
 
@@ -30,6 +33,9 @@ __all__ = [
     "validate_trigger_frequency",
     "validate_time_range_frequency_ratio",
     "validate_exceeded_limit",
+    "validate_trigger_calculation_not_heatmap",
+    "validate_trigger_no_orders",
+    "validate_trigger_no_limit",
     # SLO validation
     "validate_slo_time_period",
     "validate_slo_target_percentage",

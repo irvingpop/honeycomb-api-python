@@ -20,8 +20,11 @@ class TestTriggerCalculationCompleteness:
     """Test that _build_trigger supports ALL CalcOp types available in QueryBuilder."""
 
     def test_all_calc_ops_supported(self):
-        """Every CalcOp must have a handler in _build_trigger."""
-        # Define ALL available CalcOp values (from QueryBuilder)
+        """Every CalcOp supported by triggers must have a handler in _build_trigger.
+
+        Note: HEATMAP is intentionally excluded - not supported by Honeycomb trigger API.
+        """
+        # Define CalcOp values supported by triggers
         supported_calc_ops = {
             CalcOp.COUNT,
             CalcOp.SUM,
@@ -29,9 +32,9 @@ class TestTriggerCalculationCompleteness:
             CalcOp.MIN,
             CalcOp.MAX,
             CalcOp.COUNT_DISTINCT,
-            CalcOp.HEATMAP,
+            # CalcOp.HEATMAP,  # Not supported by trigger API
             CalcOp.CONCURRENCY,
-            # RATE operations are special - document if intentionally excluded
+            # RATE operations also not supported by triggers
             # CalcOp.RATE_AVG,
             # CalcOp.RATE_SUM,
             # CalcOp.RATE_MAX,
@@ -63,9 +66,9 @@ class TestTriggerCalculationCompleteness:
 
     def test_missing_calc_ops_documented(self):
         """Document which CalcOp values are intentionally not supported."""
-        # RATE operations might not be supported by triggers due to API limitations
-        # Document this explicitly
+        # HEATMAP and RATE operations not supported by trigger API
         unsupported_calc_ops = {
+            CalcOp.HEATMAP: "HEATMAP not supported by trigger API (enforced by validation)",
             CalcOp.RATE_AVG: "RATE operations not supported by trigger API",
             CalcOp.RATE_SUM: "RATE operations not supported by trigger API",
             CalcOp.RATE_MAX: "RATE operations not supported by trigger API",

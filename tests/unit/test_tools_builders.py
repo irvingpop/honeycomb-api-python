@@ -29,7 +29,10 @@ class TestBuildTrigger:
         assert trigger.trigger.frequency == 900
 
     def test_trigger_with_all_calculation_types(self):
-        """All calculation types should work."""
+        """All supported calculation types should work.
+
+        Note: HEATMAP is excluded - not supported in triggers per Honeycomb API.
+        """
         calc_types = [
             ("COUNT", None),
             ("AVG", "duration_ms"),
@@ -37,7 +40,7 @@ class TestBuildTrigger:
             ("MIN", "response_time"),
             ("MAX", "response_time"),
             ("COUNT_DISTINCT", "user_id"),
-            ("HEATMAP", "duration_ms"),
+            # ("HEATMAP", "duration_ms"),  # Not supported in triggers
             ("CONCURRENCY", None),
             ("P50", "duration_ms"),
             ("P90", "duration_ms"),

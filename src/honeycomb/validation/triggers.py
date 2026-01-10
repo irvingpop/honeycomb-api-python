@@ -85,3 +85,51 @@ def validate_exceeded_limit(exceeded_limit: int) -> None:
             f"exceeded_limit must be 1-5, got {exceeded_limit}. "
             "This controls how many consecutive evaluations must exceed the threshold."
         )
+
+
+def validate_trigger_calculation_not_heatmap(calculation_op: str) -> None:
+    """Validate that trigger calculation is not HEATMAP.
+
+    Triggers do not support HEATMAP calculations per Honeycomb API constraints.
+
+    Args:
+        calculation_op: Calculation operator (e.g., "COUNT", "AVG", "HEATMAP")
+
+    Raises:
+        ValueError: If calculation is HEATMAP
+    """
+    if calculation_op.upper() == "HEATMAP":
+        raise ValueError(
+            "Trigger queries may not use HEATMAP calculation. "
+            "Use COUNT, AVG, SUM, MIN, MAX, P50, P90, P95, P99, or COUNT_DISTINCT instead."
+        )
+
+
+def validate_trigger_no_orders() -> None:
+    """Validate that trigger query does not have orders field set.
+
+    Trigger queries do not support the orders field per Honeycomb API constraints.
+
+    Raises:
+        ValueError: Always (should only be called if orders are present)
+    """
+    raise ValueError(
+        "Trigger queries do not support 'orders'. "
+        "Remove the orders field from your trigger query. "
+        "Triggers evaluate against a single calculated value, not ordered results."
+    )
+
+
+def validate_trigger_no_limit() -> None:
+    """Validate that trigger query does not have limit field set.
+
+    Trigger queries do not support the limit field per Honeycomb API constraints.
+
+    Raises:
+        ValueError: Always (should only be called if limit is present)
+    """
+    raise ValueError(
+        "Trigger queries do not support 'limit'. "
+        "Remove the limit field from your trigger query. "
+        "Triggers evaluate against a single calculated value, not limited result sets."
+    )

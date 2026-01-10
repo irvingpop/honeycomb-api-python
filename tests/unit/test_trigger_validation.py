@@ -393,3 +393,67 @@ class TestTriggerValidationRealWorldScenarios:
         for trigger_data in invalid_triggers:
             with pytest.raises(ValidationError):
                 TriggerToolInput.model_validate(trigger_data)
+
+
+class TestTriggerQueryConstraints:
+    """Test trigger-specific query field constraints per Honeycomb API rules."""
+
+    def test_heatmap_calculation_rejected(self):
+        """Test that HEATMAP calculations are rejected for triggers."""
+        data = {
+            "name": "Invalid HEATMAP Trigger",
+            "dataset": "test",
+            "query": {
+                "time_range": 900,
+                "calculations": [{"op": "HEATMAP", "column": "duration_ms"}],
+            },
+            "threshold": {"op": ">", "value": 100},
+            "frequency": 900,
+        }
+
+        with pytest.raises(ValidationError) as exc_info:
+            TriggerToolInput.model_validate(data)
+
+        error_str = str(exc_info.value)
+        assert "heatmap" in error_str.lower()
+        assert "may not use" in error_str.lower()
+
+    def test_trigger_query_input_rejects_orders_field(self):
+        """Test that TriggerQueryInput model doesn't accept orders field.
+
+        This enforces the Honeycomb API constraint: triggers don't support orders.
+        The field is excluded from the model (extra="forbid").
+        """
+        from honeycomb.models.tool_inputs import TriggerQueryInput
+
+        # This should fail because TriggerQueryInput doesn't have orders field
+        with pytest.raises(ValidationError) as exc_info:
+            TriggerQueryInput(
+                time_range=900,
+                calculations=[{"op": "COUNT"}],
+                orders=[{"op": "COUNT", "order": "descending"}],  # Not allowed!
+            )
+
+        error_str = str(exc_info.value)
+        assert "extra" in error_str.lower() or "not permitted" in error_str.lower()
+        assert "orders" in error_str.lower()
+
+    def test_trigger_query_input_rejects_limit_field(self):
+        """Test that TriggerQueryInput model doesn't accept limit field.
+
+        This enforces the Honeycomb API constraint: triggers don't support limit.
+        The field is excluded from the model (extra="forbid").
+        """
+        from honeycomb.models.tool_inputs import TriggerQueryInput
+
+        # This should fail because TriggerQueryInput doesn't have limit field
+        with pytest.raises(ValidationError) as exc_info:
+            TriggerQueryInput(
+                time_range=900,
+                calculations=[{"op": "COUNT"}],
+                limit=100,  # Not allowed!
+            )
+
+        error_str = str(exc_info.value)
+        assert "extra" in error_str.lower() or "not permitted" in error_str.lower()
+        assert "limit" in error_str.lower()

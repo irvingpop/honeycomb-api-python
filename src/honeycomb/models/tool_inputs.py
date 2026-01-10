@@ -381,7 +381,9 @@ class TriggerQueryInput(BaseModel):
     """Query specification for trigger tool input.
 
     Triggers support a subset of query features:
-    - Single calculation only
+    - Single calculation only (min/max enforced by field validator)
+    - No HEATMAP calculations
+    - No orders or limit fields (not present in this model)
     - Relative time ranges only (no absolute start/end times)
     - Maximum time range of 3600 seconds (1 hour)
     """
@@ -400,6 +402,22 @@ class TriggerQueryInput(BaseModel):
         default=None, description="How to combine filters (AND or OR)"
     )
     granularity: int | None = Field(default=None, description="Time granularity in seconds")
+
+    @model_validator(mode="after")
+    def validate_trigger_query_constraints(self) -> Self:
+        """Validate trigger-specific query constraints.
+
+        Raises:
+            ValueError: If HEATMAP calculation is used
+        """
+        from honeycomb.validation.triggers import validate_trigger_calculation_not_heatmap
+
+        # Check that calculation is not HEATMAP
+        if self.calculations:
+            calc_op = self.calculations[0].op.value
+            validate_trigger_calculation_not_heatmap(calc_op)
+
+        return self
 
 
 class TriggerThresholdInput(BaseModel):
