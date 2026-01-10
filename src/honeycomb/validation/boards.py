@@ -182,7 +182,7 @@ def validate_no_duplicate_query_panels(
         error_lines.extend(
             [
                 "",
-                "To fix: Make queries different by changing calculations, filters, breakdowns, or time_range.",
+                "To fix: Consider combining these query panels. Otherwise, make them different by changing calculations, filters, breakdowns, or time_range.",
                 "Note: Different panel names, orders, limits, or chart_types do NOT make queries unique.",
             ]
         )

@@ -164,6 +164,47 @@ class TestQueryPanelInput:
         with pytest.raises(ValidationError):
             QueryPanelInput(name="Test", compare_time_offset_seconds=1234)  # Not a valid offset
 
+    def test_accepts_valid_limit(self):
+        """Test that valid limit values are accepted."""
+        # Valid limits: 1 to 1000
+        panel = QueryPanelInput(name="Test", limit=1)
+        assert panel.limit == 1
+
+        panel = QueryPanelInput(name="Test", limit=1000)
+        assert panel.limit == 1000
+
+        panel = QueryPanelInput(name="Test", limit=500)
+        assert panel.limit == 500
+
+    def test_rejects_limit_above_1000(self):
+        """Test that limit > 1000 is rejected at tool input validation time."""
+        with pytest.raises(ValidationError) as exc_info:
+            QueryPanelInput(name="Test", limit=1001)
+
+        error = exc_info.value
+        assert "less_than_equal" in str(error) or "1000" in str(error)
+
+        # Test the specific failing case from the user
+        with pytest.raises(ValidationError) as exc_info:
+            QueryPanelInput(name="Test", limit=6250)
+
+        error = exc_info.value
+        assert "less_than_equal" in str(error) or "1000" in str(error)
+
+    def test_rejects_limit_below_1(self):
+        """Test that limit < 1 is rejected."""
+        with pytest.raises(ValidationError) as exc_info:
+            QueryPanelInput(name="Test", limit=0)
+
+        error = exc_info.value
+        assert "greater_than_equal" in str(error) or "1" in str(error)
+
+        with pytest.raises(ValidationError) as exc_info:
+            QueryPanelInput(name="Test", limit=-1)
+
+        error = exc_info.value
+        assert "greater_than_equal" in str(error) or "1" in str(error)
+
     def test_rejects_extra_fields(self):
         """Test that unknown extra fields are rejected."""
         with pytest.raises(ValidationError) as exc_info:

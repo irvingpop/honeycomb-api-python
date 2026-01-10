@@ -205,7 +205,7 @@ class QueryPanelInput(BaseModel):
         default=None, description="How to combine filters (AND or OR)"
     )
     orders: list[Order] | None = Field(default=None, description="Result ordering")
-    limit: int | None = Field(default=None, description="Result limit (max 1000)")
+    limit: int | None = Field(default=None, ge=1, le=1000, description="Result limit (max 1000)")
     havings: list[Having] | None = Field(
         default=None, description="Having clauses for post-aggregation filtering"
     )

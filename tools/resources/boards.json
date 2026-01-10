@@ -741,6 +741,8 @@
               "limit": {
                 "anyOf": [
                   {
+                    "maximum": 1000,
+                    "minimum": 1,
                     "type": "integer"
                   },
                   {

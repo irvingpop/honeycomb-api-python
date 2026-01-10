@@ -333,10 +333,38 @@
             ],
             "title": "SLIInput",
             "type": "object"
+          },
+          "TagInput": {
+            "additionalProperties": false,
+            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters and underscores only (e.g., \"team\", \"service_type\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"service_type\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
+            "properties": {
+              "key": {
+                "description": "Tag key: lowercase letters and underscores only, 1-32 chars",
+                "maxLength": 32,
+                "minLength": 1,
+                "pattern": "^[a-z_]+$",
+                "title": "Key",
+                "type": "string"
+              },
+              "value": {
+                "description": "Tag value: must start with lowercase letter, can contain lowercase letters, numbers, / and -, 1-128 chars",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[a-z][a-z0-9/-]*$",
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "value"
+            ],
+            "title": "TagInput",
+            "type": "object"
           }
         },
         "additionalProperties": false,
-        "description": "Complete SLO tool input for creating SLOs.\n    ",
+        "description": "Complete SLO tool input for creating SLOs.",
         "properties": {
           "name": {
             "description": "SLO name",
@@ -397,6 +425,22 @@
             "default": null,
             "description": "Burn alerts to create with the SLO",
             "title": "Burn Alerts"
+          },
+          "tags": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/TagInput"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "SLO tags",
+            "title": "Tags"
           },
           "confidence": {
             "type": "string",
