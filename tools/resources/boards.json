@@ -319,7 +319,7 @@
           },
           "Filter": {
             "additionalProperties": false,
-            "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS, value=True)\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
+            "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS)  # No value needed\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
             "properties": {
               "column": {
                 "description": "Column to filter on",
@@ -331,14 +331,14 @@
                 "description": "Filter operator (=, !=, >, <, contains, etc.)"
               },
               "value": {
-                "description": "Filter value",
+                "default": null,
+                "description": "Filter value. Not used for 'exists' and 'does-not-exist' operations.",
                 "title": "Value"
               }
             },
             "required": [
               "column",
-              "op",
-              "value"
+              "op"
             ],
             "title": "Filter",
             "type": "object"
@@ -353,7 +353,7 @@
             "type": "string"
           },
           "FilterOp": {
-            "description": "Filter operations for Honeycomb queries and board views.",
+            "description": "Filter operations for Honeycomb queries and board views.\n\nIMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.",
             "enum": [
               "=",
               "!=",

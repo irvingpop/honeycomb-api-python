@@ -187,7 +187,9 @@ TEST_CASES = [
         },
         "assertion_checks": [
             "'filters' in params",
-            "any(f.get('column') == 'user_id' and f.get('op') in ['exists', '!=', 'does-not-equal'] for f in params['filters'])",
+            "any(f.get('column') == 'user_id' and f.get('op') == 'exists' for f in params['filters'])",
+            # Verify exists filter does NOT have a value field (API rejects it)
+            "all(f.get('value') is None or 'value' not in f for f in params['filters'] if f.get('op') == 'exists')",
         ],
     },
     {

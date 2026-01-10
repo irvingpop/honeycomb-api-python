@@ -12,7 +12,7 @@ TEST_CASES = [
         "id": "trigger_basic_count",
         "description": "Basic COUNT trigger with simple threshold",
         "prompt": (
-            "Create a trigger named 'High Errors' in dataset 'api-logs' "
+            "Create a trigger using a single tool call. Name it 'High Errors' in dataset 'api-logs' "
             "that fires when error count > 100 in the last 15 minutes"
         ),
         "expected_tool": "honeycomb_create_trigger",
@@ -29,24 +29,24 @@ TEST_CASES = [
         "id": "trigger_p99_percentile",
         "description": "P99 calculation (not COUNT)",
         "prompt": (
-            "Create a trigger in dataset 'api-logs' that alerts when "
-            "P99 of duration exceeds 2000ms over the last 30 minutes"
+            "Create a trigger using a single tool call. In dataset 'api-logs' that alerts when "
+            "P99 of duration_ms exceeds 2000ms over the last 30 minutes"
         ),
         "expected_tool": "honeycomb_create_trigger",
         "expected_params": {
             "dataset": "api-logs",
-            "query": {"calculations": [{"op": "P99", "column": "duration"}]},
+            "query": {"calculations": [{"op": "P99", "column": "duration_ms"}]},
         },
         "assertion_checks": [
             "params['query']['calculations'][0]['op'] == 'P99'",
-            "params['query']['calculations'][0]['column'] == 'duration'",
+            "params['query']['calculations'][0]['column'] == 'duration_ms'",
         ],
     },
     {
         "id": "trigger_multiple_filters",
         "description": "Multiple AND filter conditions",
         "prompt": (
-            "Create a trigger in dataset 'api-logs' that alerts when the count of requests "
+            "Create a trigger using a single tool call. In dataset 'api-logs' that alerts when the count of requests "
             "where status_code >= 500 AND duration > 1000 exceeds 100 in the last 15 minutes"
         ),
         "expected_tool": "honeycomb_create_trigger",
@@ -61,7 +61,7 @@ TEST_CASES = [
         "id": "trigger_string_contains",
         "description": "String filter operators (contains, starts-with)",
         "prompt": (
-            "Create a trigger in dataset 'api-logs' that alerts when count of requests "
+            "Create a trigger using a single tool call. In dataset 'api-logs' that alerts when count of requests "
             "where endpoint contains '/api/v2' and method starts with 'POST' exceeds 1000"
         ),
         "expected_tool": "honeycomb_create_trigger",
@@ -77,7 +77,7 @@ TEST_CASES = [
         "id": "trigger_exists_filter",
         "description": "EXISTS filter operator",
         "prompt": (
-            "Create a trigger in dataset 'api-logs' that alerts when count of requests "
+            "Create a trigger using a single tool call. In dataset 'api-logs' that alerts when count of requests "
             "where user_id exists exceeds 500"
         ),
         "expected_tool": "honeycomb_create_trigger",
@@ -123,7 +123,7 @@ TEST_CASES = [
         "id": "trigger_with_email_recipient",
         "description": "Trigger with inline email recipient",
         "prompt": (
-            "Create a trigger named 'Error Spike' in dataset 'api-logs' that alerts "
+            "Create a trigger using a single tool call. Name it 'Error Spike' in dataset 'api-logs' that alerts "
             "when error count (status_code >= 500) exceeds 50 in the last 15 minutes. "
             "Send email notifications to oncall@example.com"
         ),
@@ -143,7 +143,7 @@ TEST_CASES = [
         "id": "trigger_with_webhook_recipient",
         "description": "Trigger with inline webhook recipient",
         "prompt": (
-            "Create a trigger named 'Latency Alert' in dataset 'api-logs' that alerts "
+            "Create a trigger using a single tool call. Name it 'Latency Alert' in dataset 'api-logs' that alerts "
             "when P99 latency exceeds 2000ms in the last 30 minutes. "
             "Send webhook notification to https://hooks.example.com/alerts with name 'Latency Webhook'"
         ),
@@ -164,7 +164,7 @@ TEST_CASES = [
         "id": "trigger_with_webhook_auth_headers",
         "description": "Trigger with webhook recipient including auth headers",
         "prompt": (
-            "Create a trigger named 'Critical API Errors' in dataset 'api-logs' that alerts "
+            "Create a trigger using a single tool call. Name it 'Critical API Errors' in dataset 'api-logs' that alerts "
             "when critical errors (status_code >= 500) exceed 10 in the last 10 minutes. "
             "Send webhook to https://api.example.com/notifications with Authorization header 'Bearer token123'"
         ),
@@ -181,7 +181,7 @@ TEST_CASES = [
         "id": "trigger_with_tags",
         "description": "Trigger with organizational tags",
         "prompt": (
-            "Create a trigger named 'Service Health' in dataset 'api-logs' "
+            "Create a trigger using a single tool call. Name it 'Service Health' in dataset 'api-logs' "
             "that alerts when request count < 100 in the last 15 minutes (low traffic alert). "
             "Tag it with team=platform and severity=medium"
         ),
@@ -200,7 +200,7 @@ TEST_CASES = [
         "id": "trigger_with_exceeded_limit",
         "description": "Trigger with exceeded_limit (must fail N times before alerting)",
         "prompt": (
-            "Create a trigger in dataset 'api-logs' that alerts when error count > 50 "
+            "Create a trigger using a single tool call. In dataset 'api-logs' that alerts when error count > 50 "
             "in the last 15 minutes, but only after the threshold is exceeded 3 consecutive times "
             "to avoid false positives"
         ),

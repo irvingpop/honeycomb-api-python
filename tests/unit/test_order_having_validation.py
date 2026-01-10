@@ -133,6 +133,61 @@ class TestHavingColumnValidation:
         assert "column" not in result
 
 
+class TestFilterValueValidation:
+    """Test Filter value requirement validation."""
+
+    def test_exists_without_value(self):
+        """EXISTS can be used without value."""
+        from honeycomb.models.query_builder import Filter, FilterOp
+
+        f = Filter(column="error", op=FilterOp.EXISTS)
+        assert f.op == FilterOp.EXISTS
+        assert f.value is None
+        assert f.to_dict() == {"column": "error", "op": "exists"}
+
+    def test_does_not_exist_without_value(self):
+        """DOES_NOT_EXIST can be used without value."""
+        from honeycomb.models.query_builder import Filter, FilterOp
+
+        f = Filter(column="field", op=FilterOp.DOES_NOT_EXIST)
+        assert f.value is None
+        assert f.to_dict() == {"column": "field", "op": "does-not-exist"}
+
+    def test_exists_with_value_true_cleaned(self):
+        """EXISTS with value=True is automatically cleaned (value set to None)."""
+        from honeycomb.models.query_builder import Filter, FilterOp
+
+        f = Filter(column="error", op=FilterOp.EXISTS, value=True)
+        # Value should be cleaned to None by validator
+        assert f.value is None
+        # Should not appear in dict
+        assert f.to_dict() == {"column": "error", "op": "exists"}
+
+    def test_does_not_exist_with_value_false_cleaned(self):
+        """DOES_NOT_EXIST with value=False is automatically cleaned."""
+        from honeycomb.models.query_builder import Filter, FilterOp
+
+        f = Filter(column="field", op=FilterOp.DOES_NOT_EXIST, value=False)
+        assert f.value is None
+        assert f.to_dict() == {"column": "field", "op": "does-not-exist"}
+
+    def test_equals_requires_value(self):
+        """EQUALS and other operators keep their value."""
+        from honeycomb.models.query_builder import Filter, FilterOp
+
+        f = Filter(column="status", op=FilterOp.EQUALS, value=200)
+        assert f.value == 200
+        assert f.to_dict() == {"column": "status", "op": "=", "value": 200}
+
+    def test_in_operator_with_list_value(self):
+        """IN operator with list value works correctly."""
+        from honeycomb.models.query_builder import Filter, FilterOp
+
+        f = Filter(column="service", op=FilterOp.IN, value=["api", "web"])
+        assert f.value == ["api", "web"]
+        assert f.to_dict() == {"column": "service", "op": "in", "value": ["api", "web"]}
+
+
 class TestQueryBuilderWithOrdersAndHavings:
     """Test QueryBuilder integration with orders and havings."""
 

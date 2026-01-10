@@ -27,6 +27,9 @@ VALID_COMPARE_OFFSETS: frozenset[int] = frozenset(
 # Operations that do NOT require a column (all others require one)
 OPS_WITHOUT_COLUMN: frozenset[str] = frozenset({"COUNT", "CONCURRENCY"})
 
+# Filter operations that do NOT take a value (existence checks)
+FILTER_OPS_WITHOUT_VALUE: frozenset[str] = frozenset({"exists", "does-not-exist"})
+
 
 # =============================================================================
 # Enums
@@ -65,7 +68,10 @@ class CalcOp(str, Enum):
 
 
 class FilterOp(str, Enum):
-    """Filter operations for Honeycomb queries and board views."""
+    """Filter operations for Honeycomb queries and board views.
+
+    IMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.
+    """
 
     EQUALS = "="
     NOT_EQUALS = "!="
@@ -143,7 +149,7 @@ class Filter(BaseModel):
 
     Examples:
         >>> Filter(column="status", op=FilterOp.EQUALS, value=200)
-        >>> Filter(column="error", op=FilterOp.EXISTS, value=True)
+        >>> Filter(column="error", op=FilterOp.EXISTS)  # No value needed
         >>> Filter(column="service", op="in", value=["api", "web"])
     """
 
@@ -151,11 +157,29 @@ class Filter(BaseModel):
 
     column: str = Field(description="Column to filter on")
     op: FilterOp = Field(description="Filter operator (=, !=, >, <, contains, etc.)")
-    value: Any = Field(description="Filter value")
+    value: Any = Field(
+        default=None,
+        description="Filter value. Not used for 'exists' and 'does-not-exist' operations.",
+    )
+
+    @model_validator(mode="after")
+    def validate_value_requirement(self) -> Self:
+        """Validate value is not provided for existence check operations."""
+        op_value = self.op.value if isinstance(self.op, FilterOp) else self.op
+        if op_value in FILTER_OPS_WITHOUT_VALUE and self.value is not None:
+            # Silently set to None instead of raising error for better UX
+            # The API will reject it anyway, and this allows us to clean it up automatically
+            self.value = None
+        return self
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to API dict format."""
-        return {"column": self.column, "op": self.op.value, "value": self.value}
+        result: dict[str, Any] = {"column": self.column, "op": self.op.value}
+        # Only include value for operations that use it
+        op_value = self.op.value if isinstance(self.op, FilterOp) else self.op
+        if op_value not in FILTER_OPS_WITHOUT_VALUE:
+            result["value"] = self.value
+        return result
 
 
 class Order(BaseModel):
@@ -545,7 +569,7 @@ class QueryBuilder:
         Returns:
             self for chaining
         """
-        return self.filter(column, FilterOp.EXISTS, True)
+        return self.filter(column, FilterOp.EXISTS, None)
 
     # -------------------------------------------------------------------------
     # Filter Shortcuts (one method per operator)
@@ -593,11 +617,11 @@ class QueryBuilder:
 
     def exists(self, column: str) -> QueryBuilder:
         """Filter where column exists."""
-        return self.filter(column, FilterOp.EXISTS, True)
+        return self.filter(column, FilterOp.EXISTS, None)
 
     def does_not_exist(self, column: str) -> QueryBuilder:
         """Filter where column does not exist."""
-        return self.filter(column, FilterOp.DOES_NOT_EXIST, True)
+        return self.filter(column, FilterOp.DOES_NOT_EXIST, None)
 
     def is_in(self, column: str, values: list[Any]) -> QueryBuilder:
         """Filter where column is in a list of values."""
