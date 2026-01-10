@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.10] - 2026-01-10
+
+### Bug Fixes
+
+- Validate that columns must be passed to all but 2 CalcOps
+- The order of order parameters was wrong (the irony)
+- Tests had wrong recipient properties, and add model validation and tests to prevent it in the future
+
 ## [0.5.9] - 2026-01-10
 
 ### Bug Fixes
