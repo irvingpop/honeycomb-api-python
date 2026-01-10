@@ -1122,7 +1122,7 @@
         ],
         "$defs": {
           "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.",
+            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
             "enum": [
               "COUNT",
               "SUM",
@@ -1769,7 +1769,7 @@
         ],
         "$defs": {
           "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.",
+            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
             "enum": [
               "COUNT",
               "SUM",
@@ -6527,7 +6527,7 @@
         ],
         "$defs": {
           "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.",
+            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
             "enum": [
               "COUNT",
               "SUM",
@@ -7132,7 +7132,7 @@
         ],
         "$defs": {
           "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.",
+            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
             "enum": [
               "COUNT",
               "SUM",
@@ -7582,7 +7582,7 @@
             "type": "object"
           },
           "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.",
+            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
             "enum": [
               "COUNT",
               "SUM",

@@ -21,7 +21,7 @@ classifiers = [
 dynamic = ["version", "dependencies"]
 
 [project.urls]
-Homepage = "https://github.com/irvingpop/honeycomb-api-python"
+Homepage = "https://irvingpop.github.io/honeycomb-api-python/"
 Repository = "https://github.com/irvingpop/honeycomb-api-python"
 
 [project.scripts]

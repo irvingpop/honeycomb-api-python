@@ -11,7 +11,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
+from typing_extensions import Self
 
 if TYPE_CHECKING:
     from honeycomb.models.queries import QuerySpec
@@ -23,6 +24,9 @@ VALID_COMPARE_OFFSETS: frozenset[int] = frozenset(
     {1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800}
 )
 
+# Operations that do NOT require a column (all others require one)
+OPS_WITHOUT_COLUMN: frozenset[str] = frozenset({"COUNT", "CONCURRENCY"})
+
 
 # =============================================================================
 # Enums
@@ -30,7 +34,11 @@ VALID_COMPARE_OFFSETS: frozenset[int] = frozenset(
 
 
 class CalcOp(str, Enum):
-    """Calculation operations for Honeycomb queries."""
+    """Calculation operations for Honeycomb queries.
+
+    IMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.
+    All other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.
+    """
 
     COUNT = "COUNT"
     SUM = "SUM"
@@ -110,6 +118,18 @@ class Calculation(BaseModel):
     op: CalcOp = Field(description="Calculation operation (COUNT, AVG, P99, etc.)")
     column: str | None = Field(default=None, description="Column to calculate on")
 
+    @model_validator(mode="after")
+    def validate_column_requirement(self) -> Self:
+        """Validate that column is provided when required by the operation."""
+        op_value = self.op.value if isinstance(self.op, CalcOp) else self.op
+        if op_value not in OPS_WITHOUT_COLUMN and self.column is None:
+            raise ValueError(
+                f"column required for op '{op_value}'.\n"
+                f"Operations like {op_value} must specify which column to aggregate.\n"
+                f"Only COUNT and CONCURRENCY can be used without a column."
+            )
+        return self
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to API dict format."""
         result: dict[str, Any] = {"op": self.op.value}
@@ -152,6 +172,18 @@ class Order(BaseModel):
     column: str | None = Field(default=None, description="Column for the calculation")
     order: OrderDirection = Field(default=OrderDirection.DESCENDING, description="Sort direction")
 
+    @model_validator(mode="after")
+    def validate_column_requirement(self) -> Self:
+        """Validate that column is provided when required by the operation."""
+        op_value = self.op.value if isinstance(self.op, CalcOp) else self.op
+        if op_value not in OPS_WITHOUT_COLUMN and self.column is None:
+            raise ValueError(
+                f"column required for op '{op_value}'.\n"
+                f"When ordering by {op_value}, you must specify which column to order by.\n"
+                f"Only COUNT and CONCURRENCY can be used without a column."
+            )
+        return self
+
     def to_dict(self) -> dict[str, Any]:
         """Convert to API dict format."""
         result: dict[str, Any] = {"op": self.op.value, "order": self.order.value}
@@ -174,6 +206,20 @@ class Having(BaseModel):
     column: str | None = Field(default=None, description="Column for the calculation")
     op: FilterOp = Field(description="Comparison operator")
     value: float = Field(description="Threshold value")
+
+    @model_validator(mode="after")
+    def validate_column_requirement(self) -> Self:
+        """Validate that column is provided when required by the operation."""
+        op_value = (
+            self.calculate_op.value if isinstance(self.calculate_op, CalcOp) else self.calculate_op
+        )
+        if op_value not in OPS_WITHOUT_COLUMN and self.column is None:
+            raise ValueError(
+                f"column required for calculate_op '{op_value}'.\n"
+                f"When filtering by {op_value}, you must specify which column.\n"
+                f"Only COUNT and CONCURRENCY can be used without a column."
+            )
+        return self
 
     def to_dict(self) -> dict[str, Any]:
         """Convert to API dict format."""
