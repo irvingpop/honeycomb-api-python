@@ -1,0 +1,6 @@
+{
+  "name": "tool-call-debug",
+  "description": "Debug Claude tool call failures using systematic validation and live API testing",
+  "version": "1.0.0",
+  "type": "guide"
+}
