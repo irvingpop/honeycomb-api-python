@@ -93,6 +93,41 @@ async def query_with_filters(client: HoneycombClient, dataset: str) -> tuple[Que
 # end_example:query_with_filters
 
 
+# start_example:query_with_orders_and_havings
+async def query_with_orders_and_havings(
+    client: HoneycombClient, dataset: str
+) -> tuple[Query, QueryResult]:
+    """Run a query with ordering and post-aggregation filtering (havings).
+
+    This example finds the slowest endpoints by filtering for high-volume endpoints
+    (>100 requests) and ordering by P99 latency.
+
+    Args:
+        client: Authenticated HoneycombClient
+        dataset: Dataset slug to query
+
+    Returns:
+        Tuple of (saved query, query result)
+    """
+    query, result = await client.query_results.create_and_run_async(
+        QueryBuilder()
+        .dataset(dataset)
+        .last_1_hour()
+        .count()
+        .p99("duration_ms")
+        .avg("duration_ms")
+        .group_by("endpoint")
+        .order_by(op="P99", column="duration_ms", direction="descending")
+        .having(calculate_op="COUNT", op=">", value=100.0)  # Only high-volume endpoints
+        .limit(10)
+    )
+    print(f"Found {len(result.data.rows)} high-volume slow endpoints")
+    return query, result
+
+
+# end_example:query_with_orders_and_havings
+
+
 # start_example:get
 async def get_query(client: HoneycombClient, dataset: str, query_id: str) -> Query:
     """Get a saved query by ID.
@@ -136,6 +171,27 @@ async def test_get_query(query: Query, expected_query_id: str) -> None:
     # Query spec fields are returned at top level via extra fields
     query_data = query.model_dump()
     assert "time_range" in query_data or "calculations" in query_data
+
+
+async def test_query_with_filters(query: Query, result: QueryResult) -> None:
+    """Verify filters example worked."""
+    assert query.id is not None
+    assert result.data is not None
+
+
+async def test_query_with_orders_and_havings(query: Query, result: QueryResult) -> None:
+    """Verify orders and havings example worked."""
+    assert query.id is not None
+    assert result.data is not None
+    # Verify query has orders and havings
+    query_data = query.model_dump()
+    assert query_data.get("orders") is not None, "Query should have orders"
+    assert len(query_data["orders"]) == 1, "Query should have 1 order"
+    assert query_data["orders"][0]["op"] == "P99"
+    assert query_data["orders"][0]["column"] == "duration_ms"
+    assert query_data.get("havings") is not None, "Query should have havings"
+    assert len(query_data["havings"]) == 1, "Query should have 1 having"
+    assert query_data["havings"][0]["calculate_op"] == "COUNT"
 
 
 # NOTE: The Honeycomb API does not support deleting saved queries.

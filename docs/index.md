@@ -47,15 +47,6 @@ async def main():
 asyncio.run(main())
 ```
 
-## Why This Client?
-
-- **Modern Python**: Built for Python 3.10+ with type hints throughout
-- **Async Native**: First-class async support using httpx
-- **Developer Friendly**: Intuitive API that matches how you think about Honeycomb resources
-- **Production Ready**: Comprehensive error handling, retries, and timeouts
-- **Well Tested**: 140+ unit tests with high coverage
-- **Actively Maintained**: Built on the official Honeycomb OpenAPI spec
-
 ## Get Started
 
 Check out the [Installation Guide](getting-started/installation.md) to get started, or jump straight to the [Quick Start](getting-started/quickstart.md) for code examples.

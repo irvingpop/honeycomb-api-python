@@ -2,7 +2,7 @@
 
 Coverage:
 - 3 tools (create, get, run)
-- 16 test cases focusing on query_run complexity, calculated fields, and compare time offset
+- 17 test cases focusing on query_run complexity, calculated fields, compare time offset, orders, and havings
 """
 
 TEST_CASES = [
@@ -120,7 +120,41 @@ TEST_CASES = [
         "assertion_checks": [
             "'breakdowns' in params and 'endpoint' in params['breakdowns']",
             "'limit' in params and params['limit'] <= 20",
-            "'havings' in params or 'having' in params or 'orders' in params",
+            "'havings' in params and len(params['havings']) >= 1",
+            "params['havings'][0].get('calculate_op') == 'COUNT'",
+            "params['havings'][0].get('op') in ['>', '>=']",
+            "params['havings'][0].get('value') >= 100",
+        ],
+    },
+    {
+        "id": "query_run_with_orders_and_havings",
+        "description": "Query with both orders and havings (top N slow high-volume endpoints)",
+        "prompt": (
+            "Find the slowest high-traffic endpoints in api-logs: "
+            "show endpoints with more than 50 requests, "
+            "calculate COUNT and P99 of duration_ms grouped by endpoint, "
+            "order by P99 duration_ms descending, "
+            "limit to top 10, time range 1 hour"
+        ),
+        "expected_tool": "honeycomb_run_query",
+        "expected_params": {
+            "dataset": "api-logs",
+            "time_range": 3600,
+        },
+        "assertion_checks": [
+            "'breakdowns' in params and 'endpoint' in params['breakdowns']",
+            "'calculations' in params and len(params['calculations']) >= 2",
+            "any(c.get('op') == 'COUNT' for c in params['calculations'])",
+            "any(c.get('op') == 'P99' and c.get('column') == 'duration_ms' for c in params['calculations'])",
+            "'orders' in params and len(params['orders']) >= 1",
+            "params['orders'][0].get('op') == 'P99'",
+            "params['orders'][0].get('column') == 'duration_ms'",
+            "params['orders'][0].get('order') == 'descending'",
+            "'havings' in params and len(params['havings']) >= 1",
+            "params['havings'][0].get('calculate_op') == 'COUNT'",
+            "params['havings'][0].get('op') in ['>', '>=']",
+            "params['havings'][0].get('value') >= 50",
+            "'limit' in params and params['limit'] == 10",
         ],
     },
     {

@@ -507,8 +507,8 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
 
         # Orders - these are already validated Order models
         for order in query_panel.orders or []:
-            # Order model has 'op' (CalcOp) and 'order' (OrderDirection) fields
-            qb.order_by(order.column or order.op, order.order)
+            # Order model has 'op' (CalcOp), 'column' (optional str), and 'order' (OrderDirection)
+            qb.order_by(op=order.op, direction=order.order, column=order.column)
 
         # Limit
         if query_panel.limit:

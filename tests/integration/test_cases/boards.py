@@ -2,8 +2,8 @@
 
 Coverage:
 - 5 tools (list, get, create, update, delete)
-- 16 test cases with inline SLO creation, environment-wide queries, chart types,
-  visualization settings, calculated fields, compare time offset, and comprehensive assertions
+- 17 test cases with inline SLO creation, environment-wide queries, chart types,
+  visualization settings, calculated fields, compare time offset, orders, and comprehensive assertions
 """
 
 TEST_CASES = [
@@ -329,6 +329,33 @@ TEST_CASES = [
             "len(params['inline_query_panels']) >= 1",
             "'compare_time_offset_seconds' in params['inline_query_panels'][0]",
             "params['inline_query_panels'][0].get('compare_time_offset_seconds') == 86400",
+        ],
+    },
+    {
+        "id": "board_with_orders",
+        "description": "Board with query panel that uses ordering (top N pattern)",
+        "prompt": (
+            "Create a 'Top Endpoints' board with auto-layout containing: "
+            "a table panel named 'Slowest Endpoints' from api-logs showing AVG of duration_ms "
+            "grouped by endpoint, ordered by AVG of duration_ms descending, "
+            "limit to top 10, time range 1 hour"
+        ),
+        "expected_tool": "honeycomb_create_board",
+        "expected_params": {
+            "name": "Top Endpoints",
+            "layout_generation": "auto",
+        },
+        "assertion_checks": [
+            "'inline_query_panels' in params and len(params['inline_query_panels']) >= 1",
+            "params['inline_query_panels'][0].get('name') == 'Slowest Endpoints'",
+            "params['inline_query_panels'][0].get('dataset') == 'api-logs'",
+            "'orders' in params['inline_query_panels'][0]",
+            "len(params['inline_query_panels'][0]['orders']) >= 1",
+            "params['inline_query_panels'][0]['orders'][0].get('op') == 'AVG'",
+            "params['inline_query_panels'][0]['orders'][0].get('column') == 'duration_ms'",
+            "params['inline_query_panels'][0]['orders'][0].get('order') == 'descending'",
+            "params['inline_query_panels'][0].get('limit') == 10",
+            "'breakdowns' in params['inline_query_panels'][0] and 'endpoint' in params['inline_query_panels'][0]['breakdowns']",
         ],
     },
 ]
