@@ -35,11 +35,11 @@ class TestTagsMixin:
         mixin.tags({"team": "backend", "env": "production"})
         assert len(mixin._tags) == 2
 
-    def test_tags_with_underscore_in_key(self):
-        """Test tag key with underscores."""
+    def test_tags_with_underscore_in_key_rejected(self):
+        """Test that underscores in tag key are rejected (API requires lowercase letters only)."""
         mixin = TagsMixin()
-        mixin.tag("service_type", "api")
-        assert mixin._tags[0]["key"] == "service_type"
+        with pytest.raises(ValueError, match="must contain only lowercase letters"):
+            mixin.tag("service_type", "api")
 
     def test_tags_with_slash_in_value(self):
         """Test tag value with forward slash."""

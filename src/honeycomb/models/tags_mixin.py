@@ -20,7 +20,7 @@ class TagsMixin:
         """Add a tag to the resource.
 
         Args:
-            key: Tag key (lowercase letters and underscores only, max 32 chars).
+            key: Tag key (lowercase letters only, max 32 chars).
             value: Tag value (must start with lowercase letter,
                    alphanumeric + / and -, max 128 chars).
 
@@ -33,8 +33,8 @@ class TagsMixin:
         # Validate key
         if not key or len(key) > 32:
             raise ValueError("Tag key must be 1-32 characters")
-        if not all(c.islower() or c == "_" for c in key):
-            raise ValueError("Tag key must contain only lowercase letters and underscores")
+        if not key.isalpha() or not key.islower():
+            raise ValueError("Tag key must contain only lowercase letters")
 
         # Validate value
         if not value or len(value) > 128:

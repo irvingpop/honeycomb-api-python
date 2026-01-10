@@ -1238,13 +1238,13 @@
           },
           "TagInput": {
             "additionalProperties": false,
-            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters and underscores only (e.g., \"team\", \"service_type\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"service_type\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
+            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters only (e.g., \"team\", \"servicetype\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"servicetype\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
             "properties": {
               "key": {
-                "description": "Tag key: lowercase letters and underscores only, 1-32 chars",
+                "description": "Tag key: lowercase letters only, 1-32 chars",
                 "maxLength": 32,
                 "minLength": 1,
-                "pattern": "^[a-z_]+$",
+                "pattern": "^[a-z]+$",
                 "title": "Key",
                 "type": "string"
               },
@@ -1885,13 +1885,13 @@
           },
           "TagInput": {
             "additionalProperties": false,
-            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters and underscores only (e.g., \"team\", \"service_type\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"service_type\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
+            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters only (e.g., \"team\", \"servicetype\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"servicetype\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
             "properties": {
               "key": {
-                "description": "Tag key: lowercase letters and underscores only, 1-32 chars",
+                "description": "Tag key: lowercase letters only, 1-32 chars",
                 "maxLength": 32,
                 "minLength": 1,
-                "pattern": "^[a-z_]+$",
+                "pattern": "^[a-z]+$",
                 "title": "Key",
                 "type": "string"
               },
@@ -2515,13 +2515,13 @@
           },
           "TagInput": {
             "additionalProperties": false,
-            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters and underscores only (e.g., \"team\", \"service_type\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"service_type\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
+            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters only (e.g., \"team\", \"servicetype\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"servicetype\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
             "properties": {
               "key": {
-                "description": "Tag key: lowercase letters and underscores only, 1-32 chars",
+                "description": "Tag key: lowercase letters only, 1-32 chars",
                 "maxLength": 32,
                 "minLength": 1,
-                "pattern": "^[a-z_]+$",
+                "pattern": "^[a-z]+$",
                 "title": "Key",
                 "type": "string"
               },
@@ -2946,13 +2946,13 @@
           },
           "TagInput": {
             "additionalProperties": false,
-            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters and underscores only (e.g., \"team\", \"service_type\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"service_type\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
+            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters only (e.g., \"team\", \"servicetype\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"servicetype\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
             "properties": {
               "key": {
-                "description": "Tag key: lowercase letters and underscores only, 1-32 chars",
+                "description": "Tag key: lowercase letters only, 1-32 chars",
                 "maxLength": 32,
                 "minLength": 1,
-                "pattern": "^[a-z_]+$",
+                "pattern": "^[a-z]+$",
                 "title": "Key",
                 "type": "string"
               },
@@ -8308,13 +8308,13 @@
           },
           "TagInput": {
             "additionalProperties": false,
-            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters and underscores only (e.g., \"team\", \"service_type\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"service_type\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
+            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters only (e.g., \"team\", \"servicetype\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"servicetype\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
             "properties": {
               "key": {
-                "description": "Tag key: lowercase letters and underscores only, 1-32 chars",
+                "description": "Tag key: lowercase letters only, 1-32 chars",
                 "maxLength": 32,
                 "minLength": 1,
-                "pattern": "^[a-z_]+$",
+                "pattern": "^[a-z]+$",
                 "title": "Key",
                 "type": "string"
               },

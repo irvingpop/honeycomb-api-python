@@ -708,7 +708,7 @@ class TagInput(BaseModel):
     Tags are key-value pairs used to identify and organize resources in Honeycomb.
 
     Constraints:
-    - Keys: 1-32 chars, lowercase letters and underscores only (e.g., "team", "service_type")
+    - Keys: 1-32 chars, lowercase letters only (e.g., "team", "servicetype")
     - Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,
       numbers, forward slash (/), and dash (-) (e.g., "platform", "api/backend", "staging-east-1")
     - Maximum 10 tags per resource
@@ -716,7 +716,7 @@ class TagInput(BaseModel):
     Common examples:
     - {"key": "team", "value": "platform"}
     - {"key": "environment", "value": "production"}
-    - {"key": "service_type", "value": "api/backend"}
+    - {"key": "servicetype", "value": "api/backend"}
     - {"key": "region", "value": "us-east-1"}
     """
 
@@ -725,8 +725,8 @@ class TagInput(BaseModel):
     key: str = Field(
         min_length=1,
         max_length=32,
-        pattern=r"^[a-z_]+$",
-        description="Tag key: lowercase letters and underscores only, 1-32 chars",
+        pattern=r"^[a-z]+$",
+        description="Tag key: lowercase letters only, 1-32 chars",
     )
     value: str = Field(
         min_length=1,

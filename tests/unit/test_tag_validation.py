@@ -15,10 +15,13 @@ class TestTagInputValidation:
         assert tag.key == "team"
         assert tag.value == "platform"
 
-    def test_valid_tag_with_underscore_in_key(self):
-        """Test valid tag key with underscores."""
-        tag = TagInput(key="service_type", value="api")
-        assert tag.key == "service_type"
+    def test_invalid_key_with_underscore(self):
+        """Test that underscores in key are rejected (API requires lowercase letters only)."""
+        with pytest.raises(ValidationError) as exc_info:
+            TagInput(key="service_type", value="api")
+
+        error_str = str(exc_info.value)
+        assert "key" in error_str.lower()
 
     def test_valid_tag_with_slash_in_value(self):
         """Test valid tag value with forward slash."""
@@ -149,14 +152,14 @@ class TestBoardTagsLimit:
 
     def test_board_with_10_tags_valid(self):
         """Test that board with exactly 10 tags is valid."""
-        # Use letters only in keys (no numbers allowed in tag keys)
+        # Use letters only in keys (no numbers or underscores allowed in tag keys)
         key_names = [
             "team",
             "environment",
             "region",
             "owner",
-            "service_type",
-            "cost_center",
+            "servicetype",
+            "costcenter",
             "application",
             "tier",
             "criticality",
@@ -168,14 +171,14 @@ class TestBoardTagsLimit:
 
     def test_board_with_11_tags_rejected(self):
         """Test that board with 11 tags is rejected."""
-        # Use letters only in keys (no numbers allowed in tag keys)
+        # Use letters only in keys (no numbers or underscores allowed in tag keys)
         key_names = [
             "team",
             "environment",
             "region",
             "owner",
-            "service_type",
-            "cost_center",
+            "servicetype",
+            "costcenter",
             "application",
             "tier",
             "criticality",
@@ -194,8 +197,8 @@ class TestBoardTagsLimit:
 
     def test_board_with_20_tags_rejected(self):
         """Test that board with 20 tags shows clear error."""
-        # Use letters with underscores to create 20 unique valid keys
-        tags = [TagInput(key=f"key_{chr(97 + i)}", value=f"value{i}") for i in range(20)]
+        # Use letters only to create 20 unique valid keys (lowercase letters only)
+        tags = [TagInput(key=f"key{chr(97 + i)}", value=f"value{i}") for i in range(20)]
 
         with pytest.raises(ValidationError) as exc_info:
             BoardToolInput(name="Test Board", tags=tags)
@@ -238,8 +241,8 @@ class TestTagValidationErrorMessages:
 
     def test_tag_limit_message_clarity(self):
         """Test that tag limit error message is clear."""
-        # Use letters with underscores to create 15 unique valid keys
-        tags = [TagInput(key=f"tag_{chr(97 + i)}", value=f"value{i}") for i in range(15)]
+        # Use letters only to create 15 unique valid keys (lowercase letters only)
+        tags = [TagInput(key=f"tag{chr(97 + i)}", value=f"value{i}") for i in range(15)]
 
         with pytest.raises(ValidationError) as exc_info:
             BoardToolInput(name="Test Board", tags=tags)
@@ -258,9 +261,9 @@ class TestTagInputWithRealWorldExamples:
         valid_examples = [
             {"key": "team", "value": "platform"},
             {"key": "environment", "value": "production"},
-            {"key": "service_type", "value": "api/backend"},
+            {"key": "servicetype", "value": "api/backend"},
             {"key": "region", "value": "us-east-1"},
-            {"key": "cost_center", "value": "engineering"},
+            {"key": "costcenter", "value": "engineering"},
             {"key": "owner", "value": "team-alpha"},
             {"key": "version", "value": "v2"},
         ]

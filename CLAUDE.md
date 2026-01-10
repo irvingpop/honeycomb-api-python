@@ -43,11 +43,14 @@ Invoke explicitly: "Use the `live-tester` agent to verify this works"
 
 | Command | Purpose |
 |---------|---------|
-| `/ci` | Run full CI pipeline |
-| `/check` | Quick lint + typecheck |
-| `/test <path>` | Run specific tests |
+| `/ci` | Run full CI pipeline with coverage analysis and doc sync check |
+| `/ci --eval` | Full CI + Claude tool evaluation tests (slow, for tool changes) |
 | `/live-test` | Run live API tests (requires credentials) |
-| `/docs-serve` | Preview documentation |
+
+The `/ci` skill runs format, lint (with auto-fix), typecheck, tests with coverage, and doc validation. It provides feedback on:
+- Test coverage gaps and files with low coverage
+- New functionality without corresponding tests
+- Source file changes without doc updates
 
 ## Development Commands
 
