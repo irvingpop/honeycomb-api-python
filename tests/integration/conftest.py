@@ -350,7 +350,7 @@ async def ensure_recipient(client: HoneycombClient) -> str:
     recipient = await client.recipients.create_async(
         RecipientCreate(
             type=RecipientType.EMAIL,
-            details={"address": "test-integration@example.com"},
+            details={"email_address": "test-integration@example.com"},
         )
     )
 

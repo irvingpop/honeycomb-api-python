@@ -17,13 +17,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Always be candidly honest
 - Don't use emoji
 - The plan isn't perfect, question it but tell me if you want to deviate from it
-- Don't pipe test output to `head` or `tail`
-- Don't read files using bash tools, use your native built-in tools instead
+- Never pipe test output to `head` or `tail`
+- Never read or write files using bash tools, use your native built-in tools instead
 - Recipient integrations: Only email/webhook testable - no slack/pagerduty/msteams configured
 - All builders follow pattern: Builder → Bundle → create_from_bundle_async() (except Marker/Recipient which are simple)
 - Breaking changes are acceptable before version 1.0
 - Don't leave dead code lying around - either clean it up or add comments for future cleanup tasks
 - Don't gratiuitously create summary and status documents.  But when you do need to create a document, write it to `.claude/docs/` and this is where you should look for references
+- Always run python commands using `poetry run`
 
 ## Agents
 

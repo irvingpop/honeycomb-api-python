@@ -40,7 +40,21 @@ from .query_builder import (
     QueryBuilder,
 )
 from .recipient_builder import RecipientBuilder, RecipientMixin
-from .recipients import Recipient, RecipientCreate, RecipientType
+from .recipients import (
+    EmailRecipientDetails,
+    MSTeamsRecipientDetails,
+    MSTeamsWorkflowRecipientDetails,
+    PagerDutyRecipientDetails,
+    Recipient,
+    RecipientCreate,
+    RecipientType,
+    SlackRecipientDetails,
+    WebhookHeader,
+    WebhookPayloads,
+    WebhookPayloadTemplate,
+    WebhookRecipientDetails,
+    WebhookTemplateVariable,
+)
 from .service_map_dependencies import (
     ServiceMapDependency,
     ServiceMapDependencyRequest,
@@ -138,6 +152,16 @@ __all__ = [
     "RecipientType",
     "RecipientBuilder",
     "RecipientMixin",
+    "EmailRecipientDetails",
+    "SlackRecipientDetails",
+    "PagerDutyRecipientDetails",
+    "WebhookRecipientDetails",
+    "WebhookHeader",
+    "WebhookPayloads",
+    "WebhookPayloadTemplate",
+    "WebhookTemplateVariable",
+    "MSTeamsRecipientDetails",
+    "MSTeamsWorkflowRecipientDetails",
     # Tags
     "TagsMixin",
     # Burn Alerts
