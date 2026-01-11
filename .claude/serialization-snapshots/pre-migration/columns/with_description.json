@@ -1,0 +1,6 @@
+{
+  "description": "Request duration in milliseconds",
+  "hidden": false,
+  "key_name": "duration_ms",
+  "type": "float"
+}

@@ -1,0 +1,19 @@
+{
+  "details": {
+    "webhook_headers": [
+      {
+        "header": "Authorization",
+        "value": "Bearer token123"
+      },
+      {
+        "header": "X-Custom-Header",
+        "value": "custom_value"
+      }
+    ],
+    "webhook_name": "Authenticated Webhook",
+    "webhook_payloads": null,
+    "webhook_secret": "my_secret",
+    "webhook_url": "https://example.com/webhook"
+  },
+  "type": "webhook"
+}

@@ -1,0 +1,11 @@
+{
+  "alert_type": "on_change",
+  "disabled": false,
+  "frequency": 900,
+  "name": "Saved Query Trigger",
+  "query_id": "saved_query_abc123",
+  "threshold": {
+    "op": "<",
+    "value": 50.0
+  }
+}

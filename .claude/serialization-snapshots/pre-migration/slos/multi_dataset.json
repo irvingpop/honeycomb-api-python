@@ -1,0 +1,13 @@
+{
+  "dataset_slugs": [
+    "frontend",
+    "backend",
+    "api"
+  ],
+  "name": "Multi-Dataset SLO",
+  "sli": {
+    "alias": "availability"
+  },
+  "target_per_million": 999000,
+  "time_period_days": 30
+}
