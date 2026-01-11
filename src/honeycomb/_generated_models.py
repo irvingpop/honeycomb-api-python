@@ -17,6 +17,29 @@ class Error(BaseModel):
     error: str | None = None
 
 
+class Source(BaseModel):
+    pointer: str | None = None
+    header: str | None = None
+    parameter: str | None = None
+
+
+class Error1(BaseModel):
+    id: str
+    status: str | None = None
+    code: str
+    title: str | None = None
+    detail: str | None = None
+    source: Source | None = None
+
+
+class JSONAPIError(BaseModel):
+    """
+    A JSONAPI-formatted error message.
+    """
+
+    errors: list[Error1] | None = None
+
+
 class DetailedError(BaseModel):
     """
     An RFC7807 'Problem Detail' formatted error message.
@@ -24,9 +47,7 @@ class DetailedError(BaseModel):
 
     error: str
     status: float = Field(..., description="The HTTP status code of the error.")
-    type: str = Field(
-        ..., description="Type is a URI used to uniquely identify the type of error."
-    )
+    type: str = Field(..., description="Type is a URI used to uniquely identify the type of error.")
     title: str = Field(
         ...,
         description="Title is a human-readable summary that explains the `type` of the problem.",
@@ -45,6 +66,12 @@ class RateLimitedProblem(DetailedError):
     """
 
 
+class RateLimitedJSONAPI(JSONAPIError):
+    """
+    An JSON:API formatted Rate Limited error.
+    """
+
+
 class Code(Enum):
     invalid = "invalid"
     missing = "missing"
@@ -59,9 +86,7 @@ class TypeDetailItem(BaseModel):
 
 
 class ValidationError(DetailedError):
-    status: float | None = Field(
-        default=422, description="The HTTP status code of the error."
-    )
+    status: float | None = Field(default=422, description="The HTTP status code of the error.")
     type: str | None = Field(
         default="https://api.honeycomb.io/problems/validation-failed",
         description="Type is a URI used to uniquely identify the type of error.",
@@ -135,9 +160,7 @@ class BoardType(Enum):
 class Links(BaseModel):
     board_url: str | None = Field(
         default=None,
-        examples=[
-            "https://ui.honeycomb.io/myteam/environments/myenvironment/board/2NeeaE9bBLd"
-        ],
+        examples=["https://ui.honeycomb.io/myteam/environments/myenvironment/board/2NeeaE9bBLd"],
     )
 
 
@@ -153,7 +176,9 @@ class LayoutGeneration(Enum):
 
 class PresetFilter(BaseModel):
     column: str = Field(..., description="Original name of the column to alias.")
-    alias: str = Field(..., description="The alias of the preset filter.")
+    alias: str = Field(
+        ..., description="The alias of the preset filter. Maximum length is 50 characters."
+    )
 
 
 class Operation(Enum):
@@ -180,12 +205,8 @@ class Operation(Enum):
 
 
 class BoardViewFilter(BaseModel):
-    column: str = Field(
-        ..., description="The column name to filter on.", examples=["status"]
-    )
-    operation: Operation = Field(
-        ..., description="The filter operation.", examples=["="]
-    )
+    column: str = Field(..., description="The column name to filter on.", examples=["status"])
+    operation: Operation = Field(..., description="The filter operation.", examples=["="])
     value: Any | None = Field(
         default=None, description="The value to filter by.", examples=["error"]
     )
@@ -193,11 +214,7 @@ class BoardViewFilter(BaseModel):
 
 class CreateBoardViewRequest(BaseModel):
     name: str = Field(
-        ...,
-        description="The name of the view.",
-        examples=["My View"],
-        max_length=255,
-        min_length=1,
+        ..., description="The name of the view.", examples=["My View"], max_length=255, min_length=1
     )
     filters: list[BoardViewFilter] = Field(
         ..., description="The filters to apply to this view.", min_length=1
@@ -206,16 +223,10 @@ class CreateBoardViewRequest(BaseModel):
 
 class UpdateBoardViewRequest(BaseModel):
     id: str | None = Field(
-        default=None,
-        description="Unique identifier for the board view.",
-        examples=["eC_abc123"],
+        default=None, description="Unique identifier for the board view.", examples=["eC_abc123"]
     )
     name: str = Field(
-        ...,
-        description="The name of the view.",
-        examples=["My View"],
-        max_length=255,
-        min_length=1,
+        ..., description="The name of the view.", examples=["My View"], max_length=255, min_length=1
     )
     filters: list[BoardViewFilter] = Field(
         ..., description="The filters to apply to this view.", min_length=1
@@ -224,9 +235,7 @@ class UpdateBoardViewRequest(BaseModel):
 
 class BoardViewResponse(BaseModel):
     id: str | None = Field(
-        default=None,
-        description="Unique identifier for the board view.",
-        examples=["eC_abc123"],
+        default=None, description="Unique identifier for the board view.", examples=["eC_abc123"]
     )
     name: str | None = Field(
         default=None, description="The name of the view.", examples=["My View"]
@@ -333,9 +342,7 @@ class BoardQueryVisualizationSettings(BaseModel):
 
 
 class CalculatedField(BaseModel):
-    id: str = Field(
-        ..., description="Unique identifier (ID), returned in response bodies."
-    )
+    id: str = Field(..., description="Unique identifier (ID), returned in response bodies.")
     alias: str = Field(
         ...,
         description="The human-readable name of the Calculated Field (also called Derived Column), as it will be referenced when building queries.",
@@ -353,12 +360,8 @@ class CalculatedField(BaseModel):
         description="A human-readable description for the Calculated Field that displays in the UI.",
         max_length=255,
     )
-    created_at: str = Field(
-        ..., description="ISO8601 formatted time when the field was created."
-    )
-    updated_at: str = Field(
-        ..., description="ISO8601 formatted time when the field was updated."
-    )
+    created_at: str = Field(..., description="ISO8601 formatted time when the field was created.")
+    updated_at: str = Field(..., description="ISO8601 formatted time when the field was updated.")
 
 
 class CalculatedFieldList(RootModel[list[CalculatedField]]):
@@ -379,11 +382,7 @@ class Type1(Enum):
 
 class CreateColumn(BaseModel):
     key_name: str = Field(
-        ...,
-        description="Name of the Column.",
-        examples=["my_column"],
-        max_length=255,
-        min_length=1,
+        ..., description="Name of the Column.", examples=["my_column"], max_length=255, min_length=1
     )
     type: Type1 | None = Field(
         default="string",
@@ -458,15 +457,13 @@ class DatasetDefinitions(BaseModel):
         description="The Parent Span ID - The ID of this span's parent span, the call location the current span was called from.",
     )
     name: DatasetDefinition | None = Field(
-        default=None,
-        description="The name of the function or method where the span was created.",
+        default=None, description="The name of the function or method where the span was created."
     )
     service_name: DatasetDefinition | None = Field(
         default=None, description="The name of the instrumented service."
     )
     duration_ms: DatasetDefinition | None = Field(
-        default=None,
-        description="Span Duration - How much time the span took, in milliseconds.",
+        default=None, description="Span Duration - How much time the span took, in milliseconds."
     )
     span_kind: DatasetDefinition | None = Field(
         default=None,
@@ -488,12 +485,10 @@ class DatasetDefinitions(BaseModel):
         default=None, description="Use a Boolean or String to indicate error."
     )
     status: DatasetDefinition | None = Field(
-        default=None,
-        description="Indicates the success, failure, or other status of a request.",
+        default=None, description="Indicates the success, failure, or other status of a request."
     )
     route: DatasetDefinition | None = Field(
-        default=None,
-        description="The HTTP URL or equivalent route processed by the request.",
+        default=None, description="The HTTP URL or equivalent route processed by the request."
     )
     user: DatasetDefinition | None = Field(
         default=None, description="The user making the request in the system."
@@ -569,9 +564,7 @@ class DatasetCreationPayload(BaseModel):
     an object to send to the Dataset API via PUT
     """
 
-    name: str = Field(
-        ..., description="The name of the dataset.", max_length=255, min_length=1
-    )
+    name: str = Field(..., description="The name of the dataset.", max_length=255, min_length=1)
     description: str | None = Field(
         default="",
         description="A description for the dataset.",
@@ -611,9 +604,7 @@ class DatasetUpdatePayload(BaseModel):
 
 
 class KinesisEventRecord(BaseModel):
-    data: str | None = Field(
-        default=None, description="Base64 encoded Kinesis record from AWS"
-    )
+    data: str | None = Field(default=None, description="Base64 encoded Kinesis record from AWS")
 
 
 class KinesisResponse(BaseModel):
@@ -649,16 +640,13 @@ class Marker(BaseModel):
         examples=["http://link-to-build.here"],
     )
     id: str | None = Field(
-        default=None,
-        description="A 6 character hexadecimal string assigned on Marker creation.",
+        default=None, description="A 6 character hexadecimal string assigned on Marker creation."
     )
     created_at: str | None = Field(
-        default=None,
-        description="The ISO8601-formatted time when the Marker was created.",
+        default=None, description="The ISO8601-formatted time when the Marker was created."
     )
     updated_at: str | None = Field(
-        default=None,
-        description="The ISO8601-formatted time when the Marker was updated.",
+        default=None, description="The ISO8601-formatted time when the Marker was updated."
     )
     color: str | None = Field(
         default=None,
@@ -787,9 +775,7 @@ class Links1(BaseModel):
 
 
 class Config(BaseModel):
-    kind: str = Field(
-        ..., description="The configuration kind.", examples=["refinery_config"]
-    )
+    kind: str = Field(..., description="The configuration kind.", examples=["refinery_config"])
     configData: str = Field(
         ...,
         description="The pipeline configuration data.",
@@ -835,9 +821,7 @@ class Status(Enum):
 
 class Attributes1(BaseModel):
     status: Status = Field(
-        ...,
-        description="The status of the pipeline configuration rollout.",
-        examples=["deploying"],
+        ..., description="The status of the pipeline configuration rollout.", examples=["deploying"]
     )
 
 
@@ -963,9 +947,7 @@ class CreateEnhanceIndexerUsageRecordRequest(BaseModel):
 
 class Attributes4(BaseModel):
     status: Status = Field(
-        ...,
-        description="The status of the pipeline configuration rollout.",
-        examples=["success"],
+        ..., description="The status of the pipeline configuration rollout.", examples=["success"]
     )
 
 
@@ -1021,7 +1003,7 @@ class Calculation(BaseModel):
 class Filter(BaseModel):
     op: FilterOp
     column: str | None
-    value: int | float | str | bool | list[str] | None = None
+    value: int | float | str | bool | list[Any] | None = None
 
 
 class FilterCombination(Enum):
@@ -1046,9 +1028,7 @@ class Order(BaseModel):
 
 class Having(BaseModel):
     calculate_op: HavingCalculateOp
-    column: str | None = Field(
-        default=None, description="The name of the column to filter against"
-    )
+    column: str | None = Field(default=None, description="The name of the column to filter against")
     op: HavingOp | None = None
     value: float | None = 10
 
@@ -1157,7 +1137,7 @@ class Query(BaseModel):
     )
 
 
-class Source(Enum):
+class Source1(Enum):
     """
     The source of the Query Annotation.
     """
@@ -1204,10 +1184,8 @@ class QueryAnnotation(BaseModel):
         description="ISO8601 formatted time when the Query Annotation was updated.",
         examples=["2022-12-04T08:14:26Z"],
     )
-    source: Source | None = Field(
-        default=None,
-        description="The source of the Query Annotation.",
-        examples=["query"],
+    source: Source1 | None = Field(
+        default=None, description="The source of the Query Annotation.", examples=["query"]
     )
 
 
@@ -1247,9 +1225,7 @@ class Links3(BaseModel):
 
     query_url: str | None = Field(
         default=None,
-        examples=[
-            "https://ui.honeycomb.io/myteam/datasets/test-via-curl/result/HprJhV1fYy"
-        ],
+        examples=["https://ui.honeycomb.io/myteam/datasets/test-via-curl/result/HprJhV1fYy"],
     )
     graph_image_url: str | None = Field(
         default=None,
@@ -1346,9 +1322,7 @@ class Links4(BaseModel):
     query_url: str | None = Field(
         default=None,
         description="A link to the query result in the Honeycomb UI",
-        examples=[
-            "https://ui.honeycomb.io/myteam/datasets/test-via-curl/result/HprJhV1fYy"
-        ],
+        examples=["https://ui.honeycomb.io/myteam/datasets/test-via-curl/result/HprJhV1fYy"],
     )
     graph_image_url: str | None = Field(
         default=None,
@@ -1419,9 +1393,7 @@ class Details(BaseModel):
     """
 
     pagerduty_integration_name: str = Field(
-        ...,
-        description="A name for this Integration.",
-        examples=["Example PagerDuty Service"],
+        ..., description="A name for this Integration.", examples=["Example PagerDuty Service"]
     )
     pagerduty_integration_key: str = Field(
         ...,
@@ -1452,9 +1424,7 @@ class Details1(BaseModel):
     """
 
     email_address: str = Field(
-        ...,
-        description="Email address to notify.",
-        examples=["notify-me@example-email.com"],
+        ..., description="Email address to notify.", examples=["notify-me@example-email.com"]
     )
 
 
@@ -1531,10 +1501,7 @@ class Details4(BaseModel):
     """
 
     webhook_name: str = Field(
-        ...,
-        description="A name for this recipient.",
-        examples=["My Teams Channel"],
-        max_length=255,
+        ..., description="A name for this recipient.", examples=["My Teams Channel"], max_length=255
     )
     webhook_url: str = Field(
         ...,
@@ -1569,9 +1536,7 @@ class TemplateVariableDefinition(BaseModel):
     name: str = Field(
         ..., examples=["severity"], max_length=64, pattern="^[a-z](?:[a-zA-Z0-9]+$)?$"
     )
-    default_value: str | None = Field(
-        default=None, examples=["CRITICAL"], max_length=256
-    )
+    default_value: str | None = Field(default=None, examples=["CRITICAL"], max_length=256)
 
 
 class PayloadTemplate(BaseModel):
@@ -1597,9 +1562,7 @@ class RecipientProperties(BaseModel):
 
 class Tag(BaseModel):
     key: str = Field(
-        ...,
-        description="A key to identify the tag, lowercase letters only.",
-        max_length=32,
+        ..., description="A key to identify the tag, lowercase letters only.", max_length=32
     )
     value: str = Field(
         ...,
@@ -1756,11 +1719,7 @@ class Sli(BaseModel):
 class SLOCreate(BaseModel):
     id: str | None = None
     name: str = Field(
-        ...,
-        description="The name of the SLO.",
-        examples=["My SLO"],
-        max_length=120,
-        min_length=1,
+        ..., description="The name of the SLO.", examples=["My SLO"], max_length=120, min_length=1
     )
     description: str | None = Field(
         default=None,
@@ -1808,7 +1767,7 @@ class SLOCreate(BaseModel):
         description="The ISO8601-formatted time when the SLO was updated.",
         examples=["2022-10-31T15:08:11Z"],
     )
-    dataset_slugs: list[str] | None = Field(
+    dataset_slugs: list[Any] | None = Field(
         default=None,
         description="The dataset(s) the SLO will be evaluated against. Required if using `__all__` in the path.",
         examples=[["mydataset1", "mydataset2"]],
@@ -1833,11 +1792,7 @@ class Sli1(BaseModel):
 class SLO(BaseModel):
     id: str | None = None
     name: str = Field(
-        ...,
-        description="The name of the SLO.",
-        examples=["My SLO"],
-        max_length=120,
-        min_length=1,
+        ..., description="The name of the SLO.", examples=["My SLO"], max_length=120, min_length=1
     )
     description: str | None = Field(
         default=None,
@@ -1885,7 +1840,7 @@ class SLO(BaseModel):
         description="The ISO8601-formatted time when the SLO was updated.",
         examples=["2022-10-31T15:08:11Z"],
     )
-    dataset_slugs: list[str] | None = Field(
+    dataset_slugs: list[Any] | None = Field(
         default=None,
         description="The dataset(s) the SLO will be evaluated against. Required if using `__all__` in the path.",
         examples=[["mydataset1", "mydataset2"]],
@@ -1938,7 +1893,7 @@ class SLODetailedResponse(SLO):
 
 
 class SLOHistoryRequest(BaseModel):
-    ids: list[str] = Field(
+    ids: list[Any] = Field(
         ...,
         description="A list of SLO IDs to retrieve history for. Cannot be an empty array or more than 24 in length.\n",
         examples=[["2LBq9LckbcA", "CzcpPs7cJ4d"]],
@@ -2194,16 +2149,13 @@ class ConfigurationKeyAttributes(BaseModel):
         default=False, description="Whether the API Key is disabled", examples=[False]
     )
     permissions: Permissions1 | None = Field(
-        default=None,
-        description="The permissions granted to this Configuration API Key",
+        default=None, description="The permissions granted to this Configuration API Key"
     )
     timestamps: Timestamps | None = None
 
 
 class IngestKeyType(BaseModel):
-    key_type: KeyType = Field(
-        ..., description="The type of API Key", examples=["ingest"]
-    )
+    key_type: KeyType = Field(..., description="The type of API Key", examples=["ingest"])
     time_to_live: str | None = Field(
         default=None,
         description="An optional property of an ingest key that determines the time at which the key becomes unauthorized.\nWhen the time_to_live passes, the key will no longer be usable. The time_to_live property can only\nbe set when the key is created and cannot be changed.\nExpressed as a RFC3339-formatted time.\n",
@@ -2217,9 +2169,7 @@ class Type15(Enum):
 
 class Data4(BaseModel):
     id: str = Field(
-        ...,
-        description="The ID of this user.\n",
-        examples=["hcxus_01hzqr5g7jg9qz40xtgx7rjwj0"],
+        ..., description="The ID of this user.\n", examples=["hcxus_01hzqr5g7jg9qz40xtgx7rjwj0"]
     )
     type: Type15
 
@@ -2482,9 +2432,7 @@ class Color(Enum):
 
 
 class Settings3(BaseModel):
-    delete_protected: bool = Field(
-        ..., description="If true, the environment cannot be deleted."
-    )
+    delete_protected: bool = Field(..., description="If true, the environment cannot be deleted.")
 
 
 class Attributes11(BaseModel):
@@ -2563,9 +2511,7 @@ class Attributes12(BaseModel):
 class Data12(BaseModel):
     type: Type17 | None = None
     id: str | None = Field(
-        default=None,
-        description="The dataset ID",
-        examples=["hcxds_12345678901234567890123456"],
+        default=None, description="The dataset ID", examples=["hcxds_12345678901234567890123456"]
     )
 
 
@@ -2596,9 +2542,7 @@ class Links8(BaseModel):
 
 
 class MarkerObject(BaseModel):
-    id: str = Field(
-        ..., description="The unique identifier of the Marker", examples=["d1c84ec0"]
-    )
+    id: str = Field(..., description="The unique identifier of the Marker", examples=["d1c84ec0"])
     type: Type27
     attributes: Attributes12
     relationships: Relationships3 | None = None
@@ -2688,18 +2632,6 @@ class MarkerUpdateRequest(BaseModel):
     data: Data14
 
 
-class Data16(Data7):
-    pass
-
-
-class Team2(BaseModel):
-    data: Data16
-
-
-class Relationships6(BaseModel):
-    team: Team2
-
-
 class KeyType3(Enum):
     """
     The type of API Key
@@ -2719,10 +2651,8 @@ class Attributes15(BaseModel):
         examples=["mgmt write key"],
     )
     key_type: KeyType3 | None = Field(default=None, description="The type of API Key")
-    disabled: bool | None = Field(
-        default=False, description="Whether the API Key is disabled"
-    )
-    scopes: list[str] | None = Field(
+    disabled: bool | None = Field(default=False, description="Whether the API Key is disabled")
+    scopes: list[Any] | None = Field(
         default=None,
         description="The scopes assigned to this API Key",
         examples=[["api-keys:write"]],
@@ -2737,7 +2667,7 @@ class Data15(BaseModel):
         examples=["hcxik_12345678901234567890123456"],
     )
     type: Type19
-    relationships: Relationships6 | None = None
+    relationships: TeamRelationship | None = None
     attributes: Attributes15
 
 
@@ -2765,9 +2695,7 @@ class PaginationLinks(BaseModel):
     next: str | None = Field(
         ...,
         description="The URL for the next page of results.",
-        examples=[
-            "/2/teams/my-team/api-keys?page[after]=3025fa645ad1100d&page[size]=10"
-        ],
+        examples=["/2/teams/my-team/api-keys?page[after]=3025fa645ad1100d&page[size]=10"],
     )
 
 
@@ -2793,13 +2721,11 @@ class CreateMapDependenciesResponse(BaseModel):
         examples=["abc123"],
     )
     status: Status4 | None = Field(
-        default=None,
-        description="Status of the Map Dependency Request.\n",
-        examples=["pending"],
+        default=None, description="Status of the Map Dependency Request.\n", examples=["pending"]
     )
 
 
-class Type33(Enum):
+class Type32(Enum):
     """
     Type of the node. Currently only "service" is supported. Defaults to "service" if not specified.
 
@@ -2813,47 +2739,41 @@ class MapNode(BaseModel):
     A node in the service map (typically a service).
     """
 
-    name: str = Field(
-        ..., description="Name of the service or node.\n", examples=["user-service"]
-    )
-    type: Type33 | None = Field(
+    name: str = Field(..., description="Name of the service or node.\n", examples=["user-service"])
+    type: Type32 | None = Field(
         default=None,
         description='Type of the node. Currently only "service" is supported. Defaults to "service" if not specified.\n',
         examples=["service"],
     )
 
 
-class JSONAPIErrorSource(BaseModel):
-    """
-    Source of a JSON:API error
-    """
-
-    pointer: str | None = None
-    header: str | None = None
-    parameter: str | None = None
-
-
-class Error1(BaseModel):
-    id: str
-    status: str | None = None
-    code: str
-    title: str | None = None
-    detail: str | None = None
-    source: JSONAPIErrorSource | None = None
-
-
-class JSONAPIError(BaseModel):
-    """
-    A JSONAPI-formatted error message.
-    """
-
-    errors: list[Error1] | None = None
-
-
-class RateLimitedJSONAPI(JSONAPIError):
-    """
-    An JSON:API formatted Rate Limited error.
-    """
+class RateLimitedError(RootModel[RateLimitedProblem | RateLimitedJSONAPI]):
+    root: RateLimitedProblem | RateLimitedJSONAPI = Field(
+        ...,
+        description="You have exceeded your assigned limit for the requested API action.\n\nHoneycomb supports two response formats for rate limited errors:\n\n  * JSON:API errors are in use for 'V2' API endpoints.\n  * RFC7807 'Problem Detail' errors are in use for 'V1' API endpoints.\n\nIn either case, an HTTP 429 'Rate Limited' response will include the RFC7231 `Retry-After` header with the time at which you may retry the request,\nwith the exception of the Query Data, and Events and OpenTelemetry ingestion APIs.\nIn the case of the Query Data, and Events and OpenTelemetry ingestion APIs, the `Retry-After` header is not included in the Rate Limited response.\n\nIn addition to the `Retry-After` header when rate limiting is in effect,\nthe API response may include `RateLimit` and `RateLimitPolicy` headers with detailed information about your limits for that type of interaction.\nThe documentation for the specific endpoint will indicate if these headers are included in the response.\n",
+        examples=[
+            {
+                "RateLimited V1": {
+                    "status": 429,
+                    "type": "https://api.honeycomb.io/problems/rate-limited",
+                    "title": "You have exceeded your rate limit.",
+                    "error": "You have exceeded your rate limit.",
+                    "detail": "Please try again after 2025-02-01T15:23:12Z.",
+                }
+            },
+            {
+                "RateLimited V2": None,
+                "errors": [
+                    {
+                        "id": "06dcdd6508ca822f0e7e2bb4121c1f52",
+                        "code": "rate-limited/may-retry",
+                        "title": "request rate limit exceeded",
+                        "detail": "Please try again after 2025-02-01T15:23:12Z.",
+                    }
+                ],
+            },
+        ],
+    )
 
 
 class BatchEvent(BaseModel):
@@ -2962,8 +2882,7 @@ class MSTeamsRecipient(RecipientProperties):
 class MSTeamsWorkflowRecipient(RecipientProperties):
     type: Literal["msteams_workflow"]
     details: Details4 | None = Field(
-        default=None,
-        description="Specific schema for the MS Teams Workflow Recipient Type.",
+        default=None, description="Specific schema for the MS Teams Workflow Recipient Type."
     )
 
 
@@ -3005,10 +2924,7 @@ class Details5(BaseModel):
         max_length=255,
     )
     webhook_url: str = Field(
-        ...,
-        description="Webhook URL.",
-        examples=["https://webhook.example.com"],
-        max_length=2048,
+        ..., description="Webhook URL.", examples=["https://webhook.example.com"], max_length=2048
     )
     webhook_secret: str | None = Field(
         default=None, description="Webhook secret.", examples=["secret"], max_length=255
@@ -3046,9 +2962,7 @@ class Recipient(
 
 
 class BaseTrigger(BaseModel):
-    id: str | None = Field(
-        default=None, description="The unique identifier (ID) for this Trigger."
-    )
+    id: str | None = Field(default=None, description="The unique identifier (ID) for this Trigger.")
     dataset_slug: str | None = Field(
         default=None,
         description='The slug of the dataset this trigger belongs to. For environment-wide triggers, this will be "__all__".',
@@ -3121,9 +3035,7 @@ class TriggerWithQueryReference(BaseTrigger):
     )
 
 
-class CreateTriggerRequest(
-    RootModel[TriggerWithInlineQuery | TriggerWithQueryReference]
-):
+class CreateTriggerRequest(RootModel[TriggerWithInlineQuery | TriggerWithQueryReference]):
     root: TriggerWithInlineQuery | TriggerWithQueryReference
 
 
@@ -3219,9 +3131,7 @@ class UpdateBudgetRateBurnAlertRequest(BudgetRateBurnAlert):
 
 
 class IngestKeyAttributes(IngestKeyType):
-    key_type: Literal["ingest"] = Field(
-        ..., description="The type of API Key", examples=["ingest"]
-    )
+    key_type: Literal["ingest"] = Field(..., description="The type of API Key", examples=["ingest"])
     name: str = Field(
         ...,
         description="A human-readable name for the API Key",
@@ -3350,56 +3260,27 @@ class MapDependency(BaseModel):
     )
 
 
-class RateLimitedError(RootModel[RateLimitedProblem | RateLimitedJSONAPI]):
-    root: RateLimitedProblem | RateLimitedJSONAPI = Field(
-        ...,
-        description="You have exceeded your assigned limit for the requested API action.\n\nHoneycomb supports two response formats for rate limited errors:\n\n  * JSON:API errors are in use for 'V2' API endpoints.\n  * RFC7807 'Problem Detail' errors are in use for 'V1' API endpoints.\n\nIn either case, an HTTP 429 'Rate Limited' response will include the RFC7231 `Retry-After` header with the time at which you may retry the request,\nwith the exception of the Query Data, and Events and OpenTelemetry ingestion APIs.\nIn the case of the Query Data, and Events and OpenTelemetry ingestion APIs, the `Retry-After` header is not included in the Rate Limited response.\n\nIn addition to the `Retry-After` header when rate limiting is in effect,\nthe API response may include `RateLimit` and `RateLimitPolicy` headers with detailed information about your limits for that type of interaction.\nThe documentation for the specific endpoint will indicate if these headers are included in the response.\n",
-        examples=[
-            {
-                "RateLimited V1": {
-                    "status": 429,
-                    "type": "https://api.honeycomb.io/problems/rate-limited",
-                    "title": "You have exceeded your rate limit.",
-                    "error": "You have exceeded your rate limit.",
-                    "detail": "Please try again after 2025-02-01T15:23:12Z.",
-                }
-            },
-            {
-                "RateLimited V2": None,
-                "errors": [
-                    {
-                        "id": "06dcdd6508ca822f0e7e2bb4121c1f52",
-                        "code": "rate-limited/may-retry",
-                        "title": "request rate limit exceeded",
-                        "detail": "Please try again after 2025-02-01T15:23:12Z.",
-                    }
-                ],
-            },
-        ],
-    )
-
-
 class BurnAlertDetailResponse(
     RootModel[ExhaustionTimeBurnAlertDetailResponse | BudgetRateBurnAlertDetailResponse]
 ):
-    root: ExhaustionTimeBurnAlertDetailResponse | BudgetRateBurnAlertDetailResponse = (
-        Field(..., discriminator="alert_type")
+    root: ExhaustionTimeBurnAlertDetailResponse | BudgetRateBurnAlertDetailResponse = Field(
+        ..., discriminator="alert_type"
     )
 
 
 class CreateBurnAlertRequest(
     RootModel[CreateExhaustionTimeBurnAlertRequest | CreateBudgetRateBurnAlertRequest]
 ):
-    root: CreateExhaustionTimeBurnAlertRequest | CreateBudgetRateBurnAlertRequest = (
-        Field(..., discriminator="alert_type")
+    root: CreateExhaustionTimeBurnAlertRequest | CreateBudgetRateBurnAlertRequest = Field(
+        ..., discriminator="alert_type"
     )
 
 
 class UpdateBurnAlertRequest(
     RootModel[UpdateExhaustionTimeBurnAlertRequest | UpdateBudgetRateBurnAlertRequest]
 ):
-    root: UpdateExhaustionTimeBurnAlertRequest | UpdateBudgetRateBurnAlertRequest = (
-        Field(..., discriminator="alert_type")
+    root: UpdateExhaustionTimeBurnAlertRequest | UpdateBudgetRateBurnAlertRequest = Field(
+        ..., discriminator="alert_type"
     )
 
 
@@ -3437,9 +3318,7 @@ class GetMapDependenciesResponse(BaseModel):
         examples=["abc123"],
     )
     status: Status4 | None = Field(
-        default=None,
-        description="Status of the Map Dependency Request.\n",
-        examples=["ready"],
+        default=None, description="Status of the Map Dependency Request.\n", examples=["ready"]
     )
     dependencies: list[MapDependency] | None = Field(
         default=None,
@@ -3471,8 +3350,7 @@ class Board(BaseModel):
         examples=["2NeeaE9bBLd"],
     )
     panels: (
-        list[Annotated[QueryPanel | SLOPanel | TextPanel, Field(discriminator="type")]]
-        | None
+        list[Annotated[QueryPanel | SLOPanel | TextPanel, Field(discriminator="type")]] | None
     ) = None
     layout_generation: LayoutGeneration | None = Field(
         default="manual",

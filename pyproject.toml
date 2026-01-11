@@ -54,7 +54,7 @@ mkdocs-include-markdown-plugin = "^7.2.0"
 types-pyyaml = "^6.0.12.20250915"
 isort = "^7.0.0"
 pytest-cov = "^7.0.0"
-datamodel-code-generator = {extras = ["http"], version = "^0.52.2"}
+datamodel-code-generator = {extras = ["http", "ruff"], version = "^0.52.2"}
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = ">=1.5"

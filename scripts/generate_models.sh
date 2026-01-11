@@ -31,7 +31,8 @@ poetry run datamodel-codegen \
   --collapse-root-models \
   --reuse-model \
   --use-default-kwarg \
-  --disable-timestamp
+  --disable-timestamp \
+  --formatters ruff-format ruff-check
 
 echo "Generated: $OUTPUT_FILE"
 echo "  $(grep -c '^class ' "$OUTPUT_FILE") models"
