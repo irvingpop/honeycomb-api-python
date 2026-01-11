@@ -5,7 +5,7 @@ These examples demonstrate creating webhook recipients with optional secrets.
 
 from __future__ import annotations
 
-from honeycomb import HoneycombClient, RecipientBuilder, RecipientCreate, RecipientType
+from honeycomb import HoneycombClient, RecipientBuilder, RecipientType, WebhookRecipient
 
 
 # start_example:webhook_with_builder
@@ -34,8 +34,8 @@ async def create_webhook_recipient_manual(client: HoneycombClient) -> str:
     Returns:
         The created recipient ID
     """
-    recipient = RecipientCreate(
-        type=RecipientType.WEBHOOK,
+    recipient = WebhookRecipient(
+        type="webhook",
         details={
             "webhook_url": "https://your-webhook.example.com/alerts",
             "webhook_name": "Custom Webhook",
@@ -112,7 +112,7 @@ async def create_webhook_with_custom_payload(client: HoneycombClient) -> str:
 async def test_assertions(client: HoneycombClient, recipient_id: str) -> None:
     """Verify the example worked correctly."""
     recipient = await client.recipients.get_async(recipient_id)
-    assert recipient.type == RecipientType.WEBHOOK
+    assert recipient.type == RecipientType.webhook.value
     assert recipient.details is not None
 
 

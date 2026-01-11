@@ -6,7 +6,7 @@ the RecipientBuilder and manual construction patterns.
 
 from __future__ import annotations
 
-from honeycomb import HoneycombClient, RecipientBuilder, RecipientCreate, RecipientType
+from honeycomb import EmailRecipient, HoneycombClient, RecipientBuilder, RecipientType
 
 
 # start_example:email_with_builder
@@ -31,8 +31,8 @@ async def create_email_recipient_manual(client: HoneycombClient) -> str:
     Returns:
         The created recipient ID
     """
-    recipient = RecipientCreate(
-        type=RecipientType.EMAIL,
+    recipient = EmailRecipient(
+        type="email",
         details={"email_address": "alerts@example.com"},
     )
     created = await client.recipients.create_async(recipient)
@@ -46,7 +46,7 @@ async def create_email_recipient_manual(client: HoneycombClient) -> str:
 async def test_assertions(client: HoneycombClient, recipient_id: str) -> None:
     """Verify the example worked correctly."""
     recipient = await client.recipients.get_async(recipient_id)
-    assert recipient.type == RecipientType.EMAIL
+    assert recipient.type == RecipientType.email.value
     assert recipient.details is not None
 
 

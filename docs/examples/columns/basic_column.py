@@ -23,7 +23,7 @@ async def create_basic_column(client: HoneycombClient, dataset: str) -> str:
         dataset,
         ColumnCreate(
             key_name="response_time_ms",
-            type=ColumnType.FLOAT,
+            type=ColumnType.float,
             description="API response time in milliseconds",
         ),
     )
@@ -48,7 +48,7 @@ async def create_hidden_column(client: HoneycombClient, dataset: str) -> str:
         dataset,
         ColumnCreate(
             key_name="internal_trace_id",
-            type=ColumnType.STRING,
+            type=ColumnType.string,
             description="Internal tracing identifier",
             hidden=True,
         ),
@@ -177,7 +177,7 @@ async def test_create_column(client: HoneycombClient, dataset: str, column_id: s
     """Verify the example worked correctly."""
     column = await client.columns.get_async(dataset, column_id)
     assert column.key_name == "response_time_ms"
-    assert column.type == ColumnType.FLOAT
+    assert column.type == ColumnType.float
 
 
 async def test_list_columns(columns: list[Column]) -> None:

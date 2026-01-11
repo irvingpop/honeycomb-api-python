@@ -121,7 +121,7 @@ async def process_inline_recipients(
 
                 recipient_class = get_recipient_class(recip_type)
                 recipient_obj = recipient_class(type=recip_type.value, details=details)
-                created_recip = await client.recipients.create_async(recipient_obj)  # type: ignore[arg-type]
+                created_recip = await client.recipients.create_async(recipient_obj)
                 result.append({"id": created_recip.id})
             except HoneycombAPIError as e:
                 if e.status_code == 409:

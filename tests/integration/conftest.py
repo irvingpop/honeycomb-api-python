@@ -334,13 +334,13 @@ async def ensure_recipient(client: HoneycombClient) -> str:
     Returns:
         The recipient ID
     """
-    from honeycomb import RecipientCreate, RecipientType
+    from honeycomb import EmailRecipient
 
     # Check if recipient already exists
     try:
         existing = await client.recipients.list_async()
         for recipient in existing:
-            if recipient.type == RecipientType.email:
+            if recipient.type == "email":
                 # Use any existing email recipient
                 return recipient.id
     except Exception:
@@ -348,8 +348,8 @@ async def ensure_recipient(client: HoneycombClient) -> str:
 
     # Create a new email recipient
     recipient = await client.recipients.create_async(
-        RecipientCreate(
-            type=RecipientType.email,
+        EmailRecipient(
+            type="email",
             details={"email_address": "test-integration@example.com"},
         )
     )

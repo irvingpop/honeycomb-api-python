@@ -204,9 +204,7 @@ def export_all_recipients(
             with open(file_path, "w") as f:
                 json.dump(data, f, indent=2, default=str)
 
-            console.print(
-                f"[green]Exported {recipient.type} recipient to {file_path}[/green]"
-            )
+            console.print(f"[green]Exported {recipient.type} recipient to {file_path}[/green]")
 
         console.print(
             f"\n[bold green]Exported {len(recipients)} recipients to {output_dir}[/bold green]"
