@@ -501,7 +501,15 @@ If issues are found after migration:
 - [ ] Documentation updated
 - [ ] CLAUDE.md reflects new workflow
 
-## Phase 4 Progress: Columns Migration
+## Phase 4 Progress
+
+**Completed**: Columns, Datasets, Markers, Recipients (4/8 core models)
+**In Progress**: SLOs, Triggers, Queries, Boards (4/8 core models)
+**Additional Resources** (defer for now): Events, Auth, ApiKeys, Environments, BurnAlerts, DerivedColumns, QueryAnnotations, ServiceMapDependencies (8 models)
+
+---
+
+## Phase 4: Model Migration Details
 
 ### 4.1 Columns - COMPLETED ✓
 
@@ -622,34 +630,87 @@ Discovered via [Issue #2822](https://github.com/koxudaxi/datamodel-code-generato
 
 **Remaining 5 numbered classes** (Type1-5): Unused dead code - RecipientType duplicates that are never referenced. Safe to ignore.
 
-#### Migration Pattern Established
+### 4.2 Datasets - COMPLETED ✓
 
-**For all future model migrations**:
+**Date**: 2026-01-11
 
-1. **Extend generated base classes** - Get field definitions, constraints, descriptions
-2. **Re-export generated enums** - Use `ColumnType = GeneratedEnum`
-3. **No custom serialization** - Use `model_dump(mode="json", exclude_none=True)`
-4. **Keep wrappers minimal** - Just `pass` unless custom methods needed (builders, etc.)
+**File**: [src/honeycomb/models/datasets.py](../../src/honeycomb/models/datasets.py) - **35 lines** (down from 94, 63% reduction)
 
-Example:
+#### Key Discovery: Verify Against Live API, Not Tests
+
+**Problem Found**: Spec says `DatasetUpdatePayload` has `required: ["description", "expand_json_depth"]`
+
+**Live API Test** (using curl):
+```bash
+# Partial update with ONLY description works!
+curl -X PUT .../datasets/slug -d '{"description": "Updated"}'
+# ✓ API accepts it (spec was wrong)
+```
+
+**Solution**: Patched spec to remove `required` from DatasetUpdatePayload
+
+**Result**: Fully vanilla models, no custom serialization needed
+- `DatasetCreate` → extends `DatasetCreationPayload` (pass only)
+- `DatasetUpdate` → extends `DatasetUpdatePayload` (one field description override for tools)
+- `Dataset` → extends generated `Dataset` (pass only)
+
+**Updated Resources**: Use API structure directly with `settings: {delete_protected: bool}`
+- Removed custom `model_dump_for_api()` with flat delete_protected
+- Use `DatasetUpdatePayloadSettings` as API expects
+
+**Validation**: ✓ 936/936 unit tests, ✓ Mypy clean, ✓ Live API tested
+
+#### Migration Ground Rules (Updated)
+
+**For all remaining model migrations**:
+
+1. **Test against live API first** - Use `curl` to verify actual API behavior before assuming anything
+2. **Patch spec when wrong** - If spec contradicts API (like DatasetUpdate required fields), patch it
+3. **Keep models vanilla** - Match API structure exactly, no "convenience" abstractions
+4. **Move nice UX to builders** - Flat fields, friendlier interfaces belong in builders or CLI, not base models
+5. **Minimal overrides** - Only add field overrides when required (e.g., tool schema descriptions)
+6. **Use Pydantic serialization** - `model_dump(mode="json", exclude_none=True, exclude_defaults=True)`
+7. **Just pass** - Models should be thin wrappers unless adding custom methods (builders, etc.)
+
+### 4.3 Recipients - COMPLETED ✓
+
+- Re-exported discriminated union structure (6 types)
+- Added `get_recipient_class()` helper
+- extra="forbid" patch for LLM validation
+
+#### Migration Pattern
+
 ```python
-from honeycomb._generated_models import FooCreate as _FooCreateGenerated
-from honeycomb._generated_models import GeneratedFooEnum
+# Step 1: Find generated model names
+grep "^class.*Foo" src/honeycomb/_generated_models.py
 
-FooEnum = GeneratedFooEnum  # Re-export
+# Step 2: Test live API with curl (verify behavior)
+curl -X POST .../resource -d '{"field": "value"}'
+
+# Step 3: Implement
+from honeycomb._generated_models import FooCreate as _FooCreateGenerated
+from honeycomb._generated_models import FooEnum
+
+FooEnum = FooEnum  # Re-export if needed
 
 class FooCreate(_FooCreateGenerated):
-    pass  # Or add custom methods like builder()
+    pass  # Or add builders/custom methods only
 ```
 
 ## Final Infrastructure
 
 **Generation Workflow**:
 1. `api.yaml` (source spec from Honeycomb)
-2. → `patch_api_yaml_for_dmcg.py` (add 7 titles)
+2. → `patch_api_yaml_for_dmcg.py` (8 patches applied)
 3. → `.api-patched.yaml` (temporary, gitignored)
 4. → `datamodel-codegen` with flags
 5. → `src/honeycomb/_generated_models.py` (288 models)
+
+**Patches Applied** (14 total):
+1. `CreateColumn.type` → Title: "ColumnType"
+2-7. Recipient `details` → Titles: "PagerDutyRecipientDetails", etc. (6 patches)
+8. `DatasetUpdatePayload` → Remove `required` (spec bug: UPDATE should allow partial)
+9-14. Recipient `details` → additionalProperties: false (6 patches for LLM validation)
 
 **Key Flags**:
 - `--naming-strategy full-path` - Parent-prefixed names

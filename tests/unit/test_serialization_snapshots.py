@@ -12,7 +12,7 @@ import pytest
 from honeycomb.models.columns import ColumnCreate, ColumnType
 from honeycomb.models.markers import MarkerCreate
 from honeycomb.models.query_builder import CalcOp, Calculation, Filter, FilterOp
-from honeycomb.models.recipients import EmailRecipientDetails, RecipientCreate, RecipientType
+from honeycomb.models.recipients import EmailRecipientDetails
 from honeycomb.models.triggers import (
     TriggerAlertType,
     TriggerCreate,
@@ -235,7 +235,7 @@ class TestMarkerSerialization:
         """Test basic marker with required fields."""
         marker = MarkerCreate(message="Test deploy", type="deploy")
 
-        payload = marker.model_dump_for_api()
+        payload = marker.model_dump(mode="json", exclude_none=True)
 
         assert payload == {
             "message": "Test deploy",
@@ -246,7 +246,7 @@ class TestMarkerSerialization:
         """Test marker with explicit start time."""
         marker = MarkerCreate(message="Test deploy", type="deploy", start_time=1234567890)
 
-        payload = marker.model_dump_for_api()
+        payload = marker.model_dump(mode="json", exclude_none=True)
 
         assert payload == {
             "message": "Test deploy",
@@ -263,7 +263,7 @@ class TestMarkerSerialization:
             end_time=1234571490,
         )
 
-        payload = marker.model_dump_for_api()
+        payload = marker.model_dump(mode="json", exclude_none=True)
 
         assert payload == {
             "message": "Maintenance window",
@@ -280,7 +280,7 @@ class TestMarkerSerialization:
             url="https://github.com/org/repo/releases/v1.2.3",
         )
 
-        payload = marker.model_dump_for_api()
+        payload = marker.model_dump(mode="json", exclude_none=True)
 
         assert payload == {
             "message": "Release v1.2.3",
@@ -298,7 +298,7 @@ class TestMarkerSerialization:
             url="https://example.com/deploy/123",
         )
 
-        payload = marker.model_dump_for_api()
+        payload = marker.model_dump(mode="json", exclude_none=True)
 
         assert payload == {
             "message": "Deploy with all details",
@@ -314,12 +314,14 @@ class TestRecipientSerialization:
 
     def test_email_recipient(self):
         """Test email recipient."""
-        recipient = RecipientCreate(
-            type=RecipientType.EMAIL,
+        from honeycomb.models.recipients import EmailRecipient
+
+        recipient = EmailRecipient(
+            type="email",
             details=EmailRecipientDetails(email_address="alerts@example.com"),
         )
 
-        payload = recipient.model_dump_for_api()
+        payload = recipient.model_dump(mode="json", exclude_none=True)
 
         assert payload == {
             "type": "email",
@@ -327,13 +329,15 @@ class TestRecipientSerialization:
         }
 
     def test_email_recipient_dict_details(self):
-        """Test email recipient with dict details (validator converts)."""
-        recipient = RecipientCreate(
-            type=RecipientType.EMAIL,
+        """Test email recipient with dict details (Pydantic converts)."""
+        from honeycomb.models.recipients import EmailRecipient
+
+        recipient = EmailRecipient(
+            type="email",
             details={"email_address": "test@example.com"},  # type: ignore
         )
 
-        payload = recipient.model_dump_for_api()
+        payload = recipient.model_dump(mode="json", exclude_none=True)
 
         assert payload == {
             "type": "email",

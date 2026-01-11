@@ -79,7 +79,9 @@ class MarkersResource(BaseResource):
         Returns:
             Created Marker object.
         """
-        data = await self._post_async(self._build_path(dataset), json=marker.model_dump_for_api())
+        data = await self._post_async(
+            self._build_path(dataset), json=marker.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(Marker, data)
 
     async def update_async(self, dataset: str, marker_id: str, marker: MarkerCreate) -> Marker:
@@ -94,7 +96,8 @@ class MarkersResource(BaseResource):
             Updated Marker object.
         """
         data = await self._put_async(
-            self._build_path(dataset, marker_id), json=marker.model_dump_for_api()
+            self._build_path(dataset, marker_id),
+            json=marker.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(Marker, data)
 
@@ -149,7 +152,8 @@ class MarkersResource(BaseResource):
             Created MarkerSetting object.
         """
         data = await self._post_async(
-            self._build_settings_path(dataset), json=setting.model_dump_for_api()
+            self._build_settings_path(dataset),
+            json=setting.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(MarkerSetting, data)
 
@@ -167,7 +171,8 @@ class MarkersResource(BaseResource):
             Updated MarkerSetting object.
         """
         data = await self._put_async(
-            self._build_settings_path(dataset, setting_id), json=setting.model_dump_for_api()
+            self._build_settings_path(dataset, setting_id),
+            json=setting.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(MarkerSetting, data)
 
@@ -210,7 +215,9 @@ class MarkersResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
-        data = self._post_sync(self._build_path(dataset), json=marker.model_dump_for_api())
+        data = self._post_sync(
+            self._build_path(dataset), json=marker.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(Marker, data)
 
     def update(self, dataset: str, marker_id: str, marker: MarkerCreate) -> Marker:
@@ -227,7 +234,8 @@ class MarkersResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
         data = self._put_sync(
-            self._build_path(dataset, marker_id), json=marker.model_dump_for_api()
+            self._build_path(dataset, marker_id),
+            json=marker.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(Marker, data)
 
@@ -294,7 +302,8 @@ class MarkersResource(BaseResource):
                 "Use create_setting_async() for async mode, or pass sync=True to client"
             )
         data = self._post_sync(
-            self._build_settings_path(dataset), json=setting.model_dump_for_api()
+            self._build_settings_path(dataset),
+            json=setting.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(MarkerSetting, data)
 
@@ -316,7 +325,8 @@ class MarkersResource(BaseResource):
                 "Use update_setting_async() for async mode, or pass sync=True to client"
             )
         data = self._put_sync(
-            self._build_settings_path(dataset, setting_id), json=setting.model_dump_for_api()
+            self._build_settings_path(dataset, setting_id),
+            json=setting.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(MarkerSetting, data)
 

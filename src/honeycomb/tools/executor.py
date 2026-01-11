@@ -18,7 +18,6 @@ from honeycomb.models import (
     MarkerCreate,
     MarkerSettingCreate,
     QuerySpec,
-    RecipientCreate,
     ServiceMapDependencyRequestCreate,
     SLOCreate,
 )
@@ -706,15 +705,21 @@ async def _execute_get_recipient(client: "HoneycombClient", tool_input: dict[str
 
 async def _execute_create_recipient(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_create_recipient."""
-    recipient = RecipientCreate(**tool_input)
+    from honeycomb.models.recipients import get_recipient_class
+
+    recipient_class = get_recipient_class(tool_input["type"])
+    recipient = recipient_class(**tool_input)
     created = await client.recipients.create_async(recipient=recipient)
     return json.dumps(created.model_dump(), default=str)
 
 
 async def _execute_update_recipient(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_update_recipient."""
+    from honeycomb.models.recipients import get_recipient_class
+
     recipient_id = tool_input.pop("recipient_id")
-    recipient = RecipientCreate(**tool_input)
+    recipient_class = get_recipient_class(tool_input["type"])
+    recipient = recipient_class(**tool_input)
     updated = await client.recipients.update_async(recipient_id=recipient_id, recipient=recipient)
     return json.dumps(updated.model_dump(), default=str)
 

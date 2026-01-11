@@ -6,7 +6,7 @@ from __future__ import annotations
 from enum import Enum, IntEnum
 from typing import Annotated, Any, Literal
 
-from pydantic import AwareDatetime, BaseModel, Field, RootModel
+from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, RootModel
 
 
 class Error(BaseModel):
@@ -593,15 +593,15 @@ class DatasetUpdatePayload(BaseModel):
     an object to send to the Dataset API via PUT
     """
 
-    description: str = Field(
-        ...,
+    description: str | None = Field(
+        default="",
         description="A description for the dataset.",
         examples=["A nice description of my dataset"],
         max_length=1024,
         min_length=0,
     )
-    expand_json_depth: int = Field(
-        ...,
+    expand_json_depth: int | None = Field(
+        default=0,
         description="The maximum unpacking depth of nested JSON fields.",
         examples=[3],
         ge=0,
@@ -1458,6 +1458,9 @@ class PagerDutyRecipientDetails(BaseModel):
     Specific schema for the Pagerduty Recipient Type
     """
 
+    model_config = ConfigDict(
+        extra="forbid",
+    )
     pagerduty_integration_name: str = Field(
         ..., description="A name for this Integration.", examples=["Example PagerDuty Service"]
     )
@@ -1489,6 +1492,9 @@ class EmailRecipientDetails(BaseModel):
     Specific schema for the Email Recipient Type
     """
 
+    model_config = ConfigDict(
+        extra="forbid",
+    )
     email_address: str = Field(
         ..., description="Email address to notify.", examples=["notify-me@example-email.com"]
     )
@@ -1513,6 +1519,9 @@ class SlackRecipientDetails(BaseModel):
     Specific schema for the Slack Recipient Type.
     """
 
+    model_config = ConfigDict(
+        extra="forbid",
+    )
     slack_channel: str = Field(
         ..., description="Slack channel to notify.", examples=["#alerts-channel"]
     )
@@ -1537,6 +1546,9 @@ class MSTeamsRecipientDetails(BaseModel):
     Specific schema for the MS Teams Recipient Type. Now deprecated, please use the `msteams_workflow` type instead.
     """
 
+    model_config = ConfigDict(
+        extra="forbid",
+    )
     webhook_name: str = Field(
         ..., description="A name for this recipient.", examples=["My Teams Channel"]
     )
@@ -1566,6 +1578,9 @@ class MSTeamsWorkflowRecipientDetails(BaseModel):
     Specific schema for the MS Teams Workflow Recipient Type.
     """
 
+    model_config = ConfigDict(
+        extra="forbid",
+    )
     webhook_name: str = Field(
         ..., description="A name for this recipient.", examples=["My Teams Channel"], max_length=255
     )
@@ -3002,6 +3017,9 @@ class WebhookRecipientDetails(BaseModel):
     Specific schema for the Webhook Recipient Type
     """
 
+    model_config = ConfigDict(
+        extra="forbid",
+    )
     webhook_headers: list[WebhookHeader] | None = Field(
         default=None,
         description="Custom headers for this webhook",

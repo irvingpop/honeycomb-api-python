@@ -160,7 +160,7 @@ class TestPydanticModels:
             name="Test Dataset",
             description="A test dataset",
         )
-        data = dataset.model_dump_for_api()
+        data = dataset.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
         assert data["name"] == "Test Dataset"
         assert data["description"] == "A test dataset"
 

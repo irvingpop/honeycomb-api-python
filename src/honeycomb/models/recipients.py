@@ -2,184 +2,103 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from enum import Enum
-from typing import Annotated, Any
+from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AwareDatetime
 
+# Import and re-export all generated recipient types
+# noqa comments prevent linter from removing re-export imports
+from honeycomb._generated_models import (
+    EmailRecipient,
+    EmailRecipientDetails,  # noqa: F401
+    MSTeamsRecipient,
+    MSTeamsRecipientDetails,  # noqa: F401
+    MSTeamsWorkflowRecipient,
+    MSTeamsWorkflowRecipientDetails,  # noqa: F401
+    PagerDutyRecipient,
+    PagerDutyRecipientDetails,  # noqa: F401
+    RecipientType,  # noqa: F401
+    SlackRecipient,
+    SlackRecipientDetails,  # noqa: F401
+    TemplateVariableDefinition,
+    WebhookHeader,  # noqa: F401
+    WebhookRecipient,
+    WebhookRecipientDetails,  # noqa: F401
+    WebhookRecipientDetailsWebhookPayloads,
+    WebhookRecipientDetailsWebhookPayloadsPayloadTemplates,
+)
+from honeycomb._generated_models import Recipient as _RecipientGenerated
 
-class RecipientType(str, Enum):
-    """Recipient notification types."""
+# Backward-compatible aliases for webhook payload classes (shortened names)
+WebhookPayloads = WebhookRecipientDetailsWebhookPayloads  # noqa: F401
+WebhookPayloadTemplate = WebhookRecipientDetailsWebhookPayloadsPayloadTemplates  # noqa: F401
+WebhookTemplateVariable = TemplateVariableDefinition  # noqa: F401
 
-    EMAIL = "email"
-    SLACK = "slack"
-    PAGERDUTY = "pagerduty"
-    WEBHOOK = "webhook"
-    MSTEAMS = "msteams"
-    MSTEAMS_WORKFLOW = "msteams_workflow"
+# Backward compatibility: RecipientCreate is a union of all recipient types
+RecipientCreate = (
+    EmailRecipient
+    | SlackRecipient
+    | PagerDutyRecipient
+    | WebhookRecipient
+    | MSTeamsRecipient
+    | MSTeamsWorkflowRecipient
+)
 
-
-# Recipient Details Models
-
-
-class EmailRecipientDetails(BaseModel):
-    """Details for email recipient."""
-
-    model_config = {"extra": "forbid"}
-
-    email_address: str = Field(description="Email address to notify")
-
-
-class SlackRecipientDetails(BaseModel):
-    """Details for Slack recipient."""
-
-    model_config = {"extra": "forbid"}
-
-    slack_channel: str = Field(description="Slack channel name (e.g., '#alerts')")
-
-
-class PagerDutyRecipientDetails(BaseModel):
-    """Details for PagerDuty recipient."""
-
-    model_config = {"extra": "forbid"}
-
-    pagerduty_integration_key: str = Field(
-        description="PagerDuty integration key (32 characters)", min_length=32, max_length=32
-    )
-    pagerduty_integration_name: str = Field(description="Name for this PagerDuty integration")
-
-
-class WebhookHeader(BaseModel):
-    """HTTP header for webhook requests."""
-
-    header: str = Field(description="Header name", max_length=64)
-    value: str | None = Field(default=None, description="Header value", max_length=750)
+# Helper function for mapping recipient type to class
+_RECIPIENT_TYPE_TO_CLASS = {
+    RecipientType.email: EmailRecipient,
+    RecipientType.slack: SlackRecipient,
+    RecipientType.pagerduty: PagerDutyRecipient,
+    RecipientType.webhook: WebhookRecipient,
+    RecipientType.msteams: MSTeamsRecipient,
+    RecipientType.msteams_workflow: MSTeamsWorkflowRecipient,
+}
 
 
-class WebhookPayloadTemplate(BaseModel):
-    """Template for webhook payload."""
+def get_recipient_class(recipient_type: RecipientType | str) -> type[RecipientCreate]:
+    """Get the specific recipient class for a given type.
 
-    body: str = Field(description="Template body")
+    Args:
+        recipient_type: RecipientType enum or string value
 
+    Returns:
+        The appropriate recipient class (EmailRecipient, SlackRecipient, etc.)
 
-class WebhookTemplateVariable(BaseModel):
-    """Template variable for webhook payloads."""
-
-    name: str = Field(description="Variable name")
-    default_value: str = Field(description="Default value for variable")
-
-
-class WebhookPayloads(BaseModel):
-    """Webhook payload configuration."""
-
-    template_variables: list[WebhookTemplateVariable] | None = Field(
-        default=None, max_length=10, description="Template variables (max 10)"
-    )
-    payload_templates: dict[str, WebhookPayloadTemplate] | None = Field(
-        default=None, description="Payload templates by alert type"
-    )
+    Example:
+        >>> get_recipient_class(RecipientType.email)
+        <class 'EmailRecipient'>
+        >>> get_recipient_class("slack")
+        <class 'SlackRecipient'>
+    """
+    if isinstance(recipient_type, str):
+        recipient_type = RecipientType(recipient_type)
+    return _RECIPIENT_TYPE_TO_CLASS[recipient_type]  # type: ignore[return-value]
 
 
-class WebhookRecipientDetails(BaseModel):
-    """Details for webhook recipient."""
+class Recipient(_RecipientGenerated):
+    """A Honeycomb notification recipient (response model, extends generated Recipient RootModel)."""
 
-    model_config = {"extra": "forbid"}
+    @property
+    def type(self) -> str:
+        """Get recipient type from the discriminated union."""
+        return self.root.type
 
-    webhook_url: str = Field(description="Webhook URL to POST to", max_length=2048)
-    webhook_name: str = Field(description="Name for this webhook", max_length=255)
-    webhook_secret: str | None = Field(
-        default=None, description="Optional webhook secret for signing", max_length=255
-    )
-    webhook_headers: list[WebhookHeader] | None = Field(
-        default=None, max_length=5, description="Optional HTTP headers (max 5)"
-    )
-    webhook_payloads: WebhookPayloads | None = Field(
-        default=None, description="Optional custom payload configuration"
-    )
+    @property
+    def details(self) -> Any:
+        """Get recipient details from the discriminated union."""
+        return self.root.details
 
+    @property
+    def id(self) -> str | None:
+        """Get recipient ID from the discriminated union."""
+        return self.root.id
 
-class MSTeamsRecipientDetails(BaseModel):
-    """Details for MS Teams recipient (deprecated - use MSTeamsWorkflowRecipientDetails)."""
+    @property
+    def created_at(self) -> AwareDatetime | None:
+        """Get created_at from the discriminated union."""
+        return self.root.created_at
 
-    model_config = {"extra": "forbid"}
-
-    webhook_url: str = Field(description="MS Teams webhook URL", max_length=2048)
-    webhook_name: str = Field(description="Name for this webhook", max_length=255)
-
-
-class MSTeamsWorkflowRecipientDetails(BaseModel):
-    """Details for MS Teams Workflow recipient."""
-
-    model_config = {"extra": "forbid"}
-
-    webhook_url: str = Field(description="MS Teams workflow webhook URL", max_length=2048)
-    webhook_name: str = Field(description="Name for this webhook", max_length=255)
-
-
-# Union type for all recipient details
-RecipientDetails = Annotated[
-    EmailRecipientDetails
-    | SlackRecipientDetails
-    | PagerDutyRecipientDetails
-    | WebhookRecipientDetails
-    | MSTeamsRecipientDetails
-    | MSTeamsWorkflowRecipientDetails,
-    Field(discriminator="type"),
-]
-
-
-class RecipientCreate(BaseModel):
-    """Model for creating a new recipient with strict validation."""
-
-    type: RecipientType = Field(description="Type of recipient")
-    details: (
-        EmailRecipientDetails
-        | SlackRecipientDetails
-        | PagerDutyRecipientDetails
-        | WebhookRecipientDetails
-        | MSTeamsRecipientDetails
-        | MSTeamsWorkflowRecipientDetails
-    ) = Field(description="Recipient-specific configuration (varies by type)")
-
-    @field_validator("details", mode="before")
-    @classmethod
-    def validate_details_match_type(cls, v: Any, info: Any) -> Any:
-        """Validate that details match the recipient type."""
-        if not isinstance(v, dict):
-            return v
-
-        recipient_type = info.data.get("type")
-        if not recipient_type:
-            return v
-
-        # Map types to detail classes
-        type_to_details = {
-            RecipientType.EMAIL: EmailRecipientDetails,
-            RecipientType.SLACK: SlackRecipientDetails,
-            RecipientType.PAGERDUTY: PagerDutyRecipientDetails,
-            RecipientType.WEBHOOK: WebhookRecipientDetails,
-            RecipientType.MSTEAMS: MSTeamsRecipientDetails,
-            RecipientType.MSTEAMS_WORKFLOW: MSTeamsWorkflowRecipientDetails,
-        }
-
-        details_class = type_to_details.get(recipient_type)
-        if details_class:
-            return details_class(**v)
-        return v
-
-    def model_dump_for_api(self) -> dict:
-        """Serialize for API request."""
-        return {"type": self.type.value, "details": self.details.model_dump()}
-
-
-class Recipient(BaseModel):
-    """A Honeycomb notification recipient (response model)."""
-
-    id: str = Field(description="Unique identifier")
-    type: RecipientType = Field(description="Type of recipient")
-    details: dict[str, Any] = Field(description="Recipient-specific configuration (varies by type)")
-    created_at: datetime | None = Field(default=None, description="Creation timestamp")
-    updated_at: datetime | None = Field(default=None, description="Last update timestamp")
-
-    model_config = {"extra": "allow"}
+    @property
+    def updated_at(self) -> AwareDatetime | None:
+        """Get updated_at from the discriminated union."""
+        return self.root.updated_at

@@ -31,7 +31,7 @@ def list_columns(
         client = get_client(profile=profile, api_key=api_key)
         columns = client.columns.list(dataset=dataset)
         # Sort by key_name alphabetically
-        columns = sorted(columns, key=lambda c: c.key_name.lower())
+        columns = sorted(columns, key=lambda c: (c.key_name or "").lower())
         output_result(
             columns,
             output,

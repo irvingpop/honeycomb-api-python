@@ -70,6 +70,44 @@ def patch_inline_titles(spec: dict) -> int:
                 patches += 1
                 print(f"  ✓ {schema_name}.details -> {recipient_type}RecipientDetails")
 
+    # Patch 3: Fix DatasetUpdatePayload - make fields optional for partial updates
+    if "DatasetUpdatePayload" in schemas:
+        if "required" in schemas["DatasetUpdatePayload"]:
+            del schemas["DatasetUpdatePayload"]["required"]
+            patches += 1
+            print(f"  ✓ DatasetUpdatePayload: removed 'required' (UPDATE should be partial)")
+
+    # Patch 4: Add additionalProperties: false to recipient details for strict validation
+    # This prevents LLMs from hallucinating extra fields
+    recipient_detail_schemas = [
+        "PagerDutyRecipientDetails",
+        "EmailRecipientDetails",
+        "SlackRecipientDetails",
+        "MSTeamsRecipientDetails",
+        "MSTeamsWorkflowRecipientDetails",
+        "WebhookRecipientDetails",
+    ]
+
+    for recipient_type in recipient_types:
+        schema_name = f"{recipient_type}Recipient"
+        if schema_name not in schemas:
+            continue
+
+        all_of = schemas[schema_name].get("allOf", [])
+        for item in all_of:
+            if not isinstance(item, dict):
+                continue
+            if "properties" not in item:
+                continue
+            if "details" not in item["properties"]:
+                continue
+
+            details = item["properties"]["details"]
+            if "additionalProperties" not in details:
+                details["additionalProperties"] = False
+                patches += 1
+                print(f"  ✓ {schema_name}.details: added additionalProperties=false")
+
     return patches
 
 

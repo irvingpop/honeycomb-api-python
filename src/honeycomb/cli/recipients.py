@@ -10,7 +10,6 @@ from rich.console import Console
 
 from honeycomb.cli.config import get_client
 from honeycomb.cli.formatters import DEFAULT_OUTPUT_FORMAT, OutputFormat, output_result
-from honeycomb.models.recipients import RecipientCreate
 
 app = typer.Typer(help="Manage recipients (notification targets)")
 console = Console()
@@ -76,9 +75,12 @@ def create_recipient(
         data.pop("created_at", None)
         data.pop("updated_at", None)
 
-        recipient_create = RecipientCreate.model_validate(data)
-        recipient = client.recipients.create(recipient=recipient_create)
+        # Map type to specific recipient class
+        from honeycomb.models.recipients import get_recipient_class
 
+        recipient_class = get_recipient_class(data["type"])
+        recipient_create = recipient_class.model_validate(data)
+        recipient = client.recipients.create(recipient=recipient_create)
         console.print(
             f"[green]Created recipient ({recipient.type}) with ID: {recipient.id}[/green]"
         )
@@ -110,9 +112,12 @@ def update_recipient(
         data.pop("created_at", None)
         data.pop("updated_at", None)
 
-        recipient_update = RecipientCreate.model_validate(data)
-        recipient = client.recipients.update(recipient_id=recipient_id, recipient=recipient_update)
+        # Map type to specific recipient class
+        from honeycomb.models.recipients import get_recipient_class
 
+        recipient_class = get_recipient_class(data["type"])
+        recipient_update = recipient_class.model_validate(data)
+        recipient = client.recipients.update(recipient_id=recipient_id, recipient=recipient_update)
         console.print(f"[green]Updated recipient {recipient.id}[/green]")
         output_result(recipient, output)
     except Exception as e:
@@ -193,14 +198,14 @@ def export_all_recipients(
             data = recipient.model_dump(exclude={"id", "created_at", "updated_at"}, mode="json")
 
             # Use recipient ID and type for filename
-            filename = f"{recipient.type.value}_{recipient.id}.json"
+            filename = f"{recipient.type}_{recipient.id}.json"
             file_path = output_dir / filename
 
             with open(file_path, "w") as f:
                 json.dump(data, f, indent=2, default=str)
 
             console.print(
-                f"[green]Exported {recipient.type.value} recipient to {file_path}[/green]"
+                f"[green]Exported {recipient.type} recipient to {file_path}[/green]"
             )
 
         console.print(
