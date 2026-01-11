@@ -137,23 +137,25 @@ def capture_column_snapshots(output_dir: Path) -> None:
     # All column types
     for col_type in ColumnType:
         column = ColumnCreate(key_name=f"test_{col_type.value}", type=col_type)
-        save_snapshot(output_dir, "columns", f"type_{col_type.value}", column.model_dump_for_api())
+        save_snapshot(
+            output_dir, "columns", f"type_{col_type.value}", column.model_dump(mode="json", exclude_none=True)
+        )
 
     # With description
     column = ColumnCreate(
         key_name="duration_ms",
-        type=ColumnType.FLOAT,
+        type=ColumnType.float,
         description="Request duration in milliseconds",
     )
-    save_snapshot(output_dir, "columns", "with_description", column.model_dump_for_api())
+    save_snapshot(output_dir, "columns", "with_description", column.model_dump(mode="json", exclude_none=True))
 
     # Hidden column
     column = ColumnCreate(
         key_name="internal_id",
-        type=ColumnType.STRING,
+        type=ColumnType.integer,
         hidden=True,
     )
-    save_snapshot(output_dir, "columns", "hidden", column.model_dump_for_api())
+    save_snapshot(output_dir, "columns", "hidden", column.model_dump(mode="json", exclude_none=True))
 
 
 def capture_marker_snapshots(output_dir: Path) -> None:

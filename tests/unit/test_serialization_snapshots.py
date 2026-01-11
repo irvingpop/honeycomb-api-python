@@ -178,9 +178,9 @@ class TestColumnSerialization:
 
     def test_basic_column(self):
         """Test basic column with required fields."""
-        column = ColumnCreate(key_name="test_column", type=ColumnType.STRING)
+        column = ColumnCreate(key_name="test_column", type=ColumnType.string)
 
-        payload = column.model_dump_for_api()
+        payload = column.model_dump(mode="json", exclude_none=True)
 
         assert payload == {
             "key_name": "test_column",
@@ -192,11 +192,11 @@ class TestColumnSerialization:
         """Test column with description."""
         column = ColumnCreate(
             key_name="duration_ms",
-            type=ColumnType.FLOAT,
+            type=ColumnType.float,
             description="Request duration in milliseconds",
         )
 
-        payload = column.model_dump_for_api()
+        payload = column.model_dump(mode="json", exclude_none=True)
 
         assert payload == {
             "key_name": "duration_ms",
@@ -207,24 +207,24 @@ class TestColumnSerialization:
 
     def test_column_hidden(self):
         """Test hidden column."""
-        column = ColumnCreate(key_name="internal_id", type=ColumnType.INTEGER, hidden=True)
+        column = ColumnCreate(key_name="internal_id", type=ColumnType.integer, hidden=True)
 
-        payload = column.model_dump_for_api()
+        payload = column.model_dump(mode="json", exclude_none=True)
 
         assert payload["hidden"] is True
 
     def test_column_all_types(self):
         """Test all column types serialize correctly."""
         types_map = {
-            ColumnType.STRING: "string",
-            ColumnType.INTEGER: "integer",
-            ColumnType.FLOAT: "float",
-            ColumnType.BOOLEAN: "boolean",
+            ColumnType.string: "string",
+            ColumnType.integer: "integer",
+            ColumnType.float: "float",
+            ColumnType.boolean: "boolean",
         }
 
         for col_type, expected_str in types_map.items():
             column = ColumnCreate(key_name="test", type=col_type)
-            payload = column.model_dump_for_api()
+            payload = column.model_dump(mode="json", exclude_none=True)
             assert payload["type"] == expected_str
 
 

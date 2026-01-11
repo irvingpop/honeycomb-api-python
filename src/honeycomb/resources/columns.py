@@ -79,7 +79,9 @@ class ColumnsResource(BaseResource):
         Returns:
             Created Column object.
         """
-        data = await self._post_async(self._build_path(dataset), json=column.model_dump_for_api())
+        data = await self._post_async(
+            self._build_path(dataset), json=column.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(Column, data)
 
     async def update_async(self, dataset: str, column_id: str, column: ColumnCreate) -> Column:
@@ -94,7 +96,8 @@ class ColumnsResource(BaseResource):
             Updated Column object.
         """
         data = await self._put_async(
-            self._build_path(dataset, column_id), json=column.model_dump_for_api()
+            self._build_path(dataset, column_id),
+            json=column.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(Column, data)
 
@@ -152,7 +155,9 @@ class ColumnsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
-        data = self._post_sync(self._build_path(dataset), json=column.model_dump_for_api())
+        data = self._post_sync(
+            self._build_path(dataset), json=column.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(Column, data)
 
     def update(self, dataset: str, column_id: str, column: ColumnCreate) -> Column:
@@ -169,7 +174,8 @@ class ColumnsResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
         data = self._put_sync(
-            self._build_path(dataset, column_id), json=column.model_dump_for_api()
+            self._build_path(dataset, column_id),
+            json=column.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(Column, data)
 

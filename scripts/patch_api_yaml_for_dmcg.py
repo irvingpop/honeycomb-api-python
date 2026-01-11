@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""Patch api.yaml to add titles to inline schemas for stable datamodel-codegen output.
+
+This script adds 'title' fields to inline/anonymous schema definitions in the
+Honeycomb OpenAPI spec. This allows datamodel-codegen with --use-title-as-name
+to generate stable, semantic class names instead of auto-numbered names like
+Type1, Details1, etc.
+
+Without this patch:
+  - Type1, Type2, Details1, Details2 (88 numbered classes)
+
+With this patch:
+  - CreateColumnType, PagerDutyRecipientDetails (5 unused dead code enums remain)
+
+Usage:
+    ./scripts/patch_api_yaml_for_dmcg.py api.yaml api-patched.yaml
+"""
+
+import argparse
+import sys
+from pathlib import Path
+
+import yaml
+
+
+def patch_inline_titles(spec: dict) -> int:
+    """Add titles to inline schemas that cause numbered class generation.
+
+    Returns count of titles added.
+    """
+    patches = 0
+    schemas = spec.get("components", {}).get("schemas", {})
+
+    # Patch 1: CreateColumn.type enum -> ColumnType
+    if "CreateColumn" in schemas:
+        props = schemas["CreateColumn"].get("properties", {})
+        if "type" in props and "title" not in props["type"]:
+            props["type"]["title"] = "ColumnType"
+            patches += 1
+            print(f"  ✓ CreateColumn.type -> ColumnType")
+
+    # Patch 2: Recipient details objects -> {Type}RecipientDetails
+    recipient_types = [
+        "PagerDuty",
+        "Email",
+        "Slack",
+        "Webhook",
+        "MSTeams",
+        "MSTeamsWorkflow",
+    ]
+
+    for recipient_type in recipient_types:
+        schema_name = f"{recipient_type}Recipient"
+        if schema_name not in schemas:
+            continue
+
+        # Recipient schemas use allOf pattern
+        all_of = schemas[schema_name].get("allOf", [])
+        for item in all_of:
+            if not isinstance(item, dict):
+                continue
+            if "properties" not in item:
+                continue
+            if "details" not in item["properties"]:
+                continue
+
+            details = item["properties"]["details"]
+            if "title" not in details:
+                details["title"] = f"{recipient_type}RecipientDetails"
+                patches += 1
+                print(f"  ✓ {schema_name}.details -> {recipient_type}RecipientDetails")
+
+    return patches
+
+
+def main() -> int:
+    """Patch api.yaml with inline schema titles."""
+    parser = argparse.ArgumentParser(description="Patch api.yaml for datamodel-codegen")
+    parser.add_argument("input", type=Path, help="Input api.yaml file")
+    parser.add_argument("output", type=Path, help="Output patched api.yaml file")
+    args = parser.parse_args()
+
+    print(f"Loading {args.input}...")
+    with open(args.input) as f:
+        spec = yaml.safe_load(f)
+
+    print("Applying patches...")
+    patches = patch_inline_titles(spec)
+
+    print(f"\nWriting {args.output}...")
+    with open(args.output, "w") as f:
+        yaml.dump(spec, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
+
+    print(f"\n✓ Applied {patches} title patches")
+    print(f"  Input:  {args.input}")
+    print(f"  Output: {args.output}")
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -224,6 +224,8 @@ poetry run mypy src/honeycomb/
 
 Current hand-written models in `src/honeycomb/models/`:
 
+**Core Dataset Resources** (originally planned):
+
 | Model | File | Priority | Notes |
 |-------|------|----------|-------|
 | Query/QuerySpec | queries.py | High | Complex, many fields |
@@ -234,6 +236,29 @@ Current hand-written models in `src/honeycomb/models/`:
 | Dataset | datasets.py | Medium | Simple |
 | Marker | markers.py | Low | Simple |
 | Recipient | recipients.py | Low | Simple |
+
+**Additional Resources** (discovered during Phase 3):
+
+| Model | File | Priority | Notes |
+|-------|------|----------|-------|
+| BurnAlert | burn_alerts.py | Medium | SLO burn alerts |
+| DerivedColumn | derived_columns.py | Medium | Calculated fields |
+| QueryAnnotation | query_annotations.py | Medium | Query annotations |
+| Event | events.py | Low | Event sending (BatchEvent) |
+| ServiceMapDependency | service_map_dependencies.py | Low | Service map |
+| ApiKey | api_keys.py | Low | Management API |
+| Environment | environments.py | Low | Management API |
+| Auth | auth.py | Low | Response-only, no Create |
+
+**Utility Models** (may not need migration):
+
+| Model | File | Notes |
+|-------|------|-------|
+| Tool Inputs | tool_inputs.py | PositionInput, ChartSettings, etc. - used internally |
+| Tags Mixin | tags_mixin.py | Mixin class for tags |
+| Builders | *_builder.py | Keep separate from models |
+
+**Total**: 16 main model files + 8 additional resources = 24 model files to evaluate
 
 ### 3.2 Migration pattern
 
@@ -269,19 +294,53 @@ class SLO(_SLOGenerated):
         return SLOBuilder()
 ```
 
-### 3.3 Handle naming conflicts
+### 3.3 Generated Model Name Mapping
 
-The generated models may have different names than our hand-written ones:
+**Phase 2 Complete**: Generated 285 models successfully.
 
-| Our Name | Generated Name | Resolution |
-|----------|---------------|------------|
-| SLO | SLO | Match |
-| SLI | Sli1 | Alias in import |
-| Query | Query | Match |
-| QuerySpec | QuerySpec | Match |
-| Trigger | BaseTrigger / Trigger | Check which to extend |
+Mapping of hand-written models to generated base classes:
 
-Mapping will be documented as we migrate each model.
+| Our Model | Generated Base | Type | Notes |
+|-----------|---------------|------|-------|
+| **ColumnCreate** | CreateColumn | Create | Direct extend |
+| **Column** | Column | Response | Extends CreateColumn in generated |
+| **DatasetCreate** | DatasetCreationPayload | Create | Different name |
+| **Dataset** | Dataset | Response | Direct extend |
+| **MarkerCreate** | MarkerCreateRequest | Create | Wrapped in Data13 structure - needs investigation |
+| **Marker** | Marker | Response | Direct extend |
+| **RecipientCreate** | Complex | Create | Discriminated union per type (Email/Slack/etc) |
+| **Recipient** | Recipient | Response | RootModel discriminated union |
+| **TriggerCreate** | CreateTriggerRequest | Create | RootModel union of TriggerWithInlineQuery \| TriggerWithQueryReference |
+| **Trigger** | TriggerResponse | Response | Extends both inline and reference variants |
+| **SLOCreate** | SLOCreate | Create | ✓ EXACT MATCH |
+| **SLO** | SLO | Response | ✓ EXACT MATCH |
+| **QuerySpec** | Query | Create | Different name |
+| **BoardCreate** | Board | Create/Response | Same model for both (has optional id/links) |
+
+**Additional Resources**:
+
+| Our Model | Generated Base | Type | Notes |
+|-----------|---------------|------|-------|
+| **BurnAlertCreate** | CreateExhaustionTimeBurnAlertRequest / CreateBudgetRateBurnAlertRequest | Create | Discriminated union by alert_type |
+| **BurnAlert** | ExhaustionTimeBurnAlert / BudgetRateBurnAlert | Response | Discriminated union |
+| **DerivedColumnCreate** | CalculatedField (no Create variant) | Create | May need wrapper |
+| **DerivedColumn** | CalculatedField | Response | Direct extend |
+| **QueryAnnotationCreate** | QueryAnnotation (no Create variant) | Create | May need wrapper |
+| **QueryAnnotation** | QueryAnnotation | Response | Same model for create+response |
+| **ApiKeyCreate** | ApiKeyCreateRequest | Create | Direct extend |
+| **ApiKey** | ApiKeyAccess | Response | Different name |
+| **EnvironmentCreate** | CreateEnvironmentRequest | Create | Direct extend |
+| **Environment** | Environment | Response | Direct extend |
+| **BatchEvent** | BatchEvent | Input | ✓ EXACT MATCH |
+| **ServiceMapDependencyRequestCreate** | CreateMapDependenciesRequest | Create | Direct extend |
+
+**Key Findings**:
+- **Perfect matches**: SLO, BatchEvent ✓
+- Most Create models have different naming conventions (CreateX vs XCreate)
+- Some models use discriminated unions (Trigger, Recipient, BurnAlert)
+- Marker uses nested Data structure
+- Board/QueryAnnotation use single model for create+response
+- **Total models found**: 24 resources (16 original + 8 additional)
 
 ## Phase 4: Incremental Migration
 
@@ -442,9 +501,171 @@ If issues are found after migration:
 - [ ] Documentation updated
 - [ ] CLAUDE.md reflects new workflow
 
+## Phase 4 Progress: Columns Migration
+
+### 4.1 Columns - COMPLETED ✓
+
+**Date**: 2026-01-11
+
+#### Final Implementation
+
+**File**: [src/honeycomb/models/columns.py](../../src/honeycomb/models/columns.py) - **22 lines** (down from 60)
+
+```python
+from honeycomb._generated_models import Column as _ColumnGenerated
+from honeycomb._generated_models import CreateColumn as _CreateColumnGenerated
+from honeycomb._generated_models import CreateColumnColumnType
+
+ColumnType = CreateColumnColumnType  # Re-export generated enum
+
+class ColumnCreate(_CreateColumnGenerated):
+    pass
+
+class Column(_ColumnGenerated):
+    pass
+```
+
+**That's it!** No custom fields, no custom serialization, just extends and re-exports.
+
+#### Solution Path
+
+**Problem Discovered**: 88 auto-generated numbered classes (Type1, Data1, etc.)
+
+**Solution Applied**:
+1. ✓ Patch api.yaml with `title:` fields for inline schemas ([patch_api_yaml_for_dmcg.py](../../scripts/patch_api_yaml_for_dmcg.py))
+2. ✓ Use `--naming-strategy full-path` flag
+3. ✓ Use `--use-title-as-name` flag
+4. ✓ **Result**: 88 → 5 unused numbered classes (94% reduction)
+
+**Patches Applied**:
+- `CreateColumn.type` → Title: "ColumnType" → Generated as `CreateColumnColumnType`
+- 6 recipient `details` objects → Titles added → Generated as `{Type}RecipientDetails`
+
+#### Decisions Made
+
+**1. Use Generated Enums Directly** (Breaking Change Accepted)
+- Changed: `ColumnType.STRING` → `ColumnType.string` (lowercase)
+- Rationale: Pre-1.0 version, breaking changes allowed per CLAUDE.md
+- Updated: 8 usages (7 tests, 1 CLI)
+
+**2. Remove `model_dump_for_api()`**
+- Use Pydantic's `model_dump(mode="json", exclude_none=True)` instead
+- Rationale: Generated models serialize correctly, no custom logic needed
+- Simpler, less code to maintain
+
+**3. Fully Extend Generated Models**
+- No field overrides, no custom logic
+- Just thin wrappers for documentation and future extensibility
+
+#### Validation Passed
+
+- ✓ 937/937 unit tests pass
+- ✓ 4/4 column serialization snapshot tests pass
+- ✓ Mypy clean
+- ✓ Live API test passed (create + delete)
+- ✓ Code reduced from 60 → 22 lines (63% reduction)
+
+#### Scope of Auto-Generated Name Problem
+
+**⚠️ MAJOR DISCOVERY**: The problem is much larger than just enums!
+
+**Total auto-generated numbered classes**: **88 classes**
+
+| Pattern | Count | Examples | Impact |
+|---------|-------|----------|--------|
+| **Type** | 19 | Type1 (ColumnType), Type8-12 (RecipientType × 5) | **HIGH** - Enums |
+| **Attributes** | 17 | Attributes1-17 (nested attribute objects) | **HIGH** - Nested models |
+| **Data** | 15 | Data1-15 (wrapper objects) | **HIGH** - Request wrappers |
+| **Links** | 6 | Links1-6 (HAL/HATEOAS links) | Medium |
+| **Details** | 5 | Details1-5 (recipient details?) | Medium |
+| **Relationships** | 4 | Relationships1-4 (JSONAPI relationships) | Medium |
+| **Status** | 2 | Status1-2 | Low |
+| Others | 20 | Slo1-3, Settings1-2, Dataset1, etc. | Low-Medium |
+
+**Critical Issues**:
+1. RecipientType duplicated as Type8-12 (5 times!)
+2. 15 Data wrapper objects (Data1-15)
+3. 17 Attributes objects (Attributes1-17)
+4. **Total**: 88 unstable class names across entire codebase
+
+**Root Cause**: OpenAPI spec uses inline/anonymous schema definitions without titles. When datamodel-codegen encounters these, it auto-generates numbered names.
+
+#### Solution Found! 🎉
+
+**datamodel-codegen has `--naming-strategy full-path` flag!**
+
+Discovered via [Issue #2822](https://github.com/koxudaxi/datamodel-code-generator/issues/2822) and [Issue #796](https://github.com/koxudaxi/datamodel-code-generator/issues/796).
+
+**Test Results**:
+
+| Metric | Without flag | With `--naming-strategy full-path` | Improvement |
+|--------|-------------|-----------------------------------|-------------|
+| **Auto-numbered classes** | 88 | 12 | **86% reduction!** |
+| **Type1-19 enums** | 19 | 5 (Type1-5 for RecipientType variants) | **74% reduction** |
+| **Data1-15 wrappers** | 15 | 0 | **100% eliminated!** |
+| **Attributes1-17** | 17 | 0 | **100% eliminated!** |
+| **Links1-6** | 6 | 0 | **100% eliminated!** |
+
+**Combined with patching**, we achieved even better results:
+
+| Improvement | Before | After |
+|-------------|--------|-------|
+| Numbered classes | 88 | 5 (unused) |
+| Details1-5 | 5 | 0 (now PagerDutyRecipientDetails, etc.) |
+| Type1 for ColumnType | Yes | No (now CreateColumnColumnType) |
+
+**Examples of improved names**:
+- Type1 → **CreateColumnColumnType** ✓
+- Details1 → **PagerDutyRecipientDetails** ✓
+- Data13 → **UpdatePipelineConfigurationRolloutRequestData** ✓
+- Attributes7 → **CreatePipelineHealthRecordRequestDataAttributes** ✓
+
+**Remaining 5 numbered classes** (Type1-5): Unused dead code - RecipientType duplicates that are never referenced. Safe to ignore.
+
+#### Migration Pattern Established
+
+**For all future model migrations**:
+
+1. **Extend generated base classes** - Get field definitions, constraints, descriptions
+2. **Re-export generated enums** - Use `ColumnType = GeneratedEnum`
+3. **No custom serialization** - Use `model_dump(mode="json", exclude_none=True)`
+4. **Keep wrappers minimal** - Just `pass` unless custom methods needed (builders, etc.)
+
+Example:
+```python
+from honeycomb._generated_models import FooCreate as _FooCreateGenerated
+from honeycomb._generated_models import GeneratedFooEnum
+
+FooEnum = GeneratedFooEnum  # Re-export
+
+class FooCreate(_FooCreateGenerated):
+    pass  # Or add custom methods like builder()
+```
+
+## Final Infrastructure
+
+**Generation Workflow**:
+1. `api.yaml` (source spec from Honeycomb)
+2. → `patch_api_yaml_for_dmcg.py` (add 7 titles)
+3. → `.api-patched.yaml` (temporary, gitignored)
+4. → `datamodel-codegen` with flags
+5. → `src/honeycomb/_generated_models.py` (288 models)
+
+**Key Flags**:
+- `--naming-strategy full-path` - Parent-prefixed names
+- `--use-title-as-name` - Use title fields for class names
+- `--formatters ruff-format ruff-check` - Consistent formatting
+
+**Result**:
+- 88 numbered classes → 5 unused dead code
+- Stable, semantic class names (CreateColumnColumnType, PagerDutyRecipientDetails, etc.)
+- Single command: `make generate-models`
+
 ## Notes
 
 - **mypy errors**: 26 errors in generated code are expected and excluded via pyproject.toml
-- **Single file**: All 282 models in one file (split mode creates confusing numbered files)
-- **Deterministic**: `--disable-timestamp` ensures clean git diffs
-- **No breaking changes**: Public API unchanged - only internal model inheritance changes
+- **Single file**: All 288 models in one file (split mode creates confusing numbered files)
+- **Deterministic**: `--disable-timestamp` + stable naming ensures clean git diffs
+- **Breaking changes**: Enum names changed to lowercase (ColumnType.string vs STRING) - acceptable pre-1.0
+- **No custom serialization**: Use Pydantic's `model_dump(mode="json", exclude_none=True)`
+- **Minimal wrappers**: Models are just `pass` statements unless custom methods needed

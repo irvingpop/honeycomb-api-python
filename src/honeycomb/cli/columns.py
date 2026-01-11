@@ -69,7 +69,7 @@ def create_column(
         None, "--from-file", "-f", help="JSON file with column config"
     ),
     key_name: str | None = typer.Option(None, "--key-name", "-k", help="Column name"),
-    column_type: ColumnType = typer.Option(ColumnType.STRING, "--type", "-t", help="Column type"),
+    column_type: ColumnType = typer.Option(ColumnType.string, "--type", "-t", help="Column type"),
     description: str | None = typer.Option(None, "--description", help="Column description"),
     hidden: bool = typer.Option(False, "--hidden", help="Hide column from autocomplete"),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Config profile"),
