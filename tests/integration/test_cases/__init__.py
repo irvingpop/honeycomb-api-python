@@ -12,6 +12,7 @@ To add test cases for a resource:
 from typing import Any
 
 from . import (
+    analysis,
     api_keys,
     auth,
     boards,
@@ -53,6 +54,8 @@ ALL_TEST_CASES_BY_RESOURCE = {
     "markers": markers.TEST_CASES,
     "events": events.TEST_CASES,
     "service_map": service_map.TEST_CASES,
+    # Analysis tools (cross-cutting)
+    "analysis": analysis.TEST_CASES,
 }
 
 

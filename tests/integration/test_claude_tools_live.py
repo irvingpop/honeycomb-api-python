@@ -5,9 +5,12 @@ monitoring setup from scratch using HONEYCOMB_TOOLS:
 
 1. Create dataset
 2. Send sample events
-3. Create trigger with inline recipients (email + webhook)
-4. Create board with inline queries, text panels, SLOs with inline burn alerts
-5. Cleanup
+2.5. Get environment summary (analysis tool)
+3. Search columns to verify expected columns exist (analysis tool)
+4. Create trigger with inline recipients (email + webhook)
+5. Search columns for board panels (analysis tool)
+6. Create board with inline queries, text panels, SLOs with inline burn alerts
+7. Cleanup
 
 Each step is fully debuggable with:
 - Tool call input/output dumping
@@ -380,14 +383,108 @@ Send 20 sample events to dataset '{dataset_name}' with:
         print(f"✓ VALIDATED: Events sent to {dataset_name}")
 
         # ============================================================================
-        # STEP 3: Create Trigger with Inline Recipients
+        # STEP 2.5: Get Environment Summary
         # ============================================================================
 
         print("\n" + "=" * 80)
-        print("STEP 3: CREATE TRIGGER WITH INLINE RECIPIENTS")
+        print("STEP 2.5: GET ENVIRONMENT SUMMARY")
+        print("=" * 80)
+
+        step2_5_prompt = """
+Get a summary of the Honeycomb environment to understand what datasets exist and their structure.
+Include sample column names to see what telemetry data is available.
+"""
+
+        messages.append({"role": "user", "content": step2_5_prompt})
+        messages, tool_calls = await execute_single_turn(
+            anthropic_client, client, messages, "Step 2.5: Get Environment Summary"
+        )
+
+        # Validate: Environment summary was retrieved
+        assert any("get_environment_summary" in tool for tool, _, _ in tool_calls), (
+            "Should have called honeycomb_get_environment_summary"
+        )
+
+        summary_result = next(
+            (result for tool, _, result in tool_calls if "get_environment_summary" in tool), None
+        )
+        summary_data = json.loads(summary_result)
+
+        print("✓ VALIDATED: Retrieved environment summary")
+        print(f"  - Environment: {summary_data['environment']}")
+        print(f"  - Total datasets: {summary_data['dataset_count']}")
+
+        # Find our test dataset in the summary
+        test_dataset_summary = next(
+            (ds for ds in summary_data["datasets"] if ds["name"] == dataset_name), None
+        )
+        if test_dataset_summary:
+            print(f"  - Test dataset '{dataset_name}':")
+            print(f"    - Column count: {test_dataset_summary['column_count']}")
+            print(f"    - Derived columns: {test_dataset_summary['derived_column_count']}")
+            groups = test_dataset_summary["semantic_groups"]
+            active_groups = [k for k, v in groups.items() if v]
+            if active_groups:
+                print(f"    - Detected semantic groups: {', '.join(active_groups)}")
+            if test_dataset_summary.get("custom_columns"):
+                print(
+                    f"    - Sample custom columns: {', '.join(test_dataset_summary['custom_columns'][:5])}"
+                )
+
+        # ============================================================================
+        # STEP 3: Verify Expected Columns Exist (Search)
+        # ============================================================================
+
+        print("\n" + "=" * 80)
+        print("STEP 3: VERIFY EXPECTED COLUMNS EXIST")
         print("=" * 80)
 
         step3_prompt = f"""
+Before creating the trigger, search for columns in dataset '{dataset_name}' to verify that 'status_code' and 'duration_ms' columns exist.
+Search for 'status' to find status_code column, and 'duration' to find duration_ms column.
+"""
+
+        messages.append({"role": "user", "content": step3_prompt})
+        messages, tool_calls = await execute_single_turn(
+            anthropic_client, client, messages, "Step 3: Search for Expected Columns"
+        )
+
+        # Validate: Column search was performed
+        assert any("search_columns" in tool for tool, _, _ in tool_calls), (
+            "Should have called honeycomb_search_columns"
+        )
+
+        search_result = next(
+            (result for tool, _, result in tool_calls if "search_columns" in tool), None
+        )
+        search_data = json.loads(search_result)
+
+        print("✓ VALIDATED: Column search completed")
+        print(f"  - Total matches: {search_data['total_matches']}")
+        print(f"  - Datasets searched: {search_data['datasets_searched']}")
+
+        # Verify we found the expected columns
+        found_columns = {r["column"] for r in search_data["results"]}
+        print(f"  - Found columns: {', '.join(sorted(found_columns))}")
+
+        # Check for status_code and duration_ms (may have different names)
+        has_status = any("status" in col.lower() for col in found_columns)
+        has_duration = any("duration" in col.lower() for col in found_columns)
+
+        if has_status:
+            print("  ✓ Found status-related column")
+        if has_duration:
+            print("  ✓ Found duration-related column")
+
+        # ============================================================================
+        # STEP 4: Create Trigger with Inline Recipients
+        # ============================================================================
+
+        print("\n" + "=" * 80)
+        print("STEP 4: CREATE TRIGGER WITH INLINE RECIPIENTS")
+        print("=" * 80)
+
+        step4_prompt = f"""
 Create a trigger in dataset '{dataset_name}' named '{trigger_name}' that:
 - Alerts when COUNT of requests with status_code >= 500 exceeds 10
 - Checks every 15 minutes (900 seconds)
@@ -398,9 +495,9 @@ Create a trigger in dataset '{dataset_name}' named '{trigger_name}' that:
 Create the recipients inline with the trigger.
 """
 
-        messages.append({"role": "user", "content": step3_prompt})
+        messages.append({"role": "user", "content": step4_prompt})
         messages, tool_calls = await execute_single_turn(
-            anthropic_client, client, messages, "Step 3: Create Trigger"
+            anthropic_client, client, messages, "Step 4: Create Trigger"
         )
 
         # Validate: Trigger was created
@@ -463,14 +560,47 @@ Create the recipients inline with the trigger.
         print(f"  - Recipients: {list(recipient_types)}")
 
         # ============================================================================
-        # STEP 4: Create Board with Inline Queries, Text, and SLO
+        # STEP 5: Verify Columns for Board (Search)
         # ============================================================================
 
         print("\n" + "=" * 80)
-        print("STEP 4: CREATE BOARD WITH INLINE CONTENT")
+        print("STEP 5: VERIFY COLUMNS FOR BOARD PANELS")
         print("=" * 80)
 
-        step4_prompt = f"""
+        step5_prompt = f"""
+Before creating the board, verify that the columns needed for the board panels exist.
+Search for 'duration' in dataset '{dataset_name}' to confirm we can create a P99 latency panel.
+"""
+
+        messages.append({"role": "user", "content": step5_prompt})
+        messages, tool_calls = await execute_single_turn(
+            anthropic_client, client, messages, "Step 5: Verify Columns for Board"
+        )
+
+        # Validate: Column search was performed
+        assert any("search_columns" in tool for tool, _, _ in tool_calls), (
+            "Should have called honeycomb_search_columns"
+        )
+
+        search_result = next(
+            (result for tool, _, result in tool_calls if "search_columns" in tool), None
+        )
+        search_data = json.loads(search_result)
+
+        print("✓ VALIDATED: Column search for board panels completed")
+        print(f"  - Total matches: {search_data['total_matches']}")
+        found_columns = {r["column"] for r in search_data["results"]}
+        print(f"  - Found columns: {', '.join(sorted(found_columns))}")
+
+        # ============================================================================
+        # STEP 6: Create Board with Inline Queries, Text, and SLO
+        # ============================================================================
+
+        print("\n" + "=" * 80)
+        print("STEP 6: CREATE BOARD WITH INLINE CONTENT")
+        print("=" * 80)
+
+        step6_prompt = f"""
 Create a comprehensive dashboard named '{board_name}' in auto-layout with the following panels:
 
 Panel 1 - Query Panel: "Error Rate"
@@ -500,12 +630,12 @@ Also create these board views for different perspectives:
 IMPORTANT: Use inline creation for queries, SLO, and views to minimize API calls. Create everything in one honeycomb_create_board call.
 """
 
-        messages.append({"role": "user", "content": step4_prompt})
+        messages.append({"role": "user", "content": step6_prompt})
 
         # Board creation may need multiple turns
         for turn in range(5):
             messages, turn_tool_calls = await execute_single_turn(
-                anthropic_client, client, messages, f"Step 4: Create Board (turn {turn + 1})"
+                anthropic_client, client, messages, f"Step 6: Create Board (turn {turn + 1})"
             )
             tool_calls.extend(turn_tool_calls)
 

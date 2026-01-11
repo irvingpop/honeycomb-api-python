@@ -4,6 +4,7 @@ Each module contains descriptions and generators for a specific resource type.
 """
 
 from honeycomb.tools.resources import (
+    analysis,
     api_keys,
     auth,
     boards,
@@ -23,6 +24,7 @@ from honeycomb.tools.resources import (
 )
 
 __all__ = [
+    "analysis",
     "api_keys",
     "auth",
     "boards",

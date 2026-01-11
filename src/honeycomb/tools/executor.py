@@ -237,12 +237,17 @@ async def execute_tool(
     # Service Map
     elif tool_name == "honeycomb_query_service_map":
         return await _execute_query_service_map(client, tool_input)
+    # Analysis
+    elif tool_name == "honeycomb_search_columns":
+        return await _execute_search_columns(client, tool_input)
+    elif tool_name == "honeycomb_get_environment_summary":
+        return await _execute_get_environment_summary(client, tool_input)
     else:
         raise ValueError(
             f"Unknown tool: {tool_name}. "
             "Valid tools: triggers (5), slos (5), burn_alerts (5), datasets (5), columns (5), "
             "recipients (6), derived_columns (5), queries (3), boards (5), markers (4), "
-            "marker_settings (5), events (2), service_map (1)"
+            "marker_settings (5), events (2), service_map (1), analysis (2)"
         )
 
 
@@ -1040,6 +1045,43 @@ async def _execute_query_service_map(client: "HoneycombClient", tool_input: dict
         return json.dumps([d.model_dump() for d in result.dependencies], default=str)
     else:
         return json.dumps([], default=str)
+
+
+# ==============================================================================
+# Analysis
+# ==============================================================================
+
+
+async def _execute_search_columns(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
+    """Execute honeycomb_search_columns tool."""
+    from dataclasses import asdict
+
+    from honeycomb.tools.analysis.column_search import search_columns_async
+
+    result = await search_columns_async(
+        client,
+        query=tool_input["query"],
+        dataset=tool_input.get("dataset"),
+        limit=min(tool_input.get("limit", 50), 1000),
+        offset=tool_input.get("offset", 0),
+    )
+    return json.dumps(asdict(result), default=str)
+
+
+async def _execute_get_environment_summary(
+    client: "HoneycombClient", tool_input: dict[str, Any]
+) -> str:
+    """Execute honeycomb_get_environment_summary tool."""
+    from dataclasses import asdict
+
+    from honeycomb.tools.analysis.environment_summary import get_environment_summary_async
+
+    result = await get_environment_summary_async(
+        client,
+        include_sample_columns=tool_input.get("include_sample_columns", True),
+        sample_column_count=tool_input.get("sample_column_count", 10),
+    )
+    return json.dumps(asdict(result), default=str)
 
 
 __all__ = [

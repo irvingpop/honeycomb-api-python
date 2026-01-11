@@ -52,6 +52,7 @@ def create_tool_definition(
 
 # Resource module mapping
 RESOURCE_MODULES = {
+    "analysis": resources.analysis,
     "api_keys": resources.api_keys,
     "auth": resources.auth,
     "boards": resources.boards,
@@ -97,6 +98,7 @@ def generate_all_tools() -> list[dict[str, Any]]:
         "marker_settings",
         "events",
         "service_map",
+        "analysis",
     ]
 
     for resource in resource_order:

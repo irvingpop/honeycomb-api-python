@@ -10173,6 +10173,173 @@
           "end_time": 1640003600
         }
       ]
+    },
+    {
+      "name": "honeycomb_search_columns",
+      "description": "Search for columns in Honeycomb datasets by name pattern. Use this tool to find columns that match metrics from source dashboards, discover available fields for querying, or understand your data schema. Returns column names, types, descriptions, and which dataset they belong to. Includes both regular columns and derived columns. Supports fuzzy matching with similarity scores and pagination. Also returns related derived columns that reference the matched columns.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "query": {
+            "type": "string",
+            "description": "Search query (partial column name, supports fuzzy matching)"
+          },
+          "dataset": {
+            "type": "string",
+            "description": "Optional: specific dataset slug to search. If omitted, searches all datasets."
+          },
+          "limit": {
+            "type": "integer",
+            "description": "Maximum results to return (default: 50, max: 1000)"
+          },
+          "offset": {
+            "type": "integer",
+            "description": "Offset for pagination (default: 0)"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "query"
+        ]
+      },
+      "input_examples": [
+        {
+          "query": "latency"
+        },
+        {
+          "query": "error",
+          "dataset": "api-logs"
+        },
+        {
+          "query": "http.status",
+          "limit": 100
+        },
+        {
+          "query": "duration",
+          "offset": 50,
+          "limit": 50
+        }
+      ]
+    },
+    {
+      "name": "honeycomb_get_environment_summary",
+      "description": "Get a summary of all datasets in the Honeycomb environment. Use this tool to understand what datasets exist and their characteristics before deciding which dataset(s) to use for queries or translations. Returns dataset names, descriptions, column counts, derived column counts, and detects OpenTelemetry semantic convention groups (HTTP, traces, DB, K8s, etc.). Also extracts custom columns unique to each dataset that are not standard OTel fields. Useful for environment discovery, data inventory, and migration planning.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "include_sample_columns": {
+            "type": "boolean",
+            "description": "Include sample custom column names for each dataset (default: true)"
+          },
+          "sample_column_count": {
+            "type": "integer",
+            "description": "Number of sample custom columns per dataset (default: 10, max: 50)"
+          },
+          "confidence": {
+            "type": "string",
+            "enum": [
+              "high",
+              "medium",
+              "low",
+              "none"
+            ],
+            "description": "Claude's confidence level in this tool call. 'high' = certain this matches user intent and will succeed, 'medium' = likely correct but some uncertainty, 'low' = uncertain but best available option, 'none' = guessing or placeholder value."
+          },
+          "notes": {
+            "type": "object",
+            "description": "Structured reasoning notes explaining Claude's decision-making process. All categories are optional arrays of single-sentence strings.",
+            "properties": {
+              "decisions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key decisions made (e.g., 'Chose COUNT over AVG for error rate')"
+              },
+              "concerns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Potential issues or risks (e.g., 'Time range may be too short')"
+              },
+              "assumptions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Assumptions being made (e.g., 'Assuming status_code column exists')"
+              },
+              "questions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Clarifying questions for increased confidence (e.g., 'I would be more confident if I knew the expected error baseline')"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": []
+      },
+      "input_examples": [
+        {},
+        {
+          "include_sample_columns": true
+        },
+        {
+          "include_sample_columns": true,
+          "sample_column_count": 20
+        },
+        {
+          "include_sample_columns": false
+        }
+      ]
     }
   ]
 }
