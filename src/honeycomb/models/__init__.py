@@ -1,12 +1,15 @@
 """Pydantic models for Honeycomb API resources."""
 
 from .api_keys import (
+    ApiKey,
+    ApiKeyCreate,
     ApiKeyCreateRequest,
     ApiKeyListResponse,
     ApiKeyObject,
     ApiKeyObjectType,
     ApiKeyResponse,
     ApiKeyType,
+    ApiKeyUpdate,
     ApiKeyUpdateRequest,
     ConfigurationKey,
     IngestKey,
@@ -31,6 +34,8 @@ from .boards import (
 from .burn_alerts import (
     AlertType,
     BudgetRateBurnAlertDetailResponse,
+    BurnAlert,
+    BurnAlertCreate,
     BurnAlertDetailResponse,
     BurnAlertListResponse,
     BurnAlertRecipient,
@@ -53,8 +58,10 @@ from .environments import (
     CreateEnvironmentRequest,
     Environment,
     EnvironmentColor,
+    EnvironmentCreate,
     EnvironmentListResponse,
     EnvironmentResponse,
+    EnvironmentUpdate,
     UpdateEnvironmentRequest,
 )
 from .events import BatchEvent, BatchEventResult
@@ -215,6 +222,8 @@ __all__ = [
     # Burn Alerts
     "AlertType",
     "BudgetRateBurnAlertDetailResponse",
+    "BurnAlert",
+    "BurnAlertCreate",
     "BurnAlertDetailResponse",
     "BurnAlertListResponse",
     "BurnAlertRecipient",
@@ -233,12 +242,15 @@ __all__ = [
     "BatchEvent",
     "BatchEventResult",
     # API Keys (v2)
+    "ApiKey",
+    "ApiKeyCreate",
     "ApiKeyCreateRequest",
     "ApiKeyListResponse",
     "ApiKeyObject",
     "ApiKeyObjectType",
     "ApiKeyResponse",
     "ApiKeyType",
+    "ApiKeyUpdate",
     "ApiKeyUpdateRequest",
     "ConfigurationKey",
     "IngestKey",
@@ -249,6 +261,8 @@ __all__ = [
     "CreateEnvironmentRequest",
     "Environment",
     "EnvironmentColor",
+    "EnvironmentCreate",
+    "EnvironmentUpdate",
     "EnvironmentListResponse",
     "EnvironmentResponse",
     "UpdateEnvironmentRequest",

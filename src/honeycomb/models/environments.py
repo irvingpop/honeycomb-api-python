@@ -12,10 +12,16 @@ from honeycomb._generated_models import (
     UpdateEnvironmentRequest,
 )
 
+# Convenience type aliases
+EnvironmentCreate = CreateEnvironmentRequest
+EnvironmentUpdate = UpdateEnvironmentRequest
+
 __all__ = [
     "CreateEnvironmentRequest",
     "Environment",
     "EnvironmentColor",
+    "EnvironmentCreate",  # Convenience alias
+    "EnvironmentUpdate",  # Convenience alias
     "EnvironmentListResponse",
     "EnvironmentResponse",
     "UpdateEnvironmentRequest",

@@ -182,8 +182,8 @@ async def test_create_api_key(key_id: str, secret: str) -> None:
 async def test_update_api_key(updated: ApiKey, original_key_id: str) -> None:
     """Verify update example worked."""
     assert updated.id == original_key_id
-    assert "Updated" in updated.name
-    assert updated.disabled is True
+    assert "Updated" in updated.attributes.name
+    assert updated.attributes.disabled is True
 
 
 # CLEANUP

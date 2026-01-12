@@ -677,6 +677,7 @@ curl -X PUT .../datasets/slug -d '{"description": "Updated"}'
 5. **Minimal overrides** - Only add field overrides when required (e.g., tool schema descriptions)
 6. **Use Pydantic serialization** - `model_dump(mode="json", exclude_none=True, exclude_defaults=True)`
 7. **Just pass** - Models should be thin wrappers unless adding custom methods (builders, etc.)
+8. **Discriminated unions need property accessors** - For RootModel discriminated unions, always add @property accessors to hide the `.root` requirement. Follow the Recipients pattern ([recipients.py:78-104](../../src/honeycomb/models/recipients.py))
 
 ### 4.3 Recipients - COMPLETED ✓
 

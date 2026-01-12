@@ -212,7 +212,9 @@ class ApiKeysResource(BaseResource):
             # Parse JSON:API response
             if isinstance(data, dict) and "data" in data:
                 response = self._parse_model(ApiKeyListResponse, data)
-                results.extend(response.data)
+                # Convert generated ApiKeyObject instances to our extended version
+                for item in response.data:
+                    results.append(ApiKeyObject.model_validate(item.model_dump()))
 
                 # Check for next page
                 next_link = response.links.next if response.links else None
@@ -236,7 +238,8 @@ class ApiKeysResource(BaseResource):
         team = await self._get_team_slug_async()
         data = await self._get_async(self._build_path(team, key_id))
         response = self._parse_model(ApiKeyResponse, data)
-        return response.data
+        # Convert generated ApiKeyObject to our extended version
+        return ApiKeyObject.model_validate(response.data.model_dump())
 
     async def create_async(self, api_key: ApiKeyCreateRequest) -> ApiKeyObject:
         """Create a new API key (async).
@@ -254,7 +257,8 @@ class ApiKeysResource(BaseResource):
             headers={"Content-Type": "application/vnd.api+json"},
         )
         response = self._parse_model(ApiKeyResponse, data)
-        return response.data
+        # Convert generated ApiKeyObject to our extended version
+        return ApiKeyObject.model_validate(response.data.model_dump())
 
     async def update_async(self, api_key: ApiKeyUpdateRequest) -> ApiKeyObject:
         """Update an existing API key (async).
@@ -277,7 +281,8 @@ class ApiKeysResource(BaseResource):
             headers={"Content-Type": "application/vnd.api+json"},
         )
         response = self._parse_model(ApiKeyResponse, data)
-        return response.data
+        # Convert generated ApiKeyObject to our extended version
+        return ApiKeyObject.model_validate(response.data.model_dump())
 
     async def delete_async(self, key_id: str) -> None:
         """Delete an API key (async).
@@ -323,7 +328,9 @@ class ApiKeysResource(BaseResource):
             # Parse JSON:API response
             if isinstance(data, dict) and "data" in data:
                 response = self._parse_model(ApiKeyListResponse, data)
-                results.extend(response.data)
+                # Convert generated ApiKeyObject instances to our extended version
+                for item in response.data:
+                    results.append(ApiKeyObject.model_validate(item.model_dump()))
 
                 # Check for next page
                 next_link = response.links.next if response.links else None
@@ -349,7 +356,8 @@ class ApiKeysResource(BaseResource):
         team = self._get_team_slug()
         data = self._get_sync(self._build_path(team, key_id))
         response = self._parse_model(ApiKeyResponse, data)
-        return response.data
+        # Convert generated ApiKeyObject to our extended version
+        return ApiKeyObject.model_validate(response.data.model_dump())
 
     def create(self, api_key: ApiKeyCreateRequest) -> ApiKeyObject:
         """Create a new API key.
@@ -369,7 +377,8 @@ class ApiKeysResource(BaseResource):
             headers={"Content-Type": "application/vnd.api+json"},
         )
         response = self._parse_model(ApiKeyResponse, data)
-        return response.data
+        # Convert generated ApiKeyObject to our extended version
+        return ApiKeyObject.model_validate(response.data.model_dump())
 
     def update(self, api_key: ApiKeyUpdateRequest) -> ApiKeyObject:
         """Update an existing API key.
@@ -394,7 +403,8 @@ class ApiKeysResource(BaseResource):
             headers={"Content-Type": "application/vnd.api+json"},
         )
         response = self._parse_model(ApiKeyResponse, data)
-        return response.data
+        # Convert generated ApiKeyObject to our extended version
+        return ApiKeyObject.model_validate(response.data.model_dump())
 
     def delete(self, key_id: str) -> None:
         """Delete an API key.

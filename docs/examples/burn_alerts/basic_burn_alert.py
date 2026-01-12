@@ -34,7 +34,7 @@ async def create_exhaustion_time_alert(
         dataset,
         BurnAlertCreate(
             alert_type=BurnAlertType.EXHAUSTION_TIME,
-            slo_id=slo_id,
+            slo={"id": slo_id},
             description="Alert when budget depletes within 2 hours",
             exhaustion_minutes=120,
             recipients=[BurnAlertRecipient(id=recipient_id)],
@@ -63,7 +63,7 @@ async def create_budget_rate_alert(
         dataset,
         BurnAlertCreate(
             alert_type=BurnAlertType.BUDGET_RATE,
-            slo_id=slo_id,
+            slo={"id": slo_id},
             description="Alert on rapid budget consumption",
             budget_rate_window_minutes=60,
             budget_rate_decrease_threshold_per_million=10000,  # 1% drop
@@ -93,7 +93,7 @@ async def create_critical_exhaustion_alert(
         dataset,
         BurnAlertCreate(
             alert_type=BurnAlertType.EXHAUSTION_TIME,
-            slo_id=slo_id,
+            slo={"id": slo_id},
             description="CRITICAL: Budget exhausts in 2 hours - page oncall",
             exhaustion_minutes=120,
             recipients=[BurnAlertRecipient(id=recipient_id)],
@@ -122,7 +122,7 @@ async def create_warning_exhaustion_alert(
         dataset,
         BurnAlertCreate(
             alert_type=BurnAlertType.EXHAUSTION_TIME,
-            slo_id=slo_id,
+            slo={"id": slo_id},
             description="WARNING: Budget exhausts in 24 hours - investigate",
             exhaustion_minutes=1440,  # 24 hours
             recipients=[BurnAlertRecipient(id=recipient_id)],
@@ -199,7 +199,7 @@ async def update_burn_alert(
         alert_id,
         BurnAlertCreate(
             alert_type=existing.alert_type,
-            slo_id=existing.slo["id"] if existing.slo else "",
+            slo={"id": existing.slo.id} if existing.slo else {"id": ""},
             description="Updated: Alert when budget depletes within 1 hour",
             exhaustion_minutes=60,  # Change from 120 to 60 minutes
             recipients=[BurnAlertRecipient(id=recipient_id)],
