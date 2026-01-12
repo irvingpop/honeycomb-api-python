@@ -24,19 +24,19 @@ class TestDerivedColumnCreate:
         )
         assert dc.description == "1 if successful, 0 otherwise"
 
-    def test_model_dump_for_api_minimal(self):
+    def test_model_dump_minimal(self):
         """Test serializing DerivedColumnCreate without description."""
         dc = DerivedColumnCreate(alias="test_col", expression="INT(1)")
-        data = dc.model_dump_for_api()
+        data = dc.model_dump(mode="json", exclude_none=True)
         assert data == {"alias": "test_col", "expression": "INT(1)"}
         assert "description" not in data
 
-    def test_model_dump_for_api_with_description(self):
+    def test_model_dump_with_description(self):
         """Test serializing DerivedColumnCreate with description."""
         dc = DerivedColumnCreate(
             alias="test_col", expression="INT(1)", description="Always returns 1"
         )
-        data = dc.model_dump_for_api()
+        data = dc.model_dump(mode="json", exclude_none=True)
         assert data == {
             "alias": "test_col",
             "expression": "INT(1)",
@@ -54,8 +54,8 @@ class TestDerivedColumn:
             alias="test_col",
             expression="INT(1)",
             description="Test column",
-            created_at=None,
-            updated_at=None,
+            created_at="2024-01-01T00:00:00Z",
+            updated_at="2024-01-01T00:00:00Z",
         )
         assert dc.id == "dc-123"
         assert dc.alias == "test_col"
@@ -63,12 +63,17 @@ class TestDerivedColumn:
         assert dc.description == "Test column"
 
     def test_create_minimal(self):
-        """Test creating DerivedColumn with minimal required fields."""
-        dc = DerivedColumn(id="dc-123", alias="test_col", expression="INT(1)")
+        """Test creating DerivedColumn with required fields."""
+        dc = DerivedColumn(
+            id="dc-123",
+            alias="test_col",
+            expression="INT(1)",
+            description="",
+            created_at="2024-01-01T00:00:00Z",
+            updated_at="2024-01-01T00:00:00Z",
+        )
         assert dc.id == "dc-123"
-        assert dc.description is None
-        assert dc.created_at is None
-        assert dc.updated_at is None
+        assert dc.description == ""
 
 
 class TestDerivedColumnBuilder:

@@ -84,7 +84,29 @@ def patch_inline_titles(spec: dict) -> int:
             patches += 1
             print(f"  ✓ BatchEvent: added 'data' to required fields")
 
-    # Patch 5: Add additionalProperties: false to recipient details for strict validation
+    # Patch 5: Make burn alert recipients optional (useful for testing/builders)
+    burn_alert_schemas = [
+        "CreateExhaustionTimeBurnAlertRequest",
+        "CreateBudgetRateBurnAlertRequest",
+    ]
+    for schema_name in burn_alert_schemas:
+        if schema_name in schemas:
+            all_of = schemas[schema_name].get("allOf", [])
+            for item in all_of:
+                if isinstance(item, dict) and "required" in item:
+                    if "recipients" in item["required"]:
+                        item["required"].remove("recipients")
+                        patches += 1
+                        print(f"  ✓ {schema_name}: removed 'recipients' from required")
+
+    # Patch 6: Fix UpdateBudgetRateBurnAlertRequest title (conflicts with BudgetRateBurnAlert)
+    if "UpdateBudgetRateBurnAlertRequest" in schemas:
+        if schemas["UpdateBudgetRateBurnAlertRequest"].get("title") == "Budget Rate":
+            schemas["UpdateBudgetRateBurnAlertRequest"]["title"] = "UpdateBudgetRateBurnAlert"
+            patches += 1
+            print(f"  ✓ UpdateBudgetRateBurnAlertRequest: changed title to 'UpdateBudgetRateBurnAlert'")
+
+    # Patch 7: Add additionalProperties: false to recipient details for strict validation
     # This prevents LLMs from hallucinating extra fields
     recipient_detail_schemas = [
         "PagerDutyRecipientDetails",

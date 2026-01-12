@@ -5,7 +5,6 @@ from httpx import Response
 
 from honeycomb import HoneycombClient
 from honeycomb.models import (
-    ApiKeyType,
     ServiceMapDependencyRequestCreate,
     ServiceMapDependencyRequestStatus,
     ServiceMapNode,
@@ -59,9 +58,11 @@ class TestApiKeysPagination:
                             "type": "api-keys",
                             "attributes": {
                                 "name": "Key 1",
-                                "type": "ingest",
-                                "environment_id": "env-1",
+                                "key_type": "ingest",
                                 "disabled": False,
+                            },
+                            "relationships": {
+                                "environment": {"data": {"type": "environments", "id": "env-1"}}
                             },
                         },
                         {
@@ -69,9 +70,12 @@ class TestApiKeysPagination:
                             "type": "api-keys",
                             "attributes": {
                                 "name": "Key 2",
-                                "type": "configuration",
-                                "environment_id": "env-1",
+                                "key_type": "configuration",
                                 "disabled": False,
+                                "permissions": {},
+                            },
+                            "relationships": {
+                                "environment": {"data": {"type": "environments", "id": "env-1"}}
                             },
                         },
                     ],
@@ -134,9 +138,11 @@ class TestApiKeysPagination:
                                 "type": "api-keys",
                                 "attributes": {
                                     "name": f"Key {i}",
-                                    "type": "ingest",
-                                    "environment_id": "env-1",
+                                    "key_type": "ingest",
                                     "disabled": False,
+                                },
+                                "relationships": {
+                                    "environment": {"data": {"type": "environments", "id": "env-1"}}
                                 },
                             }
                             for i in range(1, 4)
@@ -157,9 +163,11 @@ class TestApiKeysPagination:
                                 "type": "api-keys",
                                 "attributes": {
                                     "name": f"Key {i}",
-                                    "type": "ingest",
-                                    "environment_id": "env-1",
+                                    "key_type": "ingest",
                                     "disabled": False,
+                                },
+                                "relationships": {
+                                    "environment": {"data": {"type": "environments", "id": "env-1"}}
                                 },
                             }
                             for i in range(4, 6)
@@ -222,9 +230,11 @@ class TestApiKeysPagination:
                             "type": "api-keys",
                             "attributes": {
                                 "name": "Ingest Key",
-                                "type": "ingest",
-                                "environment_id": "env-1",
+                                "key_type": "ingest",
                                 "disabled": False,
+                            },
+                            "relationships": {
+                                "environment": {"data": {"type": "environments", "id": "env-1"}}
                             },
                         },
                     ],
@@ -239,7 +249,10 @@ class TestApiKeysPagination:
             keys = await client.api_keys.list_async(key_type="ingest")
 
         assert len(keys) == 1
-        assert keys[0].key_type == ApiKeyType.INGEST
+        assert keys[0].attributes is not None
+        from honeycomb.models.api_keys import IngestKey
+
+        assert isinstance(keys[0].attributes, IngestKey)
         # Verify filter was passed
         assert "filter%5Btype%5D=ingest" in str(route.calls[0].request.url)
 
@@ -291,21 +304,25 @@ class TestEnvironmentsPagination:
                         {
                             "id": "env-1",
                             "type": "environments",
+                            "links": {"self": "/2/teams/my-team/environments/env-1"},
                             "attributes": {
                                 "name": "Production",
                                 "slug": "production",
                                 "color": "red",
                                 "description": "Prod environment",
+                                "settings": {"delete_protected": False},
                             },
                         },
                         {
                             "id": "env-2",
                             "type": "environments",
+                            "links": {"self": "/2/teams/my-team/environments/env-2"},
                             "attributes": {
                                 "name": "Staging",
                                 "slug": "staging",
                                 "color": "gold",
                                 "description": "Staging environment",
+                                "settings": {"delete_protected": False},
                             },
                         },
                     ],
@@ -321,9 +338,9 @@ class TestEnvironmentsPagination:
 
         assert len(envs) == 2
         assert envs[0].id == "env-1"
-        assert envs[0].name == "Production"
+        assert envs[0].attributes.name == "Production"
         assert envs[1].id == "env-2"
-        assert envs[1].name == "Staging"
+        assert envs[1].attributes.name == "Staging"
 
     @respx.mock
     async def test_list_multiple_pages(self):
@@ -369,10 +386,13 @@ class TestEnvironmentsPagination:
                             {
                                 "id": f"env-{i}",
                                 "type": "environments",
+                                "links": {"self": f"/2/teams/my-team/environments/env-{i}"},
                                 "attributes": {
                                     "name": f"Environment {i}",
                                     "slug": f"environment-{i}",
+                                    "description": "",
                                     "color": "blue",
+                                    "settings": {"delete_protected": False},
                                 },
                             }
                             for i in range(1, 4)
@@ -391,10 +411,13 @@ class TestEnvironmentsPagination:
                             {
                                 "id": f"env-{i}",
                                 "type": "environments",
+                                "links": {"self": f"/2/teams/my-team/environments/env-{i}"},
                                 "attributes": {
                                     "name": f"Environment {i}",
                                     "slug": f"environment-{i}",
+                                    "description": "",
                                     "color": "blue",
+                                    "settings": {"delete_protected": False},
                                 },
                             }
                             for i in range(4, 6)

@@ -115,7 +115,8 @@ class DerivedColumnsResource(BaseResource):
             Created DerivedColumn object.
         """
         data = await self._post_async(
-            self._build_path(dataset), json=derived_column.model_dump_for_api()
+            self._build_path(dataset),
+            json=derived_column.model_dump(mode="json", exclude_none=True, by_alias=True),
         )
         return self._parse_model(DerivedColumn, data)
 
@@ -133,7 +134,8 @@ class DerivedColumnsResource(BaseResource):
             Updated DerivedColumn object.
         """
         data = await self._put_async(
-            self._build_path(dataset, column_id), json=derived_column.model_dump_for_api()
+            self._build_path(dataset, column_id),
+            json=derived_column.model_dump(mode="json", exclude_none=True, by_alias=True),
         )
         return self._parse_model(DerivedColumn, data)
 
@@ -198,7 +200,10 @@ class DerivedColumnsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
-        data = self._post_sync(self._build_path(dataset), json=derived_column.model_dump_for_api())
+        data = self._post_sync(
+            self._build_path(dataset),
+            json=derived_column.model_dump(mode="json", exclude_none=True, by_alias=True),
+        )
         return self._parse_model(DerivedColumn, data)
 
     def update(
@@ -217,7 +222,8 @@ class DerivedColumnsResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
         data = self._put_sync(
-            self._build_path(dataset, column_id), json=derived_column.model_dump_for_api()
+            self._build_path(dataset, column_id),
+            json=derived_column.model_dump(mode="json", exclude_none=True, by_alias=True),
         )
         return self._parse_model(DerivedColumn, data)
 

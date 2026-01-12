@@ -5,7 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlparse
 
-from ..models.api_keys import ApiKey, ApiKeyCreate, ApiKeyUpdate
+from ..models.api_keys import (
+    ApiKeyCreateRequest,
+    ApiKeyListResponse,
+    ApiKeyObject,
+    ApiKeyResponse,
+    ApiKeyUpdateRequest,
+)
 from .base import BaseResource
 
 if TYPE_CHECKING:
@@ -34,13 +40,8 @@ class ApiKeysResource(BaseResource):
         ...     management_secret="xxx"
         ... ) as client:
         ...     keys = await client.api_keys.list_async()
-        ...     key = await client.api_keys.create_async(
-        ...         api_key=ApiKeyCreate(
-        ...             name="My Ingest Key",
-        ...             key_type=ApiKeyType.INGEST,
-        ...             environment_id="env-123"
-        ...         )
-        ...     )
+        ...     # Create uses JSON:API format - see models.api_keys for structure
+        ...     key = await client.api_keys.create_async(create_request)
 
     Example (sync):
         >>> with HoneycombClient(
@@ -183,7 +184,7 @@ class ApiKeysResource(BaseResource):
     # Async methods
     # -------------------------------------------------------------------------
 
-    async def list_async(self, key_type: str | None = None) -> list[ApiKey]:
+    async def list_async(self, key_type: str | None = None) -> list[ApiKeyObject]:
         """List all API keys for the authenticated team (async).
 
         Automatically paginates through all results. For teams with many API keys,
@@ -193,14 +194,14 @@ class ApiKeysResource(BaseResource):
             key_type: Optional filter by key type ('ingest' or 'configuration').
 
         Returns:
-            List of ApiKey objects.
+            List of ApiKeyObject objects.
 
         Note:
             The default rate limit is 100 requests per minute per operation.
             Contact Honeycomb support for higher limits: https://www.honeycomb.io/support
         """
         team = await self._get_team_slug_async()
-        results: list[ApiKey] = []
+        results: list[ApiKeyObject] = []
         cursor: str | None = None
         path = self._build_path(team)
 
@@ -210,11 +211,11 @@ class ApiKeysResource(BaseResource):
 
             # Parse JSON:API response
             if isinstance(data, dict) and "data" in data:
-                items = data["data"]
-                results.extend(ApiKey.from_jsonapi({"data": item}) for item in items)
+                response = self._parse_model(ApiKeyListResponse, data)
+                results.extend(response.data)
 
                 # Check for next page
-                next_link = data.get("links", {}).get("next")
+                next_link = response.links.next if response.links else None
                 cursor = self._extract_cursor(next_link)
                 if not cursor:
                     break
@@ -223,54 +224,60 @@ class ApiKeysResource(BaseResource):
 
         return results
 
-    async def get_async(self, key_id: str) -> ApiKey:
+    async def get_async(self, key_id: str) -> ApiKeyObject:
         """Get a specific API key (async).
 
         Args:
             key_id: API Key ID.
 
         Returns:
-            ApiKey object.
+            ApiKeyObject.
         """
         team = await self._get_team_slug_async()
         data = await self._get_async(self._build_path(team, key_id))
-        return ApiKey.from_jsonapi(data)
+        response = self._parse_model(ApiKeyResponse, data)
+        return response.data
 
-    async def create_async(self, api_key: ApiKeyCreate) -> ApiKey:
+    async def create_async(self, api_key: ApiKeyCreateRequest) -> ApiKeyObject:
         """Create a new API key (async).
 
         Args:
-            api_key: API key configuration.
+            api_key: API key creation request (JSON:API format).
 
         Returns:
-            Created ApiKey object (includes secret, save it immediately!).
+            Created ApiKeyObject (includes secret in attributes, save it immediately!).
         """
         team = await self._get_team_slug_async()
         data = await self._post_async(
             self._build_path(team),
-            json=api_key.to_jsonapi(),
+            json=api_key.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return ApiKey.from_jsonapi(data)
+        response = self._parse_model(ApiKeyResponse, data)
+        return response.data
 
-    async def update_async(self, key_id: str, api_key: ApiKeyUpdate) -> ApiKey:
+    async def update_async(self, api_key: ApiKeyUpdateRequest) -> ApiKeyObject:
         """Update an existing API key (async).
 
         Args:
-            key_id: API Key ID.
-            api_key: Updated API key configuration.
+            api_key: API key update request (JSON:API format, includes key_id in data.id).
 
         Returns:
-            Updated ApiKey object.
+            Updated ApiKeyObject.
         """
         team = await self._get_team_slug_async()
-        payload = api_key.to_jsonapi(key_id)
+        # Extract key_id from the request data
+        key_id = api_key.data.id if hasattr(api_key.data, "id") else None
+        if not key_id:
+            raise ValueError("ApiKeyUpdateRequest must include data.id")
+
         data = await self._patch_async(
             self._build_path(team, key_id),
-            json=payload,
+            json=api_key.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return ApiKey.from_jsonapi(data)
+        response = self._parse_model(ApiKeyResponse, data)
+        return response.data
 
     async def delete_async(self, key_id: str) -> None:
         """Delete an API key (async).
@@ -285,7 +292,7 @@ class ApiKeysResource(BaseResource):
     # Sync methods
     # -------------------------------------------------------------------------
 
-    def list(self, key_type: str | None = None) -> list[ApiKey]:
+    def list(self, key_type: str | None = None) -> list[ApiKeyObject]:
         """List all API keys for the authenticated team.
 
         Automatically paginates through all results. For teams with many API keys,
@@ -295,7 +302,7 @@ class ApiKeysResource(BaseResource):
             key_type: Optional filter by key type ('ingest' or 'configuration').
 
         Returns:
-            List of ApiKey objects.
+            List of ApiKeyObject objects.
 
         Note:
             The default rate limit is 100 requests per minute per operation.
@@ -305,7 +312,7 @@ class ApiKeysResource(BaseResource):
             raise RuntimeError("Use list_async() for async mode, or pass sync=True to client")
 
         team = self._get_team_slug()
-        results: list[ApiKey] = []
+        results: list[ApiKeyObject] = []
         cursor: str | None = None
         path = self._build_path(team)
 
@@ -315,11 +322,11 @@ class ApiKeysResource(BaseResource):
 
             # Parse JSON:API response
             if isinstance(data, dict) and "data" in data:
-                items = data["data"]
-                results.extend(ApiKey.from_jsonapi({"data": item}) for item in items)
+                response = self._parse_model(ApiKeyListResponse, data)
+                results.extend(response.data)
 
                 # Check for next page
-                next_link = data.get("links", {}).get("next")
+                next_link = response.links.next if response.links else None
                 cursor = self._extract_cursor(next_link)
                 if not cursor:
                     break
@@ -328,61 +335,66 @@ class ApiKeysResource(BaseResource):
 
         return results
 
-    def get(self, key_id: str) -> ApiKey:
+    def get(self, key_id: str) -> ApiKeyObject:
         """Get a specific API key.
 
         Args:
             key_id: API Key ID.
 
         Returns:
-            ApiKey object.
+            ApiKeyObject.
         """
         if not self._client.is_sync:
             raise RuntimeError("Use get_async() for async mode, or pass sync=True to client")
         team = self._get_team_slug()
         data = self._get_sync(self._build_path(team, key_id))
-        return ApiKey.from_jsonapi(data)
+        response = self._parse_model(ApiKeyResponse, data)
+        return response.data
 
-    def create(self, api_key: ApiKeyCreate) -> ApiKey:
+    def create(self, api_key: ApiKeyCreateRequest) -> ApiKeyObject:
         """Create a new API key.
 
         Args:
-            team: Team slug.
-            api_key: API key configuration.
+            api_key: API key creation request (JSON:API format).
 
         Returns:
-            Created ApiKey object (includes secret, save it immediately!).
+            Created ApiKeyObject (includes secret in attributes, save it immediately!).
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
         team = self._get_team_slug()
         data = self._post_sync(
             self._build_path(team),
-            json=api_key.to_jsonapi(),
+            json=api_key.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return ApiKey.from_jsonapi(data)
+        response = self._parse_model(ApiKeyResponse, data)
+        return response.data
 
-    def update(self, key_id: str, api_key: ApiKeyUpdate) -> ApiKey:
+    def update(self, api_key: ApiKeyUpdateRequest) -> ApiKeyObject:
         """Update an existing API key.
 
         Args:
-            key_id: API Key ID.
-            api_key: Updated API key configuration.
+            api_key: API key update request (JSON:API format, includes key_id in data.id).
 
         Returns:
-            Updated ApiKey object.
+            Updated ApiKeyObject.
         """
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
         team = self._get_team_slug()
-        payload = api_key.to_jsonapi(key_id)
+        # Extract key_id from the request data
+        key_id = api_key.data.id if hasattr(api_key.data, "id") else None
+        if not key_id:
+            raise ValueError("ApiKeyUpdateRequest must include data.id")
+
         data = self._patch_sync(
             self._build_path(team, key_id),
-            json=payload,
+            json=api_key.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return ApiKey.from_jsonapi(data)
+        response = self._parse_model(ApiKeyResponse, data)
+        return response.data
 
     def delete(self, key_id: str) -> None:
         """Delete an API key.

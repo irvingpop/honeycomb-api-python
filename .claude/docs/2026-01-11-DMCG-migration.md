@@ -503,9 +503,15 @@ If issues are found after migration:
 
 ## Phase 4 Progress
 
-**Completed**: Columns, Datasets, Markers, Recipients (4/8 core models)
-**In Progress**: SLOs, Triggers, Queries, Boards (4/8 core models)
-**Additional Resources**: Events, Auth, ApiKeys, Environments, BurnAlerts, DerivedColumns, QueryAnnotations, ServiceMapDependencies (8 models)
+**Core Resources (4/8 complete)**:
+- ✓ Columns, Datasets, Markers, Recipients
+- Pending: SLOs, Triggers, Queries, Boards
+
+**Additional Resources (6/8 complete)**:
+- ✓ Events, Auth, ApiKeys, Environments, BurnAlerts (refactored properly), DerivedColumns
+- Pending: QueryAnnotations, ServiceMapDependencies
+
+**Total: 10/16 resources migrated**
 
 ---
 

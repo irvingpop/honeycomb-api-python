@@ -340,6 +340,8 @@ class TestExecuteSLOTools:
                 "alias": "request_success",
                 "expression": "IF(LT($status_code, 500), 1, 0)",
                 "description": "1 if success, 0 if error",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
             }
         )
 

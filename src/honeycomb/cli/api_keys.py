@@ -3,9 +3,21 @@
 import typer
 from rich.console import Console
 
+from honeycomb._generated_models import (
+    ApiKeyCreateRequestData,
+    ApiKeyCreateRequestDataRelationships,
+    ApiKeyObjectType,
+    ConfigurationKey,
+    EnvironmentRelationship,
+    EnvironmentRelationshipData,
+    EnvironmentRelationshipDataType,
+    IngestKey,
+    IngestKey1,
+    IngestKey1Attributes,
+)
 from honeycomb.cli.config import get_client
 from honeycomb.cli.formatters import DEFAULT_OUTPUT_FORMAT, OutputFormat, output_result
-from honeycomb.models.api_keys import ApiKeyCreate, ApiKeyType
+from honeycomb.models.api_keys import ApiKeyCreateRequest, ApiKeyUpdateRequest
 
 app = typer.Typer(help="Manage API keys (requires management key)")
 console = Console()
@@ -84,7 +96,7 @@ def get_api_key(
 @app.command("create")
 def create_api_key(
     name: str = typer.Option(..., "--name", help="API key name"),
-    key_type: ApiKeyType = typer.Option(..., "--type", help="Key type: ingest or configuration"),
+    key_type: str = typer.Option(..., "--type", help="Key type: ingest or configuration"),
     environment_id: str = typer.Option(..., "--environment", "-e", help="Environment ID"),
     profile: str | None = typer.Option(None, "--profile", "-p", help="Config profile to use"),
     management_key: str | None = typer.Option(
@@ -107,17 +119,40 @@ def create_api_key(
             management_secret=management_secret,
         )
 
-        api_key = ApiKeyCreate(
-            name=name,
-            key_type=key_type,
-            environment_id=environment_id,
+        # Build JSON:API request based on key type
+        if key_type == "ingest":
+            attributes: IngestKey | ConfigurationKey = IngestKey(
+                key_type="ingest", name=name, disabled=False
+            )
+        elif key_type == "configuration":
+            attributes = ConfigurationKey(key_type="configuration", name=name, disabled=False)
+        else:
+            raise ValueError(f"Invalid key_type: {key_type}. Must be 'ingest' or 'configuration'")
+
+        api_key = ApiKeyCreateRequest(
+            data=ApiKeyCreateRequestData(
+                type=ApiKeyObjectType.api_keys,
+                attributes=attributes,
+                relationships=ApiKeyCreateRequestDataRelationships(
+                    environment=EnvironmentRelationship(
+                        data=EnvironmentRelationshipData(
+                            type=EnvironmentRelationshipDataType.environments,
+                            id=environment_id,
+                        )
+                    )
+                ),
+            )
         )
 
         created = client.api_keys.create(api_key=api_key)
         output_result(created, output)
 
         # Warn about secret
-        if created.secret and output == OutputFormat.table:
+        if (
+            created.attributes
+            and hasattr(created.attributes, "secret")
+            and output == OutputFormat.table
+        ):
             console.print(
                 "\n[yellow]Warning:[/yellow] The secret is only shown once. Save it securely!",
                 style="bold",
@@ -149,16 +184,20 @@ def update_api_key(
         hny api-keys update hcaik_123 --disabled
     """
     try:
-        from honeycomb.models.api_keys import ApiKeyUpdate
-
         client = get_client(
             profile=profile,
             management_key=management_key,
             management_secret=management_secret,
         )
 
-        update = ApiKeyUpdate(name=name, disabled=disabled)
-        updated = client.api_keys.update(key_id=key_id, api_key=update)
+        # Build update request - we need to determine key type from existing key
+        # For simplicity, try ingest first (most common), fall back to configuration
+        update_attrs_ingest = IngestKey1Attributes(name=name, disabled=disabled)
+        update_ingest = IngestKey1(
+            id=key_id, type=ApiKeyObjectType.api_keys, attributes=update_attrs_ingest
+        )
+        update = ApiKeyUpdateRequest(data=update_ingest)
+        updated = client.api_keys.update(api_key=update)
         output_result(updated, output)
 
     except Exception as e:

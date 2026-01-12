@@ -3183,8 +3183,8 @@ class CreateExhaustionTimeBurnAlertRequest(ExhaustionTime):
         description="Details about the SLO associated with the burn alert.",
         examples=[{"id": "2LBq9LckbcA"}],
     )
-    recipients: list[NotificationRecipient] = Field(
-        ...,
+    recipients: list[NotificationRecipient] | None = Field(
+        default=None,
         description="A list of [Recipients](/api/recipients/) to notify when an alert fires. Using `type`+`target` is deprecated. First, create the Recipient via the Recipients API, and then specify the ID.\n",
         examples=[[{"id": "abcd123", "type": "email", "target": "alerts@example.com"}]],
         min_length=1,
@@ -3218,8 +3218,8 @@ class CreateBudgetRateBurnAlertRequest(BudgetRate):
         description="Details about the SLO associated with the burn alert.",
         examples=[{"id": "2LBq9LckbcA"}],
     )
-    recipients: list[NotificationRecipient] = Field(
-        ...,
+    recipients: list[NotificationRecipient] | None = Field(
+        default=None,
         description="A list of [Recipients](/api/recipients/) to notify when an alert fires. Using `type`+`target` is deprecated. First, create the Recipient via the Recipients API, and then specify the ID.\n",
         examples=[[{"id": "abcd123", "type": "email", "target": "alerts@example.com"}]],
         min_length=1,
@@ -3227,7 +3227,7 @@ class CreateBudgetRateBurnAlertRequest(BudgetRate):
     alert_type: Literal["budget_rate"]
 
 
-class BudgetRate2(BudgetRate):
+class UpdateBudgetRateBurnAlert(BudgetRate):
     recipients: list[NotificationRecipient] = Field(
         ...,
         description="A list of [Recipients](/api/recipients/) to notify when an alert fires. Using `type`+`target` is deprecated. First, create the Recipient via the Recipients API, and then specify the ID.\n",
@@ -3379,8 +3379,10 @@ class CreateBurnAlertRequest(
     )
 
 
-class UpdateBurnAlertRequest(RootModel[UpdateExhaustionTimeBurnAlertRequest | BudgetRate2]):
-    root: UpdateExhaustionTimeBurnAlertRequest | BudgetRate2 = Field(
+class UpdateBurnAlertRequest(
+    RootModel[UpdateExhaustionTimeBurnAlertRequest | UpdateBudgetRateBurnAlert]
+):
+    root: UpdateExhaustionTimeBurnAlertRequest | UpdateBudgetRateBurnAlert = Field(
         ..., discriminator="alert_type"
     )
 

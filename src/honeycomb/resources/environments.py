@@ -5,7 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlparse
 
-from ..models.environments import Environment, EnvironmentCreate, EnvironmentUpdate
+from ..models.environments import (
+    CreateEnvironmentRequest,
+    Environment,
+    EnvironmentListResponse,
+    EnvironmentResponse,
+    UpdateEnvironmentRequest,
+)
 from .base import BaseResource
 
 if TYPE_CHECKING:
@@ -34,13 +40,8 @@ class EnvironmentsResource(BaseResource):
         ...     management_secret="xxx"
         ... ) as client:
         ...     envs = await client.environments.list_async()
-        ...     env = await client.environments.create_async(
-        ...         environment=EnvironmentCreate(
-        ...             name="Production",
-        ...             description="Production environment",
-        ...             color=EnvironmentColor.RED
-        ...         )
-        ...     )
+        ...     # See models.environments for CreateEnvironmentRequest structure
+        ...     env = await client.environments.create_async(request)
 
     Example (sync):
         >>> with HoneycombClient(
@@ -185,16 +186,12 @@ class EnvironmentsResource(BaseResource):
             data = await self._get_async(path, params=params)
 
             # Parse JSON:API response
-            if isinstance(data, dict) and "data" in data:
-                items = data["data"]
-                results.extend(Environment.from_jsonapi({"data": item}) for item in items)
+            response = self._parse_model(EnvironmentListResponse, data)
+            results.extend(response.data)
 
-                # Check for next page
-                next_link = data.get("links", {}).get("next")
-                cursor = self._extract_cursor(next_link)
-                if not cursor:
-                    break
-            else:
+            # Check for next page
+            cursor = self._extract_cursor(response.links.next if response.links else None)
+            if not cursor:
                 break
 
         return results
@@ -210,13 +207,14 @@ class EnvironmentsResource(BaseResource):
         """
         team = await self._get_team_slug_async()
         data = await self._get_async(self._build_path(team, env_id))
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
-    async def create_async(self, environment: EnvironmentCreate) -> Environment:
+    async def create_async(self, environment: CreateEnvironmentRequest) -> Environment:
         """Create a new environment (async).
 
         Args:
-            environment: Environment configuration.
+            environment: Environment creation request (JSON:API format).
 
         Returns:
             Created Environment object.
@@ -224,28 +222,30 @@ class EnvironmentsResource(BaseResource):
         team = await self._get_team_slug_async()
         data = await self._post_async(
             self._build_path(team),
-            json=environment.to_jsonapi(),
+            json=environment.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
-    async def update_async(self, env_id: str, environment: EnvironmentUpdate) -> Environment:
+    async def update_async(self, environment: UpdateEnvironmentRequest) -> Environment:
         """Update an existing environment (async).
 
         Args:
-            env_id: Environment ID.
-            environment: Updated environment configuration.
+            environment: Environment update request (JSON:API format, includes env_id in data.id).
 
         Returns:
             Updated Environment object.
         """
         team = await self._get_team_slug_async()
+        env_id = environment.data.id
         data = await self._patch_async(
             self._build_path(team, env_id),
-            json=environment.to_jsonapi(env_id),
+            json=environment.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
     async def delete_async(self, env_id: str) -> None:
         """Delete an environment (async).
@@ -286,16 +286,12 @@ class EnvironmentsResource(BaseResource):
             data = self._get_sync(path, params=params)
 
             # Parse JSON:API response
-            if isinstance(data, dict) and "data" in data:
-                items = data["data"]
-                results.extend(Environment.from_jsonapi({"data": item}) for item in items)
+            response = self._parse_model(EnvironmentListResponse, data)
+            results.extend(response.data)
 
-                # Check for next page
-                next_link = data.get("links", {}).get("next")
-                cursor = self._extract_cursor(next_link)
-                if not cursor:
-                    break
-            else:
+            # Check for next page
+            cursor = self._extract_cursor(response.links.next if response.links else None)
+            if not cursor:
                 break
 
         return results
@@ -313,13 +309,14 @@ class EnvironmentsResource(BaseResource):
             raise RuntimeError("Use get_async() for async mode, or pass sync=True to client")
         team = self._get_team_slug()
         data = self._get_sync(self._build_path(team, env_id))
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
-    def create(self, environment: EnvironmentCreate) -> Environment:
+    def create(self, environment: CreateEnvironmentRequest) -> Environment:
         """Create a new environment.
 
         Args:
-            environment: Environment configuration.
+            environment: Environment creation request (JSON:API format).
 
         Returns:
             Created Environment object.
@@ -329,17 +326,17 @@ class EnvironmentsResource(BaseResource):
         team = self._get_team_slug()
         data = self._post_sync(
             self._build_path(team),
-            json=environment.to_jsonapi(),
+            json=environment.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
-    def update(self, env_id: str, environment: EnvironmentUpdate) -> Environment:
+    def update(self, environment: UpdateEnvironmentRequest) -> Environment:
         """Update an existing environment.
 
         Args:
-            env_id: Environment ID.
-            environment: Updated environment configuration.
+            environment: Environment update request (JSON:API format, includes env_id in data.id).
 
         Returns:
             Updated Environment object.
@@ -347,12 +344,14 @@ class EnvironmentsResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
         team = self._get_team_slug()
+        env_id = environment.data.id
         data = self._patch_sync(
             self._build_path(team, env_id),
-            json=environment.to_jsonapi(env_id),
+            json=environment.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
     def delete(self, env_id: str) -> None:
         """Delete an environment.

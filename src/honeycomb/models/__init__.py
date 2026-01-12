@@ -1,6 +1,16 @@
 """Pydantic models for Honeycomb API resources."""
 
-from .api_keys import ApiKey, ApiKeyCreate, ApiKeyType, ApiKeyUpdate
+from .api_keys import (
+    ApiKeyCreateRequest,
+    ApiKeyListResponse,
+    ApiKeyObject,
+    ApiKeyObjectType,
+    ApiKeyResponse,
+    ApiKeyType,
+    ApiKeyUpdateRequest,
+    ConfigurationKey,
+    IngestKey,
+)
 from .auth import Auth, AuthV2Response
 from .board_builder import (
     BoardBuilder,
@@ -18,11 +28,35 @@ from .boards import (
     BoardViewCreate,
     BoardViewFilter,
 )
-from .burn_alerts import BurnAlert, BurnAlertCreate, BurnAlertRecipient, BurnAlertType
+from .burn_alerts import (
+    AlertType,
+    BudgetRateBurnAlertDetailResponse,
+    BurnAlertDetailResponse,
+    BurnAlertListResponse,
+    BurnAlertRecipient,
+    BurnAlertType,
+    CreateBudgetRateBurnAlertRequest,
+    CreateBudgetRateBurnAlertRequestSlo,
+    CreateBurnAlertRequest,
+    CreateExhaustionTimeBurnAlertRequest,
+    CreateExhaustionTimeBurnAlertRequestSlo,
+    ExhaustionTime1,
+    NotificationRecipient,
+    UpdateBudgetRateBurnAlert,
+    UpdateBurnAlertRequest,
+    UpdateExhaustionTimeBurnAlertRequest,
+)
 from .columns import Column, ColumnCreate, ColumnType
 from .datasets import Dataset, DatasetCreate, DatasetUpdate
 from .derived_columns import DerivedColumn, DerivedColumnBuilder, DerivedColumnCreate
-from .environments import Environment, EnvironmentColor, EnvironmentCreate, EnvironmentUpdate
+from .environments import (
+    CreateEnvironmentRequest,
+    Environment,
+    EnvironmentColor,
+    EnvironmentListResponse,
+    EnvironmentResponse,
+    UpdateEnvironmentRequest,
+)
 from .events import BatchEvent, BatchEventResult
 from .marker_builder import MarkerBuilder
 from .markers import Marker, MarkerCreate, MarkerSetting, MarkerSettingCreate
@@ -179,26 +213,45 @@ __all__ = [
     # Tags
     "TagsMixin",
     # Burn Alerts
-    "BurnAlert",
-    "BurnAlertCreate",
+    "AlertType",
+    "BudgetRateBurnAlertDetailResponse",
+    "BurnAlertDetailResponse",
+    "BurnAlertListResponse",
     "BurnAlertRecipient",
     "BurnAlertType",
+    "CreateBudgetRateBurnAlertRequest",
+    "CreateBudgetRateBurnAlertRequestSlo",
+    "CreateBurnAlertRequest",
+    "CreateExhaustionTimeBurnAlertRequest",
+    "CreateExhaustionTimeBurnAlertRequestSlo",
+    "ExhaustionTime1",
+    "NotificationRecipient",
+    "UpdateBudgetRateBurnAlert",
+    "UpdateBurnAlertRequest",
+    "UpdateExhaustionTimeBurnAlertRequest",
     # Events
     "BatchEvent",
     "BatchEventResult",
     # API Keys (v2)
-    "ApiKey",
-    "ApiKeyCreate",
+    "ApiKeyCreateRequest",
+    "ApiKeyListResponse",
+    "ApiKeyObject",
+    "ApiKeyObjectType",
+    "ApiKeyResponse",
     "ApiKeyType",
-    "ApiKeyUpdate",
+    "ApiKeyUpdateRequest",
+    "ConfigurationKey",
+    "IngestKey",
     # Auth
     "Auth",
     "AuthV2Response",
     # Environments (v2)
+    "CreateEnvironmentRequest",
     "Environment",
-    "EnvironmentCreate",
-    "EnvironmentUpdate",
     "EnvironmentColor",
+    "EnvironmentListResponse",
+    "EnvironmentResponse",
+    "UpdateEnvironmentRequest",
     # Service Map Dependencies
     "ServiceMapDependency",
     "ServiceMapDependencyRequest",
