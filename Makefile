@@ -235,14 +235,14 @@ generate-client:
 # =============================================================================
 
 generate-models:
-	@./scripts/generate_models.sh
+	@bash scripts/generate_models.sh
 
 generate-models-fresh:
-	@./scripts/generate_models.sh --fetch
+	@bash scripts/generate_models.sh --fetch
 
 check-models-sync:
 	@echo "Checking if generated models are in sync..."
-	@./scripts/generate_models.sh
+	@bash scripts/generate_models.sh
 	@git diff --exit-code src/honeycomb/_generated_models.py || \
 		(echo "ERROR: Generated models out of sync! Run 'make generate-models'" && exit 1)
 	@echo "✓ Models are in sync."

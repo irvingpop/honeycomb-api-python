@@ -79,8 +79,9 @@ def patch_inline_titles(spec: dict) -> int:
 
     # Patch 4: Make BatchEvent.data required (can't send event without data)
     if "BatchEvent" in schemas:
-        if "required" not in schemas["BatchEvent"] or "data" not in schemas["BatchEvent"].get("required", []):
-            schemas["BatchEvent"]["required"] = ["data"]
+        schemas["BatchEvent"].setdefault("required", [])
+        if "data" not in schemas["BatchEvent"]["required"]:
+            schemas["BatchEvent"]["required"].append("data")
             patches += 1
             print(f"  ✓ BatchEvent: added 'data' to required fields")
 
