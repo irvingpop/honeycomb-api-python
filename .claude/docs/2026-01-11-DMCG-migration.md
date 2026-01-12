@@ -20,6 +20,8 @@ Replace the current openapi-python-client generated code with datamodel-code-gen
 6. **Use Pydantic serialization** - `model_dump(mode="json", exclude_none=True, exclude_defaults=True)`
 7. **Just pass** - Models should be thin wrappers unless adding custom methods (builders, etc.)
 8. **Discriminated unions need property accessors** - For discriminated unions, always add @property accessors to hide the `.root` requirement. Follow the Recipients pattern ([recipients.py:78-104](../../src/honeycomb/models/recipients.py))
+9. **Leverage Pydantic's auto-conversion** - Pydantic automatically converts strings to enums (e.g., `color="green"` → `EnvironmentColor.green`). Use this for better ergonomics in docs examples rather than requiring explicit enum usage.
+10. **Add property accessors for flat UX** - For JSON:API nested structures (`.attributes.field`), add @property accessors on response models to provide flat access (e.g., `env.name` instead of `env.attributes.name`). This preserves existing doc examples and improves UX without changing API structure. Examples: [environments.py:26-56](../../src/honeycomb/models/environments.py), [api_keys.py:30-50](../../src/honeycomb/models/api_keys.py)
 
 ### Key Benefits
 
@@ -326,8 +328,8 @@ Mapping of hand-written models to generated base classes:
 ### Current status
 
 **Core Resources (4/8 complete)**:
-- ✓ Columns, Datasets, Markers, Recipients
-- Pending: SLOs, Triggers, Queries, Boards
+- ✓ Columns, Datasets, Markers, Recipients, SLOs
+- Pending: Triggers, Queries, Boards
 
 **Additional Resources (6/8 complete)**:
 - ✓ Events, Auth, ApiKeys, Environments, BurnAlerts (refactored properly), DerivedColumns

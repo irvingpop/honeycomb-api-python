@@ -22,14 +22,12 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from honeycomb import (  # type: ignore[import-untyped]
     BatchEvent,
     ColumnCreate,
-    ColumnType,
+    EmailRecipient,
     HoneycombClient,
     HoneycombNotFoundError,
     HoneycombRateLimitError,
     MarkerCreate,
     QueryBuilder,
-    RecipientCreate,
-    RecipientType,
     TriggerCreate,
     TriggerThreshold,
     TriggerThresholdOp,
@@ -160,7 +158,7 @@ async def test_columns() -> None:
         print("\nCreating a test column...")
         new_column = ColumnCreate(
             key_name="test_wrapper_column",
-            type=ColumnType.FLOAT,
+            type="float",  # Pydantic auto-converts to ColumnType.float
             description="Test column created by wrapper client",
         )
         created = await client.columns.create_async(TEST_DATASET, new_column)
@@ -209,16 +207,16 @@ async def test_recipients() -> None:
         recipients = await client.recipients.list_async()
         print(f"Found {len(recipients)} recipients:")
         for r in recipients[:5]:
-            print(f"  - {r.type.value} (id: {r.id})")
+            print(f"  - {r.type} (id: {r.id})")
 
         # Create a test email recipient
         print("\nCreating a test recipient...")
-        new_recipient = RecipientCreate(
-            type=RecipientType.EMAIL,
-            details={"email_address": "test-wrapper@example.com"}
+        new_recipient = EmailRecipient(
+            type="email",  # Pydantic auto-converts to RecipientType.email
+            details={"email_address": "test-wrapper@example.com"},
         )
         created = await client.recipients.create_async(new_recipient)
-        print(f"Created recipient: {created.id} ({created.type.value})")
+        print(f"Created recipient: {created.id} ({created.type})")
 
         # Get triggers for this recipient
         triggers = await client.recipients.get_triggers_async(created.id)

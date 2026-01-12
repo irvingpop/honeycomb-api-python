@@ -134,8 +134,8 @@ class TestQuickstartExamples:
                 json={
                     "data": {
                         "results": [
-                            {"endpoint": "/api/users", "duration_ms": 125.5},
-                            {"endpoint": "/api/orders", "duration_ms": 89.3},
+                            {"data": {"endpoint": "/api/users", "duration_ms": 125.5}},
+                            {"data": {"endpoint": "/api/orders", "duration_ms": 89.3}},
                         ],
                         "series": [],
                     }

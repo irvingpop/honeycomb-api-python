@@ -7,6 +7,14 @@ import time as time_module
 from collections.abc import Callable
 from typing import TYPE_CHECKING, Any, overload
 
+from honeycomb._generated_models import (
+    FilterOp,
+    QueryCalculation,
+    QueryFilter,
+    QueryHaving,
+    QueryOrder,
+)
+
 from ..models.queries import Query, QueryResult, QuerySpec
 from ..models.query_builder import Calculation
 from .base import BaseResource
@@ -22,20 +30,22 @@ DEFAULT_MAX_RESULTS = 100_000
 DUPLICATION_THRESHOLD = 0.5  # 50%
 
 
-def _get_calc_attr(calc: Calculation | dict[str, Any], attr: str, default: Any = None) -> Any:
-    """Get an attribute from a Calculation or dict.
+def _get_calc_attr(
+    calc: Calculation | QueryCalculation | dict[str, Any], attr: str, default: Any = None
+) -> Any:
+    """Get an attribute from a Calculation, QueryCalculation, or dict.
 
     Args:
-        calc: Either a Calculation object or a dict
+        calc: Either a Calculation object, QueryCalculation object, or a dict
         attr: The attribute name to get
         default: Default value if attribute is not present
 
     Returns:
         The attribute value or default
     """
-    if isinstance(calc, Calculation):
+    if isinstance(calc, (Calculation, QueryCalculation)):
         value = getattr(calc, attr, default)
-        # Handle enum values
+        # Handle enum values (extract string value)
         if hasattr(value, "value"):
             return value.value
         return value
@@ -473,8 +483,16 @@ class QueryResultsResource(BaseResource):
             # Instead pass limit=10000 when creating query result
             page_spec.limit = None
 
-            # Set sort order
-            page_spec.orders = [{"op": sort_field_for_orders, "order": sort_order}]
+            # Set sort order (use generated QueryOrder type)
+            from honeycomb._generated_models import QueryOp, QueryOrderOrder
+
+            page_spec.orders = [
+                QueryOrder(
+                    op=QueryOp(sort_field_for_orders),
+                    order=QueryOrderOrder(sort_order),
+                    column=None,
+                )
+            ]
 
             # Add cursor condition for pagination (skip first page)
             if cursor_value is not None:
@@ -490,21 +508,24 @@ class QueryResultsResource(BaseResource):
                 )
 
                 if is_calculation:
-                    # Use HAVING for calculation results
+                    # Use HAVING for calculation results (use generated QueryHaving type)
                     # HAVING uses "calculate_op" field, not "column"
-                    cursor_having = {
-                        "calculate_op": sort_field_for_access,  # e.g., "COUNT" or alias
-                        "op": cursor_op,
-                        "value": cursor_value,
-                    }
+                    from honeycomb._generated_models import HavingCalculateOp, HavingOp
+
+                    cursor_having = QueryHaving(
+                        calculate_op=HavingCalculateOp(sort_field_for_access),
+                        op=HavingOp(cursor_op),
+                        value=float(cursor_value),
+                        column=None,
+                    )
                     page_spec.havings = (page_spec.havings or []) + [cursor_having]
                 else:
-                    # Use filter for breakdown fields
-                    cursor_filter = {
-                        "column": sort_field_for_access,
-                        "op": cursor_op,
-                        "value": cursor_value,
-                    }
+                    # Use filter for breakdown fields (use generated QueryFilter type)
+                    cursor_filter = QueryFilter(
+                        column=sort_field_for_access,
+                        op=FilterOp(cursor_op),
+                        value=cursor_value,
+                    )
                     page_spec.filters = (page_spec.filters or []) + [cursor_filter]
 
             # Debug logging for troubleshooting
@@ -535,7 +556,7 @@ class QueryResultsResource(BaseResource):
             except Exception:
                 # Log the spec that failed for debugging
                 logger.error(f"Failed to create/run query on page {page_num}")
-                logger.error(f"Spec: {page_spec.model_dump_for_api()}")
+                logger.error(f"Spec: {page_spec.model_dump(mode='json', exclude_none=True)}")
                 raise
 
             if not result.data or not result.data.results or len(result.data.results) == 0:

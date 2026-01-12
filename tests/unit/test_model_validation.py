@@ -68,13 +68,13 @@ class TestOrderValidation:
         """Test that valid fields are accepted."""
         order = Order(op=CalcOp.COUNT)
         assert order.op == CalcOp.COUNT
-        assert order.order == OrderDirection.DESCENDING
+        assert order.order == OrderDirection.descending
 
     def test_accepts_string_enum_coercion(self):
         """Test that string values are coerced to enum."""
         order = Order(op="COUNT", order="ascending")
         assert order.op == CalcOp.COUNT
-        assert order.order == OrderDirection.ASCENDING
+        assert order.order == OrderDirection.ascending
         assert isinstance(order.op, CalcOp)
         assert isinstance(order.order, OrderDirection)
 

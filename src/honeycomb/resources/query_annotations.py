@@ -88,7 +88,7 @@ class QueryAnnotationsResource(BaseResource):
             Created QueryAnnotation object.
         """
         data = await self._post_async(
-            self._build_path(dataset), json=annotation.model_dump_for_api()
+            self._build_path(dataset), json=annotation.model_dump(mode="json", exclude_none=True)
         )
         return self._parse_model(QueryAnnotation, data)
 
@@ -108,7 +108,8 @@ class QueryAnnotationsResource(BaseResource):
             Updated QueryAnnotation object.
         """
         data = await self._put_async(
-            self._build_path(dataset, annotation_id), json=annotation.model_dump_for_api()
+            self._build_path(dataset, annotation_id),
+            json=annotation.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(QueryAnnotation, data)
 
@@ -170,7 +171,9 @@ class QueryAnnotationsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
-        data = self._post_sync(self._build_path(dataset), json=annotation.model_dump_for_api())
+        data = self._post_sync(
+            self._build_path(dataset), json=annotation.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(QueryAnnotation, data)
 
     def update(
@@ -191,7 +194,8 @@ class QueryAnnotationsResource(BaseResource):
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
         data = self._put_sync(
-            self._build_path(dataset, annotation_id), json=annotation.model_dump_for_api()
+            self._build_path(dataset, annotation_id),
+            json=annotation.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(QueryAnnotation, data)
 

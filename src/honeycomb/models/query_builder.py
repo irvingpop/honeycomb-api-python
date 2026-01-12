@@ -8,11 +8,18 @@ This module provides:
 
 from __future__ import annotations
 
-from enum import Enum
 from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import Self
+
+# Import generated enums
+from honeycomb._generated_models import (
+    FilterOp,
+    QueryFilterCombination,
+    QueryOp,
+    QueryOrderOrder,
+)
 
 if TYPE_CHECKING:
     from honeycomb.models.queries import QuerySpec
@@ -32,77 +39,31 @@ FILTER_OPS_WITHOUT_VALUE: frozenset[str] = frozenset({"exists", "does-not-exist"
 
 
 # =============================================================================
-# Enums
+# Re-export generated enums with backward-compatible names
 # =============================================================================
 
+# CalcOp is now QueryOp from generated models
+CalcOp = QueryOp
 
-class CalcOp(str, Enum):
-    """Calculation operations for Honeycomb queries.
+# OrderDirection is now QueryOrderOrder from generated models (lowercase values)
+OrderDirection = QueryOrderOrder
 
-    IMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.
-    All other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.
-    """
+# FilterCombination is now QueryFilterCombination from generated models
+FilterCombination = QueryFilterCombination
 
-    COUNT = "COUNT"
-    SUM = "SUM"
-    AVG = "AVG"
-    MIN = "MIN"
-    MAX = "MAX"
-    P001 = "P001"
-    P01 = "P01"
-    P05 = "P05"
-    P10 = "P10"
-    P25 = "P25"
-    P50 = "P50"
-    P75 = "P75"
-    P90 = "P90"
-    P95 = "P95"
-    P99 = "P99"
-    P999 = "P999"
-    COUNT_DISTINCT = "COUNT_DISTINCT"
-    CONCURRENCY = "CONCURRENCY"
-    HEATMAP = "HEATMAP"
-    RATE_AVG = "RATE_AVG"
-    RATE_SUM = "RATE_SUM"
-    RATE_MAX = "RATE_MAX"
+# FilterOp is re-exported as-is (now has proper UPPERCASE names from x-enum-varnames)
 
-
-class FilterOp(str, Enum):
-    """Filter operations for Honeycomb queries and board views.
-
-    IMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.
-    """
-
-    EQUALS = "="
-    NOT_EQUALS = "!="
-    GREATER_THAN = ">"
-    GREATER_THAN_OR_EQUAL = ">="
-    LESS_THAN = "<"
-    LESS_THAN_OR_EQUAL = "<="
-    STARTS_WITH = "starts-with"
-    DOES_NOT_START_WITH = "does-not-start-with"
-    ENDS_WITH = "ends-with"
-    DOES_NOT_END_WITH = "does-not-end-with"
-    CONTAINS = "contains"
-    DOES_NOT_CONTAIN = "does-not-contain"
-    EXISTS = "exists"
-    DOES_NOT_EXIST = "does-not-exist"
-    IN = "in"
-    NOT_IN = "not-in"
-
-
-class OrderDirection(str, Enum):
-    """Order directions for query results."""
-
-    ASCENDING = "ascending"
-    DESCENDING = "descending"
-
-
-class FilterCombination(str, Enum):
-    """How to combine multiple filters."""
-
-    AND = "AND"
-    OR = "OR"
+__all__ = [
+    "CalcOp",
+    "FilterOp",
+    "OrderDirection",
+    "FilterCombination",
+    "Calculation",
+    "Filter",
+    "Order",
+    "Having",
+    "QueryBuilder",
+]
 
 
 # =============================================================================
@@ -186,15 +147,15 @@ class Order(BaseModel):
     """An ordering specification for query results.
 
     Examples:
-        >>> Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)
-        >>> Order(op=CalcOp.AVG, column="duration_ms", order=OrderDirection.ASCENDING)
+        >>> Order(op=CalcOp.COUNT, order=OrderDirection.descending)
+        >>> Order(op=CalcOp.AVG, column="duration_ms", order=OrderDirection.ascending)
     """
 
     model_config = ConfigDict(extra="forbid")
 
     op: CalcOp = Field(description="Calculation to order by")
     column: str | None = Field(default=None, description="Column for the calculation")
-    order: OrderDirection = Field(default=OrderDirection.DESCENDING, description="Sort direction")
+    order: OrderDirection = Field(default=OrderDirection.descending, description="Sort direction")
 
     @model_validator(mode="after")
     def validate_column_requirement(self) -> Self:
@@ -680,7 +641,7 @@ class QueryBuilder:
     def order_by(
         self,
         op: CalcOp | str,
-        direction: OrderDirection | str = OrderDirection.DESCENDING,
+        direction: OrderDirection | str = OrderDirection.descending,
         column: str | None = None,
     ) -> QueryBuilder:
         """Add an ordering specification.
@@ -697,7 +658,7 @@ class QueryBuilder:
         return self
 
     def order_by_count(
-        self, direction: OrderDirection | str = OrderDirection.DESCENDING
+        self, direction: OrderDirection | str = OrderDirection.descending
     ) -> QueryBuilder:
         """Order results by COUNT.
 
@@ -901,6 +862,9 @@ class QueryBuilder:
     def build(self) -> QuerySpec:
         """Build a QuerySpec from the builder state.
 
+        Converts builder component types (Calculation, Filter, Order, Having)
+        to generated API types (QueryCalculation, QueryFilter, etc.).
+
         Returns:
             A QuerySpec configured with the builder's settings
 
@@ -908,6 +872,12 @@ class QueryBuilder:
             ValueError: If only one of start_time/end_time is set (must use both)
         """
         # Import here to avoid circular imports
+        from honeycomb._generated_models import (
+            QueryCalculation,
+            QueryFilter,
+            QueryHaving,
+            QueryOrder,
+        )
         from honeycomb.models.queries import QuerySpec
 
         # Validate absolute time: if either is set, both must be set
@@ -919,18 +889,53 @@ class QueryBuilder:
                 "Use time_range() for relative time queries."
             )
 
+        # Convert builder component types to generated API types
+        from honeycomb._generated_models import HavingCalculateOp, HavingOp
+
+        calculations = (
+            [QueryCalculation(op=c.op, column=c.column) for c in self._calculations]
+            if self._calculations
+            else None
+        )
+
+        filters = (
+            [QueryFilter(op=f.op, column=f.column, value=f.value) for f in self._filters]
+            if self._filters
+            else None
+        )
+
+        orders = (
+            [QueryOrder(op=o.op, column=o.column, order=o.order) for o in self._orders]
+            if self._orders
+            else None
+        )
+
+        havings = (
+            [
+                QueryHaving(
+                    calculate_op=HavingCalculateOp(h.calculate_op.value),
+                    column=h.column,
+                    op=HavingOp(h.op.value),
+                    value=h.value,
+                )
+                for h in self._havings
+            ]
+            if self._havings
+            else None
+        )
+
         return QuerySpec(
             time_range=self._time_range,
             start_time=self._start_time,
             end_time=self._end_time,
             granularity=self._granularity,
-            calculations=self._calculations if self._calculations else None,
-            filters=self._filters if self._filters else None,
+            calculations=calculations,
+            filters=filters,
             breakdowns=self._breakdowns if self._breakdowns else None,
             filter_combination=self._filter_combination,
-            orders=self._orders if self._orders else None,
+            orders=orders,
             limit=self._limit,
-            havings=self._havings if self._havings else None,
+            havings=havings,
             calculated_fields=self._calculated_fields if self._calculated_fields else None,
             compare_time_offset_seconds=self._compare_time_offset_seconds,
         )
@@ -942,6 +947,9 @@ class QueryBuilder:
         - time_range must be <= 3600 seconds (1 hour)
         - No absolute time support
         - No orders, havings, or limit
+
+        NOTE: TriggerQuery still accepts builder component types (Calculation, Filter)
+        directly. When Triggers are migrated to use generated types, this will be updated.
 
         Returns:
             A TriggerQuery configured with the builder's settings
@@ -960,6 +968,7 @@ class QueryBuilder:
                 f"TriggerQuery time_range must be <= 3600 seconds (1 hour), got {self._time_range}"
             )
 
+        # TriggerQuery still uses builder types directly (not yet migrated)
         return TriggerQuery(
             time_range=self._time_range if self._time_range is not None else 3600,
             granularity=self._granularity,

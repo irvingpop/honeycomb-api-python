@@ -170,26 +170,26 @@ def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
         op = calc.op
         column = calc.column
 
-        if op == "COUNT":
+        if op.value == "COUNT":
             builder.count()
-        elif op == "AVG" and column:
+        elif op.value == "AVG" and column:
             builder.avg(column)
-        elif op == "SUM" and column:
+        elif op.value == "SUM" and column:
             builder.sum(column)
-        elif op == "MAX" and column:
+        elif op.value == "MAX" and column:
             builder.max(column)
-        elif op == "MIN" and column:
+        elif op.value == "MIN" and column:
             builder.min(column)
-        elif op == "COUNT_DISTINCT" and column:
+        elif op.value == "COUNT_DISTINCT" and column:
             builder.count_distinct(column)
-        elif op == "HEATMAP" and column:
+        elif op.value == "HEATMAP" and column:
             builder.heatmap(column)
-        elif op == "CONCURRENCY":
+        elif op.value == "CONCURRENCY":
             builder.concurrency()
-        elif op.startswith("P") and column:
+        elif op.value.startswith("P") and column:
             # Percentile (e.g., P99, P95, P90, P50)
             # Only P50, P90, P95, P99 are supported via direct methods
-            percentile = int(op[1:])
+            percentile = int(op.value[1:])
             if percentile == 50:
                 builder.p50(column)
             elif percentile == 90:
@@ -205,36 +205,36 @@ def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
     if query.filters:
         for filt in query.filters:
             # Use shorthand methods when possible for all filter types
-            if filt.op == "=":
+            if filt.op.value == "=":
                 builder.eq(filt.column, filt.value)
-            elif filt.op == "!=":
+            elif filt.op.value == "!=":
                 builder.ne(filt.column, filt.value)
-            elif filt.op == ">":
+            elif filt.op.value == ">":
                 builder.gt(filt.column, filt.value)
-            elif filt.op == ">=":
+            elif filt.op.value == ">=":
                 builder.gte(filt.column, filt.value)
-            elif filt.op == "<":
+            elif filt.op.value == "<":
                 builder.lt(filt.column, filt.value)
-            elif filt.op == "<=":
+            elif filt.op.value == "<=":
                 builder.lte(filt.column, filt.value)
-            elif filt.op == "starts-with":
+            elif filt.op.value == "starts-with":
                 builder.starts_with(filt.column, filt.value)
-            elif filt.op == "does-not-start-with":
-                builder.where(filt.column, filt.op, filt.value)
-            elif filt.op == "contains":
+            elif filt.op.value == "does-not-start-with":
+                builder.where(filt.column, filt.op.value, filt.value)
+            elif filt.op.value == "contains":
                 builder.contains(filt.column, filt.value)
-            elif filt.op == "does-not-contain":
-                builder.where(filt.column, filt.op, filt.value)
-            elif filt.op == "exists":
+            elif filt.op.value == "does-not-contain":
+                builder.where(filt.column, filt.op.value, filt.value)
+            elif filt.op.value == "exists":
                 builder.exists(filt.column)
-            elif filt.op == "does-not-exist":
+            elif filt.op.value == "does-not-exist":
                 builder.does_not_exist(filt.column)
-            elif filt.op == "in":
+            elif filt.op.value == "in":
                 builder.is_in(filt.column, filt.value)
-            elif filt.op == "not-in":
-                builder.where(filt.column, filt.op, filt.value)
+            elif filt.op.value == "not-in":
+                builder.where(filt.column, filt.op.value, filt.value)
             else:
-                builder.where(filt.column, filt.op, filt.value)
+                builder.where(filt.column, filt.op.value, filt.value)
 
     # Filter combination
     if query.filter_combination:

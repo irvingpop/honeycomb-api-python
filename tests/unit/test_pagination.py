@@ -752,8 +752,8 @@ class TestQueryResultsPagination:
                 200,
                 json={
                     "data": {
-                        "results": [{"count": 100}],
-                        "series": [{"time": 123, "count": 100}],
+                        "results": [{"data": {"count": 100}}],
+                        "series": [{"time": "2024-01-01T00:00:00Z", "data": {"count": 100}}],
                     }
                 },
             )
@@ -821,8 +821,8 @@ class TestQueryResultsPaginationHelpers:
 
         assert key == ("api", "/users", 100)
 
-    def test_build_row_key_with_alias(self):
-        """Test building composite key with calculation alias."""
+    def test_build_row_key_with_calculation(self):
+        """Test building composite key with calculation (uses op name as field)."""
         from honeycomb.models import QuerySpec
 
         client = HoneycombClient(api_key="test", sync=True)
@@ -830,11 +830,12 @@ class TestQueryResultsPaginationHelpers:
 
         spec = QuerySpec(
             time_range=3600,
-            calculations=[{"op": "AVG", "column": "duration_ms", "alias": "avg_duration"}],
+            calculations=[{"op": "AVG", "column": "duration_ms"}],
             breakdowns=["service"],
         )
 
-        row = {"service": "api", "avg_duration": 150.5}
+        # Result rows use uppercase op name as field (e.g., "AVG", not "avg")
+        row = {"service": "api", "AVG": 150.5}
         key = resource._build_row_key(row, spec)
 
         assert key == ("api", 150.5)
@@ -864,8 +865,8 @@ class TestRunAllAsync:
                 json={
                     "data": {
                         "results": [
-                            {"service": "api", "count": 100},
-                            {"service": "worker", "count": 50},
+                            {"data": {"service": "api", "count": 100}},
+                            {"data": {"service": "worker", "count": 50}},
                         ],
                         "series": [],
                     }

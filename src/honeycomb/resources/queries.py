@@ -109,7 +109,7 @@ class QueriesResource(BaseResource):
             query_spec = spec
 
         data = await self._post_async(
-            self._build_path(dataset), json=query_spec.model_dump_for_api()
+            self._build_path(dataset), json=query_spec.model_dump(mode="json", exclude_none=True)
         )
         return self._parse_model(Query, data)
 
@@ -185,6 +185,8 @@ class QueriesResource(BaseResource):
         )
         created_annotation = await self._client.query_annotations.create_async(dataset, annotation)
 
+        # API always returns id for created annotations
+        assert created_annotation.id is not None
         return (query, created_annotation.id)
 
     # -------------------------------------------------------------------------
@@ -234,7 +236,9 @@ class QueriesResource(BaseResource):
                 )
             query_spec = spec
 
-        data = self._post_sync(self._build_path(dataset), json=query_spec.model_dump_for_api())
+        data = self._post_sync(
+            self._build_path(dataset), json=query_spec.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(Query, data)
 
     def get(self, dataset: str, query_id: str) -> Query:

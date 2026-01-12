@@ -138,6 +138,76 @@ def patch_inline_titles(spec: dict) -> int:
                 patches += 1
                 print(f"  ✓ {schema_name}.details: added additionalProperties=false")
 
+    # Patch 8: Add x-enum-varnames to FilterOp for usable enum names
+    # Without this, = becomes field_, != becomes field__, etc.
+    FILTER_OP_VARNAMES = [
+        "EQUALS",               # "="
+        "NOT_EQUALS",           # "!="
+        "GREATER_THAN",         # ">"
+        "GREATER_THAN_OR_EQUAL",  # ">="
+        "LESS_THAN",            # "<"
+        "LESS_THAN_OR_EQUAL",   # "<="
+        "STARTS_WITH",          # "starts-with"
+        "DOES_NOT_START_WITH",  # "does-not-start-with"
+        "ENDS_WITH",            # "ends-with"
+        "DOES_NOT_END_WITH",    # "does-not-end-with"
+        "EXISTS",               # "exists"
+        "DOES_NOT_EXIST",       # "does-not-exist"
+        "CONTAINS",             # "contains"
+        "DOES_NOT_CONTAIN",     # "does-not-contain"
+        "IN",                   # "in"
+        "NOT_IN",               # "not-in"
+    ]
+
+    if "FilterOp" in schemas:
+        schemas["FilterOp"]["x-enum-varnames"] = FILTER_OP_VARNAMES
+        patches += 1
+        print(f"  ✓ FilterOp: added x-enum-varnames for usable enum names")
+
+    # Patch 9: Add x-enum-varnames to HavingOp (subset of FilterOp)
+    HAVING_OP_VARNAMES = [
+        "EQUALS",               # "="
+        "NOT_EQUALS",           # "!="
+        "GREATER_THAN",         # ">"
+        "GREATER_THAN_OR_EQUAL",  # ">="
+        "LESS_THAN",            # "<"
+        "LESS_THAN_OR_EQUAL",   # "<="
+    ]
+
+    if "HavingOp" in schemas:
+        schemas["HavingOp"]["x-enum-varnames"] = HAVING_OP_VARNAMES
+        patches += 1
+        print(f"  ✓ HavingOp: added x-enum-varnames for usable enum names")
+
+    # Patch 10: Remove/override problematic defaults from Query schema
+    # The spec has example values and API defaults that don't match our usage
+    if "Query" in schemas:
+        props = schemas["Query"].get("properties", {})
+
+        # Remove bogus timestamp defaults (these are example values, not real defaults)
+        if "start_time" in props and "default" in props["start_time"]:
+            del props["start_time"]["default"]
+            patches += 1
+            print(f"  ✓ Query.start_time: removed bogus default timestamp")
+        if "end_time" in props and "default" in props["end_time"]:
+            del props["end_time"]["default"]
+            patches += 1
+            print(f"  ✓ Query.end_time: removed bogus default timestamp")
+
+        # Override breakdowns default (spec has ["user_agent"], we want None)
+        # We override this in QuerySpec anyway, but removing it from base is cleaner
+        if "breakdowns" in props and props["breakdowns"].get("default"):
+            props["breakdowns"]["default"] = None
+            patches += 1
+            print(f"  ✓ Query.breakdowns: changed default from ['user_agent'] to None")
+
+        # Override limit default (spec has 100, we want None for more flexibility)
+        # We override this in QuerySpec anyway, but removing it from base is cleaner
+        if "limit" in props and props["limit"].get("default"):
+            props["limit"]["default"] = None
+            patches += 1
+            print(f"  ✓ Query.limit: changed default from 100 to None")
+
     return patches
 
 

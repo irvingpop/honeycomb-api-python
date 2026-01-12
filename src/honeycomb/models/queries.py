@@ -3,104 +3,36 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 from pydantic import BaseModel, Field, field_validator
 
-from honeycomb.models.query_builder import (
-    VALID_COMPARE_OFFSETS,
-    Calculation,
-    Filter,
-    FilterCombination,
-    Having,
-    Order,
+from honeycomb._generated_models import (
+    Query as _QueryGenerated,
 )
+from honeycomb._generated_models import (
+    QueryResultDetails as _QueryResultGenerated,
+)
+from honeycomb._generated_models import (
+    QueryResultDetailsData as _QueryResultDataGenerated,
+)
+from honeycomb.models.query_builder import VALID_COMPARE_OFFSETS
 
 if TYPE_CHECKING:
     from honeycomb.models.query_builder import QueryBuilder
 
 
-def _normalize_calculation(calc: Calculation | dict[str, Any]) -> dict[str, Any]:
-    """Convert a Calculation or dict to API dict format."""
-    if isinstance(calc, Calculation):
-        return calc.to_dict()
-    return calc
-
-
-def _normalize_filter(filt: Filter | dict[str, Any]) -> dict[str, Any]:
-    """Convert a Filter or dict to API dict format."""
-    if isinstance(filt, Filter):
-        return filt.to_dict()
-    return filt
-
-
-def _normalize_order(order: Order | dict[str, Any]) -> dict[str, Any]:
-    """Convert an Order or dict to API dict format."""
-    if isinstance(order, Order):
-        return order.to_dict()
-    return order
-
-
-def _normalize_having(having: Having | dict[str, Any]) -> dict[str, Any]:
-    """Convert a Having or dict to API dict format."""
-    if isinstance(having, Having):
-        return having.to_dict()
-    return having
-
-
-def _normalize_filter_combination(combo: FilterCombination | str | None) -> str | None:
-    """Convert a FilterCombination or string to API format."""
-    if combo is None:
-        return None
-    if isinstance(combo, FilterCombination):
-        return combo.value
-    return combo
-
-
-class QuerySpec(BaseModel):
+class QuerySpec(_QueryGenerated):
     """Query specification for creating queries.
 
-    Accepts both typed models and dicts for flexibility:
-        >>> # Using dicts (backward compatible)
-        >>> QuerySpec(calculations=[{"op": "COUNT"}])
+    Extends generated Query with custom validators and builder factory.
 
-        >>> # Using typed models
-        >>> from honeycomb import Calculation, CalcOp
-        >>> QuerySpec(calculations=[Calculation(op=CalcOp.COUNT)])
+    NOTE: Use QueryBuilder for constructing queries. Direct instantiation
+    requires generated types (QueryCalculation, QueryFilter, etc.).
 
-        >>> # Using the builder
+    Example:
         >>> QuerySpec.builder().count().last_1_hour().build()
     """
-
-    time_range: int | None = Field(default=None, description="Query time range in seconds")
-    start_time: int | None = Field(default=None, description="Absolute start time (Unix timestamp)")
-    end_time: int | None = Field(default=None, description="Absolute end time (Unix timestamp)")
-    granularity: int | None = Field(default=None, description="Time granularity in seconds")
-    calculations: list[Calculation | dict[str, Any]] | None = Field(
-        default=None, description="Calculations to perform"
-    )
-    filters: list[Filter | dict[str, Any]] | None = Field(default=None, description="Query filters")
-    breakdowns: list[str] | None = Field(default=None, description="Columns to group by")
-    filter_combination: FilterCombination | str | None = Field(
-        default=None, description="How to combine filters (AND/OR)"
-    )
-    orders: list[Order | dict[str, Any]] | None = Field(default=None, description="Result ordering")
-    limit: int | None = Field(
-        default=None,
-        description="Result limit (max 1000 for saved queries, 10K when using disable_series=True)",
-    )
-    havings: list[Having | dict[str, Any]] | None = Field(
-        default=None, description="Having clauses"
-    )
-    calculated_fields: list[dict[str, str]] | None = Field(
-        default=None,
-        description="Inline calculated fields (derived columns) for this query",
-    )
-    compare_time_offset_seconds: int | None = Field(
-        default=None,
-        description="Compare against historical data offset by N seconds "
-        "(1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800)",
-    )
 
     @field_validator("limit")
     @classmethod
@@ -139,41 +71,6 @@ class QuerySpec(BaseModel):
 
         return QueryBuilder()
 
-    def model_dump_for_api(self) -> dict[str, Any]:
-        """Serialize for API request, normalizing typed models to dicts."""
-        data: dict[str, Any] = {}
-
-        # Time range (either relative or absolute)
-        if self.time_range is not None:
-            data["time_range"] = self.time_range
-        if self.start_time is not None:
-            data["start_time"] = self.start_time
-        if self.end_time is not None:
-            data["end_time"] = self.end_time
-
-        if self.granularity is not None:
-            data["granularity"] = self.granularity
-        if self.calculations:
-            data["calculations"] = [_normalize_calculation(c) for c in self.calculations]
-        if self.filters:
-            data["filters"] = [_normalize_filter(f) for f in self.filters]
-        if self.breakdowns:
-            data["breakdowns"] = self.breakdowns
-        if self.filter_combination:
-            data["filter_combination"] = _normalize_filter_combination(self.filter_combination)
-        if self.orders:
-            data["orders"] = [_normalize_order(o) for o in self.orders]
-        if self.limit is not None:
-            data["limit"] = self.limit
-        if self.havings:
-            data["havings"] = [_normalize_having(h) for h in self.havings]
-        if self.calculated_fields:
-            data["calculated_fields"] = self.calculated_fields
-        if self.compare_time_offset_seconds is not None:
-            data["compare_time_offset_seconds"] = self.compare_time_offset_seconds
-
-        return data
-
 
 class Query(BaseModel):
     """A Honeycomb query (response model)."""
@@ -190,16 +87,12 @@ class Query(BaseModel):
     model_config = {"extra": "allow"}
 
 
-class QueryResultData(BaseModel):
-    """Query result data container."""
+class QueryResultData(_QueryResultDataGenerated):
+    """Query result data with convenient accessors.
 
-    series: list[dict] | None = Field(default=None, description="Timeseries data")
-    results: list[dict] | None = Field(default=None, description="Query result rows (wrapped)")
-    total_by_aggregate: dict | None = Field(default=None, description="Total values by aggregate")
-    total_by_aggregate_series: list[dict] | None = Field(
-        default=None, description="Timeseries totals by aggregate"
-    )
-    other_by_aggregate: dict | None = Field(default=None, description="Other group aggregates")
+    Extends generated QueryResultDetailsData with property accessors
+    for easier access to result rows.
+    """
 
     model_config = {"extra": "allow"}
 
@@ -215,21 +108,21 @@ class QueryResultData(BaseModel):
         """
         if not self.results:
             return []
-        return [row.get("data", row) for row in self.results]
+        # Generated model uses QueryResultsData objects with .data field
+        return [row.data if row.data is not None else {} for row in self.results]
 
 
-class QueryResult(BaseModel):
-    """Results from a query execution.
+class QueryResult(_QueryResultGenerated):
+    """Query execution result with accessors.
+
+    Extends generated QueryResultDetails with enhanced data property
+    that uses our QueryResultData type with .rows accessor.
 
     Note: data will be None if the query is still processing.
     Poll until data is not None to get the complete results.
     """
 
-    id: str | None = Field(default=None, description="Query result ID")
-    complete: bool | None = Field(default=None, description="Whether query is complete")
-    data: QueryResultData | None = Field(
-        default=None, description="Query result data (None if pending)"
-    )
-    links: dict | None = Field(default=None, description="UI and pagination links")
-
     model_config = {"extra": "allow"}
+
+    # Override data to use our enhanced type
+    data: QueryResultData | None = None

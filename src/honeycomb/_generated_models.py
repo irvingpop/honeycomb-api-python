@@ -720,31 +720,31 @@ class NotificationRecipientDetails(BaseModel):
 
 
 class FilterOp(Enum):
-    field_ = "="
-    field__ = "!="
-    field__1 = ">"
-    field___1 = ">="
-    field__2 = "<"
-    field___2 = "<="
-    starts_with = "starts-with"
-    does_not_start_with = "does-not-start-with"
-    ends_with = "ends-with"
-    does_not_end_with = "does-not-end-with"
-    exists = "exists"
-    does_not_exist = "does-not-exist"
-    contains = "contains"
-    does_not_contain = "does-not-contain"
-    in_ = "in"
-    not_in = "not-in"
+    EQUALS = "="
+    NOT_EQUALS = "!="
+    GREATER_THAN = ">"
+    GREATER_THAN_OR_EQUAL = ">="
+    LESS_THAN = "<"
+    LESS_THAN_OR_EQUAL = "<="
+    STARTS_WITH = "starts-with"
+    DOES_NOT_START_WITH = "does-not-start-with"
+    ENDS_WITH = "ends-with"
+    DOES_NOT_END_WITH = "does-not-end-with"
+    EXISTS = "exists"
+    DOES_NOT_EXIST = "does-not-exist"
+    CONTAINS = "contains"
+    DOES_NOT_CONTAIN = "does-not-contain"
+    IN = "in"
+    NOT_IN = "not-in"
 
 
 class HavingOp(Enum):
-    field_ = "="
-    field__ = "!="
-    field__1 = ">"
-    field___1 = ">="
-    field__2 = "<"
-    field___2 = "<="
+    EQUALS = "="
+    NOT_EQUALS = "!="
+    GREATER_THAN = ">"
+    GREATER_THAN_OR_EQUAL = ">="
+    LESS_THAN = "<"
+    LESS_THAN_OR_EQUAL = "<="
 
 
 class HavingCalculateOp(Enum):
@@ -1139,7 +1139,7 @@ class QueryCompareTimeOffsetSeconds(IntEnum):
 class Query(BaseModel):
     id: str | None = None
     breakdowns: list[str] | None = Field(
-        default=["user_agent"],
+        default=None,
         description="the columns by which to break events down into groups",
         max_length=100,
     )
@@ -1167,20 +1167,18 @@ class Query(BaseModel):
         max_length=100,
     )
     limit: int | None = Field(
-        default=100,
+        default=None,
         description="The maximum number of unique groups returned in 'results'. Aggregating many unique groups across a large time range is computationally expensive, and too high a limit with too many unique groups may cause queries to fail completely. Limiting the results to only the needed values can significantly speed up queries.\nThe normal allowed maximum value when creating a query is 1_000. When running 'disable_series' queries, this can be overridden to be up to 10_000, so the maximum value returned from the API when fetching a query may be up to 10_000.\n",
         ge=1,
         le=10000,
     )
     start_time: int | None = Field(
-        default=1676399428,
+        default=None,
         description="Absolute start time of query, in seconds since UNIX epoch. Must be <= `end_time`.\n",
         ge=1,
     )
     end_time: int | None = Field(
-        default=1676467828,
-        description="Absolute end time of query, in seconds since UNIX epoch.",
-        ge=1,
+        default=None, description="Absolute end time of query, in seconds since UNIX epoch.", ge=1
     )
     time_range: int | None = Field(
         default=7200,

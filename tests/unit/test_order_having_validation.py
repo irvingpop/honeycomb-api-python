@@ -11,25 +11,25 @@ class TestOrderColumnValidation:
 
     def test_order_count_without_column(self):
         """COUNT can be used without column."""
-        order = Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)
+        order = Order(op=CalcOp.COUNT, order=OrderDirection.descending)
         assert order.op == CalcOp.COUNT
         assert order.column is None
 
     def test_order_concurrency_without_column(self):
         """CONCURRENCY can be used without column."""
-        order = Order(op=CalcOp.CONCURRENCY, order=OrderDirection.ASCENDING)
+        order = Order(op=CalcOp.CONCURRENCY, order=OrderDirection.ascending)
         assert order.op == CalcOp.CONCURRENCY
         assert order.column is None
 
     def test_order_avg_without_column_rejected(self):
         """AVG requires column."""
         with pytest.raises(ValidationError, match="column required for op 'AVG'"):
-            Order(op=CalcOp.AVG, order=OrderDirection.DESCENDING)
+            Order(op=CalcOp.AVG, order=OrderDirection.descending)
 
     def test_order_sum_without_column_rejected(self):
         """SUM requires column."""
         with pytest.raises(ValidationError, match="column required for op 'SUM'"):
-            Order(op=CalcOp.SUM, order=OrderDirection.ASCENDING)
+            Order(op=CalcOp.SUM, order=OrderDirection.ascending)
 
     def test_order_p99_without_column_rejected(self):
         """P99 requires column."""
@@ -38,27 +38,27 @@ class TestOrderColumnValidation:
 
     def test_order_avg_with_column_succeeds(self):
         """AVG with column succeeds."""
-        order = Order(op=CalcOp.AVG, column="duration_ms", order=OrderDirection.DESCENDING)
+        order = Order(op=CalcOp.AVG, column="duration_ms", order=OrderDirection.descending)
         assert order.op == CalcOp.AVG
         assert order.column == "duration_ms"
-        assert order.order == OrderDirection.DESCENDING
+        assert order.order == OrderDirection.descending
 
     def test_order_p99_with_column_succeeds(self):
         """P99 with column succeeds."""
-        order = Order(op=CalcOp.P99, column="latency", order=OrderDirection.ASCENDING)
+        order = Order(op=CalcOp.P99, column="latency", order=OrderDirection.ascending)
         assert order.op == CalcOp.P99
         assert order.column == "latency"
-        assert order.order == OrderDirection.ASCENDING
+        assert order.order == OrderDirection.ascending
 
     def test_order_to_dict_with_column(self):
         """Order with column converts to dict correctly."""
-        order = Order(op=CalcOp.AVG, column="cpu", order=OrderDirection.DESCENDING)
+        order = Order(op=CalcOp.AVG, column="cpu", order=OrderDirection.descending)
         result = order.to_dict()
         assert result == {"op": "AVG", "column": "cpu", "order": "descending"}
 
     def test_order_to_dict_without_column(self):
         """Order without column converts to dict correctly."""
-        order = Order(op=CalcOp.COUNT, order=OrderDirection.ASCENDING)
+        order = Order(op=CalcOp.COUNT, order=OrderDirection.ascending)
         result = order.to_dict()
         assert result == {"op": "COUNT", "order": "ascending"}
         assert "column" not in result
@@ -195,12 +195,12 @@ class TestQueryBuilderWithOrdersAndHavings:
         """order_by() with column works correctly."""
         from honeycomb.models.query_builder import QueryBuilder
 
-        qb = QueryBuilder().order_by(CalcOp.AVG, OrderDirection.DESCENDING, column="duration_ms")
+        qb = QueryBuilder().order_by(CalcOp.AVG, OrderDirection.descending, column="duration_ms")
         spec = qb.build()
         assert len(spec.orders) == 1
         assert spec.orders[0].op == CalcOp.AVG
         assert spec.orders[0].column == "duration_ms"
-        assert spec.orders[0].order == OrderDirection.DESCENDING
+        assert spec.orders[0].order == OrderDirection.descending
 
     def test_having_with_column(self):
         """having() with column works correctly."""
@@ -209,9 +209,10 @@ class TestQueryBuilderWithOrdersAndHavings:
         qb = QueryBuilder().having(CalcOp.AVG, FilterOp.GREATER_THAN, 500.0, column="duration_ms")
         spec = qb.build()
         assert len(spec.havings) == 1
-        assert spec.havings[0].calculate_op == CalcOp.AVG
+        # After build(), QuerySpec uses generated types (HavingCalculateOp, HavingOp)
+        assert spec.havings[0].calculate_op.value == "AVG"
         assert spec.havings[0].column == "duration_ms"
-        assert spec.havings[0].op == FilterOp.GREATER_THAN
+        assert spec.havings[0].op.value == ">"
         assert spec.havings[0].value == 500.0
 
     def test_complex_query_with_orders_and_havings(self):
@@ -225,7 +226,7 @@ class TestQueryBuilderWithOrdersAndHavings:
             .avg("duration_ms")
             .p99("duration_ms")
             .breakdown("service")
-            .order_by(CalcOp.AVG, OrderDirection.DESCENDING, column="duration_ms")
+            .order_by(CalcOp.AVG, OrderDirection.descending, column="duration_ms")
             .having(CalcOp.COUNT, FilterOp.GREATER_THAN, 100.0)
             .having(CalcOp.P99, FilterOp.LESS_THAN, 1000.0, column="duration_ms")
             .limit(20)
@@ -233,11 +234,12 @@ class TestQueryBuilderWithOrdersAndHavings:
 
         spec = qb.build()
         assert len(spec.orders) == 1
-        assert spec.orders[0].op == CalcOp.AVG
+        # After build(), QuerySpec uses generated types
+        assert spec.orders[0].op.value == "AVG"
         assert spec.orders[0].column == "duration_ms"
 
         assert len(spec.havings) == 2
-        assert spec.havings[0].calculate_op == CalcOp.COUNT
+        assert spec.havings[0].calculate_op.value == "COUNT"
         assert spec.havings[0].column is None
-        assert spec.havings[1].calculate_op == CalcOp.P99
+        assert spec.havings[1].calculate_op.value == "P99"
         assert spec.havings[1].column == "duration_ms"
