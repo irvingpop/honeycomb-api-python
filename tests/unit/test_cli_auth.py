@@ -4,8 +4,9 @@ from unittest.mock import MagicMock, patch
 
 from typer.testing import CliRunner
 
+from honeycomb._generated_models import AuthApiKeyAccess, AuthEnvironment, AuthTeam, AuthType
 from honeycomb.cli import app
-from honeycomb.models.auth import AuthInfo
+from honeycomb.models.auth import Auth
 
 runner = CliRunner()
 
@@ -17,14 +18,12 @@ class TestAuthCLI:
     def test_get_auth_default(self, mock_get_client):
         """hny auth get works with default settings (v1)."""
         mock_client = MagicMock()
-        mock_client.auth.get.return_value = AuthInfo(
+        mock_client.auth.get.return_value = Auth(
             id="key123",
-            type="configuration",
-            team_name="Test Team",
-            team_slug="test-team",
-            environment_name="Production",
-            environment_slug="production",
-            api_key_access={"events": True},
+            type=AuthType.configuration,
+            team=AuthTeam(name="Test Team", slug="test-team"),
+            environment=AuthEnvironment(name="Production", slug="production"),
+            api_key_access=AuthApiKeyAccess(events=True),
         )
         mock_get_client.return_value = mock_client
 
@@ -50,14 +49,12 @@ class TestAuthCLI:
     def test_get_auth_json_output(self, mock_get_client):
         """hny auth get --output json outputs JSON."""
         mock_client = MagicMock()
-        mock_client.auth.get.return_value = AuthInfo(
+        mock_client.auth.get.return_value = Auth(
             id="key123",
-            type="configuration",
-            team_name="Team",
-            team_slug="team",
-            environment_name="Env",
-            environment_slug="env",
-            api_key_access={},
+            type=AuthType.configuration,
+            team=AuthTeam(name="Team", slug="team"),
+            environment=AuthEnvironment(name="Env", slug="env"),
+            api_key_access=AuthApiKeyAccess(),
         )
         mock_get_client.return_value = mock_client
 

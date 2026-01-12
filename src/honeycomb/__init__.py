@@ -40,8 +40,8 @@ from .models import (
     ApiKeyCreate,
     ApiKeyType,
     ApiKeyUpdate,
-    AuthInfo,
-    AuthInfoV2,
+    Auth,
+    AuthV2Response,
     BatchEvent,
     BatchEventResult,
     Board,
@@ -255,8 +255,8 @@ __all__ = [
     "ApiKeyType",
     "ApiKeyUpdate",
     # Models - Auth
-    "AuthInfo",
-    "AuthInfoV2",
+    "Auth",
+    "AuthV2Response",
     # Models - Environments (v2)
     "Environment",
     "EnvironmentCreate",

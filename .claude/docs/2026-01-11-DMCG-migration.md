@@ -505,7 +505,7 @@ If issues are found after migration:
 
 **Completed**: Columns, Datasets, Markers, Recipients (4/8 core models)
 **In Progress**: SLOs, Triggers, Queries, Boards (4/8 core models)
-**Additional Resources** (defer for now): Events, Auth, ApiKeys, Environments, BurnAlerts, DerivedColumns, QueryAnnotations, ServiceMapDependencies (8 models)
+**Additional Resources**: Events, Auth, ApiKeys, Environments, BurnAlerts, DerivedColumns, QueryAnnotations, ServiceMapDependencies (8 models)
 
 ---
 

@@ -89,14 +89,14 @@ def get_environment(
 
             with HoneycombClient(api_key=api_key, sync=True) as api_key_client:
                 # Verify the API key is for this environment (force v1 for environment_slug)
-                from honeycomb.models.auth import AuthInfo
+                from honeycomb.models.auth import Auth
 
                 auth_info = api_key_client.auth.get(use_v2=False)
-                assert isinstance(auth_info, AuthInfo)  # use_v2=False always returns AuthInfo
-                if auth_info.environment_slug != env.slug:
+                assert isinstance(auth_info, Auth)  # use_v2=False always returns Auth
+                if auth_info.environment.slug != env.slug:
                     console.print(
                         f"\n[yellow]Cannot list datasets:[/yellow] HONEYCOMB_API_KEY is for environment "
-                        f"'{auth_info.environment_slug}' but you requested '{env.slug}'. "
+                        f"'{auth_info.environment.slug}' but you requested '{env.slug}'. "
                         "Provide an API key for the correct environment.",
                         style="bold",
                     )

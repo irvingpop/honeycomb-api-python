@@ -77,7 +77,14 @@ def patch_inline_titles(spec: dict) -> int:
             patches += 1
             print(f"  ✓ DatasetUpdatePayload: removed 'required' (UPDATE should be partial)")
 
-    # Patch 4: Add additionalProperties: false to recipient details for strict validation
+    # Patch 4: Make BatchEvent.data required (can't send event without data)
+    if "BatchEvent" in schemas:
+        if "required" not in schemas["BatchEvent"] or "data" not in schemas["BatchEvent"].get("required", []):
+            schemas["BatchEvent"]["required"] = ["data"]
+            patches += 1
+            print(f"  ✓ BatchEvent: added 'data' to required fields")
+
+    # Patch 5: Add additionalProperties: false to recipient details for strict validation
     # This prevents LLMs from hallucinating extra fields
     recipient_detail_schemas = [
         "PagerDutyRecipientDetails",

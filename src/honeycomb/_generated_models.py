@@ -2874,8 +2874,8 @@ class RateLimitedError(RootModel[RateLimitedProblem | RateLimitedJSONAPI]):
 
 
 class BatchEvent(BaseModel):
-    data: dict[str, str | float | bool] | None = Field(
-        default=None,
+    data: dict[str, str | float | bool] = Field(
+        ...,
         description="A collection of key-value properties that represent the Event. Honeycomb supports basic data types for the values of each Event attribute.\n\n### Limits\n- 2,000 fields per event. The entire event must be less than 1 MB of uncompressed JSON.\n- String Fields: Each string field has a maximum length of 64KB.\n- Number Fields: Integers and Floats are both 64-bit.\n",
         max_length=2000,
         min_length=1,

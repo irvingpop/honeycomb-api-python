@@ -62,12 +62,36 @@ class EnvironmentsResource(BaseResource):
             return self._cached_team_slug
 
         # Auto-detect from auth endpoint
-        auth_info = await self._client.auth.get_async()
-        if not hasattr(auth_info, "team_slug") or not auth_info.team_slug:
-            raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        from honeycomb.models.auth import Auth, AuthV2Response
 
-        self._cached_team_slug = auth_info.team_slug
-        return self._cached_team_slug
+        auth_info = await self._client.auth.get_async()
+
+        # Extract team slug based on auth response type
+        if isinstance(auth_info, AuthV2Response):
+            # v2 management key - extract team slug from included resources
+            if not auth_info.included:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+            team_slug = None
+            for resource in auth_info.included:
+                if resource.type == "teams":
+                    attrs = resource.attributes
+                    if hasattr(attrs, "slug") and attrs is not None:
+                        team_slug = attrs.slug
+                    elif isinstance(attrs, dict):
+                        team_slug = attrs.get("slug")
+                    break
+            if not team_slug:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        elif isinstance(auth_info, Auth):
+            # v1 API key - team slug is in nested team object
+            team_slug = auth_info.team.slug
+            if not team_slug:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        else:
+            raise ValueError("Unexpected auth response type")
+
+        self._cached_team_slug = team_slug
+        return team_slug
 
     def _get_team_slug(self) -> str:
         """Get team slug (sync), auto-detecting from auth."""
@@ -76,12 +100,36 @@ class EnvironmentsResource(BaseResource):
             return self._cached_team_slug
 
         # Auto-detect from auth endpoint
-        auth_info = self._client.auth.get()
-        if not hasattr(auth_info, "team_slug") or not auth_info.team_slug:
-            raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        from honeycomb.models.auth import Auth, AuthV2Response
 
-        self._cached_team_slug = auth_info.team_slug
-        return self._cached_team_slug
+        auth_info = self._client.auth.get()
+
+        # Extract team slug based on auth response type
+        if isinstance(auth_info, AuthV2Response):
+            # v2 management key - extract team slug from included resources
+            if not auth_info.included:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+            team_slug = None
+            for resource in auth_info.included:
+                if resource.type == "teams":
+                    attrs = resource.attributes
+                    if hasattr(attrs, "slug") and attrs is not None:
+                        team_slug = attrs.slug
+                    elif isinstance(attrs, dict):
+                        team_slug = attrs.get("slug")
+                    break
+            if not team_slug:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        elif isinstance(auth_info, Auth):
+            # v1 API key - team slug is in nested team object
+            team_slug = auth_info.team.slug
+            if not team_slug:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        else:
+            raise ValueError("Unexpected auth response type")
+
+        self._cached_team_slug = team_slug
+        return team_slug
 
     def _build_path(self, team: str, env_id: str | None = None) -> str:
         """Build API path for environments."""

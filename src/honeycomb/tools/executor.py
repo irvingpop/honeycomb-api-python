@@ -347,14 +347,14 @@ async def _execute_get_environment(client: "HoneycombClient", tool_input: dict[s
 
             async with HoneycombClient(api_key=api_key) as api_key_client:
                 # Verify the API key is for this environment (force v1 for environment_slug)
-                from honeycomb.models.auth import AuthInfo
+                from honeycomb.models.auth import Auth
 
                 auth_info = await api_key_client.auth.get_async(use_v2=False)
-                assert isinstance(auth_info, AuthInfo)  # use_v2=False always returns AuthInfo
-                if auth_info.environment_slug != result["slug"]:
+                assert isinstance(auth_info, Auth)  # use_v2=False always returns AuthInfo
+                if auth_info.environment.slug != result["slug"]:
                     result["datasets_error"] = (
                         f"Cannot list datasets: HONEYCOMB_API_KEY is for environment "
-                        f"'{auth_info.environment_slug}' but requested '{result['slug']}'"
+                        f"'{auth_info.environment.slug}' but requested '{result['slug']}'"
                     )
                 else:
                     # Environment matches - list datasets
