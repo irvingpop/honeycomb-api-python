@@ -5,7 +5,6 @@ import respx
 from httpx import Response
 
 from honeycomb import (
-    SLI,
     BoardCreate,
     DatasetCreate,
     HoneycombAuthError,
@@ -13,6 +12,7 @@ from honeycomb import (
     HoneycombNotFoundError,
     HoneycombValidationError,
     SLOCreate,
+    SLOCreateSli,
     Trigger,
     TriggerCreate,
     TriggerQuery,
@@ -145,11 +145,11 @@ class TestPydanticModels:
         """Test SLOCreate model serialization."""
         slo = SLOCreate(
             name="Test SLO",
-            sli=SLI(alias="test-sli"),
+            sli=SLOCreateSli(alias="test-sli"),
             time_period_days=30,
             target_per_million=999000,
         )
-        data = slo.model_dump_for_api()
+        data = slo.model_dump(mode="json", exclude_none=True)
         assert data["name"] == "Test SLO"
         assert data["time_period_days"] == 30
         assert data["target_per_million"] == 999000
@@ -420,7 +420,7 @@ async def test_create_slo_async():
             json={
                 "id": "slo-1",
                 "name": "Test SLO",
-                "sli": {},
+                "sli": {"alias": "test-sli"},
                 "time_period_days": 30,
                 "target_per_million": 999000,
             },
@@ -432,7 +432,7 @@ async def test_create_slo_async():
             "test-dataset",
             SLOCreate(
                 name="Test SLO",
-                sli=SLI(),
+                sli=SLOCreateSli(alias="test-sli"),
                 time_period_days=30,
                 target_per_million=999000,
             ),

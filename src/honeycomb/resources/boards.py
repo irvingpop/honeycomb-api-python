@@ -187,6 +187,7 @@ class BoardsResource(BaseResource):
             slo_dict = await self._client.slos.create_from_bundle_async(slo_panel.builder.build())
             # Get first SLO (should only be one dataset for board usage)
             slo = next(iter(slo_dict.values()))
+            assert slo.id is not None, "Created SLO must have an ID"
             panels.append(self._build_slo_panel_dict(slo.id, slo_panel.position))
 
         # Add existing SLO panels

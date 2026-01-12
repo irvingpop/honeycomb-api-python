@@ -22,7 +22,7 @@ async def list_api_keys(client: HoneycombClient) -> list[ApiKey]:
     keys = await client.api_keys.list_async()
     for key in keys:
         disabled = " (disabled)" if key.disabled else ""
-        print(f"{key.name} ({key.key_type.value}){disabled}: {key.id}")
+        print(f"{key.name} ({key.key_type}){disabled}: {key.id}")
     return keys
 
 

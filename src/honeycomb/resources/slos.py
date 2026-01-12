@@ -86,7 +86,9 @@ class SLOsResource(BaseResource):
         Returns:
             Created SLO object.
         """
-        data = await self._post_async(self._build_path(dataset), json=slo.model_dump_for_api())
+        data = await self._post_async(
+            self._build_path(dataset), json=slo.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(SLO, data)
 
     async def update_async(self, dataset: str, slo_id: str, slo: SLOCreate) -> SLO:
@@ -101,7 +103,7 @@ class SLOsResource(BaseResource):
             Updated SLO object.
         """
         data = await self._put_async(
-            self._build_path(dataset, slo_id), json=slo.model_dump_for_api()
+            self._build_path(dataset, slo_id), json=slo.model_dump(mode="json", exclude_none=True)
         )
         return self._parse_model(SLO, data)
 
@@ -267,7 +269,9 @@ class SLOsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
-        data = self._post_sync(self._build_path(dataset), json=slo.model_dump_for_api())
+        data = self._post_sync(
+            self._build_path(dataset), json=slo.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(SLO, data)
 
     def update(self, dataset: str, slo_id: str, slo: SLOCreate) -> SLO:
@@ -283,7 +287,9 @@ class SLOsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
-        data = self._put_sync(self._build_path(dataset, slo_id), json=slo.model_dump_for_api())
+        data = self._put_sync(
+            self._build_path(dataset, slo_id), json=slo.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(SLO, data)
 
     def delete(self, dataset: str, slo_id: str) -> None:

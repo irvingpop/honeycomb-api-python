@@ -256,7 +256,7 @@ async def ensure_slo(
     """
     import asyncio
 
-    from honeycomb import SLI, SLOCreate
+    from honeycomb import SLOCreate, SLOCreateSli
 
     slo_name = "Test SLO for Integration Tests"
 
@@ -275,7 +275,7 @@ async def ensure_slo(
         SLOCreate(
             name=slo_name,
             description="Test SLO for integration testing",
-            sli=SLI(alias=ensure_sli),
+            sli=SLOCreateSli(alias=ensure_sli),
             time_period_days=7,
             target_per_million=990000,  # 99%
         ),

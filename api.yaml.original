@@ -29,9 +29,17 @@ tags:
       to a key, and to determine the Team and Environment that a key belongs to.
   - name: Boards
     description: |
-      Boards are a place to pin and save useful queries and graphs you want to retain for later reuse and reference.
+      Boards are a place to pin and save useful queries/graphs, SLO panels, text panels, and views you want to retain for later reuse and reference.
 
-      This API allows you to list, create, update, and delete Boards.
+      Boards can contain multiple panel types:
+      - **Query panels**: Display saved queries/graphs
+      - **SLO panels**: Monitor Service Level Objectives
+      - **Text panels**: Add markdown-formatted text and documentation
+      - **Views**: Filtered perspectives of board data (limited to 50 views per board)
+
+      Boards also support preset filters (limited to 5 per board) to apply consistent filtering across the board.
+
+      This API allows you to list, create, update, and delete boards, as well as manage board views.
 
       ## Authorization
 
@@ -116,9 +124,6 @@ tags:
 
 
       Learn more about [API keys here](https://docs.honeycomb.io/configure/environments/manage-api-keys/).
-
-
-      **Note**: currently only Ingest Keys are supported.
 
       ## Authorization
 
@@ -389,6 +394,8 @@ paths:
       summary: Create a Board
       description: >
         Create a Board comprised of one or more Panels (Query, SLO, or Text).
+
+        **Note**: Each board is limited to a maximum of 5 preset filters.
       tags:
         - Boards
       operationId: createBoard
@@ -624,6 +631,8 @@ paths:
 
         **Note**: Queries can be added to, removed from, and re-ordered by updating the board itself.
         It is not possible to reference individual queries via the API.
+
+        **Note**: Each board is limited to a maximum of 5 preset filters. Attempting to update a board with more than 5 preset filters will result in an error.
       tags:
         - Boards
       operationId: updateBoard
@@ -737,7 +746,6 @@ paths:
         "default": { $ref: "#/components/responses/GenericError" }
 
   /1/boards/{boardId}/views:
-    x-internal: true
     parameters:
       - name: boardId
         description: The unique identifier (ID) of a Board.
@@ -749,7 +757,10 @@ paths:
       security:
         - configuration_key: []
       summary: List Board Views
-      description: Retrieve a list of all views for a Board.
+      description: >
+        Retrieve a list of all views for a board.
+
+        **Note**: Each board is limited to a maximum of 50 views.
       tags:
         - Boards
       operationId: listBoardViews
@@ -765,6 +776,7 @@ paths:
             application/json:
               schema:
                 type: array
+                maxItems: 50
                 items:
                   $ref: "#/components/schemas/BoardViewResponse"
               examples:
@@ -791,7 +803,10 @@ paths:
       security:
         - configuration_key: []
       summary: Create a Board View
-      description: Create a new view for a Board with the specified filters.
+      description: >
+        Create a new view for a board with the specified filters.
+
+        **Note**: Each board is limited to a maximum of 50 views. Attempting to create more than 50 views will result in an error.
       tags:
         - Boards
       operationId: createBoardView
@@ -829,7 +844,6 @@ paths:
         "429": { $ref: "#/components/responses/RateLimited" }
         "default": { $ref: "#/components/responses/GenericError" }
   /1/boards/{boardId}/views/{viewId}:
-    x-internal: true
     parameters:
       - name: boardId
         description: The unique identifier (ID) of a Board.
@@ -3800,8 +3814,6 @@ paths:
       summary: List all API Keys
       description: |
         List all API Keys for a Team.
-
-        **Note**: currently only keys of type `ingest` will be returned.
       operationId: listApiKeys
       parameters:
         - $ref: "#/components/parameters/PaginationCursor"
@@ -5153,10 +5165,13 @@ components:
             $ref: "#/components/schemas/Tag"
           example: [{ "key": "team", "value": "blue" }]
         preset_filters:
-          description:
+          description: >
             A list of preset filters to apply to the board. For backwards compatibility, if no preset filters are provided, the existing preset filters will be preserved.
             If an empty array is provided, all preset filters will be deleted.
+
+            **Note**: Each board is limited to a maximum of 5 preset filters. Attempting to create or update a board with more than 5 preset filters will result in an error.
           type: array
+          maxItems: 5
           items:
             $ref: "#/components/schemas/PresetFilter"
           example: [{ "column": "app.Service", "alias": "Service" }]
@@ -5171,7 +5186,7 @@ components:
           description: Original name of the column to alias.
         alias:
           type: string
-          description: The alias of the preset filter.
+          description: The alias of the preset filter. Maximum length is 50 characters.
     BoardViewFilter:
       type: object
       required:
@@ -5296,6 +5311,7 @@ components:
           description: The width of the panel. When not specified or set to 0, the width of the panel is calculated dynamically based on the panel type.
           minimum: 0
     QueryPanel:
+      title: Query Panel
       type: object
       required:
         - query_panel
@@ -5341,6 +5357,7 @@ components:
             visualization_settings:
               $ref: "#/components/schemas/BoardQueryVisualizationSettings"
     SLOPanel:
+      title: SLO Panel
       type: object
       required:
         - slo_panel
@@ -5361,6 +5378,7 @@ components:
                 The SLO must be in the same environment as the board.
               example: BGfyxhFto
     TextPanel:
+      title: Text Panel
       type: object
       required:
         - text_panel
@@ -7839,6 +7857,7 @@ components:
                   target: alerts@example.com
 
     IngestKeyAttributes:
+      title: Ingest Key
       allOf:
         - $ref: "#/components/schemas/IngestKeyType"
         - type: object
@@ -7886,6 +7905,7 @@ components:
                   example: "2022-10-31T15:08:11Z"
 
     ConfigurationKeyAttributes:
+      title: Configuration Key
       type: object
       required: ["key_type", "name"]
       properties:

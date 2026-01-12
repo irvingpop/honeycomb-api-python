@@ -99,5 +99,6 @@ async def test_basic_usage(auth_info) -> None:
 async def test_management_key(auth_info) -> None:
     """Verify management key example worked correctly."""
     assert auth_info.data.attributes.name is not None
-    assert auth_info.data.attributes.key_type == "management"
+    # key_type is an enum, so check the value
+    assert auth_info.data.attributes.key_type.value == "management"
     assert isinstance(auth_info.data.attributes.scopes, list)

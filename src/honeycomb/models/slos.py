@@ -2,112 +2,99 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import field_validator
 
-from honeycomb.models.tool_inputs import TagInput
+from honeycomb._generated_models import (
+    SLO as _SLOGenerated,
+)
+from honeycomb._generated_models import (
+    SLOCreate as _SLOCreateGenerated,
+)
+from honeycomb._generated_models import (
+    SLOCreateSli,
+    SLOSli,
+    Tag,
+)
+
+# Re-export generated types for public API
+__all__ = ["SLOCreate", "SLO", "SLOCreateSli", "SLOSli", "Tag"]
 
 
-class SLI(BaseModel):
-    """Service Level Indicator configuration.
+class SLOCreate(_SLOCreateGenerated):
+    """Model for creating a new SLO.
 
-    The SLI references a derived column by alias. You can either:
-    1. Reference an existing derived column: just provide alias
-    2. Create a new derived column inline: provide alias + expression
+    Extends the generated SLOCreate model from the OpenAPI spec.
+    The sli field accepts either a string alias or an SLOCreateSli object.
 
-    When expression is provided, a new derived column will be created automatically
-    before the SLO is created.
+    Example (string alias):
+        >>> slo = SLOCreate(
+        ...     name="API Availability",
+        ...     sli="success_rate",
+        ...     time_period_days=30,
+        ...     target_per_million=999000,
+        ... )
+
+    Example (explicit SLOCreateSli):
+        >>> slo = SLOCreate(
+        ...     name="API Availability",
+        ...     sli=SLOCreateSli(alias="success_rate"),
+        ...     time_period_days=30,
+        ...     target_per_million=999000,
+        ... )
     """
 
-    alias: str | None = Field(
-        default=None, description="Alias for the derived column (existing or new)"
-    )
-    expression: str | None = Field(
-        default=None,
-        description="If provided, creates a new derived column with this expression. "
-        "If omitted, uses an existing derived column with the given alias.",
-    )
-    description: str | None = Field(
-        default=None,
-        description="Description for the new derived column (only used when expression is provided)",
-    )
+    @field_validator("sli", mode="before")
+    @classmethod
+    def _convert_sli_string(cls, v: Any) -> SLOCreateSli:
+        """Allow passing SLI alias as a string for convenience."""
+        if isinstance(v, str):
+            return SLOCreateSli(alias=v)
+        return v
 
 
-class SLOCreate(BaseModel):
-    """Model for creating a new SLO."""
+class SLO(_SLOGenerated):
+    """A Honeycomb SLO (response model).
 
-    name: str = Field(description="Human-readable name for the SLO")
-    description: str | None = Field(default=None, description="Longer description")
-    sli: SLI = Field(description="SLI configuration")
-    time_period_days: int = Field(
-        default=30,
-        ge=1,
-        le=90,
-        description="Time period for the SLO in days (1-90)",
-    )
-    target_per_million: int = Field(
-        ge=0,
-        le=999999,
-        description="Target success rate per million (e.g., 999000 = 99.9%)",
-    )
-    tags: list[TagInput] | None = Field(
-        default=None,
-        description="Key-value pairs for organizing SLOs (max 10 tags)",
-    )
-    dataset_slugs: list[str] | None = Field(
-        default=None,
-        description="Dataset slugs for multi-dataset SLOs (used with __all__ endpoint)",
-    )
-
-    def model_dump_for_api(self) -> dict[str, Any]:
-        """Serialize for API request."""
-        data: dict[str, Any] = {
-            "name": self.name,
-            "sli": {},
-            "time_period_days": self.time_period_days,
-            "target_per_million": self.target_per_million,
-        }
-
-        if self.description:
-            data["description"] = self.description
-
-        if self.sli.alias:
-            data["sli"]["alias"] = self.sli.alias
-
-        if self.tags:
-            data["tags"] = [{"key": tag.key, "value": tag.value} for tag in self.tags]
-
-        if self.dataset_slugs:
-            data["dataset_slugs"] = self.dataset_slugs
-
-        return data
-
-
-class SLO(BaseModel):
-    """A Honeycomb SLO (response model)."""
-
-    id: str = Field(description="Unique identifier")
-    name: str = Field(description="Human-readable name")
-    description: str | None = Field(default=None, description="Longer description")
-    sli: dict = Field(description="SLI configuration")
-    time_period_days: int = Field(description="Time period in days")
-    target_per_million: int = Field(description="Target per million")
-    dataset_slugs: list[str] | None = Field(default=None, description="Datasets this SLO spans")
-    created_at: datetime | None = Field(default=None, description="Creation timestamp")
-    updated_at: datetime | None = Field(default=None, description="Last update timestamp")
-
-    model_config = {"extra": "allow"}
+    Extends the generated SLO model with convenience properties.
+    """
 
     @property
     def dataset(self) -> str | None:
-        """Return the first dataset slug for convenience (SLOs can span multiple datasets)."""
-        if self.dataset_slugs and len(self.dataset_slugs) > 0:
-            return self.dataset_slugs[0]
-        return None
+        """Return the dataset to use for API operations.
+
+        For multi-dataset SLOs, returns "__all__" (required for API operations).
+        For single-dataset SLOs, returns the dataset slug.
+
+        Returns:
+            "__all__" for multi-dataset SLOs, single slug for single-dataset, None if unset.
+        """
+        if not self.dataset_slugs:
+            return None
+        if len(self.dataset_slugs) > 1:
+            return "__all__"
+        return self.dataset_slugs[0]
+
+    @property
+    def datasets(self) -> list[str]:
+        """Return the list of datasets this SLO spans.
+
+        Returns:
+            List of dataset slugs (empty list if unset).
+        """
+        return self.dataset_slugs or []
 
     @property
     def target_percentage(self) -> float:
-        """Convert target_per_million to percentage for display (e.g., 999000 → 99.9)."""
+        """Convert target_per_million to percentage for display.
+
+        Example:
+            >>> slo.target_per_million = 999000
+            >>> slo.target_percentage
+            99.9
+
+        Returns:
+            Target as a percentage (e.g., 99.9 for 99.9%).
+        """
         return self.target_per_million / 10000

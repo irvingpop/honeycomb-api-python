@@ -6,7 +6,7 @@ Requires management key authentication.
 
 from __future__ import annotations
 
-from honeycomb import Environment, EnvironmentColor, EnvironmentCreate, EnvironmentUpdate, HoneycombClient
+from honeycomb import Environment, EnvironmentCreate, EnvironmentUpdate, HoneycombClient
 
 
 # start_example:list
@@ -65,7 +65,7 @@ async def create_environment(client: HoneycombClient) -> str:
         EnvironmentCreate(
             name="Staging",
             description="Staging environment for testing",
-            color=EnvironmentColor.BLUE,
+            color="blue",
         ),
     )
     return env.id
@@ -89,7 +89,7 @@ async def update_environment(client: HoneycombClient, env_id: str) -> Environmen
         env_id,
         EnvironmentUpdate(
             description="Updated: Staging environment for pre-production testing",
-            color=EnvironmentColor.GREEN,
+            color="green",
             delete_protected=True,  # Prevent accidental deletion
         ),
     )
@@ -137,7 +137,7 @@ async def test_update_environment(updated: Environment, original_env_id: str) ->
     """Verify update example worked."""
     assert updated.id == original_env_id
     assert "Updated:" in updated.description
-    assert updated.color == EnvironmentColor.GREEN
+    assert updated.color.value == "green"
     assert updated.delete_protected is True
 
 

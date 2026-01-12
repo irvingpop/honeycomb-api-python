@@ -34,7 +34,6 @@ from .exceptions import (
     HoneycombValidationError,
 )
 from .models import (
-    SLI,
     SLO,
     AlertType,
     ApiKey,
@@ -135,6 +134,7 @@ from .models import (
     SLOBuilder,
     SLOBundle,
     SLOCreate,
+    SLOCreateSli,
     TagsMixin,
     Trigger,
     TriggerAlertType,
@@ -199,7 +199,7 @@ __all__ = [
     # Models - SLOs
     "SLO",
     "SLOCreate",
-    "SLI",
+    "SLOCreateSli",
     "SLOBuilder",
     "SLOBundle",
     "SLIDefinition",

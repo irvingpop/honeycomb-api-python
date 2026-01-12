@@ -5,12 +5,12 @@ import respx
 from httpx import Response
 
 from honeycomb import (
-    SLI,
     CalcOp,
     Calculation,
     HoneycombClient,
     QuerySpec,
     SLOCreate,
+    SLOCreateSli,
     TriggerCreate,
     TriggerQuery,
     TriggerThreshold,
@@ -192,7 +192,7 @@ class TestQuickstartExamples:
                 SLOCreate(
                     name="API Availability",
                     description="99.9% uptime target",
-                    sli=SLI(alias="api-availability"),
+                    sli=SLOCreateSli(alias="api-availability"),
                     time_period_days=30,
                     target_per_million=999000,
                 ),

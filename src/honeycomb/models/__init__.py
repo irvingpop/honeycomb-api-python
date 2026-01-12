@@ -113,7 +113,7 @@ from .service_map_dependencies import (
     ServiceMapNodeType,
 )
 from .slo_builder import BurnAlertBuilder, BurnAlertDefinition, SLIDefinition, SLOBuilder, SLOBundle
-from .slos import SLI, SLO, SLOCreate
+from .slos import SLO, SLOCreate, SLOCreateSli
 from .tags_mixin import TagsMixin
 from .trigger_builder import TriggerBuilder, TriggerBundle
 from .triggers import (
@@ -148,7 +148,7 @@ __all__ = [
     # SLOs
     "SLO",
     "SLOCreate",
-    "SLI",
+    "SLOCreateSli",
     "SLOBuilder",
     "SLOBundle",
     "SLIDefinition",

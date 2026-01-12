@@ -757,7 +757,7 @@ class TestSLOExamples:
             test_list_slos,
         )
 
-        from honeycomb import SLI, SLOCreate
+        from honeycomb import SLOCreate, SLOCreateSli
 
         # List (before create)
         initial_slos = await list_slos(client, ensure_dataset)
@@ -770,7 +770,7 @@ class TestSLOExamples:
             SLOCreate(
                 name="API Availability Lifecycle Test",
                 description="99.9% availability target for API service",
-                sli=SLI(alias=create_unique_sli),
+                sli=SLOCreateSli(alias=create_unique_sli),
                 time_period_days=30,
                 target_per_million=999000,
             ),
@@ -790,7 +790,7 @@ class TestSLOExamples:
                 SLOCreate(
                     name="Updated API Availability Lifecycle Test",
                     description="Updated: 99.99% availability target",
-                    sli=SLI(alias=create_unique_sli),
+                    sli=SLOCreateSli(alias=create_unique_sli),
                     time_period_days=30,
                     target_per_million=999900,
                 ),
@@ -816,7 +816,7 @@ class TestSLOExamples:
             test_create_slo,
         )
 
-        from honeycomb import SLI, SLOCreate
+        from honeycomb import SLOCreate, SLOCreateSli
 
         # Create SLO with unique SLI
         slo = await client.slos.create_async(
@@ -824,7 +824,7 @@ class TestSLOExamples:
             SLOCreate(
                 name="API Availability Test",
                 description="99.9% availability target for API service",
-                sli=SLI(alias=create_unique_sli),
+                sli=SLOCreateSli(alias=create_unique_sli),
                 time_period_days=30,
                 target_per_million=999000,
             ),
@@ -878,12 +878,12 @@ class TestSLOExamples:
             # Verify SLO was created
             slo = await client.slos.get_async(ensure_dataset, slo_id)
             assert slo.id == slo_id
-            # sli is dict, not SLI object
-            assert "request_success" in slo.sli["alias"]  # Timestamped alias
+            # sli is SLOSli object
+            assert "request_success" in slo.sli.alias  # Timestamped alias
             assert slo.target_per_million == 995000  # 99.5%
 
             # Store alias for cleanup
-            sli_alias = slo.sli["alias"]
+            sli_alias = slo.sli.alias
         finally:
             await cleanup(client, ensure_dataset, slo_id)
             # Also clean up the derived column (with timestamp)

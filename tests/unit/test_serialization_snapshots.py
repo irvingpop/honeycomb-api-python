@@ -345,6 +345,141 @@ class TestRecipientSerialization:
         }
 
 
+class TestSLOSerialization:
+    """SLO serialization must not change after migration."""
+
+    def test_basic_slo(self):
+        """Test basic SLO with required fields."""
+        from honeycomb.models.slos import SLOCreate, SLOCreateSli
+
+        slo = SLOCreate(
+            name="API Availability",
+            sli=SLOCreateSli(alias="success_rate"),
+            time_period_days=30,
+            target_per_million=999000,
+        )
+
+        payload = slo.model_dump(mode="json", exclude_none=True)
+
+        assert payload == {
+            "name": "API Availability",
+            "sli": {"alias": "success_rate"},
+            "time_period_days": 30,
+            "target_per_million": 999000,
+        }
+
+    def test_slo_with_string_alias(self):
+        """Test SLO with string alias (validator convenience)."""
+        from honeycomb.models.slos import SLOCreate
+
+        slo = SLOCreate(
+            name="API Availability",
+            sli="success_rate",  # String alias
+            time_period_days=30,
+            target_per_million=999000,
+        )
+
+        payload = slo.model_dump(mode="json", exclude_none=True)
+
+        # Should serialize the same way as SLOCreateSli
+        assert payload == {
+            "name": "API Availability",
+            "sli": {"alias": "success_rate"},
+            "time_period_days": 30,
+            "target_per_million": 999000,
+        }
+
+    def test_slo_with_description(self):
+        """Test SLO with description."""
+        from honeycomb.models.slos import SLOCreate, SLOCreateSli
+
+        slo = SLOCreate(
+            name="API Availability",
+            description="Ensure API requests succeed",
+            sli=SLOCreateSli(alias="success_rate"),
+            time_period_days=30,
+            target_per_million=999000,
+        )
+
+        payload = slo.model_dump(mode="json", exclude_none=True)
+
+        assert payload["description"] == "Ensure API requests succeed"
+
+    def test_slo_with_tags(self):
+        """Test SLO with tags."""
+        from honeycomb.models.slos import SLOCreate, SLOCreateSli, Tag
+
+        slo = SLOCreate(
+            name="API Availability",
+            sli=SLOCreateSli(alias="success_rate"),
+            time_period_days=30,
+            target_per_million=999000,
+            tags=[Tag(key="team", value="platform")],
+        )
+
+        payload = slo.model_dump(mode="json", exclude_none=True)
+
+        assert payload["tags"] == [{"key": "team", "value": "platform"}]
+
+    def test_slo_with_multiple_tags(self):
+        """Test SLO with multiple tags."""
+        from honeycomb.models.slos import SLOCreate, SLOCreateSli, Tag
+
+        slo = SLOCreate(
+            name="API Availability",
+            sli=SLOCreateSli(alias="success_rate"),
+            time_period_days=30,
+            target_per_million=999000,
+            tags=[
+                Tag(key="team", value="platform"),
+                Tag(key="service", value="api"),
+            ],
+        )
+
+        payload = slo.model_dump(mode="json", exclude_none=True)
+
+        assert payload["tags"] == [
+            {"key": "team", "value": "platform"},
+            {"key": "service", "value": "api"},
+        ]
+
+    def test_slo_with_dataset_slugs(self):
+        """Test multi-dataset SLO."""
+        from honeycomb.models.slos import SLOCreate, SLOCreateSli
+
+        slo = SLOCreate(
+            name="Multi-Dataset SLO",
+            sli=SLOCreateSli(alias="success_rate"),
+            time_period_days=30,
+            target_per_million=999000,
+            dataset_slugs=["api-logs", "web-logs"],
+        )
+
+        payload = slo.model_dump(mode="json", exclude_none=True)
+
+        assert payload["dataset_slugs"] == ["api-logs", "web-logs"]
+
+    def test_slo_excludes_none_values(self):
+        """Test that SLO excludes None values from payload."""
+        from honeycomb.models.slos import SLOCreate, SLOCreateSli
+
+        slo = SLOCreate(
+            name="Test SLO",
+            sli=SLOCreateSli(alias="success_rate"),
+            time_period_days=30,
+            target_per_million=999000,
+            description=None,
+            tags=None,
+            dataset_slugs=None,
+        )
+
+        payload = slo.model_dump(mode="json", exclude_none=True)
+
+        assert "description" not in payload
+        assert "tags" not in payload
+        assert "dataset_slugs" not in payload
+
+
 class TestQueryComponentSerialization:
     """Test serialization of query components (Calculation, Filter) used in triggers."""
 

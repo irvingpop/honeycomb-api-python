@@ -8,6 +8,19 @@
 
 Replace the current openapi-python-client generated code with datamodel-code-generator models. This eliminates the complex patching workflow and provides native Pydantic v2 models with full field constraints.
 
+#### Migration Ground Rules
+
+**For all remaining model migrations**:
+
+1. **Test against live API first** - Use `curl` to verify actual API behavior before assuming anything
+2. **Patch spec when wrong** - If spec contradicts API (like DatasetUpdate required fields), patch it
+3. **Keep models vanilla** - Match API structure exactly, no "convenience" abstractions
+4. **Move nice UX to builders** - Flat fields, friendlier interfaces belong in builders or CLI, not base models
+5. **Minimal overrides** - Only add field overrides when required (e.g., tool schema descriptions)
+6. **Use Pydantic serialization** - `model_dump(mode="json", exclude_none=True, exclude_defaults=True)`
+7. **Just pass** - Models should be thin wrappers unless adding custom methods (builders, etc.)
+8. **Discriminated unions need property accessors** - For discriminated unions, always add @property accessors to hide the `.root` requirement. Follow the Recipients pattern ([recipients.py:78-104](../../src/honeycomb/models/recipients.py))
+
 ### Key Benefits
 
 | Before (openapi-python-client) | After (datamodel-code-generator) |
@@ -222,41 +235,6 @@ poetry run mypy src/honeycomb/
 
 ### 3.1 Identify models to migrate
 
-Current hand-written models in `src/honeycomb/models/`:
-
-**Core Dataset Resources** (originally planned):
-
-| Model | File | Priority | Notes |
-|-------|------|----------|-------|
-| Query/QuerySpec | queries.py | High | Complex, many fields |
-| Trigger | triggers.py | High | Uses builders |
-| SLO | slos.py | High | Uses builders |
-| Board | boards.py | Medium | Complex nested structure |
-| Column | columns.py | Medium | Simple CRUD |
-| Dataset | datasets.py | Medium | Simple |
-| Marker | markers.py | Low | Simple |
-| Recipient | recipients.py | Low | Simple |
-
-**Additional Resources** (discovered during Phase 3):
-
-| Model | File | Priority | Notes |
-|-------|------|----------|-------|
-| BurnAlert | burn_alerts.py | Medium | SLO burn alerts |
-| DerivedColumn | derived_columns.py | Medium | Calculated fields |
-| QueryAnnotation | query_annotations.py | Medium | Query annotations |
-| Event | events.py | Low | Event sending (BatchEvent) |
-| ServiceMapDependency | service_map_dependencies.py | Low | Service map |
-| ApiKey | api_keys.py | Low | Management API |
-| Environment | environments.py | Low | Management API |
-| Auth | auth.py | Low | Response-only, no Create |
-
-**Utility Models** (may not need migration):
-
-| Model | File | Notes |
-|-------|------|-------|
-| Tool Inputs | tool_inputs.py | PositionInput, ChartSettings, etc. - used internally |
-| Tags Mixin | tags_mixin.py | Mixin class for tags |
-| Builders | *_builder.py | Keep separate from models |
 
 **Total**: 16 main model files + 8 additional resources = 24 model files to evaluate
 
@@ -344,21 +322,35 @@ Mapping of hand-written models to generated base classes:
 
 ## Phase 4: Incremental Migration
 
-### 4.1 Migration order
+
+### Current status
+
+**Core Resources (4/8 complete)**:
+- ✓ Columns, Datasets, Markers, Recipients
+- Pending: SLOs, Triggers, Queries, Boards
+
+**Additional Resources (6/8 complete)**:
+- ✓ Events, Auth, ApiKeys, Environments, BurnAlerts (refactored properly), DerivedColumns
+- Pending: QueryAnnotations, ServiceMapDependencies
+
+**Total: 10/16 resources migrated**
+
+### 4.1 Major resources
 
 1. **Columns** (simplest, good test case)
 2. **Datasets** (simple, few custom methods)
 3. **Markers** (simple)
 4. **Recipients** (simple)
 5. **SLOs** (has builders, good test of pattern)
-6. **Triggers** (has builders)
-7. **Queries** (most complex)
-8. **Boards** (complex nested structure)
+6. **Queries and QueryAnnotations** (most complex)
+7. **Triggers** (has builders, mixes in queries)
+8. **Boards** (complex nested structure, mixes in Queries and SLOs)
 
 ### 4.2 Per-model migration checklist
 
 For each model:
 
+- [ ] Follow the Migration Ground Rules
 - [ ] Identify generated base class name in `_generated_models.py`
 - [ ] Update import to extend generated base
 - [ ] Remove duplicate field definitions (keep only custom fields if any)
@@ -501,17 +493,6 @@ If issues are found after migration:
 - [ ] Documentation updated
 - [ ] CLAUDE.md reflects new workflow
 
-## Phase 4 Progress
-
-**Core Resources (4/8 complete)**:
-- ✓ Columns, Datasets, Markers, Recipients
-- Pending: SLOs, Triggers, Queries, Boards
-
-**Additional Resources (6/8 complete)**:
-- ✓ Events, Auth, ApiKeys, Environments, BurnAlerts (refactored properly), DerivedColumns
-- Pending: QueryAnnotations, ServiceMapDependencies
-
-**Total: 10/16 resources migrated**
 
 ---
 
@@ -666,18 +647,6 @@ curl -X PUT .../datasets/slug -d '{"description": "Updated"}'
 
 **Validation**: ✓ 936/936 unit tests, ✓ Mypy clean, ✓ Live API tested
 
-#### Migration Ground Rules (Updated)
-
-**For all remaining model migrations**:
-
-1. **Test against live API first** - Use `curl` to verify actual API behavior before assuming anything
-2. **Patch spec when wrong** - If spec contradicts API (like DatasetUpdate required fields), patch it
-3. **Keep models vanilla** - Match API structure exactly, no "convenience" abstractions
-4. **Move nice UX to builders** - Flat fields, friendlier interfaces belong in builders or CLI, not base models
-5. **Minimal overrides** - Only add field overrides when required (e.g., tool schema descriptions)
-6. **Use Pydantic serialization** - `model_dump(mode="json", exclude_none=True, exclude_defaults=True)`
-7. **Just pass** - Models should be thin wrappers unless adding custom methods (builders, etc.)
-8. **Discriminated unions need property accessors** - For RootModel discriminated unions, always add @property accessors to hide the `.root` requirement. Follow the Recipients pattern ([recipients.py:78-104](../../src/honeycomb/models/recipients.py))
 
 ### 4.3 Recipients - COMPLETED ✓
 
