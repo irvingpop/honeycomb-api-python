@@ -13,7 +13,6 @@ from honeycomb import (
     OrderDirection,
     QueryBuilder,
     QuerySpec,
-    TriggerQuery,
 )
 
 
@@ -316,10 +315,10 @@ class TestQueryBuilder:
         assert len(spec.havings) == 1
 
     def test_build_for_trigger(self):
-        """Test building TriggerQuery."""
+        """Test building trigger query dict."""
         trigger_query = QueryBuilder().last_30_minutes().p99("duration_ms").build_for_trigger()
-        assert isinstance(trigger_query, TriggerQuery)
-        assert trigger_query.time_range == 1800
+        assert isinstance(trigger_query, dict)
+        assert trigger_query["time_range"] == 1800
 
     def test_build_for_trigger_validates_time_range(self):
         """Test that build_for_trigger validates time range <= 3600."""
@@ -328,7 +327,7 @@ class TestQueryBuilder:
 
     def test_build_for_trigger_rejects_absolute_time(self):
         """Test that build_for_trigger rejects absolute time ranges."""
-        with pytest.raises(ValueError, match="does not support absolute time"):
+        with pytest.raises(ValueError, match="do not support absolute time"):
             QueryBuilder().absolute_time(1000, 2000).count().build_for_trigger()
 
     # -------------------------------------------------------------------------
@@ -424,27 +423,6 @@ class TestQuerySpecBuilder:
         assert spec.time_range == 3600
 
 
-class TestTriggerQueryWithTypedModels:
-    """Tests for TriggerQuery accepting typed models."""
-
-    def test_accept_calculation_objects(self):
-        """Test that TriggerQuery accepts Calculation objects."""
-        query = TriggerQuery(
-            time_range=900,
-            calculations=[Calculation(op=CalcOp.P99, column="duration_ms")],
-        )
-        assert query.calculations[0].op == CalcOp.P99
-
-    def test_accept_filter_objects(self):
-        """Test that TriggerQuery accepts Filter objects."""
-        query = TriggerQuery(
-            time_range=900,
-            filters=[Filter(column="error", op=FilterOp.EXISTS, value=True)],
-        )
-        assert query.filters[0].op == FilterOp.EXISTS
-
-    def test_default_calculations(self):
-        """Test that TriggerQuery has default calculations."""
-        query = TriggerQuery()
-        assert len(query.calculations) == 1
-        assert query.calculations[0].op == CalcOp.COUNT
+# Note: TriggerQuery is no longer a separate class - it's now a dict built by TriggerBuilder
+# The typed models (Calculation, Filter) are converted to dicts at build time
+# This functionality is tested in test_trigger_builder.py

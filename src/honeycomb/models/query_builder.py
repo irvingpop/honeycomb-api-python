@@ -23,7 +23,6 @@ from honeycomb._generated_models import (
 
 if TYPE_CHECKING:
     from honeycomb.models.queries import QuerySpec
-    from honeycomb.models.triggers import TriggerQuery
 
 # Valid time offset values for compare queries (in seconds)
 # 30min, 1hr, 2hr, 8hr, 24hr, 7d, 28d, 6mo
@@ -940,40 +939,42 @@ class QueryBuilder:
             compare_time_offset_seconds=self._compare_time_offset_seconds,
         )
 
-    def build_for_trigger(self) -> TriggerQuery:
-        """Build a TriggerQuery from the builder state.
+    def build_for_trigger(self) -> dict[str, Any]:
+        """Build a trigger query dict from the builder state.
 
-        TriggerQuery has additional constraints:
+        Trigger queries have additional constraints:
         - time_range must be <= 3600 seconds (1 hour)
         - No absolute time support
         - No orders, havings, or limit
 
-        NOTE: TriggerQuery still accepts builder component types (Calculation, Filter)
-        directly. When Triggers are migrated to use generated types, this will be updated.
-
         Returns:
-            A TriggerQuery configured with the builder's settings
+            A dict representing the inline query for triggers
 
         Raises:
             ValueError: If time_range > 3600 or absolute time is set
         """
-        # Import here to avoid circular imports
-        from honeycomb.models.triggers import TriggerQuery
-
         if self._start_time is not None or self._end_time is not None:
-            raise ValueError("TriggerQuery does not support absolute time ranges")
+            raise ValueError("Trigger queries do not support absolute time ranges")
 
-        if self._time_range is not None and self._time_range > 3600:
+        time_range = self._time_range if self._time_range is not None else 3600
+        if time_range > 3600:
             raise ValueError(
-                f"TriggerQuery time_range must be <= 3600 seconds (1 hour), got {self._time_range}"
+                f"Trigger query time_range must be <= 3600 seconds (1 hour), got {time_range}"
             )
 
-        # TriggerQuery still uses builder types directly (not yet migrated)
-        return TriggerQuery(
-            time_range=self._time_range if self._time_range is not None else 3600,
-            granularity=self._granularity,
-            calculations=self._calculations if self._calculations else None,
-            filters=self._filters if self._filters else None,
-            breakdowns=self._breakdowns if self._breakdowns else None,
-            filter_combination=self._filter_combination,
-        )
+        # Build query as dict (converted from builder types)
+        query_dict: dict[str, Any] = {"time_range": time_range}
+        if self._granularity is not None:
+            query_dict["granularity"] = self._granularity
+        if self._calculations:
+            query_dict["calculations"] = [c.to_dict() for c in self._calculations]
+        if self._filters:
+            query_dict["filters"] = [f.to_dict() for f in self._filters]
+        if self._breakdowns:
+            query_dict["breakdowns"] = self._breakdowns
+        if self._filter_combination:
+            # Convert enum to value if needed
+            fc = self._filter_combination
+            query_dict["filter_combination"] = fc.value if hasattr(fc, "value") else fc
+
+        return query_dict

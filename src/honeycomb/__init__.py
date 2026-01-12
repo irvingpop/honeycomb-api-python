@@ -141,7 +141,6 @@ from .models import (
     TriggerBuilder,
     TriggerBundle,
     TriggerCreate,
-    TriggerQuery,
     TriggerThreshold,
     TriggerThresholdOp,
     UpdateBurnAlertRequest,
@@ -193,7 +192,6 @@ __all__ = [
     "TriggerThreshold",
     "TriggerThresholdOp",
     "TriggerAlertType",
-    "TriggerQuery",
     "TriggerBuilder",
     "TriggerBundle",
     # Models - SLOs

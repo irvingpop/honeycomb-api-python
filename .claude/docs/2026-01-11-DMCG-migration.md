@@ -328,12 +328,12 @@ Mapping of hand-written models to generated base classes:
 ### Current status
 
 **Core Resources (4/8 complete)**:
-- ✓ Columns, Datasets, Markers, Recipients, SLOs
-- Pending: Triggers, Queries, Boards
+- ✓ Columns, Datasets, Markers, Recipients, SLOs, Queries,
+- Pending: Triggers, Boards
 
 **Additional Resources (6/8 complete)**:
-- ✓ Events, Auth, ApiKeys, Environments, BurnAlerts (refactored properly), DerivedColumns
-- Pending: QueryAnnotations, ServiceMapDependencies
+- ✓ Events, Auth, ApiKeys, Environments, BurnAlerts (refactored properly), DerivedColumns, QueryAnnotations,
+- Pending: ServiceMapDependencies
 
 **Total: 10/16 resources migrated**
 

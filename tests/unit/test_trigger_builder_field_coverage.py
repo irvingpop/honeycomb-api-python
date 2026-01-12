@@ -42,11 +42,11 @@ def test_all_trigger_fields_are_mapped():
     # Verify all fields are set
     assert trigger.name == "Complete Trigger Test"
     assert trigger.description == "Tests all trigger fields"
-    assert trigger.query.time_range == 900
-    assert trigger.query.granularity == 60, "granularity not set!"
-    assert trigger.query.filters is not None and len(trigger.query.filters) == 1
-    assert trigger.query.filter_combination == "AND", "filter_combination not set!"
-    assert trigger.query.breakdowns == ["service"]
+    assert trigger.query["time_range"] == 900
+    assert trigger.query["granularity"] == 60, "granularity not set!"
+    assert trigger.query["filters"] is not None and len(trigger.query["filters"]) == 1
+    assert trigger.query["filter_combination"] == "AND", "filter_combination not set!"
+    assert trigger.query["breakdowns"] == ["service"]
     assert trigger.threshold.op.value == ">"
     assert trigger.threshold.value == 100
     assert trigger.threshold.exceeded_limit == 3
@@ -74,4 +74,4 @@ def test_trigger_granularity_is_preserved():
     builder = _build_trigger(tool_input)
     bundle = builder.build()
 
-    assert bundle.trigger.query.granularity == 120, "granularity was lost"
+    assert bundle.trigger.query["granularity"] == 120, "granularity was lost"

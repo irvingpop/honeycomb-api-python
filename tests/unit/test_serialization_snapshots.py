@@ -16,7 +16,6 @@ from honeycomb.models.recipients import EmailRecipientDetails
 from honeycomb.models.triggers import (
     TriggerAlertType,
     TriggerCreate,
-    TriggerQuery,
     TriggerThreshold,
     TriggerThresholdOp,
 )
@@ -32,22 +31,23 @@ class TestTriggerSerialization:
             description="Test description",
             threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100.0),
             frequency=900,
-            query=TriggerQuery(
-                time_range=900,
-                calculations=[Calculation(op=CalcOp.COUNT)],
-            ),
+            query={
+                "time_range": 900,
+                "calculations": [Calculation(op=CalcOp.COUNT)],
+            },
         )
 
-        payload = trigger.model_dump_for_api()
+        payload = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
 
         # Snapshot the exact structure
+        # Note: disabled and alert_type excluded as they're default values (cleaner API payloads)
         assert payload == {
             "name": "Test Trigger",
             "description": "Test description",
             "threshold": {"op": ">", "value": 100.0},
             "frequency": 900,
-            "disabled": False,
-            "alert_type": "on_change",
             "query": {
                 "time_range": 900,
                 "calculations": [{"op": "COUNT"}],
@@ -62,10 +62,12 @@ class TestTriggerSerialization:
                 op=TriggerThresholdOp.GREATER_THAN_OR_EQUAL, value=150.0, exceeded_limit=3
             ),
             frequency=900,
-            query=TriggerQuery(time_range=900),
+            query={"time_range": 900},
         )
 
-        payload = trigger.model_dump_for_api()
+        payload = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
 
         assert payload["threshold"] == {"op": ">=", "value": 150.0, "exceeded_limit": 3}
 
@@ -75,18 +77,20 @@ class TestTriggerSerialization:
             name="Complex Query Trigger",
             threshold=TriggerThreshold(op=TriggerThresholdOp.LESS_THAN, value=50.0),
             frequency=900,
-            query=TriggerQuery(
-                time_range=1800,
-                granularity=60,
-                calculations=[Calculation(op=CalcOp.P99, column="duration_ms")],
-                filters=[
+            query={
+                "time_range": 1800,
+                "granularity": 60,
+                "calculations": [Calculation(op=CalcOp.P99, column="duration_ms")],
+                "filters": [
                     Filter(column="status_code", op=FilterOp.EQUALS, value=500),
                 ],
-                breakdowns=["endpoint"],
-            ),
+                "breakdowns": ["endpoint"],
+            },
         )
 
-        payload = trigger.model_dump_for_api()
+        payload = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
 
         assert payload["query"] == {
             "time_range": 1800,
@@ -105,7 +109,9 @@ class TestTriggerSerialization:
             query_id="abc123",
         )
 
-        payload = trigger.model_dump_for_api()
+        payload = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
 
         assert "query" not in payload
         assert payload["query_id"] == "abc123"
@@ -116,11 +122,13 @@ class TestTriggerSerialization:
             name="On True Trigger",
             threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100.0),
             frequency=900,
-            query=TriggerQuery(time_range=900),
-            alert_type=TriggerAlertType.ON_TRUE,
+            query={"time_range": 900},
+            alert_type=TriggerAlertType.on_true,
         )
 
-        payload = trigger.model_dump_for_api()
+        payload = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
 
         assert payload["alert_type"] == "on_true"
 
@@ -130,11 +138,13 @@ class TestTriggerSerialization:
             name="Disabled Trigger",
             threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100.0),
             frequency=900,
-            query=TriggerQuery(time_range=900),
+            query={"time_range": 900},
             disabled=True,
         )
 
-        payload = trigger.model_dump_for_api()
+        payload = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
 
         assert payload["disabled"] is True
 
@@ -144,11 +154,13 @@ class TestTriggerSerialization:
             name="Trigger with Recipients",
             threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100.0),
             frequency=900,
-            query=TriggerQuery(time_range=900),
+            query={"time_range": 900},
             recipients=[{"id": "recip1"}, {"id": "recip2"}],
         )
 
-        payload = trigger.model_dump_for_api()
+        payload = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
 
         assert payload["recipients"] == [{"id": "recip1"}, {"id": "recip2"}]
 
@@ -157,20 +169,22 @@ class TestTriggerSerialization:
         trigger = TriggerCreate(
             name="Minimal",
             threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100.0),
-            query=TriggerQuery(time_range=900),
+            query={"time_range": 900},
         )
 
-        payload = trigger.model_dump_for_api()
+        payload = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
 
-        # Should have defaults but no optional fields
+        # Defaults are excluded for cleaner API payloads (API assumes defaults)
         assert "description" not in payload
         assert "query_id" not in payload
         assert "recipients" not in payload
         assert "tags" not in payload
         assert "baseline_details" not in payload
-        assert payload["frequency"] == 900  # default
-        assert payload["disabled"] is False  # default
-        assert payload["alert_type"] == "on_change"  # default
+        assert "frequency" not in payload  # default 900 - excluded
+        assert "disabled" not in payload  # default False - excluded
+        assert "alert_type" not in payload  # default on_change - excluded
 
 
 class TestColumnSerialization:

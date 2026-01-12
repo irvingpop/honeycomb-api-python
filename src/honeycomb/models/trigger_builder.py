@@ -20,7 +20,6 @@ from .tags_mixin import TagsMixin
 from .triggers import (
     TriggerAlertType,
     TriggerCreate,
-    TriggerQuery,
     TriggerThreshold,
     TriggerThresholdOp,
 )
@@ -48,12 +47,14 @@ class TriggerBundle:
     inline_recipients: list[dict[str, Any]]
 
     def model_dump_for_api(self) -> dict[str, Any]:
-        """Serialize for API request by delegating to inner trigger.
+        """Serialize for API request using standard Pydantic serialization.
 
         Returns:
             Dictionary suitable for API submission.
         """
-        return self.trigger.model_dump_for_api()
+        return self.trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
 
 
 class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
@@ -111,7 +112,7 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
         self._threshold_value: float | None = None
         self._exceeded_limit: int | None = None
         self._frequency: int = 900  # Default 15 minutes
-        self._alert_type: TriggerAlertType = TriggerAlertType.ON_CHANGE
+        self._alert_type: TriggerAlertType = TriggerAlertType.on_change
         self._disabled: bool = False
         self._baseline_details: dict[str, int | str] | None = None
 
@@ -301,7 +302,7 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
         Returns:
             Self for method chaining.
         """
-        self._alert_type = TriggerAlertType.ON_CHANGE
+        self._alert_type = TriggerAlertType.on_change
         return self
 
     def alert_on_true(self) -> Self:
@@ -310,7 +311,7 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
         Returns:
             Self for method chaining.
         """
-        self._alert_type = TriggerAlertType.ON_TRUE
+        self._alert_type = TriggerAlertType.on_true
         return self
 
     def disabled(self, is_disabled: bool = True) -> Self:
@@ -417,7 +418,7 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
         self,
     ) -> tuple[
         TriggerThreshold,
-        TriggerQuery,
+        dict[str, Any],
         list[dict[str, Any]] | None,
         list[dict[str, str]] | None,
         dict[str, int | str] | None,
@@ -425,7 +426,7 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
         """Validate trigger configuration and return components.
 
         Returns:
-            Tuple of (threshold, query, recipients, tags, baseline_details)
+            Tuple of (threshold, query_dict, recipients, tags, baseline_details)
 
         Raises:
             ValueError: If constraints are violated
@@ -468,22 +469,27 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
             exceeded_limit=self._exceeded_limit,
         )
 
-        # Build query
-        query = TriggerQuery(
-            time_range=time_range,
-            granularity=self._granularity,
-            calculations=self._calculations if self._calculations else None,
-            filters=self._filters if self._filters else None,
-            breakdowns=self._breakdowns if self._breakdowns else None,
-            filter_combination=self._filter_combination,
-        )
+        # Build query as dict (like QueryBuilder does for generated types)
+        query_dict: dict[str, Any] = {"time_range": time_range}
+        if self._granularity is not None:
+            query_dict["granularity"] = self._granularity
+        if self._calculations:
+            query_dict["calculations"] = [c.to_dict() for c in self._calculations]
+        if self._filters:
+            query_dict["filters"] = [f.to_dict() for f in self._filters]
+        if self._breakdowns:
+            query_dict["breakdowns"] = self._breakdowns
+        if self._filter_combination:
+            # Convert enum to value if needed
+            fc = self._filter_combination
+            query_dict["filter_combination"] = fc.value if hasattr(fc, "value") else fc
 
         # Get recipients, tags, baseline if any
         recipients = self._get_all_recipients() if self._get_all_recipients() else None
         tags = self._get_all_tags()
         baseline = self._baseline_details
 
-        return threshold, query, recipients, tags, baseline
+        return threshold, query_dict, recipients, tags, baseline
 
     def build(self) -> TriggerBundle:  # type: ignore[override]
         """Build TriggerBundle with validation for orchestrated creation.
@@ -499,7 +505,7 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
                 - Missing threshold
                 - Frequency vs duration constraint (duration <= frequency * 4)
         """
-        threshold, query, recipients, tags, baseline = self._validate_and_get_components()
+        threshold, query_dict, recipients, tags, baseline = self._validate_and_get_components()
 
         # Separate inline recipients (without 'id') from those with IDs
         inline_recipients: list[dict[str, Any]] = []
@@ -512,13 +518,13 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
                 else:
                     inline_recipients.append(recip.copy())
 
-        # Build trigger with only the recipients that already have IDs
+        # Build trigger with dict query (not TriggerQuery)
         trigger = TriggerCreate(
             name=self._name,
             description=self._description,
             threshold=threshold,
             frequency=self._frequency,
-            query=query,
+            query=query_dict,
             disabled=self._disabled,
             alert_type=self._alert_type,
             recipients=recipients_with_ids if recipients_with_ids else None,
@@ -543,14 +549,14 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
         Raises:
             ValueError: If constraints are violated (same as build())
         """
-        threshold, query, recipients, tags, baseline = self._validate_and_get_components()
+        threshold, query_dict, recipients, tags, baseline = self._validate_and_get_components()
 
         return TriggerCreate(
             name=self._name,
             description=self._description,
             threshold=threshold,
             frequency=self._frequency,
-            query=query,
+            query=query_dict,
             disabled=self._disabled,
             alert_type=self._alert_type,
             recipients=recipients,

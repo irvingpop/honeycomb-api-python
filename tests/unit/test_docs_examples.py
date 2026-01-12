@@ -12,7 +12,6 @@ from honeycomb import (
     SLOCreate,
     SLOCreateSli,
     TriggerCreate,
-    TriggerQuery,
     TriggerThreshold,
     TriggerThresholdOp,
 )
@@ -99,10 +98,10 @@ class TestQuickstartExamples:
                         value=0.05,
                     ),
                     frequency=300,
-                    query=TriggerQuery(
-                        time_range=900,
-                        calculations=[Calculation(op=CalcOp.AVG, column="error_rate")],
-                    ),
+                    query={
+                        "time_range": 900,
+                        "calculations": [Calculation(op=CalcOp.AVG, column="error_rate")],
+                    },
                 ),
             )
             assert trigger.id == "trigger-123"

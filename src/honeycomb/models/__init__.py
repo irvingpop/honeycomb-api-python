@@ -120,7 +120,6 @@ from .triggers import (
     Trigger,
     TriggerAlertType,
     TriggerCreate,
-    TriggerQuery,
     TriggerThreshold,
     TriggerThresholdOp,
 )
@@ -142,7 +141,6 @@ __all__ = [
     "TriggerThreshold",
     "TriggerThresholdOp",
     "TriggerAlertType",
-    "TriggerQuery",
     "TriggerBuilder",
     "TriggerBundle",
     # SLOs

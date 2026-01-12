@@ -15,7 +15,6 @@ from honeycomb import (
     SLOCreateSli,
     Trigger,
     TriggerCreate,
-    TriggerQuery,
     TriggerThreshold,
     TriggerThresholdOp,
 )
@@ -103,7 +102,9 @@ class TestPydanticModels:
             ),
             frequency=300,
         )
-        data = trigger.model_dump_for_api()
+        data = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
         assert data["name"] == "Test Trigger"
         assert data["threshold"]["op"] == ">"
         assert data["threshold"]["value"] == 100.0
@@ -117,11 +118,11 @@ class TestPydanticModels:
                 op=TriggerThresholdOp.LESS_THAN,
                 value=10.0,
             ),
-            query=TriggerQuery(
-                time_range=900,
-            ),
+            query={"time_range": 900},
         )
-        data = trigger.model_dump_for_api()
+        data = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
         assert "query" in data
         assert data["query"]["time_range"] == 900
 

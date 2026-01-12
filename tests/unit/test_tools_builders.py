@@ -344,7 +344,7 @@ class TestBuilderEdgeCases:
         builder = _build_trigger(data)
         trigger = builder.build()
 
-        assert len(trigger.trigger.query.filters) == 2
+        assert len(trigger.trigger.query["filters"]) == 2
 
     def test_trigger_with_breakdowns(self):
         """Can build trigger with breakdowns (group by)."""
@@ -363,4 +363,4 @@ class TestBuilderEdgeCases:
         builder = _build_trigger(data)
         trigger = builder.build()
 
-        assert trigger.trigger.query.breakdowns == ["endpoint", "status_code"]
+        assert trigger.trigger.query["breakdowns"] == ["endpoint", "status_code"]

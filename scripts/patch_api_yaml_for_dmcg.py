@@ -208,6 +208,35 @@ def patch_inline_titles(spec: dict) -> int:
             patches += 1
             print(f"  ✓ Query.limit: changed default from 100 to None")
 
+    # Patch 11: Add x-enum-varnames to BaseTriggerThreshold.op for usable enum names
+    # Without this, > becomes field_, >= becomes field__, etc.
+    THRESHOLD_OP_VARNAMES = [
+        "GREATER_THAN",           # ">"
+        "GREATER_THAN_OR_EQUAL",  # ">="
+        "LESS_THAN",              # "<"
+        "LESS_THAN_OR_EQUAL",     # "<="
+    ]
+
+    if "BaseTrigger" in schemas:
+        threshold = schemas["BaseTrigger"].get("properties", {}).get("threshold", {})
+        if threshold:
+            # Navigate to the threshold schema (could be inline or $ref)
+            # First check if it's a $ref
+            if "$ref" in threshold:
+                # Extract schema name from $ref like "#/components/schemas/BaseTriggerThreshold"
+                ref = threshold["$ref"]
+                threshold_schema_name = ref.split("/")[-1]
+                threshold_schema = schemas.get(threshold_schema_name, {})
+            else:
+                threshold_schema = threshold
+
+            # Now add x-enum-varnames to the op property
+            op = threshold_schema.get("properties", {}).get("op", {})
+            if op.get("enum") == [">", ">=", "<", "<="]:
+                op["x-enum-varnames"] = THRESHOLD_OP_VARNAMES
+                patches += 1
+                print(f"  ✓ BaseTriggerThreshold.op: added x-enum-varnames for usable enum names")
+
     return patches
 
 
