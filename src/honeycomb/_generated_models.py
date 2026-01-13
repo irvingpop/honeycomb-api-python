@@ -181,33 +181,33 @@ class PresetFilter(BaseModel):
     )
 
 
-class BoardViewFilterOperation(Enum):
+class BoardViewFilterBoardViewFilterOperation(Enum):
     """
     The filter operation.
     """
 
-    field_ = "="
-    field__ = "!="
-    field__1 = ">"
-    field___1 = ">="
-    field__2 = "<"
-    field___2 = "<="
-    starts_with = "starts-with"
-    does_not_start_with = "does-not-start-with"
-    ends_with = "ends-with"
-    does_not_end_with = "does-not-end-with"
-    exists = "exists"
-    does_not_exist = "does-not-exist"
-    contains = "contains"
-    does_not_contain = "does-not-contain"
-    in_ = "in"
-    not_in = "not-in"
+    EQUALS = "="
+    NOT_EQUALS = "!="
+    GREATER_THAN = ">"
+    GREATER_THAN_OR_EQUAL = ">="
+    LESS_THAN = "<"
+    LESS_THAN_OR_EQUAL = "<="
+    STARTS_WITH = "starts-with"
+    DOES_NOT_START_WITH = "does-not-start-with"
+    ENDS_WITH = "ends-with"
+    DOES_NOT_END_WITH = "does-not-end-with"
+    EXISTS = "exists"
+    DOES_NOT_EXIST = "does-not-exist"
+    CONTAINS = "contains"
+    DOES_NOT_CONTAIN = "does-not-contain"
+    IN = "in"
+    NOT_IN = "not-in"
 
 
 class BoardViewFilter(BaseModel):
     column: str = Field(..., description="The column name to filter on.", examples=["status"])
-    operation: BoardViewFilterOperation = Field(
-        ..., description="The filter operation.", examples=["="]
+    operation: BoardViewFilterBoardViewFilterOperation = Field(
+        ..., description="The filter operation.", examples=["="], title="BoardViewFilterOperation"
     )
     value: Any | None = Field(
         default=None, description="The value to filter by.", examples=["error"]

@@ -171,7 +171,7 @@ class TestPydanticModels:
             name="Test Board",
             description="A test board",
         )
-        data = board.model_dump_for_api()
+        data = board.model_dump(mode="json", exclude_none=True)
         assert data["name"] == "Test Board"
         assert data["description"] == "A test board"
         assert data["type"] == "flexible"

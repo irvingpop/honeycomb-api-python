@@ -328,8 +328,8 @@ Mapping of hand-written models to generated base classes:
 ### Current status
 
 **Core Resources (4/8 complete)**:
-- ✓ Columns, Datasets, Markers, Recipients, SLOs, Queries,
-- Pending: Triggers, Boards
+- ✓ Columns, Datasets, Markers, Recipients, SLOs, Queries, Triggers,
+- Pending: Boards
 
 **Additional Resources (6/8 complete)**:
 - ✓ Events, Auth, ApiKeys, Environments, BurnAlerts (refactored properly), DerivedColumns, QueryAnnotations,

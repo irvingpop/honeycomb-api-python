@@ -5,7 +5,17 @@ from __future__ import annotations
 import builtins
 from typing import TYPE_CHECKING, Any
 
-from ..models.boards import Board, BoardCreate, BoardView, BoardViewCreate
+from ..models.boards import (
+    Board,
+    BoardCreate,
+    BoardPanelPosition,
+    BoardQueryVisualizationSettings,
+    BoardView,
+    BoardViewCreate,
+    QueryPanel,
+    SLOPanel,
+    TextPanel,
+)
 from ..models.tool_inputs import PositionInput
 from .base import BaseResource
 
@@ -80,7 +90,9 @@ class BoardsResource(BaseResource):
         Returns:
             Created Board object.
         """
-        data = await self._post_async(self._build_path(), json=board.model_dump_for_api())
+        data = await self._post_async(
+            self._build_path(), json=board.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(Board, data)
 
     async def update_async(self, board_id: str, board: BoardCreate) -> Board:
@@ -93,7 +105,9 @@ class BoardsResource(BaseResource):
         Returns:
             Updated Board object.
         """
-        data = await self._put_async(self._build_path(board_id), json=board.model_dump_for_api())
+        data = await self._put_async(
+            self._build_path(board_id), json=board.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(Board, data)
 
     async def delete_async(self, board_id: str) -> None:
@@ -141,7 +155,7 @@ class BoardsResource(BaseResource):
             ... )
         """
 
-        panels = []
+        panels: list[QueryPanel | SLOPanel | TextPanel] = []
 
         # Create query panels from QueryBuilder instances
         for qb_panel in bundle.query_builder_panels:
@@ -160,7 +174,7 @@ class BoardsResource(BaseResource):
                     qb_panel.builder
                 )
             panels.append(
-                self._build_query_panel_dict(
+                self._build_query_panel(
                     query.id,
                     annotation_id,
                     qb_panel.position,
@@ -172,7 +186,7 @@ class BoardsResource(BaseResource):
         # Add existing query panels
         for existing in bundle.existing_query_panels:
             panels.append(
-                self._build_query_panel_dict(
+                self._build_query_panel(
                     existing.query_id,
                     existing.annotation_id,
                     existing.position,
@@ -188,15 +202,15 @@ class BoardsResource(BaseResource):
             # Get first SLO (should only be one dataset for board usage)
             slo = next(iter(slo_dict.values()))
             assert slo.id is not None, "Created SLO must have an ID"
-            panels.append(self._build_slo_panel_dict(slo.id, slo_panel.position))
+            panels.append(self._build_slo_panel(slo.id, slo_panel.position))
 
         # Add existing SLO panels
         for slo_existing in bundle.existing_slo_panels:
-            panels.append(self._build_slo_panel_dict(slo_existing.slo_id, slo_existing.position))
+            panels.append(self._build_slo_panel(slo_existing.slo_id, slo_existing.position))
 
         # Add text panels
         for text in bundle.text_panels:
-            panels.append(self._build_text_panel_dict(text.content, text.position))
+            panels.append(self._build_text_panel(text.content, text.position))
 
         # Create board
         board_create = BoardCreate(
@@ -215,6 +229,7 @@ class BoardsResource(BaseResource):
         if bundle.views:
             import warnings
 
+            assert board.id is not None, "Created board must have an ID"
             for view_create in bundle.views:
                 try:
                     await self.create_view_async(board.id, view_create)
@@ -229,68 +244,94 @@ class BoardsResource(BaseResource):
 
         return board
 
-    def _build_query_panel_dict(
+    def _build_query_panel(
         self,
         query_id: str,
         annotation_id: str,
         position: PositionInput | None,
         style: str,
         visualization: dict[str, Any] | None,
-    ) -> dict[str, Any]:
-        """Build query panel dictionary for API."""
-        query_panel: dict[str, Any] = {
-            "query_id": query_id,
-            "query_annotation_id": annotation_id,
-            "query_style": style,
-        }
-        # Dataset is not included - query already knows its scope
-        if visualization:
-            query_panel["visualization_settings"] = visualization
+    ) -> QueryPanel:
+        """Build QueryPanel Pydantic model from bundle data."""
+        from honeycomb._generated_models import QueryPanelQueryPanel
 
-        panel: dict[str, Any] = {
-            "type": "query",
-            "query_panel": query_panel,
-        }
+        # Build the nested query_panel data
+        query_panel_data = QueryPanelQueryPanel(
+            query_id=query_id,
+            query_annotation_id=annotation_id,
+            query_style=style,
+            visualization_settings=(
+                BoardQueryVisualizationSettings(**visualization) if visualization else None
+            ),
+        )
+
+        # Build position if provided
+        position_model = None
         if position:
-            panel["position"] = {
-                "x_coordinate": position.x_coordinate,
-                "y_coordinate": position.y_coordinate,
-                "width": position.width,
-                "height": position.height,
-            }
-        return panel
+            position_model = BoardPanelPosition(
+                x_coordinate=position.x_coordinate,
+                y_coordinate=position.y_coordinate,
+                width=position.width,
+                height=position.height,
+            )
 
-    def _build_slo_panel_dict(
+        return QueryPanel(
+            type="query",
+            query_panel=query_panel_data,
+            position=position_model,
+        )
+
+    def _build_slo_panel(
         self,
         slo_id: str,
         position: PositionInput | None,
-    ) -> dict[str, Any]:
-        """Build SLO panel dictionary for API."""
-        panel = {"type": "slo", "slo_panel": {"slo_id": slo_id}}
-        if position:
-            panel["position"] = {
-                "x_coordinate": position.x_coordinate,
-                "y_coordinate": position.y_coordinate,
-                "width": position.width,
-                "height": position.height,
-            }
-        return panel
+    ) -> SLOPanel:
+        """Build SLOPanel Pydantic model from bundle data."""
+        from honeycomb._generated_models import SLOPanelSloPanel
 
-    def _build_text_panel_dict(
+        slo_panel_data = SLOPanelSloPanel(slo_id=slo_id)
+
+        # Build position if provided
+        position_model = None
+        if position:
+            position_model = BoardPanelPosition(
+                x_coordinate=position.x_coordinate,
+                y_coordinate=position.y_coordinate,
+                width=position.width,
+                height=position.height,
+            )
+
+        return SLOPanel(
+            type="slo",
+            slo_panel=slo_panel_data,
+            position=position_model,
+        )
+
+    def _build_text_panel(
         self,
         content: str,
         position: PositionInput | None,
-    ) -> dict[str, Any]:
-        """Build text panel dictionary for API."""
-        panel = {"type": "text", "text_panel": {"content": content}}
+    ) -> TextPanel:
+        """Build TextPanel Pydantic model from bundle data."""
+        from honeycomb._generated_models import TextPanelTextPanel
+
+        text_panel_data = TextPanelTextPanel(content=content)
+
+        # Build position if provided
+        position_model = None
         if position:
-            panel["position"] = {
-                "x_coordinate": position.x_coordinate,
-                "y_coordinate": position.y_coordinate,
-                "width": position.width,
-                "height": position.height,
-            }
-        return panel
+            position_model = BoardPanelPosition(
+                x_coordinate=position.x_coordinate,
+                y_coordinate=position.y_coordinate,
+                width=position.width,
+                height=position.height,
+            )
+
+        return TextPanel(
+            type="text",
+            text_panel=text_panel_data,
+            position=position_model,
+        )
 
     # -------------------------------------------------------------------------
     # Board View Methods - Async
@@ -336,7 +377,7 @@ class BoardsResource(BaseResource):
         """
         data = await self._post_async(
             self._build_view_path(board_id),
-            json=view.model_dump_for_api(),
+            json=view.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(BoardView, data)
 
@@ -358,7 +399,7 @@ class BoardsResource(BaseResource):
         """
         data = await self._put_async(
             self._build_view_path(board_id, view_id),
-            json=view.model_dump_for_api(),
+            json=view.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(BoardView, data)
 
@@ -411,7 +452,9 @@ class BoardsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
-        data = self._post_sync(self._build_path(), json=board.model_dump_for_api())
+        data = self._post_sync(
+            self._build_path(), json=board.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(Board, data)
 
     def update(self, board_id: str, board: BoardCreate) -> Board:
@@ -426,7 +469,9 @@ class BoardsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
-        data = self._put_sync(self._build_path(board_id), json=board.model_dump_for_api())
+        data = self._put_sync(
+            self._build_path(board_id), json=board.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(Board, data)
 
     def delete(self, board_id: str) -> None:
@@ -513,7 +558,7 @@ class BoardsResource(BaseResource):
             )
         data = self._post_sync(
             self._build_view_path(board_id),
-            json=view.model_dump_for_api(),
+            json=view.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(BoardView, data)
 
@@ -534,7 +579,7 @@ class BoardsResource(BaseResource):
             )
         data = self._put_sync(
             self._build_view_path(board_id, view_id),
-            json=view.model_dump_for_api(),
+            json=view.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(BoardView, data)
 

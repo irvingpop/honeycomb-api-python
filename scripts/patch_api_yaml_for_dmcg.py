@@ -237,6 +237,37 @@ def patch_inline_titles(spec: dict) -> int:
                 patches += 1
                 print(f"  ✓ BaseTriggerThreshold.op: added x-enum-varnames for usable enum names")
 
+    # Patch 12: Add x-enum-varnames to BoardViewFilter.operation (same as FilterOp)
+    # Without this, = becomes field_, != becomes field__, etc.
+    BOARD_VIEW_FILTER_OP_VARNAMES = [
+        "EQUALS",               # "="
+        "NOT_EQUALS",           # "!="
+        "GREATER_THAN",         # ">"
+        "GREATER_THAN_OR_EQUAL",  # ">="
+        "LESS_THAN",            # "<"
+        "LESS_THAN_OR_EQUAL",   # "<="
+        "STARTS_WITH",          # "starts-with"
+        "DOES_NOT_START_WITH",  # "does-not-start-with"
+        "ENDS_WITH",            # "ends-with"
+        "DOES_NOT_END_WITH",    # "does-not-end-with"
+        "EXISTS",               # "exists"
+        "DOES_NOT_EXIST",       # "does-not-exist"
+        "CONTAINS",             # "contains"
+        "DOES_NOT_CONTAIN",     # "does-not-contain"
+        "IN",                   # "in"
+        "NOT_IN",               # "not-in"
+    ]
+
+    if "BoardViewFilter" in schemas:
+        operation = schemas["BoardViewFilter"].get("properties", {}).get("operation", {})
+        if operation and "enum" in operation:
+            operation["x-enum-varnames"] = BOARD_VIEW_FILTER_OP_VARNAMES
+            # Also add a title so the generated enum gets a nice name
+            if "title" not in operation:
+                operation["title"] = "BoardViewFilterOperation"
+            patches += 2  # Count both patches
+            print(f"  ✓ BoardViewFilter.operation: added x-enum-varnames and title for usable enum names")
+
     return patches
 
 
