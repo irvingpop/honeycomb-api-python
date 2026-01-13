@@ -182,10 +182,9 @@ def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
             builder.min(column)
         elif op.value == "COUNT_DISTINCT" and column:
             builder.count_distinct(column)
-        elif op.value == "HEATMAP" and column:
-            builder.heatmap(column)
         elif op.value == "CONCURRENCY":
             builder.concurrency()
+        # Note: HEATMAP not supported - validation rejects it before builder runs
         elif op.value.startswith("P") and column:
             # Percentile (e.g., P99, P95, P90, P50)
             # Only P50, P90, P95, P99 are supported via direct methods
@@ -245,9 +244,7 @@ def _build_trigger(data: dict[str, Any]) -> TriggerBuilder:
         for breakdown in query.breakdowns:
             builder.breakdown(breakdown)
 
-    # Granularity
-    if query.granularity:
-        builder.granularity(query.granularity)
+    # Note: Granularity not supported for trigger queries (API rejects it)
 
     # Threshold from validated model
     threshold = validated.threshold

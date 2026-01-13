@@ -445,6 +445,25 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
                 "Use time_range() or time presets like last_30_minutes()."
             )
 
+        # Validate no unsupported query features
+        if self._granularity is not None:
+            raise ValueError(
+                "Triggers do not support 'granularity'. "
+                "Remove the granularity() call from your trigger query."
+            )
+        if self._orders:
+            raise ValueError(
+                "Triggers do not support 'orders'. Remove order_by() calls from your trigger query."
+            )
+        if self._limit is not None:
+            raise ValueError(
+                "Triggers do not support 'limit'. Remove the limit() call from your trigger query."
+            )
+        if self._havings:
+            raise ValueError(
+                "Triggers do not support 'havings'. Remove having() calls from your trigger query."
+            )
+
         # Validate time range using shared validation
         time_range = self._time_range or 3600  # Default 1 hour
         validate_trigger_time_range(time_range)
@@ -470,9 +489,8 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
         )
 
         # Build query as dict (like QueryBuilder does for generated types)
+        # Note: granularity, orders, limit, havings validated as None above
         query_dict: dict[str, Any] = {"time_range": time_range}
-        if self._granularity is not None:
-            query_dict["granularity"] = self._granularity
         if self._calculations:
             query_dict["calculations"] = [c.to_dict() for c in self._calculations]
         if self._filters:

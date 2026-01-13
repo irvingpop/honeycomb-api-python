@@ -636,7 +636,7 @@
           },
           "TriggerQueryInput": {
             "additionalProperties": false,
-            "description": "Query specification for trigger tool input.\n\nTriggers support a subset of query features:\n- Single calculation only (min/max enforced by field validator)\n- No HEATMAP calculations\n- No orders or limit fields (not present in this model)\n- Relative time ranges only (no absolute start/end times)\n- Maximum time range of 3600 seconds (1 hour)",
+            "description": "Query specification for trigger tool input.\n\nTriggers support a subset of query features:\n- Single calculation only (min/max enforced by field validator)\n- No HEATMAP calculations\n- No orders, limit, or granularity fields (not supported by Honeycomb API)\n- Relative time ranges only (no absolute start/end times)\n- Maximum time range of 3600 seconds (1 hour)",
             "properties": {
               "time_range": {
                 "description": "Query time range in seconds (max 3600 for triggers)",
@@ -696,19 +696,6 @@
                 ],
                 "default": null,
                 "description": "How to combine filters (AND or OR)"
-              },
-              "granularity": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Time granularity in seconds",
-                "title": "Granularity"
               }
             },
             "required": [
@@ -876,24 +863,6 @@
               "value": "high"
             }
           ]
-        },
-        {
-          "dataset": "traces",
-          "name": "Request Duration Distribution",
-          "query": {
-            "time_range": 3600,
-            "calculations": [
-              {
-                "op": "HEATMAP",
-                "column": "duration_ms"
-              }
-            ]
-          },
-          "threshold": {
-            "op": ">",
-            "value": 1000
-          },
-          "frequency": 3600
         },
         {
           "dataset": "api-logs",
@@ -1107,11 +1076,11 @@
           }
         },
         "required": [
-          "dataset",
+          "trigger_id",
+          "threshold",
           "name",
           "query",
-          "threshold",
-          "trigger_id"
+          "dataset"
         ],
         "$defs": {
           "BaseTriggerBaselineDetails": {
@@ -1418,7 +1387,7 @@
           },
           "TriggerQueryInput": {
             "additionalProperties": false,
-            "description": "Query specification for trigger tool input.\n\nTriggers support a subset of query features:\n- Single calculation only (min/max enforced by field validator)\n- No HEATMAP calculations\n- No orders or limit fields (not present in this model)\n- Relative time ranges only (no absolute start/end times)\n- Maximum time range of 3600 seconds (1 hour)",
+            "description": "Query specification for trigger tool input.\n\nTriggers support a subset of query features:\n- Single calculation only (min/max enforced by field validator)\n- No HEATMAP calculations\n- No orders, limit, or granularity fields (not supported by Honeycomb API)\n- Relative time ranges only (no absolute start/end times)\n- Maximum time range of 3600 seconds (1 hour)",
             "properties": {
               "time_range": {
                 "description": "Query time range in seconds (max 3600 for triggers)",
@@ -1478,19 +1447,6 @@
                 ],
                 "default": null,
                 "description": "How to combine filters (AND or OR)"
-              },
-              "granularity": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Time granularity in seconds",
-                "title": "Granularity"
               }
             },
             "required": [

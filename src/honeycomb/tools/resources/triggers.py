@@ -210,17 +210,6 @@ def generate_create_trigger_tool() -> dict[str, Any]:
                 {"key": "severity", "value": "high"},
             ],
         },
-        # HEATMAP calculation example
-        {
-            "dataset": "traces",
-            "name": "Request Duration Distribution",
-            "query": {
-                "time_range": 3600,
-                "calculations": [{"op": "HEATMAP", "column": "duration_ms"}],
-            },
-            "threshold": {"op": ">", "value": 1000},
-            "frequency": 3600,
-        },
         # COUNT_DISTINCT example
         {
             "dataset": "api-logs",
