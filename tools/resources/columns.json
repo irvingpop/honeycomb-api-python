@@ -156,18 +156,35 @@
             "description": "The dataset slug"
           },
           "key_name": {
-            "description": "Name of the column",
+            "description": "Name of the Column.",
+            "examples": [
+              "my_column"
+            ],
+            "maxLength": 255,
+            "minLength": 1,
             "title": "Key Name",
             "type": "string"
           },
           "type": {
-            "$ref": "#/$defs/ColumnType",
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CreateColumnColumnType"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": "string",
-            "description": "Type of data the column contains"
+            "description": "Type of data that the Column will contain. Histogram is in beta and only works in your Metrics dataset.",
+            "examples": [
+              "integer"
+            ],
+            "title": "ColumnType"
           },
           "description": {
             "anyOf": [
               {
+                "maxLength": 255,
                 "type": "string"
               },
               {
@@ -175,14 +192,24 @@
               }
             ],
             "default": null,
-            "description": "Column description",
+            "description": "Column description.",
+            "examples": [
+              "An integer column"
+            ],
             "title": "Description"
           },
           "hidden": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": false,
-            "description": "If true, column is excluded from autocomplete and raw data field lists",
-            "title": "Hidden",
-            "type": "boolean"
+            "description": "If `true`, the column is excluded from autocomplete and raw data field lists.",
+            "title": "Hidden"
           },
           "confidence": {
             "type": "string",
@@ -235,15 +262,16 @@
           "key_name"
         ],
         "$defs": {
-          "ColumnType": {
-            "description": "Column data types.",
+          "CreateColumnColumnType": {
+            "description": "Type of data that the Column will contain. Histogram is in beta and only works in your Metrics dataset.",
             "enum": [
               "string",
-              "integer",
               "float",
-              "boolean"
+              "integer",
+              "boolean",
+              "histogram"
             ],
-            "title": "ColumnType",
+            "title": "CreateColumnColumnType",
             "type": "string"
           }
         }
@@ -284,18 +312,35 @@
             "description": "The column ID to update"
           },
           "key_name": {
-            "description": "Name of the column",
+            "description": "Name of the Column.",
+            "examples": [
+              "my_column"
+            ],
+            "maxLength": 255,
+            "minLength": 1,
             "title": "Key Name",
             "type": "string"
           },
           "type": {
-            "$ref": "#/$defs/ColumnType",
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CreateColumnColumnType"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": "string",
-            "description": "Type of data the column contains"
+            "description": "Type of data that the Column will contain. Histogram is in beta and only works in your Metrics dataset.",
+            "examples": [
+              "integer"
+            ],
+            "title": "ColumnType"
           },
           "description": {
             "anyOf": [
               {
+                "maxLength": 255,
                 "type": "string"
               },
               {
@@ -303,14 +348,24 @@
               }
             ],
             "default": null,
-            "description": "Column description",
+            "description": "Column description.",
+            "examples": [
+              "An integer column"
+            ],
             "title": "Description"
           },
           "hidden": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": false,
-            "description": "If true, column is excluded from autocomplete and raw data field lists",
-            "title": "Hidden",
-            "type": "boolean"
+            "description": "If `true`, the column is excluded from autocomplete and raw data field lists.",
+            "title": "Hidden"
           },
           "confidence": {
             "type": "string",
@@ -364,15 +419,16 @@
           "key_name"
         ],
         "$defs": {
-          "ColumnType": {
-            "description": "Column data types.",
+          "CreateColumnColumnType": {
+            "description": "Type of data that the Column will contain. Histogram is in beta and only works in your Metrics dataset.",
             "enum": [
               "string",
-              "integer",
               "float",
-              "boolean"
+              "integer",
+              "boolean",
+              "histogram"
             ],
-            "title": "ColumnType",
+            "title": "CreateColumnColumnType",
             "type": "string"
           }
         }

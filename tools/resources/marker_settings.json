@@ -152,12 +152,18 @@
             "description": "The dataset slug (or '__all__' for environment-wide)"
           },
           "type": {
-            "description": "Marker type to configure",
+            "description": "Groups similar Markers. For example, 'deploys'. All Markers of the same type appears with the same color on the graph.\n",
+            "examples": [
+              "deploy"
+            ],
             "title": "Type",
             "type": "string"
           },
           "color": {
-            "description": "Hex color code (e.g., '#F96E11')",
+            "description": "Color to use for display of this marker type. Specified as hexadecimal RGB. For example, \"#F96E11\".\n",
+            "examples": [
+              "#7b1fa2"
+            ],
             "title": "Color",
             "type": "string"
           },
@@ -241,12 +247,18 @@
             "description": "The marker setting ID to update"
           },
           "type": {
-            "description": "Marker type to configure",
+            "description": "Groups similar Markers. For example, 'deploys'. All Markers of the same type appears with the same color on the graph.\n",
+            "examples": [
+              "deploy"
+            ],
             "title": "Type",
             "type": "string"
           },
           "color": {
-            "description": "Hex color code (e.g., '#F96E11')",
+            "description": "Color to use for display of this marker type. Specified as hexadecimal RGB. For example, \"#F96E11\".\n",
+            "examples": [
+              "#7b1fa2"
+            ],
             "title": "Color",
             "type": "string"
           },

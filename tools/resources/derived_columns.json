@@ -157,6 +157,7 @@
           },
           "alias": {
             "description": "Name of the derived column",
+            "maxLength": 255,
             "title": "Alias",
             "type": "string"
           },
@@ -266,6 +267,7 @@
           },
           "alias": {
             "description": "Name of the derived column",
+            "maxLength": 255,
             "title": "Alias",
             "type": "string"
           },

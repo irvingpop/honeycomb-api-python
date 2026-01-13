@@ -134,30 +134,47 @@
         "type": "object",
         "properties": {
           "name": {
-            "description": "Human-readable name for the dataset",
+            "description": "The name of the dataset.",
+            "maxLength": 255,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
           "description": {
             "anyOf": [
               {
+                "maxLength": 1024,
+                "minLength": 0,
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "Longer description",
+            "default": "",
+            "description": "A description for the dataset.",
+            "examples": [
+              "A nice description of my dataset"
+            ],
             "title": "Description"
           },
           "expand_json_depth": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": 0,
-            "description": "Depth to expand JSON fields (0-10)",
-            "maximum": 10,
-            "minimum": 0,
-            "title": "Expand Json Depth",
-            "type": "integer"
+            "description": "The maximum unpacking depth of nested JSON fields.",
+            "examples": [
+              3
+            ],
+            "title": "Expand Json Depth"
           },
           "confidence": {
             "type": "string",
@@ -234,30 +251,22 @@
             "type": "string",
             "description": "The dataset slug to update"
           },
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Human-readable name for the dataset",
-            "title": "Name"
-          },
           "description": {
             "anyOf": [
               {
+                "maxLength": 1024,
+                "minLength": 0,
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "Longer description",
+            "default": "",
+            "description": "A description for the dataset.",
+            "examples": [
+              "A nice description of my dataset"
+            ],
             "title": "Description"
           },
           "expand_json_depth": {
@@ -271,22 +280,24 @@
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "Depth to expand JSON fields (0-10)",
+            "default": 0,
+            "description": "The maximum unpacking depth of nested JSON fields.",
+            "examples": [
+              3
+            ],
             "title": "Expand Json Depth"
           },
-          "delete_protected": {
+          "settings": {
             "anyOf": [
               {
-                "type": "boolean"
+                "$ref": "#/$defs/DatasetUpdatePayloadSettings"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "If true, the dataset cannot be deleted",
-            "title": "Delete Protected"
+            "description": "Dataset settings (e.g., delete_protected)"
           },
           "confidence": {
             "type": "string",
