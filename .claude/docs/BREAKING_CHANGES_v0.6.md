@@ -11,11 +11,16 @@ The v0.6.x release migrates from hand-written Pydantic models to generated model
 
 1. Enum member naming (UPPERCASE → lowercase) - 7 enums affected
 2. Model class renames - 5 models renamed
-3. Field type changes (str → Enum) - Auth.type now returns enum
-4. Nested JSON:API structures - Datasets, Environments, API Keys
-5. Removed `model_dump_for_api()` methods - all Create models affected
-6. Union types for polymorphic models - Triggers, Recipients, Burn Alerts
-7. QuerySpec field types - requires generated types or QueryBuilder
+3. **Model structure changes** - flat → nested objects
+   - Auth: `team_name` → `team.name`, `environment_name` → `environment.name`
+   - Dataset: `delete_protected` → `settings.delete_protected`
+   - BurnAlert: `slo_id` → `slo.id`, `slo` dict → typed object
+   - SLO: `sli` dict → typed `SLOSli` object
+4. Field type changes (str/dict → typed objects) - Auth.type enum, api_key_access object
+5. Nested JSON:API structures - Datasets, Environments, API Keys
+6. Removed `model_dump_for_api()` methods - all Create models affected
+7. Union types for polymorphic models - Triggers, Recipients, Burn Alerts
+8. QuerySpec field types - requires generated types or QueryBuilder
 
 ---
 
@@ -147,11 +152,37 @@ QueryAnnotationSource.board
 
 ---
 
-## 3. Type Changes (str → Enum)
+## 3. Auth Model Changes
 
-Fields that returned `str` now return typed enums. Direct string comparison no longer works.
+### Structure Changed: Flat → Nested
 
-### Auth.type
+The Auth model changed from flat fields to nested objects:
+
+```python
+# Before
+auth.id
+auth.type  # str: "configuration" or "ingest"
+auth.team_name
+auth.team_slug
+auth.environment_name
+auth.environment_slug
+auth.api_key_access  # dict[str, Any]
+auth.time_to_live
+
+# After
+auth.id
+auth.type  # AuthType enum
+auth.team.name
+auth.team.slug
+auth.environment.name
+auth.environment.slug
+auth.api_key_access  # AuthApiKeyAccess object
+auth.time_to_live
+```
+
+### Type Changed: str → Enum
+
+The `type` field is now a typed enum. Direct string comparison no longer works:
 
 ```python
 # Before (worked)
@@ -170,13 +201,37 @@ if auth.type == AuthType.configuration:  # Compare to enum (preferred)
     ...
 ```
 
+### api_key_access Changed: dict → Typed Object
+
+```python
+# Before
+auth.api_key_access["events"]
+auth.api_key_access["queries"]
+
+# After
+auth.api_key_access.events
+auth.api_key_access.queries
+auth.api_key_access.triggers
+# etc.
+```
+
 ---
 
 ## 4. Datasets
 
-### DatasetUpdate.delete_protected
+### Response Structure Changed: delete_protected → settings.delete_protected
 
-The `delete_protected` field is now nested inside `settings`:
+```python
+# Before
+dataset.delete_protected  # bool - flat field
+dataset.expand_json_depth  # int - flat field
+
+# After
+dataset.settings.delete_protected  # bool - nested in settings object
+dataset.expand_json_depth  # int - still at root level (unchanged)
+```
+
+### DatasetUpdate Requires Nested Structure
 
 ```python
 # Before
@@ -203,6 +258,20 @@ payload = update.model_dump(mode="json", exclude_none=True)
 | `BurnAlertCreate` (single model) | Union: `CreateExhaustionTimeBurnAlertRequest \| CreateBudgetRateBurnAlertRequest` |
 | `BurnAlert` (single model) | `BurnAlertDetailResponse` (RootModel) |
 | `BurnAlertRecipient` | `NotificationRecipient` |
+
+### Response Structure Changed: slo_id → slo.id
+
+```python
+# Before
+burn_alert.slo_id  # str - direct field
+burn_alert.slo     # dict | None - SLO details as dict
+
+# After
+burn_alert.slo     # ExhaustionTimeBurnAlertListResponseSlo object
+burn_alert.slo.id  # str - access via object
+```
+
+**Note**: Property accessors hide the RootModel complexity, so `burn_alert.slo` works directly (no need for `.root.slo`).
 
 ### Creating Burn Alerts
 
@@ -348,6 +417,18 @@ slo = SLOCreate(
     time_period_days=30,
     target_per_million=999000,
 )
+```
+
+### Response Structure Changed: sli from dict → typed object
+
+```python
+# Before
+slo.sli  # dict like {"alias": "success_rate", "expression": "..."}
+slo.sli["alias"]
+
+# After
+slo.sli  # SLOSli object
+slo.sli.alias
 ```
 
 ---
@@ -657,7 +738,16 @@ payload = model.model_dump(mode="json", exclude_none=True, exclude_defaults=True
 - [ ] **Enum case**: Search for UPPERCASE enum members → change to lowercase
   - `ColumnType`, `RecipientType`, `TriggerAlertType`, `EnvironmentColor`
   - `ServiceMapNodeType`, `ServiceMapDependencyRequestStatus`, `QueryAnnotationSource`
-- [ ] **Auth checks**: `auth.type == "string"` → `auth.type.value == "string"` or compare to enum
+- [ ] **Auth model structure**: Update field access patterns
+  - `auth.team_name` → `auth.team.name`
+  - `auth.team_slug` → `auth.team.slug`
+  - `auth.environment_name` → `auth.environment.name`
+  - `auth.environment_slug` → `auth.environment.slug`
+  - `auth.api_key_access["key"]` → `auth.api_key_access.key`
+- [ ] **Auth type checks**: `auth.type == "string"` → `auth.type.value == "string"` or compare to enum
+- [ ] **Dataset structure**: `dataset.delete_protected` → `dataset.settings.delete_protected`
+- [ ] **BurnAlert structure**: `burn_alert.slo_id` → `burn_alert.slo.id`
+- [ ] **SLO structure**: `slo.sli["alias"]` → `slo.sli.alias` (dict → typed object)
 - [ ] **Model renames**: `AuthInfo` → `Auth`, `SLI` → `SLOCreateSli`, `TriggerQuery` → `QuerySpec`
 - [ ] **Nested structures**: `DatasetUpdate(delete_protected=...)` → `DatasetUpdate(settings=...)`
 - [ ] **Serialization**: `.model_dump_for_api()` → `.model_dump(mode="json", exclude_none=True)`
