@@ -296,7 +296,7 @@ TEST_CASES = [
         "description": "Query with calculated field for success rate",
         "prompt": (
             "Analyze api-logs over the past 2 hours: "
-            "create a calculated field named 'is_success' using expression IF(LT($status_code, 400), 1, 0), "
+            "run a query with an inline calculated field named 'is_success' that returns 1 if the status code is less than 400, 0 otherwise"
             "then calculate the average of is_success to get the success rate"
         ),
         "expected_tool": "honeycomb_run_query",

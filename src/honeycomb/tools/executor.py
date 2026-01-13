@@ -404,62 +404,24 @@ async def _execute_get_environment(client: "HoneycombClient", tool_input: dict[s
 
 
 async def _execute_create_environment(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
-    """Execute honeycomb_create_environment tool."""
-    from honeycomb._generated_models import (
-        CreateEnvironmentRequestData,
-        CreateEnvironmentRequestDataAttributes,
-        EnvironmentRelationshipDataType,
+    """Execute honeycomb_create_environment tool using convenience wrapper."""
+    created = await client.environments.create_async(
+        name=tool_input["name"],
+        description=tool_input.get("description"),
+        color=tool_input.get("color"),
     )
-    from honeycomb.models.environments import CreateEnvironmentRequest, EnvironmentColor
-
-    environment = CreateEnvironmentRequest(
-        data=CreateEnvironmentRequestData(
-            type=EnvironmentRelationshipDataType.environments,
-            attributes=CreateEnvironmentRequestDataAttributes(
-                name=tool_input["name"],
-                description=tool_input.get("description"),
-                color=EnvironmentColor(tool_input["color"]) if tool_input.get("color") else None,
-            ),
-        )
-    )
-    created = await client.environments.create_async(environment=environment)
-    return json.dumps(created.model_dump(), default=str)
+    return json.dumps(created.model_dump(mode="json"), default=str)
 
 
 async def _execute_update_environment(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
-    """Execute honeycomb_update_environment tool."""
-    from honeycomb._generated_models import (
-        EnvironmentRelationshipDataType,
-        UpdateEnvironmentRequestData,
-        UpdateEnvironmentRequestDataAttributes,
-        UpdateEnvironmentRequestDataAttributesSettings,
-    )
-    from honeycomb.models.environments import EnvironmentColor, UpdateEnvironmentRequest
-
-    # Build attributes
-    attrs = UpdateEnvironmentRequestDataAttributes(
-        description=tool_input.get("description"),
-        color=EnvironmentColor(tool_input["color"]) if tool_input.get("color") else None,
-        settings=(
-            UpdateEnvironmentRequestDataAttributesSettings(
-                delete_protected=tool_input["delete_protected"]
-            )
-            if tool_input.get("delete_protected") is not None
-            else None
-        ),
-    )
-
-    environment = UpdateEnvironmentRequest(
-        data=UpdateEnvironmentRequestData(
-            id=tool_input["env_id"],
-            type=EnvironmentRelationshipDataType.environments,
-            attributes=attrs,
-        )
-    )
+    """Execute honeycomb_update_environment tool using convenience wrapper."""
     updated = await client.environments.update_async(
-        env_id=tool_input["env_id"], environment=environment
+        env_id=tool_input["env_id"],
+        description=tool_input.get("description"),
+        color=tool_input.get("color"),
+        delete_protected=tool_input.get("delete_protected"),
     )
-    return json.dumps(updated.model_dump(), default=str)
+    return json.dumps(updated.model_dump(mode="json"), default=str)
 
 
 async def _execute_delete_environment(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:

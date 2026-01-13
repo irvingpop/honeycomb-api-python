@@ -335,19 +335,6 @@
             "description": "A query ID or an inline query that is a strict subset of a Query Specification.\n",
             "title": "Query"
           },
-          "query_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "The ID of a Query that meets the criteria for being used as a Trigger.",
-            "title": "Query Id"
-          },
           "confidence": {
             "type": "string",
             "enum": [
@@ -1051,19 +1038,6 @@
             "default": null,
             "description": "A query ID or an inline query that is a strict subset of a Query Specification.\n",
             "title": "Query"
-          },
-          "query_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "The ID of a Query that meets the criteria for being used as a Trigger.",
-            "title": "Query Id"
           },
           "confidence": {
             "type": "string",

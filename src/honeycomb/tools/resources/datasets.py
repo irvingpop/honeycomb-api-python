@@ -34,11 +34,11 @@ DATASET_DESCRIPTIONS = {
         "The dataset slug will be automatically generated from the name and used for API operations."
     ),
     "honeycomb_update_dataset": (
-        "Updates an existing dataset's name, description, JSON expansion settings, or delete protection. "
-        "Use this to correct dataset metadata, add documentation, adjust JSON parsing behavior, or toggle delete protection. "
+        "Updates an existing dataset's description, JSON expansion settings, or delete protection. "
+        "Use this to add documentation, adjust JSON parsing behavior, or toggle delete protection. "
         "Requires the dataset slug. All other fields are optional - only provided fields will be updated. "
         "Set delete_protected=true to prevent accidental deletion, or delete_protected=false to allow deletion. "
-        "Note: The slug itself cannot be changed. Changing expand_json_depth only affects new events, not existing data."
+        "Note: Dataset name and slug cannot be changed after creation. Changing expand_json_depth only affects new events, not existing data."
     ),
     "honeycomb_delete_dataset": (
         "Permanently deletes a dataset and all its data from Honeycomb. "
@@ -171,10 +171,10 @@ def generate_update_dataset_tool() -> dict[str, Any]:
     # Don't extend required - DatasetUpdate fields are all optional
 
     examples: list[dict[str, Any]] = [
-        {"slug": "api-logs", "name": "API Logs", "description": "Updated description"},
+        {"slug": "api-logs", "description": "Updated description for API logs"},
         {"slug": "production", "expand_json_depth": 5},
-        {"slug": "critical-data", "delete_protected": True},
-        {"slug": "test-dataset", "delete_protected": False},
+        {"slug": "critical-data", "settings": {"delete_protected": True}},
+        {"slug": "test-dataset", "settings": {"delete_protected": False}},
     ]
 
     return create_tool_definition(

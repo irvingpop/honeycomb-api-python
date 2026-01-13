@@ -243,7 +243,7 @@
     },
     {
       "name": "honeycomb_update_dataset",
-      "description": "Updates an existing dataset's name, description, JSON expansion settings, or delete protection. Use this to correct dataset metadata, add documentation, adjust JSON parsing behavior, or toggle delete protection. Requires the dataset slug. All other fields are optional - only provided fields will be updated. Set delete_protected=true to prevent accidental deletion, or delete_protected=false to allow deletion. Note: The slug itself cannot be changed. Changing expand_json_depth only affects new events, not existing data.",
+      "description": "Updates an existing dataset's description, JSON expansion settings, or delete protection. Use this to add documentation, adjust JSON parsing behavior, or toggle delete protection. Requires the dataset slug. All other fields are optional - only provided fields will be updated. Set delete_protected=true to prevent accidental deletion, or delete_protected=false to allow deletion. Note: Dataset name and slug cannot be changed after creation. Changing expand_json_depth only affects new events, not existing data.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -352,8 +352,7 @@
       "input_examples": [
         {
           "slug": "api-logs",
-          "name": "API Logs",
-          "description": "Updated description"
+          "description": "Updated description for API logs"
         },
         {
           "slug": "production",
@@ -361,11 +360,15 @@
         },
         {
           "slug": "critical-data",
-          "delete_protected": true
+          "settings": {
+            "delete_protected": true
+          }
         },
         {
           "slug": "test-dataset",
-          "delete_protected": false
+          "settings": {
+            "delete_protected": false
+          }
         }
       ]
     },
