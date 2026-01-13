@@ -470,18 +470,24 @@ class TestBoardExamples:
             test_lifecycle,
         )
 
-        # Pre-cleanup: Delete any leftover resources from previous failed runs
+        # Pre-cleanup: Delete ALL leftover SLOs and derived columns from test dataset
         # Order matters: SLOs first (they depend on derived columns), then derived columns
+
+        # Delete ALL SLOs in test dataset (aggressive cleanup)
         with contextlib.suppress(Exception):
             slos = await client.slos.list_async(dataset=ensure_dataset)
             for slo in slos:
-                if "API Availability" in (slo.name or ""):
+                with contextlib.suppress(Exception):
                     await client.slos.delete_async(dataset=ensure_dataset, slo_id=slo.id)
 
+        # Delete ALL derived columns in test dataset (aggressive cleanup)
         with contextlib.suppress(Exception):
-            await client.derived_columns.delete_async(
-                dataset=ensure_dataset, alias="board_sli_success"
-            )
+            cols = await client.derived_columns.list_async(dataset=ensure_dataset)
+            for col in cols:
+                with contextlib.suppress(Exception):
+                    await client.derived_columns.delete_async(
+                        dataset=ensure_dataset, column_id=col.id
+                    )
 
         board_id = await create_complex_board(client, ensure_dataset)
         try:

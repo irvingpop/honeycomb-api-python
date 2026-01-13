@@ -100,7 +100,9 @@ class TriggersResource(BaseResource):
         data = await self._put_async(
             self._build_path(dataset, trigger_id),
             json=trigger.model_dump(
-                mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+                mode="json",
+                exclude_none=True,
+                by_alias=True,  # Don't exclude_defaults for updates
             ),
         )
         return self._parse_model(Trigger, data)
@@ -183,7 +185,9 @@ class TriggersResource(BaseResource):
         data = self._put_sync(
             self._build_path(dataset, trigger_id),
             json=trigger.model_dump(
-                mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+                mode="json",
+                exclude_none=True,
+                by_alias=True,  # Don't exclude_defaults for updates
             ),
         )
         return self._parse_model(Trigger, data)
