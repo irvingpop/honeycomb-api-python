@@ -7,9 +7,8 @@ from honeycomb import (
     TriggerAlertType,
     TriggerBuilder,
     TriggerBundle,
-    TriggerCreate,
-    TriggerThreshold,
     TriggerThresholdOp,
+    TriggerWithInlineQuery,
 )
 
 
@@ -20,7 +19,7 @@ class TestTriggerBuilderBasics:
         """Test building minimal trigger with defaults."""
         bundle = TriggerBuilder("Test Trigger").last_30_minutes().count().threshold_gt(100).build()
         assert isinstance(bundle, TriggerBundle)
-        assert isinstance(bundle.trigger, TriggerCreate)
+        assert isinstance(bundle.trigger, TriggerWithInlineQuery)
         assert bundle.trigger.name == "Test Trigger"
         assert bundle.trigger.threshold.op == TriggerThresholdOp.GREATER_THAN
         assert bundle.trigger.threshold.value == 100.0
@@ -189,13 +188,15 @@ class TestTriggerBuilderFrequency:
             TriggerBuilder("Test").frequency(100000)
 
     def test_frequency_not_multiple_of_60_raises_error(self):
-        """Test that frequency not divisible by 60 raises error."""
-        with pytest.raises(ValueError, match="must be a multiple of 60"):
-            TriggerCreate(
-                name="Test",
-                threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100),
-                frequency=61,  # Invalid - not multiple of 60
-                query={"time_range": 900},
+        """Test that frequency not divisible by 60 raises error in builder."""
+        with pytest.raises(ValueError, match="must be"):
+            # Validation happens in Builder, not direct model instantiation
+            (
+                TriggerBuilder("Test")
+                .count()
+                .threshold_gt(100)
+                .frequency(61)  # Invalid - not multiple of 60
+                .build()
             )
 
 

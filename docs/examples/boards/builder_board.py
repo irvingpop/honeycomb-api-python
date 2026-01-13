@@ -279,12 +279,24 @@ async def test_lifecycle(client: HoneycombClient, board_id: str, expected_name: 
 # CLEANUP
 async def cleanup(client: HoneycombClient, board_id: str, dataset: str = "my-dataset") -> None:
     """Clean up resources (called even on test failure)."""
-    # Delete board
+    # Delete board first
     try:
         if board_id:
             await client.boards.delete_async(board_id)
     except Exception:
         pass  # Already deleted or doesn't exist
+
+    # Delete any SLOs that might be using the derived column
+    try:
+        slos = await client.slos.list_async(dataset=dataset)
+        for slo in slos:
+            if "board_sli_success" in (slo.name or "").lower() or "api availability" in (slo.name or "").lower():
+                try:
+                    await client.slos.delete_async(dataset=dataset, slo_id=slo.id)
+                except Exception:
+                    pass
+    except Exception:
+        pass
 
     # Delete derived column created by SLO
     try:

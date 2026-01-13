@@ -24,21 +24,25 @@ def validate_trigger_time_range(time_range: int) -> None:
 
 
 def validate_trigger_frequency(frequency: int) -> None:
-    """Validate trigger evaluation frequency is within bounds.
+    """Validate trigger evaluation frequency is within bounds and is a multiple of 60.
 
-    Triggers can run every 60 seconds (1 minute) to 86400 seconds (1 day).
+    Triggers can run every 60 seconds (1 minute) to 86400 seconds (1 day),
+    and frequency must be a multiple of 60 seconds.
 
     Args:
         frequency: Evaluation frequency in seconds
 
     Raises:
-        ValueError: If frequency is outside 60-86400 second range
+        ValueError: If frequency is outside 60-86400 second range or not a multiple of 60
     """
     if not 60 <= frequency <= 86400:
         raise ValueError(
             f"Trigger frequency must be 60-86400 seconds (1 min to 1 day), got {frequency}s. "
             "Common values: 60s (1 min), 300s (5 min), 900s (15 min), 3600s (1 hour)."
         )
+
+    if frequency % 60 != 0:
+        raise ValueError(f"Frequency must be a multiple of 60 seconds, got {frequency}s")
 
 
 def validate_time_range_frequency_ratio(time_range: int, frequency: int) -> None:

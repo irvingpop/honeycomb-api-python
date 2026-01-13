@@ -19,9 +19,9 @@ from .recipient_builder import RecipientMixin
 from .tags_mixin import TagsMixin
 from .triggers import (
     TriggerAlertType,
-    TriggerCreate,
     TriggerThreshold,
     TriggerThresholdOp,
+    TriggerWithInlineQuery,
 )
 
 if TYPE_CHECKING:
@@ -38,12 +38,12 @@ class TriggerBundle:
 
     Attributes:
         dataset: Dataset slug or "__all__" for environment-wide
-        trigger: The TriggerCreate object
+        trigger: The TriggerWithInlineQuery object (builder always creates inline queries)
         inline_recipients: Recipients without 'id' field (need creation)
     """
 
     dataset: str
-    trigger: TriggerCreate
+    trigger: TriggerWithInlineQuery
     inline_recipients: list[dict[str, Any]]
 
     def model_dump_for_api(self) -> dict[str, Any]:
@@ -518,8 +518,8 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
                 else:
                     inline_recipients.append(recip.copy())
 
-        # Build trigger with dict query (not TriggerQuery)
-        trigger = TriggerCreate(
+        # Build trigger with inline query (TriggerWithInlineQuery)
+        trigger = TriggerWithInlineQuery(
             name=self._name,
             description=self._description,
             threshold=threshold,
@@ -538,20 +538,20 @@ class TriggerBuilder(QueryBuilder, RecipientMixin, TagsMixin):
             inline_recipients=inline_recipients,
         )
 
-    def build_trigger(self) -> TriggerCreate:
-        """Build TriggerCreate with validation (legacy method).
+    def build_trigger(self) -> TriggerWithInlineQuery:
+        """Build TriggerWithInlineQuery with validation (legacy method).
 
         Deprecated: Use build() which returns TriggerBundle for better orchestration.
 
         Returns:
-            TriggerCreate object ready for API submission.
+            TriggerWithInlineQuery object ready for API submission.
 
         Raises:
             ValueError: If constraints are violated (same as build())
         """
         threshold, query_dict, recipients, tags, baseline = self._validate_and_get_components()
 
-        return TriggerCreate(
+        return TriggerWithInlineQuery(
             name=self._name,
             description=self._description,
             threshold=threshold,

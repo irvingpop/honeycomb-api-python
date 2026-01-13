@@ -109,18 +109,29 @@ def validate_tool_name(name: str) -> None:
 
 
 def generate_schema_from_model(
-    model: type[BaseModel], exclude_fields: set[str] | None = None
+    model: type[BaseModel] | Any, exclude_fields: set[str] | None = None
 ) -> dict[str, Any]:
-    """Generate JSON Schema from a Pydantic model.
+    """Generate JSON Schema from a Pydantic model or Union type.
 
     Args:
-        model: The Pydantic model class to generate schema from
+        model: The Pydantic model class to generate schema from (or Union type)
         exclude_fields: Optional set of field names to exclude from schema
 
     Returns:
         JSON Schema dict suitable for Claude tool definitions
     """
+    import typing
+
     exclude_fields = exclude_fields or set()
+
+    # Handle Union types - extract first type (which represents the primary path)
+    # For triggers: TriggerCreate = TriggerWithInlineQuery | TriggerWithQueryReference
+    # We use TriggerWithInlineQuery since that's what TriggerBuilder creates
+    origin = typing.get_origin(model)
+    if origin is typing.Union:
+        args = typing.get_args(model)
+        if args:
+            model = args[0]  # Use first type in union
 
     # Get the full JSON schema from Pydantic
     full_schema = model.model_json_schema()

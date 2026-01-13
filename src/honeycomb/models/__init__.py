@@ -1,5 +1,8 @@
 """Pydantic models for Honeycomb API resources."""
 
+# Import specific trigger types for advanced usage
+from honeycomb._generated_models import TriggerWithInlineQuery, TriggerWithQueryReference
+
 from .api_keys import (
     ApiKey,
     ApiKeyCreate,
@@ -137,7 +140,9 @@ __all__ = [
     "QueryBuilder",
     # Triggers
     "Trigger",
-    "TriggerCreate",
+    "TriggerCreate",  # Union type: TriggerWithInlineQuery | TriggerWithQueryReference
+    "TriggerWithInlineQuery",  # Specific type for inline queries (from builder)
+    "TriggerWithQueryReference",  # Specific type for query references
     "TriggerThreshold",
     "TriggerThresholdOp",
     "TriggerAlertType",

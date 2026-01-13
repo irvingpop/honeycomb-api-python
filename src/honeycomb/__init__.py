@@ -143,6 +143,8 @@ from .models import (
     TriggerCreate,
     TriggerThreshold,
     TriggerThresholdOp,
+    TriggerWithInlineQuery,
+    TriggerWithQueryReference,
     UpdateBurnAlertRequest,
     UpdateEnvironmentRequest,
     WebhookHeader,
@@ -188,7 +190,9 @@ __all__ = [
     "QueryBuilder",
     # Models - Triggers
     "Trigger",
-    "TriggerCreate",
+    "TriggerCreate",  # Union type for compatibility
+    "TriggerWithInlineQuery",  # Specific type for inline queries
+    "TriggerWithQueryReference",  # Specific type for query references
     "TriggerThreshold",
     "TriggerThresholdOp",
     "TriggerAlertType",

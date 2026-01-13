@@ -15,9 +15,10 @@ from honeycomb.models.query_builder import CalcOp, Calculation, Filter, FilterOp
 from honeycomb.models.recipients import EmailRecipientDetails
 from honeycomb.models.triggers import (
     TriggerAlertType,
-    TriggerCreate,
     TriggerThreshold,
     TriggerThresholdOp,
+    TriggerWithInlineQuery,
+    TriggerWithQueryReference,
 )
 
 
@@ -26,7 +27,7 @@ class TestTriggerSerialization:
 
     def test_basic_trigger_manual_construction(self):
         """Test basic trigger with manual construction."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithInlineQuery(
             name="Test Trigger",
             description="Test description",
             threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100.0),
@@ -56,7 +57,7 @@ class TestTriggerSerialization:
 
     def test_trigger_with_threshold_exceeded_limit(self):
         """Test trigger with exceeded_limit in threshold."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithInlineQuery(
             name="Test",
             threshold=TriggerThreshold(
                 op=TriggerThresholdOp.GREATER_THAN_OR_EQUAL, value=150.0, exceeded_limit=3
@@ -73,7 +74,7 @@ class TestTriggerSerialization:
 
     def test_trigger_with_complex_query(self):
         """Test trigger with filters and breakdowns."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithInlineQuery(
             name="Complex Query Trigger",
             threshold=TriggerThreshold(op=TriggerThresholdOp.LESS_THAN, value=50.0),
             frequency=900,
@@ -102,7 +103,7 @@ class TestTriggerSerialization:
 
     def test_trigger_with_query_id(self):
         """Test trigger referencing a saved query."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithQueryReference(
             name="Saved Query Trigger",
             threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100.0),
             frequency=900,
@@ -118,7 +119,7 @@ class TestTriggerSerialization:
 
     def test_trigger_with_alert_type_on_true(self):
         """Test trigger with on_true alert type."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithInlineQuery(
             name="On True Trigger",
             threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100.0),
             frequency=900,
@@ -134,7 +135,7 @@ class TestTriggerSerialization:
 
     def test_trigger_disabled(self):
         """Test disabled trigger."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithInlineQuery(
             name="Disabled Trigger",
             threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100.0),
             frequency=900,
@@ -150,7 +151,7 @@ class TestTriggerSerialization:
 
     def test_trigger_with_recipients(self):
         """Test trigger with recipient list."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithInlineQuery(
             name="Trigger with Recipients",
             threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100.0),
             frequency=900,
@@ -166,7 +167,7 @@ class TestTriggerSerialization:
 
     def test_trigger_minimal(self):
         """Test trigger with minimal required fields."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithInlineQuery(
             name="Minimal",
             threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100.0),
             query={"time_range": 900},

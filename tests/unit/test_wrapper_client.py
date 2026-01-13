@@ -14,9 +14,9 @@ from honeycomb import (
     SLOCreate,
     SLOCreateSli,
     Trigger,
-    TriggerCreate,
     TriggerThreshold,
     TriggerThresholdOp,
+    TriggerWithInlineQuery,
 )
 
 
@@ -94,7 +94,7 @@ class TestPydanticModels:
 
     def test_trigger_create_model(self):
         """Test TriggerCreate model serialization."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithInlineQuery(
             name="Test Trigger",
             threshold=TriggerThreshold(
                 op=TriggerThresholdOp.GREATER_THAN,
@@ -112,7 +112,7 @@ class TestPydanticModels:
 
     def test_trigger_create_with_query(self):
         """Test TriggerCreate with inline query."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithInlineQuery(
             name="Query Trigger",
             threshold=TriggerThreshold(
                 op=TriggerThresholdOp.LESS_THAN,
@@ -276,7 +276,7 @@ def test_create_trigger_sync():
     with HoneycombClient(api_key="test-key", sync=True) as client:
         trigger = client.triggers.create(
             "test-dataset",
-            TriggerCreate(
+            TriggerWithInlineQuery(
                 name="New Trigger",
                 threshold=TriggerThreshold(
                     op=TriggerThresholdOp.GREATER_THAN,
@@ -354,7 +354,7 @@ def test_422_raises_validation_error():
     ):
         client.triggers.create(
             "test-dataset",
-            TriggerCreate(
+            TriggerWithInlineQuery(
                 name="Bad Trigger",
                 threshold=TriggerThreshold(
                     op=TriggerThresholdOp.GREATER_THAN,

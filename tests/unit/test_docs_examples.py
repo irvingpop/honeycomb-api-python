@@ -11,9 +11,9 @@ from honeycomb import (
     QuerySpec,
     SLOCreate,
     SLOCreateSli,
-    TriggerCreate,
     TriggerThreshold,
     TriggerThresholdOp,
+    TriggerWithInlineQuery,
 )
 
 
@@ -90,7 +90,7 @@ class TestQuickstartExamples:
 
             trigger = await client.triggers.create_async(
                 "my-dataset",
-                TriggerCreate(
+                TriggerWithInlineQuery(
                     name="High Error Rate",
                     description="Alert when error rate exceeds 5%",
                     threshold=TriggerThreshold(

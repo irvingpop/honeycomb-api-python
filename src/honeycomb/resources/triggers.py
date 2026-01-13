@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 from typing import TYPE_CHECKING
 
-from ..models.triggers import Trigger, TriggerCreate
+from ..models.triggers import Trigger, TriggerCreate, TriggerWithInlineQuery
 from .base import BaseResource
 
 if TYPE_CHECKING:
@@ -241,7 +241,7 @@ class TriggersResource(BaseResource):
             all_recipients = existing_recipients + processed_recipients
 
             # Create new trigger object with all recipients
-            trigger_with_ids = TriggerCreate(
+            trigger_with_ids = TriggerWithInlineQuery(
                 name=bundle.trigger.name,
                 description=bundle.trigger.description,
                 threshold=bundle.trigger.threshold,
