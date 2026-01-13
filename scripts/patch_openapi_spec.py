@@ -13,7 +13,7 @@ With this patch:
   - CreateColumnType, PagerDutyRecipientDetails (5 unused dead code enums remain)
 
 Usage:
-    ./scripts/patch_api_yaml_for_dmcg.py api.yaml api-patched.yaml
+    ./scripts/patch_openapi_spec.py api.yaml api-patched.yaml
 """
 
 import argparse

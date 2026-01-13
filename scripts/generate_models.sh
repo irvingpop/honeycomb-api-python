@@ -20,7 +20,7 @@ fi
 
 # Patch the spec to add titles to inline schemas
 echo "Patching $SPEC_FILE to add titles to inline schemas..."
-poetry run python "$SCRIPT_DIR/patch_api_yaml_for_dmcg.py" "$SPEC_FILE" "$PATCHED_SPEC_FILE"
+poetry run python "$SCRIPT_DIR/patch_openapi_spec.py" "$SPEC_FILE" "$PATCHED_SPEC_FILE"
 
 echo ""
 echo "Generating models from $PATCHED_SPEC_FILE..."

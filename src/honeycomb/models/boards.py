@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from typing import Annotated, Any
+from typing import Annotated
 
 from pydantic import Field
 
@@ -91,7 +91,7 @@ class BoardCreate(_BoardGenerated):
     )
     panels: (
         list[Annotated[QueryPanel | SLOPanel | TextPanel, Field(discriminator="type")]] | None
-    ) = Field(
+    ) = Field(  # type: ignore[assignment]
         default=None,
         description="Array of board panels (query panels, SLO panels, or text panels)",
     )
@@ -109,8 +109,7 @@ class Board(_BoardGenerated):
     # Override panels to use wrapper types with optional nested data
     panels: (
         list[Annotated[QueryPanel | SLOPanel | TextPanel, Field(discriminator="type")]] | None
-    ) = None
-
+    ) = None  # type: ignore[assignment]
 
 
 # =============================================================================
@@ -168,4 +167,4 @@ class BoardView(_BoardViewResponseGenerated):
     model_config = {"extra": "allow"}
 
     # Override filters to use our wrapped BoardViewFilter type
-    filters: list[BoardViewFilter] = []
+    filters: list[BoardViewFilter] = []  # type: ignore[assignment]

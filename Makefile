@@ -1,5 +1,5 @@
 # Honeycomb API Python Client - Development Makefile
-.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs generate-tools validate-tools ci update-deps release-patch release-minor release-major changelog update-spec update-spec-apply generate-client generate-models generate-models-fresh check-models-sync
+.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs generate-tools validate-tools ci update-deps release-patch release-minor release-major changelog generate-models generate-models-fresh check-models-sync
 
 # Default target
 help:
@@ -44,12 +44,7 @@ help:
 	@echo "  make generate-tools Generate Claude tool definitions (all + per-resource JSON)"
 	@echo "  make validate-tools Validate generated tool definitions"
 	@echo ""
-	@echo "OpenAPI Spec Management:"
-	@echo "  make update-spec           Download latest spec and show diff (doesn't apply)"
-	@echo "  make update-spec-apply     Download latest spec, show diff, and apply changes"
-	@echo "  make generate-client       Regenerate client from current api.yaml (old method)"
-	@echo ""
-	@echo "Model Generation (DMCG):"
+	@echo "Model Generation:"
 	@echo "  make generate-models       Generate Pydantic models from api.yaml"
 	@echo "  make generate-models-fresh Fetch latest api.yaml and generate models"
 	@echo "  make check-models-sync     Verify generated models are in sync with spec"
@@ -216,19 +211,6 @@ clean:
 update-deps:
 	poetry update
 	poetry export -f requirements.txt --output requirements.txt --without-hashes 2>/dev/null || true
-
-# =============================================================================
-# OpenAPI Spec Management
-# =============================================================================
-
-update-spec:
-	@bash scripts/update-openapi-spec.sh
-
-update-spec-apply:
-	@bash scripts/update-openapi-spec.sh --apply
-
-generate-client:
-	@bash scripts/generate-client.sh
 
 # =============================================================================
 # Model Generation (datamodel-code-generator)
