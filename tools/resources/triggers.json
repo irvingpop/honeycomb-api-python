@@ -162,29 +162,8 @@
             "type": "string"
           },
           "query": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/TriggerQueryInput"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Inline query specification (use this OR query_id, not both)"
-          },
-          "query_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "ID of existing saved query (use this OR query, not both)",
-            "title": "Query Id"
+            "$ref": "#/$defs/TriggerQueryInput",
+            "description": "Query specification"
           },
           "threshold": {
             "$ref": "#/$defs/TriggerThresholdInput",
@@ -349,6 +328,7 @@
         "required": [
           "name",
           "dataset",
+          "query",
           "threshold"
         ],
         "$defs": {
@@ -963,29 +943,8 @@
             "type": "string"
           },
           "query": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/TriggerQueryInput"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Inline query specification (use this OR query_id, not both)"
-          },
-          "query_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "ID of existing saved query (use this OR query, not both)",
-            "title": "Query Id"
+            "$ref": "#/$defs/TriggerQueryInput",
+            "description": "Query specification"
           },
           "threshold": {
             "$ref": "#/$defs/TriggerThresholdInput",
@@ -1149,10 +1108,10 @@
         },
         "required": [
           "dataset",
-          "trigger_id",
           "name",
-          "dataset",
-          "threshold"
+          "query",
+          "threshold",
+          "trigger_id"
         ],
         "$defs": {
           "BaseTriggerBaselineDetails": {

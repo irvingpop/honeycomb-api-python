@@ -9,6 +9,14 @@ from typing import Any
 
 from pydantic import BaseModel
 
+try:
+    from jsonschema import Draft202012Validator
+    from jsonschema.exceptions import SchemaError
+
+    HAS_JSONSCHEMA = True
+except ImportError:
+    HAS_JSONSCHEMA = False
+
 # ==============================================================================
 # Metadata Field Schemas (for Claude reasoning - stripped before API execution)
 # ==============================================================================
@@ -263,6 +271,17 @@ def validate_schema(schema: dict[str, Any]) -> None:
     required = schema.get("required", [])
     properties = schema["properties"]
 
+    # Check for duplicate required fields (invalid JSON Schema, causes Anthropic API errors)
+    if len(required) != len(set(required)):
+        from collections import Counter
+
+        counts = Counter(required)
+        duplicates = [f for f, count in counts.items() if count > 1]
+        raise ValueError(
+            f"Duplicate fields in 'required' array: {duplicates}. "
+            f"Each field can only appear once. Found: {required}"
+        )
+
     for field in required:
         if field not in properties:
             raise ValueError(f"Required field '{field}' not found in properties")
@@ -274,3 +293,14 @@ def validate_schema(schema: dict[str, Any]) -> None:
                 f"Field '{field_name}' missing description. "
                 "All fields must have descriptions for Claude tool definitions."
             )
+
+    # Validate against JSON Schema Draft 2020-12 spec (if jsonschema available)
+    if HAS_JSONSCHEMA:
+        try:
+            Draft202012Validator.check_schema(schema)
+        except SchemaError as e:
+            raise ValueError(
+                f"Invalid JSON Schema (Draft 2020-12): {e.message}\n"
+                f"Schema path: {list(e.schema_path)}\n"
+                f"This will cause Anthropic API errors."
+            ) from e

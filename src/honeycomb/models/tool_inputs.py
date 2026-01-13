@@ -451,12 +451,7 @@ class TriggerToolInput(BaseModel):
     # Required fields
     name: str = Field(description="Trigger name")
     dataset: str = Field(description="Dataset slug")
-    query: TriggerQueryInput | None = Field(
-        default=None, description="Inline query specification (use this OR query_id, not both)"
-    )
-    query_id: str | None = Field(
-        default=None, description="ID of existing saved query (use this OR query, not both)"
-    )
+    query: TriggerQueryInput = Field(description="Query specification")
     threshold: TriggerThresholdInput = Field(description="Threshold configuration")
     frequency: int = Field(
         default=900,
@@ -491,24 +486,6 @@ class TriggerToolInput(BaseModel):
     )
 
     @model_validator(mode="after")
-    def validate_query_xor_query_id(self) -> Self:
-        """Validate exactly one of query or query_id is provided.
-
-        Raises:
-            ValueError: If both or neither are provided
-        """
-        if self.query and self.query_id:
-            raise ValueError(
-                "Cannot specify both 'query' and 'query_id'. "
-                "Use 'query' for inline query specification OR 'query_id' to reference an existing saved query."
-            )
-        if not self.query and not self.query_id:
-            raise ValueError(
-                "Must specify either 'query' (inline query) or 'query_id' (reference to saved query)."
-            )
-        return self
-
-    @model_validator(mode="after")
     def validate_trigger_constraints(self) -> Self:
         """Validate trigger-specific constraints using shared validation logic.
 
@@ -524,16 +501,14 @@ class TriggerToolInput(BaseModel):
             validate_trigger_time_range,
         )
 
-        # Only validate time range if using inline query (query_id doesn't have time_range here)
-        if self.query:
-            # Validate time range
-            validate_trigger_time_range(self.query.time_range)
+        # Validate time range
+        validate_trigger_time_range(self.query.time_range)
 
-            # Validate frequency
-            validate_trigger_frequency(self.frequency)
+        # Validate frequency
+        validate_trigger_frequency(self.frequency)
 
-            # Validate time range vs frequency ratio
-            validate_time_range_frequency_ratio(self.query.time_range, self.frequency)
+        # Validate time range vs frequency ratio
+        validate_time_range_frequency_ratio(self.query.time_range, self.frequency)
 
         return self
 

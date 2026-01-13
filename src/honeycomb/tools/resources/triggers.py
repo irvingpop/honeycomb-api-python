@@ -261,7 +261,8 @@ def generate_update_trigger_tool() -> dict[str, Any]:
     add_parameter(schema, "trigger_id", "string", "The trigger ID to update", required=True)
 
     schema["properties"].update(base_schema["properties"])
-    schema["required"].extend(base_schema.get("required", []))
+    # Merge required fields, avoiding duplicates
+    schema["required"] = list(set(schema["required"]) | set(base_schema.get("required", [])))
 
     if "$defs" in base_schema:
         schema["$defs"] = base_schema["$defs"]

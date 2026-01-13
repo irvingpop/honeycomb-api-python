@@ -53,6 +53,7 @@ types-pyyaml = "^6.0.12.20250915"
 isort = "^7.0.0"
 pytest-cov = "^7.0.0"
 datamodel-code-generator = {extras = ["http", "ruff"], version = "^0.52.2"}
+jsonschema = ">=4.23.0"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = ">=1.5"
