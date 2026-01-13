@@ -107,7 +107,7 @@ class ServiceMapDependenciesResource(BaseResource):
         params = {"limit": min(limit, 64000)}
         data = await self._post_async(
             "/1/maps/dependencies/requests",
-            json=request.model_dump_for_api(),
+            json=request.model_dump(mode="json", exclude_none=True),
             params=params,
         )
         return ServiceMapDependencyRequest.model_validate(data)
@@ -137,7 +137,7 @@ class ServiceMapDependenciesResource(BaseResource):
         """
         all_dependencies: list[ServiceMapDependency] = []
         cursor: str | None = None
-        result_status: ServiceMapDependencyRequestStatus = ServiceMapDependencyRequestStatus.PENDING
+        result_status: ServiceMapDependencyRequestStatus = ServiceMapDependencyRequestStatus.pending
         result_request_id: str = request_id
         pages_fetched = 0
 
@@ -152,7 +152,7 @@ class ServiceMapDependenciesResource(BaseResource):
             result_request_id = data.get("request_id", request_id)
 
             # If not ready yet, return current state
-            if result_status != ServiceMapDependencyRequestStatus.READY:
+            if result_status != ServiceMapDependencyRequestStatus.ready:
                 return ServiceMapDependencyResult(
                     request_id=result_request_id,
                     status=result_status,
@@ -209,16 +209,17 @@ class ServiceMapDependenciesResource(BaseResource):
         """
         # Create the request
         req = await self.create_async(request, limit=limit)
+        assert req.request_id is not None, "API should return request_id"
 
         # Poll until ready
         start_time = asyncio.get_event_loop().time()
         while True:
             result = await self.get_result_async(req.request_id, max_pages=max_pages)
 
-            if result.status == ServiceMapDependencyRequestStatus.READY:
+            if result.status == ServiceMapDependencyRequestStatus.ready:
                 return result
 
-            if result.status == ServiceMapDependencyRequestStatus.ERROR:
+            if result.status == ServiceMapDependencyRequestStatus.error:
                 return result
 
             # Check timeout
@@ -258,7 +259,7 @@ class ServiceMapDependenciesResource(BaseResource):
         params = {"limit": min(limit, 64000)}
         data = self._post_sync(
             "/1/maps/dependencies/requests",
-            json=request.model_dump_for_api(),
+            json=request.model_dump(mode="json", exclude_none=True),
             params=params,
         )
         return ServiceMapDependencyRequest.model_validate(data)
@@ -291,7 +292,7 @@ class ServiceMapDependenciesResource(BaseResource):
 
         all_dependencies: list[ServiceMapDependency] = []
         cursor: str | None = None
-        result_status: ServiceMapDependencyRequestStatus = ServiceMapDependencyRequestStatus.PENDING
+        result_status: ServiceMapDependencyRequestStatus = ServiceMapDependencyRequestStatus.pending
         result_request_id: str = request_id
         pages_fetched = 0
 
@@ -306,7 +307,7 @@ class ServiceMapDependenciesResource(BaseResource):
             result_request_id = data.get("request_id", request_id)
 
             # If not ready yet, return current state
-            if result_status != ServiceMapDependencyRequestStatus.READY:
+            if result_status != ServiceMapDependencyRequestStatus.ready:
                 return ServiceMapDependencyResult(
                     request_id=result_request_id,
                     status=result_status,
@@ -366,16 +367,17 @@ class ServiceMapDependenciesResource(BaseResource):
 
         # Create the request
         req = self.create(request, limit=limit)
+        assert req.request_id is not None, "API should return request_id"
 
         # Poll until ready
         start_time = time.time()
         while True:
             result = self.get_result(req.request_id, max_pages=max_pages)
 
-            if result.status == ServiceMapDependencyRequestStatus.READY:
+            if result.status == ServiceMapDependencyRequestStatus.ready:
                 return result
 
-            if result.status == ServiceMapDependencyRequestStatus.ERROR:
+            if result.status == ServiceMapDependencyRequestStatus.error:
                 return result
 
             # Check timeout

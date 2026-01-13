@@ -58,6 +58,9 @@ class TestSLOsResourceBundleAsync:
                     "id": "dc-1",
                     "alias": "cross_service_success",
                     "expression": "IF(LT($status_code, 400), 1, 0)",
+                    "description": "",
+                    "created_at": "2024-01-01T00:00:00Z",
+                    "updated_at": "2024-01-01T00:00:00Z",
                 },
             )
         )

@@ -10,9 +10,9 @@ from honeycomb import (
     HoneycombClient,
     QueryBuilder,
     TriggerBuilder,
-    TriggerCreate,
     TriggerThreshold,
     TriggerThresholdOp,
+    TriggerWithInlineQuery,
 )
 
 
@@ -87,7 +87,7 @@ async def create_trigger_manual(client: HoneycombClient, dataset: str) -> str:
     Returns:
         The created trigger ID
     """
-    trigger = TriggerCreate(
+    trigger = TriggerWithInlineQuery(
         name="Manual Test Trigger",
         description="Created without builder",
         threshold=TriggerThreshold(
@@ -167,7 +167,7 @@ async def update_trigger(
     existing = await client.triggers.get_async(dataset, trigger_id)
 
     # Update with new values
-    updated = TriggerCreate(
+    updated = TriggerWithInlineQuery(
         name=existing.name,
         description=existing.description,
         threshold=TriggerThreshold(

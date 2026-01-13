@@ -3,8 +3,7 @@
 import pytest
 
 from honeycomb import BoardBuilder, BoardBundle
-from honeycomb.models.boards import BoardViewFilter
-from honeycomb.models.query_builder import FilterOp
+from honeycomb.models.boards import BoardViewFilter, BoardViewFilterOperation
 
 
 class TestBoardBuilderBasics:
@@ -389,7 +388,7 @@ class TestBoardBuilderViews:
                 [
                     BoardViewFilter(
                         column="status_code",
-                        operation=FilterOp.GREATER_THAN_OR_EQUAL,
+                        operation=BoardViewFilterOperation.GREATER_THAN_OR_EQUAL,
                         value=400,
                     )
                 ],

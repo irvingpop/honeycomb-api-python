@@ -151,14 +151,31 @@
       "input_schema": {
         "type": "object",
         "properties": {
-          "dataset": {
-            "type": "string",
-            "description": "The dataset slug to create the trigger in"
-          },
           "name": {
-            "description": "Human-readable name for the trigger",
+            "description": "Trigger name",
             "title": "Name",
             "type": "string"
+          },
+          "dataset": {
+            "description": "Dataset slug",
+            "title": "Dataset",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/$defs/TriggerQueryInput",
+            "description": "Query specification"
+          },
+          "threshold": {
+            "$ref": "#/$defs/TriggerThresholdInput",
+            "description": "Threshold configuration"
+          },
+          "frequency": {
+            "default": 900,
+            "description": "Evaluation frequency in seconds (60-86400, typically 60, 300, 900, 1800, or 3600)",
+            "maximum": 86400,
+            "minimum": 60,
+            "title": "Frequency",
+            "type": "integer"
           },
           "description": {
             "anyOf": [
@@ -170,46 +187,8 @@
               }
             ],
             "default": null,
-            "description": "Longer description",
+            "description": "Trigger description",
             "title": "Description"
-          },
-          "threshold": {
-            "$ref": "#/$defs/TriggerThreshold",
-            "description": "Threshold configuration"
-          },
-          "frequency": {
-            "default": 900,
-            "description": "Check frequency in seconds (60-86400, must be multiple of 60)",
-            "maximum": 86400,
-            "minimum": 60,
-            "multipleOf": 60,
-            "title": "Frequency",
-            "type": "integer"
-          },
-          "query": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/TriggerQuery"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Inline query"
-          },
-          "query_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Reference to saved query",
-            "title": "Query Id"
           },
           "disabled": {
             "default": false,
@@ -218,16 +197,20 @@
             "type": "boolean"
           },
           "alert_type": {
-            "$ref": "#/$defs/TriggerAlertType",
             "default": "on_change",
-            "description": "When to send alerts"
+            "description": "When to send alerts",
+            "enum": [
+              "on_change",
+              "on_true"
+            ],
+            "title": "Alert Type",
+            "type": "string"
           },
           "recipients": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/$defs/RecipientInput"
                 },
                 "type": "array"
               },
@@ -236,7 +219,7 @@
               }
             ],
             "default": null,
-            "description": "Notification recipients",
+            "description": "Notification recipients (inline or by ID)",
             "title": "Recipients"
           },
           "tags": {
@@ -252,22 +235,49 @@
               }
             ],
             "default": null,
-            "description": "Tags for organizing triggers (max 10)",
+            "description": "Trigger tags",
             "title": "Tags"
           },
-          "baseline_details": {
+          "evaluation_schedule_type": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "enum": [
+                  "frequency",
+                  "window"
+                ],
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Baseline threshold configuration for comparing against historical data",
-            "title": "Baseline Details"
+            "description": "Schedule type: 'frequency' (default, always runs) or 'window' (only runs during specified time windows)",
+            "title": "Evaluation Schedule Type"
+          },
+          "evaluation_schedule": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BaseTriggerEvaluationSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Time window configuration (required if evaluation_schedule_type='window'). Specifies days of week and UTC time range."
+          },
+          "baseline_details": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BaseTriggerBaselineDetails"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Dynamic threshold configuration for anomaly detection. Compare current values against historical baseline (e.g., alert if 20% higher than 1 day ago)."
           },
           "confidence": {
             "type": "string",
@@ -316,38 +326,115 @@
           }
         },
         "required": [
-          "dataset",
           "name",
+          "dataset",
+          "query",
           "threshold"
         ],
         "$defs": {
-          "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
-            "enum": [
-              "COUNT",
-              "SUM",
-              "AVG",
-              "MIN",
-              "MAX",
-              "P001",
-              "P01",
-              "P05",
-              "P10",
-              "P25",
-              "P50",
-              "P75",
-              "P90",
-              "P95",
-              "P99",
-              "P999",
-              "COUNT_DISTINCT",
-              "CONCURRENCY",
-              "HEATMAP",
-              "RATE_AVG",
-              "RATE_SUM",
-              "RATE_MAX"
+          "BaseTriggerBaselineDetails": {
+            "description": "Additional properties needed to configure this trigger with a dynamic baseline threshold.",
+            "properties": {
+              "offset_minutes": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsOffsetMinutes",
+                "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.\n"
+              },
+              "type": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsType",
+                "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.\n"
+              }
+            },
+            "required": [
+              "offset_minutes",
+              "type"
             ],
-            "title": "CalcOp",
+            "title": "BaseTriggerBaselineDetails",
+            "type": "object"
+          },
+          "BaseTriggerBaselineDetailsOffsetMinutes": {
+            "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.",
+            "enum": [
+              60,
+              1440,
+              10080,
+              40320
+            ],
+            "title": "BaseTriggerBaselineDetailsOffsetMinutes",
+            "type": "integer"
+          },
+          "BaseTriggerBaselineDetailsType": {
+            "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.",
+            "enum": [
+              "percentage",
+              "value"
+            ],
+            "title": "BaseTriggerBaselineDetailsType",
+            "type": "string"
+          },
+          "BaseTriggerEvaluationSchedule": {
+            "description": "A schedule that determines when the trigger is run. When the time is within the scheduled\nwindow, the trigger will be run at the specified frequency. Outside of the window, the trigger\nwill not be run.",
+            "properties": {
+              "window": {
+                "$ref": "#/$defs/BaseTriggerEvaluationScheduleWindow",
+                "description": "Window start/end times and days of the week are calculated in UTC. If the end time is the same as or earlier than the start time, the end time is treated as being in the following day.\n"
+              }
+            },
+            "required": [
+              "window"
+            ],
+            "title": "BaseTriggerEvaluationSchedule",
+            "type": "object"
+          },
+          "BaseTriggerEvaluationScheduleWindow": {
+            "description": "Window start/end times and days of the week are calculated in UTC. If the end time is the same as or earlier than the start time, the end time is treated as being in the following day.",
+            "properties": {
+              "days_of_week": {
+                "items": {
+                  "$ref": "#/$defs/BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum"
+                },
+                "maxItems": 7,
+                "minItems": 1,
+                "title": "Days Of Week",
+                "type": "array"
+              },
+              "start_time": {
+                "description": "A UTC time in HH:mm format (13:00)",
+                "examples": [
+                  840
+                ],
+                "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+                "title": "Start Time",
+                "type": "string"
+              },
+              "end_time": {
+                "description": "A UTC time in HH:mm format (13:00)",
+                "examples": [
+                  1260
+                ],
+                "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+                "title": "End Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "days_of_week",
+              "start_time",
+              "end_time"
+            ],
+            "title": "BaseTriggerEvaluationScheduleWindow",
+            "type": "object"
+          },
+          "BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum": {
+            "enum": [
+              "sunday",
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday"
+            ],
+            "title": "BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum",
             "type": "string"
           },
           "Calculation": {
@@ -355,7 +442,7 @@
             "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
+                "$ref": "#/$defs/QueryOp",
                 "description": "Calculation operation (COUNT, AVG, P99, etc.)"
               },
               "column": {
@@ -404,17 +491,7 @@
             "title": "Filter",
             "type": "object"
           },
-          "FilterCombination": {
-            "description": "How to combine multiple filters.",
-            "enum": [
-              "AND",
-              "OR"
-            ],
-            "title": "FilterCombination",
-            "type": "string"
-          },
           "FilterOp": {
-            "description": "Filter operations for Honeycomb queries and board views.\n\nIMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.",
             "enum": [
               "=",
               "!=",
@@ -426,15 +503,108 @@
               "does-not-start-with",
               "ends-with",
               "does-not-end-with",
-              "contains",
-              "does-not-contain",
               "exists",
               "does-not-exist",
+              "contains",
+              "does-not-contain",
               "in",
               "not-in"
             ],
             "title": "FilterOp",
             "type": "string"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "RecipientInput": {
+            "additionalProperties": false,
+            "description": "Recipient specification (shared across triggers, SLOs, burn alerts).\n\nEither reference an existing recipient by ID, OR create a new one inline\nby providing type and target.\n\nNote: Only 'email' and 'webhook' types are testable without external integrations.\nOther types ('slack', 'pagerduty', 'msteams') require service configuration.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Existing recipient ID",
+                "title": "Id"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "email",
+                      "webhook",
+                      "slack",
+                      "pagerduty",
+                      "msteams"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient type (for inline creation)",
+                "title": "Type"
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient target (email address, webhook URL, or integration ID)",
+                "title": "Target"
+              }
+            },
+            "title": "RecipientInput",
+            "type": "object"
           },
           "TagInput": {
             "additionalProperties": false,
@@ -464,75 +634,30 @@
             "title": "TagInput",
             "type": "object"
           },
-          "TriggerAlertType": {
-            "description": "How often to fire an alert when threshold is crossed.",
-            "enum": [
-              "on_change",
-              "on_true"
-            ],
-            "title": "TriggerAlertType",
-            "type": "string"
-          },
-          "TriggerQuery": {
-            "description": "Inline query specification for a trigger.\n\nAccepts both typed models and dicts for flexibility:\n    >>> # Using typed models\n    >>> TriggerQuery(calculations=[Calculation(op=CalcOp.P99, column=\"duration_ms\")])\n\n    >>> # Using dicts\n    >>> TriggerQuery(calculations=[{\"op\": \"P99\", \"column\": \"duration_ms\"}])",
+          "TriggerQueryInput": {
+            "additionalProperties": false,
+            "description": "Query specification for trigger tool input.\n\nTriggers support a subset of query features:\n- Single calculation only (min/max enforced by field validator)\n- No HEATMAP calculations\n- No orders, limit, or granularity fields (not supported by Honeycomb API)\n- Relative time ranges only (no absolute start/end times)\n- Maximum time range of 3600 seconds (1 hour)",
             "properties": {
               "time_range": {
-                "default": 900,
-                "description": "Query time range in seconds (300-3600, i.e. 5 min to 1 hour)",
-                "maximum": 3600,
-                "minimum": 300,
+                "description": "Query time range in seconds (max 3600 for triggers)",
                 "title": "Time Range",
                 "type": "integer"
               },
-              "granularity": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Time granularity in seconds",
-                "title": "Granularity"
-              },
               "calculations": {
-                "anyOf": [
-                  {
-                    "items": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/$defs/Calculation"
-                        },
-                        {
-                          "additionalProperties": true,
-                          "type": "object"
-                        }
-                      ]
-                    },
-                    "type": "array"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "Calculations to perform",
-                "title": "Calculations"
+                "description": "Calculation (triggers support exactly one calculation)",
+                "items": {
+                  "$ref": "#/$defs/Calculation"
+                },
+                "maxItems": 1,
+                "minItems": 1,
+                "title": "Calculations",
+                "type": "array"
               },
               "filters": {
                 "anyOf": [
                   {
                     "items": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/$defs/Filter"
-                        },
-                        {
-                          "additionalProperties": true,
-                          "type": "object"
-                        }
-                      ]
+                      "$ref": "#/$defs/Filter"
                     },
                     "type": "array"
                   },
@@ -563,29 +688,37 @@
               "filter_combination": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/FilterCombination"
-                  },
-                  {
-                    "type": "string"
+                    "$ref": "#/$defs/QueryFilterCombination"
                   },
                   {
                     "type": "null"
                   }
                 ],
                 "default": null,
-                "description": "How to combine filters (AND/OR)",
-                "title": "Filter Combination"
+                "description": "How to combine filters (AND or OR)"
               }
             },
-            "title": "TriggerQuery",
+            "required": [
+              "time_range",
+              "calculations"
+            ],
+            "title": "TriggerQueryInput",
             "type": "object"
           },
-          "TriggerThreshold": {
-            "description": "Threshold configuration for a trigger.",
+          "TriggerThresholdInput": {
+            "additionalProperties": false,
+            "description": "Threshold specification for trigger tool input.",
             "properties": {
               "op": {
-                "$ref": "#/$defs/TriggerThresholdOp",
-                "description": "Comparison operator"
+                "description": "Threshold comparison operator",
+                "enum": [
+                  ">",
+                  ">=",
+                  "<",
+                  "<="
+                ],
+                "title": "Op",
+                "type": "string"
               },
               "value": {
                 "description": "Threshold value",
@@ -604,7 +737,7 @@
                   }
                 ],
                 "default": null,
-                "description": "Number of times threshold must be exceeded (1-5, default 1)",
+                "description": "Consecutive evaluations that must exceed threshold (1-5)",
                 "title": "Exceeded Limit"
               }
             },
@@ -612,19 +745,8 @@
               "op",
               "value"
             ],
-            "title": "TriggerThreshold",
+            "title": "TriggerThresholdInput",
             "type": "object"
-          },
-          "TriggerThresholdOp": {
-            "description": "Threshold comparison operators.",
-            "enum": [
-              ">",
-              ">=",
-              "<",
-              "<="
-            ],
-            "title": "TriggerThresholdOp",
-            "type": "string"
           }
         }
       },
@@ -743,24 +865,6 @@
           ]
         },
         {
-          "dataset": "traces",
-          "name": "Request Duration Distribution",
-          "query": {
-            "time_range": 3600,
-            "calculations": [
-              {
-                "op": "HEATMAP",
-                "column": "duration_ms"
-              }
-            ]
-          },
-          "threshold": {
-            "op": ">",
-            "value": 1000
-          },
-          "frequency": 3600
-        },
-        {
           "dataset": "api-logs",
           "name": "Unique Error Messages",
           "query": {
@@ -794,17 +898,34 @@
         "type": "object",
         "properties": {
           "dataset": {
-            "type": "string",
-            "description": "The dataset slug"
+            "description": "Dataset slug",
+            "title": "Dataset",
+            "type": "string"
           },
           "trigger_id": {
             "type": "string",
             "description": "The trigger ID to update"
           },
           "name": {
-            "description": "Human-readable name for the trigger",
+            "description": "Trigger name",
             "title": "Name",
             "type": "string"
+          },
+          "query": {
+            "$ref": "#/$defs/TriggerQueryInput",
+            "description": "Query specification"
+          },
+          "threshold": {
+            "$ref": "#/$defs/TriggerThresholdInput",
+            "description": "Threshold configuration"
+          },
+          "frequency": {
+            "default": 900,
+            "description": "Evaluation frequency in seconds (60-86400, typically 60, 300, 900, 1800, or 3600)",
+            "maximum": 86400,
+            "minimum": 60,
+            "title": "Frequency",
+            "type": "integer"
           },
           "description": {
             "anyOf": [
@@ -816,46 +937,8 @@
               }
             ],
             "default": null,
-            "description": "Longer description",
+            "description": "Trigger description",
             "title": "Description"
-          },
-          "threshold": {
-            "$ref": "#/$defs/TriggerThreshold",
-            "description": "Threshold configuration"
-          },
-          "frequency": {
-            "default": 900,
-            "description": "Check frequency in seconds (60-86400, must be multiple of 60)",
-            "maximum": 86400,
-            "minimum": 60,
-            "multipleOf": 60,
-            "title": "Frequency",
-            "type": "integer"
-          },
-          "query": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/TriggerQuery"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Inline query"
-          },
-          "query_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Reference to saved query",
-            "title": "Query Id"
           },
           "disabled": {
             "default": false,
@@ -864,16 +947,20 @@
             "type": "boolean"
           },
           "alert_type": {
-            "$ref": "#/$defs/TriggerAlertType",
             "default": "on_change",
-            "description": "When to send alerts"
+            "description": "When to send alerts",
+            "enum": [
+              "on_change",
+              "on_true"
+            ],
+            "title": "Alert Type",
+            "type": "string"
           },
           "recipients": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/$defs/RecipientInput"
                 },
                 "type": "array"
               },
@@ -882,7 +969,7 @@
               }
             ],
             "default": null,
-            "description": "Notification recipients",
+            "description": "Notification recipients (inline or by ID)",
             "title": "Recipients"
           },
           "tags": {
@@ -898,22 +985,49 @@
               }
             ],
             "default": null,
-            "description": "Tags for organizing triggers (max 10)",
+            "description": "Trigger tags",
             "title": "Tags"
           },
-          "baseline_details": {
+          "evaluation_schedule_type": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "enum": [
+                  "frequency",
+                  "window"
+                ],
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Baseline threshold configuration for comparing against historical data",
-            "title": "Baseline Details"
+            "description": "Schedule type: 'frequency' (default, always runs) or 'window' (only runs during specified time windows)",
+            "title": "Evaluation Schedule Type"
+          },
+          "evaluation_schedule": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BaseTriggerEvaluationSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Time window configuration (required if evaluation_schedule_type='window'). Specifies days of week and UTC time range."
+          },
+          "baseline_details": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BaseTriggerBaselineDetails"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Dynamic threshold configuration for anomaly detection. Compare current values against historical baseline (e.g., alert if 20% higher than 1 day ago)."
           },
           "confidence": {
             "type": "string",
@@ -962,39 +1076,116 @@
           }
         },
         "required": [
-          "dataset",
           "trigger_id",
+          "threshold",
           "name",
-          "threshold"
+          "query",
+          "dataset"
         ],
         "$defs": {
-          "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
-            "enum": [
-              "COUNT",
-              "SUM",
-              "AVG",
-              "MIN",
-              "MAX",
-              "P001",
-              "P01",
-              "P05",
-              "P10",
-              "P25",
-              "P50",
-              "P75",
-              "P90",
-              "P95",
-              "P99",
-              "P999",
-              "COUNT_DISTINCT",
-              "CONCURRENCY",
-              "HEATMAP",
-              "RATE_AVG",
-              "RATE_SUM",
-              "RATE_MAX"
+          "BaseTriggerBaselineDetails": {
+            "description": "Additional properties needed to configure this trigger with a dynamic baseline threshold.",
+            "properties": {
+              "offset_minutes": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsOffsetMinutes",
+                "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.\n"
+              },
+              "type": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsType",
+                "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.\n"
+              }
+            },
+            "required": [
+              "offset_minutes",
+              "type"
             ],
-            "title": "CalcOp",
+            "title": "BaseTriggerBaselineDetails",
+            "type": "object"
+          },
+          "BaseTriggerBaselineDetailsOffsetMinutes": {
+            "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.",
+            "enum": [
+              60,
+              1440,
+              10080,
+              40320
+            ],
+            "title": "BaseTriggerBaselineDetailsOffsetMinutes",
+            "type": "integer"
+          },
+          "BaseTriggerBaselineDetailsType": {
+            "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.",
+            "enum": [
+              "percentage",
+              "value"
+            ],
+            "title": "BaseTriggerBaselineDetailsType",
+            "type": "string"
+          },
+          "BaseTriggerEvaluationSchedule": {
+            "description": "A schedule that determines when the trigger is run. When the time is within the scheduled\nwindow, the trigger will be run at the specified frequency. Outside of the window, the trigger\nwill not be run.",
+            "properties": {
+              "window": {
+                "$ref": "#/$defs/BaseTriggerEvaluationScheduleWindow",
+                "description": "Window start/end times and days of the week are calculated in UTC. If the end time is the same as or earlier than the start time, the end time is treated as being in the following day.\n"
+              }
+            },
+            "required": [
+              "window"
+            ],
+            "title": "BaseTriggerEvaluationSchedule",
+            "type": "object"
+          },
+          "BaseTriggerEvaluationScheduleWindow": {
+            "description": "Window start/end times and days of the week are calculated in UTC. If the end time is the same as or earlier than the start time, the end time is treated as being in the following day.",
+            "properties": {
+              "days_of_week": {
+                "items": {
+                  "$ref": "#/$defs/BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum"
+                },
+                "maxItems": 7,
+                "minItems": 1,
+                "title": "Days Of Week",
+                "type": "array"
+              },
+              "start_time": {
+                "description": "A UTC time in HH:mm format (13:00)",
+                "examples": [
+                  840
+                ],
+                "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+                "title": "Start Time",
+                "type": "string"
+              },
+              "end_time": {
+                "description": "A UTC time in HH:mm format (13:00)",
+                "examples": [
+                  1260
+                ],
+                "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+                "title": "End Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "days_of_week",
+              "start_time",
+              "end_time"
+            ],
+            "title": "BaseTriggerEvaluationScheduleWindow",
+            "type": "object"
+          },
+          "BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum": {
+            "enum": [
+              "sunday",
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday"
+            ],
+            "title": "BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum",
             "type": "string"
           },
           "Calculation": {
@@ -1002,7 +1193,7 @@
             "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
+                "$ref": "#/$defs/QueryOp",
                 "description": "Calculation operation (COUNT, AVG, P99, etc.)"
               },
               "column": {
@@ -1051,17 +1242,7 @@
             "title": "Filter",
             "type": "object"
           },
-          "FilterCombination": {
-            "description": "How to combine multiple filters.",
-            "enum": [
-              "AND",
-              "OR"
-            ],
-            "title": "FilterCombination",
-            "type": "string"
-          },
           "FilterOp": {
-            "description": "Filter operations for Honeycomb queries and board views.\n\nIMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.",
             "enum": [
               "=",
               "!=",
@@ -1073,15 +1254,108 @@
               "does-not-start-with",
               "ends-with",
               "does-not-end-with",
-              "contains",
-              "does-not-contain",
               "exists",
               "does-not-exist",
+              "contains",
+              "does-not-contain",
               "in",
               "not-in"
             ],
             "title": "FilterOp",
             "type": "string"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "RecipientInput": {
+            "additionalProperties": false,
+            "description": "Recipient specification (shared across triggers, SLOs, burn alerts).\n\nEither reference an existing recipient by ID, OR create a new one inline\nby providing type and target.\n\nNote: Only 'email' and 'webhook' types are testable without external integrations.\nOther types ('slack', 'pagerduty', 'msteams') require service configuration.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Existing recipient ID",
+                "title": "Id"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "email",
+                      "webhook",
+                      "slack",
+                      "pagerduty",
+                      "msteams"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient type (for inline creation)",
+                "title": "Type"
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient target (email address, webhook URL, or integration ID)",
+                "title": "Target"
+              }
+            },
+            "title": "RecipientInput",
+            "type": "object"
           },
           "TagInput": {
             "additionalProperties": false,
@@ -1111,75 +1385,30 @@
             "title": "TagInput",
             "type": "object"
           },
-          "TriggerAlertType": {
-            "description": "How often to fire an alert when threshold is crossed.",
-            "enum": [
-              "on_change",
-              "on_true"
-            ],
-            "title": "TriggerAlertType",
-            "type": "string"
-          },
-          "TriggerQuery": {
-            "description": "Inline query specification for a trigger.\n\nAccepts both typed models and dicts for flexibility:\n    >>> # Using typed models\n    >>> TriggerQuery(calculations=[Calculation(op=CalcOp.P99, column=\"duration_ms\")])\n\n    >>> # Using dicts\n    >>> TriggerQuery(calculations=[{\"op\": \"P99\", \"column\": \"duration_ms\"}])",
+          "TriggerQueryInput": {
+            "additionalProperties": false,
+            "description": "Query specification for trigger tool input.\n\nTriggers support a subset of query features:\n- Single calculation only (min/max enforced by field validator)\n- No HEATMAP calculations\n- No orders, limit, or granularity fields (not supported by Honeycomb API)\n- Relative time ranges only (no absolute start/end times)\n- Maximum time range of 3600 seconds (1 hour)",
             "properties": {
               "time_range": {
-                "default": 900,
-                "description": "Query time range in seconds (300-3600, i.e. 5 min to 1 hour)",
-                "maximum": 3600,
-                "minimum": 300,
+                "description": "Query time range in seconds (max 3600 for triggers)",
                 "title": "Time Range",
                 "type": "integer"
               },
-              "granularity": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Time granularity in seconds",
-                "title": "Granularity"
-              },
               "calculations": {
-                "anyOf": [
-                  {
-                    "items": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/$defs/Calculation"
-                        },
-                        {
-                          "additionalProperties": true,
-                          "type": "object"
-                        }
-                      ]
-                    },
-                    "type": "array"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "Calculations to perform",
-                "title": "Calculations"
+                "description": "Calculation (triggers support exactly one calculation)",
+                "items": {
+                  "$ref": "#/$defs/Calculation"
+                },
+                "maxItems": 1,
+                "minItems": 1,
+                "title": "Calculations",
+                "type": "array"
               },
               "filters": {
                 "anyOf": [
                   {
                     "items": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/$defs/Filter"
-                        },
-                        {
-                          "additionalProperties": true,
-                          "type": "object"
-                        }
-                      ]
+                      "$ref": "#/$defs/Filter"
                     },
                     "type": "array"
                   },
@@ -1210,29 +1439,37 @@
               "filter_combination": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/FilterCombination"
-                  },
-                  {
-                    "type": "string"
+                    "$ref": "#/$defs/QueryFilterCombination"
                   },
                   {
                     "type": "null"
                   }
                 ],
                 "default": null,
-                "description": "How to combine filters (AND/OR)",
-                "title": "Filter Combination"
+                "description": "How to combine filters (AND or OR)"
               }
             },
-            "title": "TriggerQuery",
+            "required": [
+              "time_range",
+              "calculations"
+            ],
+            "title": "TriggerQueryInput",
             "type": "object"
           },
-          "TriggerThreshold": {
-            "description": "Threshold configuration for a trigger.",
+          "TriggerThresholdInput": {
+            "additionalProperties": false,
+            "description": "Threshold specification for trigger tool input.",
             "properties": {
               "op": {
-                "$ref": "#/$defs/TriggerThresholdOp",
-                "description": "Comparison operator"
+                "description": "Threshold comparison operator",
+                "enum": [
+                  ">",
+                  ">=",
+                  "<",
+                  "<="
+                ],
+                "title": "Op",
+                "type": "string"
               },
               "value": {
                 "description": "Threshold value",
@@ -1251,7 +1488,7 @@
                   }
                 ],
                 "default": null,
-                "description": "Number of times threshold must be exceeded (1-5, default 1)",
+                "description": "Consecutive evaluations that must exceed threshold (1-5)",
                 "title": "Exceeded Limit"
               }
             },
@@ -1259,19 +1496,8 @@
               "op",
               "value"
             ],
-            "title": "TriggerThreshold",
+            "title": "TriggerThresholdInput",
             "type": "object"
-          },
-          "TriggerThresholdOp": {
-            "description": "Threshold comparison operators.",
-            "enum": [
-              ">",
-              ">=",
-              "<",
-              "<="
-            ],
-            "title": "TriggerThresholdOp",
-            "type": "string"
           }
         }
       },

@@ -16,7 +16,10 @@
               }
             ],
             "default": null,
-            "description": "Absolute start time in seconds since UNIX epoch",
+            "description": "Absolute start time to evaluate dependencies, in seconds since UNIX epoch. Must be <= `end_time` (when `time_range` is not provided).\n",
+            "examples": [
+              1622548800
+            ],
             "title": "Start Time"
           },
           "end_time": {
@@ -29,21 +32,34 @@
               }
             ],
             "default": null,
-            "description": "Absolute end time in seconds since UNIX epoch",
+            "description": "Absolute end time to evaluate dependencies, in seconds since UNIX epoch. Must be >= `start_time` (when `time_range` is not provided).\n",
+            "examples": [
+              1622635200
+            ],
             "title": "End Time"
           },
           "time_range": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": 7200,
-            "description": "Time range in seconds (default: 7200 = 2 hours)",
-            "minimum": 1,
-            "title": "Time Range",
-            "type": "integer"
+            "description": "Time range in seconds (minimum 1). Can be used with either `start_time` (seconds after `start_time`), `end_time` (seconds before `end_time`), or without either (seconds before now).\n",
+            "examples": [
+              7200
+            ],
+            "title": "Time Range"
           },
           "filters": {
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/$defs/ServiceMapNode"
+                  "$ref": "#/$defs/MapNode"
                 },
                 "type": "array"
               },
@@ -52,7 +68,7 @@
               }
             ],
             "default": null,
-            "description": "Optional list of service nodes to filter dependencies by",
+            "description": "Optional list of service nodes to filter dependencies by. Only dependencies involving these nodes will be returned.\n",
             "title": "Filters"
           },
           "max_pages": {
@@ -107,32 +123,45 @@
         },
         "required": [],
         "$defs": {
-          "ServiceMapNode": {
-            "description": "A node in the service map (typically a service).\n\nAttributes:\n    name: Name of the service or node.\n    type: Type of the node. Currently only 'service' is supported.",
+          "MapNode": {
+            "description": "A node in the service map (typically a service).",
             "properties": {
               "name": {
-                "description": "Name of the service or node",
+                "description": "Name of the service or node.\n",
+                "examples": [
+                  "user-service"
+                ],
                 "title": "Name",
                 "type": "string"
               },
               "type": {
-                "$ref": "#/$defs/ServiceMapNodeType",
-                "default": "service",
-                "description": "Type of the node. Currently only 'service' is supported."
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/MapNodeType"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Type of the node. Currently only \"service\" is supported. Defaults to \"service\" if not specified.\n",
+                "examples": [
+                  "service"
+                ]
               }
             },
             "required": [
               "name"
             ],
-            "title": "ServiceMapNode",
+            "title": "MapNode",
             "type": "object"
           },
-          "ServiceMapNodeType": {
-            "description": "Type of node in the service map.",
+          "MapNodeType": {
+            "description": "Type of the node. Currently only \"service\" is supported. Defaults to \"service\" if not specified.",
             "enum": [
               "service"
             ],
-            "title": "ServiceMapNodeType",
+            "title": "MapNodeType",
             "type": "string"
           }
         }

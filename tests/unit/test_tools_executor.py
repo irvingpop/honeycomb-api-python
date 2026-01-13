@@ -44,8 +44,8 @@ class TestExecuteAuthTools:
 
         result = json.loads(result_json)
         assert result["id"] == "key123"
-        assert result["team_name"] == "Test Team"
-        assert result["environment_name"] == "Production"
+        assert result["team"]["name"] == "Test Team"
+        assert result["environment"]["name"] == "Production"
 
     async def test_execute_get_auth_v2(
         self, management_client: HoneycombClient, respx_mock: MockRouter
@@ -78,10 +78,10 @@ class TestExecuteAuthTools:
         result_json = await execute_tool(management_client, "honeycomb_get_auth", {})
 
         result = json.loads(result_json)
-        assert result["id"] == "mgmt123"
-        assert result["name"] == "My Management Key"
-        assert result["team_name"] == "My Team"
-        assert "api-keys:write" in result["scopes"]
+        assert result["data"]["id"] == "mgmt123"
+        assert result["data"]["attributes"]["name"] == "My Management Key"
+        assert result["included"][0]["attributes"]["name"] == "My Team"
+        assert "api-keys:write" in result["data"]["attributes"]["scopes"]
 
     async def test_execute_get_auth_explicit_v2(
         self, management_client: HoneycombClient, respx_mock: MockRouter
@@ -114,7 +114,7 @@ class TestExecuteAuthTools:
         result_json = await execute_tool(management_client, "honeycomb_get_auth", {"use_v2": True})
 
         result = json.loads(result_json)
-        assert result["id"] == "mgmt456"
+        assert result["data"]["id"] == "mgmt456"
 
 
 class TestExecuteTriggerTools:
@@ -340,6 +340,8 @@ class TestExecuteSLOTools:
                 "alias": "request_success",
                 "expression": "IF(LT($status_code, 500), 1, 0)",
                 "description": "1 if success, 0 if error",
+                "created_at": "2025-01-01T00:00:00Z",
+                "updated_at": "2025-01-01T00:00:00Z",
             }
         )
 

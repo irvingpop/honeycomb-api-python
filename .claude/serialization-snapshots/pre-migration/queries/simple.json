@@ -1,0 +1,8 @@
+{
+  "calculations": [
+    {
+      "op": "COUNT"
+    }
+  ],
+  "time_range": 3600
+}

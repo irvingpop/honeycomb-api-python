@@ -1,0 +1,9 @@
+{
+  "description": "99.9% of requests succeed",
+  "name": "API Availability",
+  "sli": {
+    "alias": "success_rate"
+  },
+  "target_per_million": 999000,
+  "time_period_days": 30
+}

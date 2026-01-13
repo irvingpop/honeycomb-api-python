@@ -38,7 +38,7 @@ async def process_inline_recipients(
         >>> # First recipient now has an ID, second unchanged
     """
     from honeycomb.exceptions import HoneycombAPIError
-    from honeycomb.models.recipients import RecipientCreate, RecipientType
+    from honeycomb.models.recipients import RecipientType
 
     # List existing recipients once for idempotent checks
     existing_recipients = await client.recipients.list_async()
@@ -61,16 +61,16 @@ async def process_inline_recipients(
             if existing_recip.type == recip_type:
                 # Check target match based on type
                 existing_target = None
-                if recip_type == RecipientType.EMAIL:
+                if recip_type == RecipientType.email:
                     existing_target = existing_recip.details.get("email_address")
-                elif recip_type == RecipientType.SLACK:
+                elif recip_type == RecipientType.slack:
                     existing_target = existing_recip.details.get("slack_channel")
-                elif recip_type == RecipientType.WEBHOOK or recip_type in (
-                    RecipientType.MSTEAMS_WORKFLOW,
-                    RecipientType.MSTEAMS,
+                elif recip_type == RecipientType.webhook or recip_type in (
+                    RecipientType.msteams_workflow,
+                    RecipientType.msteams,
                 ):
                     existing_target = existing_recip.details.get("webhook_url")
-                elif recip_type == RecipientType.PAGERDUTY:
+                elif recip_type == RecipientType.pagerduty:
                     existing_target = existing_recip.details.get("pagerduty_integration_key")
 
                 if existing_target == target:
@@ -83,19 +83,19 @@ async def process_inline_recipients(
         else:
             # Create new recipient - build details based on type (matching API spec)
             details = recip.get("details", {})
-            if recip_type == RecipientType.EMAIL:
+            if recip_type == RecipientType.email:
                 if "email_address" not in details:
                     details = {"email_address": target}
-            elif recip_type == RecipientType.SLACK:
+            elif recip_type == RecipientType.slack:
                 if "slack_channel" not in details:
                     details = {"slack_channel": target}
-            elif recip_type == RecipientType.PAGERDUTY:
+            elif recip_type == RecipientType.pagerduty:
                 if "pagerduty_integration_key" not in details:
                     details = {
                         "pagerduty_integration_key": target,
                         "pagerduty_integration_name": "PagerDuty Integration",
                     }
-            elif recip_type == RecipientType.WEBHOOK:
+            elif recip_type == RecipientType.webhook:
                 if "webhook_url" not in details:
                     details = {
                         "webhook_url": target,
@@ -104,8 +104,8 @@ async def process_inline_recipients(
             elif (
                 recip_type
                 in (
-                    RecipientType.MSTEAMS_WORKFLOW,
-                    RecipientType.MSTEAMS,
+                    RecipientType.msteams_workflow,
+                    RecipientType.msteams,
                 )
                 and "webhook_url" not in details
             ):
@@ -116,7 +116,11 @@ async def process_inline_recipients(
 
             # Create recipient via Recipients API
             try:
-                recipient_obj = RecipientCreate(type=recip_type, details=details)
+                # Map type to specific recipient class
+                from honeycomb.models.recipients import get_recipient_class
+
+                recipient_class = get_recipient_class(recip_type)
+                recipient_obj = recipient_class(type=recip_type.value, details=details)
                 created_recip = await client.recipients.create_async(recipient_obj)
                 result.append({"id": created_recip.id})
             except HoneycombAPIError as e:
@@ -126,20 +130,24 @@ async def process_inline_recipients(
                     existing_recipients = await client.recipients.list_async()
                     found = False
                     for existing_recip in existing_recipients:
-                        if existing_recip.type == recip_type:
+                        if existing_recip.type == recip_type.value:
                             check_target = None
-                            if recip_type == RecipientType.EMAIL:
-                                check_target = existing_recip.details.get("email_address")
-                            elif recip_type == RecipientType.SLACK:
-                                check_target = existing_recip.details.get("slack_channel")
-                            elif recip_type == RecipientType.WEBHOOK or recip_type in (
-                                RecipientType.MSTEAMS_WORKFLOW,
-                                RecipientType.MSTEAMS,
+                            if recip_type == RecipientType.email:
+                                check_target = getattr(
+                                    existing_recip.details, "email_address", None
+                                )
+                            elif recip_type == RecipientType.slack:
+                                check_target = getattr(
+                                    existing_recip.details, "slack_channel", None
+                                )
+                            elif recip_type == RecipientType.webhook or recip_type in (
+                                RecipientType.msteams_workflow,
+                                RecipientType.msteams,
                             ):
-                                check_target = existing_recip.details.get("webhook_url")
-                            elif recip_type == RecipientType.PAGERDUTY:
-                                check_target = existing_recip.details.get(
-                                    "pagerduty_integration_key"
+                                check_target = getattr(existing_recip.details, "webhook_url", None)
+                            elif recip_type == RecipientType.pagerduty:
+                                check_target = getattr(
+                                    existing_recip.details, "pagerduty_integration_key", None
                                 )
 
                             if check_target == target:

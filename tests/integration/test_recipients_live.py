@@ -26,7 +26,7 @@ class TestRecipientBuilder:
 
         created = await client.recipients.create_async(recipient)
         try:
-            assert created.type == RecipientType.EMAIL
+            assert created.type == RecipientType.email
             # Verify the recipient details
             assert created.details is not None
         finally:
@@ -43,7 +43,7 @@ class TestRecipientBuilder:
 
         created = await client.recipients.create_async(recipient)
         try:
-            assert created.type == RecipientType.WEBHOOK
+            assert created.type == RecipientType.webhook
         finally:
             await client.recipients.delete_async(created.id)
 
@@ -58,11 +58,11 @@ class TestRecipientBuilder:
         # READ
         fetched = await client.recipients.get_async(recipient_id)
         assert fetched.id == recipient_id
-        assert fetched.type == RecipientType.EMAIL
+        assert fetched.type == RecipientType.email
 
         # UPDATE
         updated_recipient = RecipientCreate(
-            type=RecipientType.EMAIL,
+            type=RecipientType.email,
             details={"email_address": "crud-test-updated@example.com"},
         )
         updated = await client.recipients.update_async(recipient_id, updated_recipient)
@@ -83,13 +83,13 @@ class TestRecipientManualConstruction:
     async def test_manual_email_recipient(self, client: HoneycombClient) -> None:
         """Test creating email recipient with manual construction."""
         recipient = RecipientCreate(
-            type=RecipientType.EMAIL,
+            type=RecipientType.email,
             details={"email_address": "manual-test@example.com"},
         )
 
         created = await client.recipients.create_async(recipient)
         try:
-            assert created.type == RecipientType.EMAIL
+            assert created.type == RecipientType.email
         finally:
             await client.recipients.delete_async(created.id)
 

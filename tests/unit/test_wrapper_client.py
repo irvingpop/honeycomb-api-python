@@ -5,7 +5,6 @@ import respx
 from httpx import Response
 
 from honeycomb import (
-    SLI,
     BoardCreate,
     DatasetCreate,
     HoneycombAuthError,
@@ -13,11 +12,11 @@ from honeycomb import (
     HoneycombNotFoundError,
     HoneycombValidationError,
     SLOCreate,
+    SLOCreateSli,
     Trigger,
-    TriggerCreate,
-    TriggerQuery,
     TriggerThreshold,
     TriggerThresholdOp,
+    TriggerWithInlineQuery,
 )
 
 
@@ -95,7 +94,7 @@ class TestPydanticModels:
 
     def test_trigger_create_model(self):
         """Test TriggerCreate model serialization."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithInlineQuery(
             name="Test Trigger",
             threshold=TriggerThreshold(
                 op=TriggerThresholdOp.GREATER_THAN,
@@ -103,7 +102,9 @@ class TestPydanticModels:
             ),
             frequency=300,
         )
-        data = trigger.model_dump_for_api()
+        data = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
         assert data["name"] == "Test Trigger"
         assert data["threshold"]["op"] == ">"
         assert data["threshold"]["value"] == 100.0
@@ -111,17 +112,17 @@ class TestPydanticModels:
 
     def test_trigger_create_with_query(self):
         """Test TriggerCreate with inline query."""
-        trigger = TriggerCreate(
+        trigger = TriggerWithInlineQuery(
             name="Query Trigger",
             threshold=TriggerThreshold(
                 op=TriggerThresholdOp.LESS_THAN,
                 value=10.0,
             ),
-            query=TriggerQuery(
-                time_range=900,
-            ),
+            query={"time_range": 900},
         )
-        data = trigger.model_dump_for_api()
+        data = trigger.model_dump(
+            mode="json", exclude_none=True, exclude_defaults=True, by_alias=True
+        )
         assert "query" in data
         assert data["query"]["time_range"] == 900
 
@@ -145,11 +146,11 @@ class TestPydanticModels:
         """Test SLOCreate model serialization."""
         slo = SLOCreate(
             name="Test SLO",
-            sli=SLI(alias="test-sli"),
+            sli=SLOCreateSli(alias="test-sli"),
             time_period_days=30,
             target_per_million=999000,
         )
-        data = slo.model_dump_for_api()
+        data = slo.model_dump(mode="json", exclude_none=True)
         assert data["name"] == "Test SLO"
         assert data["time_period_days"] == 30
         assert data["target_per_million"] == 999000
@@ -160,7 +161,7 @@ class TestPydanticModels:
             name="Test Dataset",
             description="A test dataset",
         )
-        data = dataset.model_dump_for_api()
+        data = dataset.model_dump(mode="json", exclude_none=True, exclude_defaults=True)
         assert data["name"] == "Test Dataset"
         assert data["description"] == "A test dataset"
 
@@ -170,7 +171,7 @@ class TestPydanticModels:
             name="Test Board",
             description="A test board",
         )
-        data = board.model_dump_for_api()
+        data = board.model_dump(mode="json", exclude_none=True)
         assert data["name"] == "Test Board"
         assert data["description"] == "A test board"
         assert data["type"] == "flexible"
@@ -275,7 +276,7 @@ def test_create_trigger_sync():
     with HoneycombClient(api_key="test-key", sync=True) as client:
         trigger = client.triggers.create(
             "test-dataset",
-            TriggerCreate(
+            TriggerWithInlineQuery(
                 name="New Trigger",
                 threshold=TriggerThreshold(
                     op=TriggerThresholdOp.GREATER_THAN,
@@ -353,7 +354,7 @@ def test_422_raises_validation_error():
     ):
         client.triggers.create(
             "test-dataset",
-            TriggerCreate(
+            TriggerWithInlineQuery(
                 name="Bad Trigger",
                 threshold=TriggerThreshold(
                     op=TriggerThresholdOp.GREATER_THAN,
@@ -420,7 +421,7 @@ async def test_create_slo_async():
             json={
                 "id": "slo-1",
                 "name": "Test SLO",
-                "sli": {},
+                "sli": {"alias": "test-sli"},
                 "time_period_days": 30,
                 "target_per_million": 999000,
             },
@@ -432,7 +433,7 @@ async def test_create_slo_async():
             "test-dataset",
             SLOCreate(
                 name="Test SLO",
-                sli=SLI(),
+                sli=SLOCreateSli(alias="test-sli"),
                 time_period_days=30,
                 target_per_million=999000,
             ),

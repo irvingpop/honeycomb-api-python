@@ -9,7 +9,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 | [README.md](README.md) | Usage examples, API reference, setup |
 | [PLAN.md](PLAN.md) | Architecture decisions, implementation plan |
 | [api.yaml](api.yaml) | OpenAPI spec (source of truth for API) |
-| [.claude/docs/openapi-spec-updates.md](.claude/docs/openapi-spec-updates.md) | How to update the OpenAPI spec |
 
 ## Ground Rules
 
@@ -92,13 +91,19 @@ For new resources, use the `resource-implementer` agent which handles the full c
 honeycomb/              (public API - edit this)
 ├── client.py           HoneycombClient
 ├── resources/          Resource classes (Triggers, SLOs, etc.)
-├── models/             Pydantic models
-└── _generated/         Auto-generated code (NEVER EDIT)
+├── models/             Pydantic models (extend generated bases)
+└── _generated_models.py  Auto-generated Pydantic models (NEVER EDIT)
 ```
 
-**⚠️ NEVER edit `src/honeycomb/_generated/` - it's auto-generated from OpenAPI spec**
+**⚠️ NEVER edit `src/honeycomb/_generated_models.py` - it's auto-generated from OpenAPI spec**
 
-To regenerate: `openapi-python-client generate --path api.yaml --output-path src/honeycomb/_generated`
+To regenerate models from the spec:
+```bash
+make generate-models        # Using current api.yaml
+make generate-models-fresh  # Fetch latest spec and regenerate
+```
+
+The generation uses `datamodel-code-generator` with patches applied via `scripts/patch_openapi_spec.py`.
 
 ### Async-First Design
 
@@ -156,8 +161,8 @@ Code examples in `docs/**/*.md` are validated in CI via [scripts/validate_docs_e
 
 ## Code Quality Config
 
-- **Ruff**: Excludes `_generated/`, line length 100, Python 3.10+ target
-- **Mypy**: Strict on `src/` (except `_generated/`), Pydantic plugin enabled
+- **Ruff**: Excludes `_generated_models.py`, line length 100, Python 3.10+ target
+- **Mypy**: Strict on `src/` (except `_generated_models.py`), Pydantic plugin enabled
 - **Pytest**: Async mode auto-enabled, respx for HTTP mocking
 
 ## Live API Testing Credentials

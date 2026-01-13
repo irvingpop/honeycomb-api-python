@@ -1,5 +1,5 @@
 # Honeycomb API Python Client - Development Makefile
-.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs generate-tools validate-tools ci update-deps release-patch release-minor release-major changelog update-spec update-spec-apply generate-client
+.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs generate-tools validate-tools ci update-deps release-patch release-minor release-major changelog generate-models generate-models-fresh check-models-sync
 
 # Default target
 help:
@@ -44,10 +44,10 @@ help:
 	@echo "  make generate-tools Generate Claude tool definitions (all + per-resource JSON)"
 	@echo "  make validate-tools Validate generated tool definitions"
 	@echo ""
-	@echo "OpenAPI Spec Management:"
-	@echo "  make update-spec       Download latest spec and show diff (doesn't apply)"
-	@echo "  make update-spec-apply Download latest spec, show diff, and apply changes"
-	@echo "  make generate-client   Regenerate client from current api.yaml"
+	@echo "Model Generation:"
+	@echo "  make generate-models       Generate Pydantic models from api.yaml"
+	@echo "  make generate-models-fresh Fetch latest api.yaml and generate models"
+	@echo "  make check-models-sync     Verify generated models are in sync with spec"
 	@echo ""
 	@echo "Maintenance:"
 	@echo "  make clean          Remove build artifacts and cache files"
@@ -213,17 +213,21 @@ update-deps:
 	poetry export -f requirements.txt --output requirements.txt --without-hashes 2>/dev/null || true
 
 # =============================================================================
-# OpenAPI Spec Management
+# Model Generation (datamodel-code-generator)
 # =============================================================================
 
-update-spec:
-	@bash scripts/update-openapi-spec.sh
+generate-models:
+	@bash scripts/generate_models.sh
 
-update-spec-apply:
-	@bash scripts/update-openapi-spec.sh --apply
+generate-models-fresh:
+	@bash scripts/generate_models.sh --fetch
 
-generate-client:
-	@bash scripts/generate-client.sh
+check-models-sync:
+	@echo "Checking if generated models are in sync..."
+	@bash scripts/generate_models.sh
+	@git diff --exit-code src/honeycomb/_generated_models.py || \
+		(echo "ERROR: Generated models out of sync! Run 'make generate-models'" && exit 1)
+	@echo "✓ Models are in sync."
 
 # =============================================================================
 # CI Pipeline

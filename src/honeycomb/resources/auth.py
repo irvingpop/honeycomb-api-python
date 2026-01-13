@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from honeycomb.models.auth import AuthInfo, AuthInfoV2
+from honeycomb.models.auth import Auth, AuthV2Response
 from honeycomb.resources.base import BaseResource
 
 if TYPE_CHECKING:
@@ -17,11 +17,11 @@ class AuthResource(BaseResource):
     Example:
         >>> # Auto-detects endpoint based on credentials
         >>> auth_info = await client.auth.get_async()
-        >>> print(f"Team: {auth_info.team_name}")
+        >>> print(f"Team: {auth_info.team.name}")
 
         >>> # Force v2 endpoint (requires management key)
         >>> auth_info = await client.auth.get_async(use_v2=True)
-        >>> print(f"Scopes: {auth_info.scopes}")
+        >>> print(f"Scopes: {auth_info.data.attributes.scopes}")
     """
 
     def __init__(self, client: HoneycombClient) -> None:
@@ -41,7 +41,7 @@ class AuthResource(BaseResource):
                 "Initialize client with management_key and management_secret."
             )
 
-    async def get_async(self, *, use_v2: bool | None = None) -> AuthInfo | AuthInfoV2:
+    async def get_async(self, *, use_v2: bool | None = None) -> Auth | AuthV2Response:
         """Get metadata about the current API key.
 
         Args:
@@ -49,7 +49,7 @@ class AuthResource(BaseResource):
                    If True with API key credentials, raises ValueError.
 
         Returns:
-            AuthInfo for v1 (API key) or AuthInfoV2 for v2 (management key).
+            Auth for v1 (API key) or AuthV2Response for v2 (management key).
         """
         if use_v2 is None:
             use_v2 = self._is_management_auth()
@@ -57,21 +57,12 @@ class AuthResource(BaseResource):
         if use_v2:
             self._require_management_auth()
             data = await self._get_async("/2/auth")
-            return AuthInfoV2.from_jsonapi(data)
+            return self._parse_model(AuthV2Response, data)
 
         data = await self._get_async("/1/auth")
-        return AuthInfo(
-            id=data.get("id", ""),
-            type=data.get("type", ""),
-            team_name=data.get("team", {}).get("name", ""),
-            team_slug=data.get("team", {}).get("slug", ""),
-            environment_name=data.get("environment", {}).get("name", ""),
-            environment_slug=data.get("environment", {}).get("slug", ""),
-            api_key_access=data.get("api_key_access", {}),
-            time_to_live=data.get("time_to_live"),
-        )
+        return self._parse_model(Auth, data)
 
-    def get(self, *, use_v2: bool | None = None) -> AuthInfo | AuthInfoV2:
+    def get(self, *, use_v2: bool | None = None) -> Auth | AuthV2Response:
         """Get metadata about the current API key (sync version)."""
         if not self._client.is_sync:
             raise RuntimeError("Use get_async() for async mode, or pass sync=True to client")
@@ -82,16 +73,7 @@ class AuthResource(BaseResource):
         if use_v2:
             self._require_management_auth()
             data = self._get_sync("/2/auth")
-            return AuthInfoV2.from_jsonapi(data)
+            return self._parse_model(AuthV2Response, data)
 
         data = self._get_sync("/1/auth")
-        return AuthInfo(
-            id=data.get("id", ""),
-            type=data.get("type", ""),
-            team_name=data.get("team", {}).get("name", ""),
-            team_slug=data.get("team", {}).get("slug", ""),
-            environment_name=data.get("environment", {}).get("name", ""),
-            environment_slug=data.get("environment", {}).get("slug", ""),
-            api_key_access=data.get("api_key_access", {}),
-            time_to_live=data.get("time_to_live"),
-        )
+        return self._parse_model(Auth, data)

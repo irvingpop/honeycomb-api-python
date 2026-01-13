@@ -951,14 +951,31 @@
       "input_schema": {
         "type": "object",
         "properties": {
-          "dataset": {
-            "type": "string",
-            "description": "The dataset slug to create the trigger in"
-          },
           "name": {
-            "description": "Human-readable name for the trigger",
+            "description": "Trigger name",
             "title": "Name",
             "type": "string"
+          },
+          "dataset": {
+            "description": "Dataset slug",
+            "title": "Dataset",
+            "type": "string"
+          },
+          "query": {
+            "$ref": "#/$defs/TriggerQueryInput",
+            "description": "Query specification"
+          },
+          "threshold": {
+            "$ref": "#/$defs/TriggerThresholdInput",
+            "description": "Threshold configuration"
+          },
+          "frequency": {
+            "default": 900,
+            "description": "Evaluation frequency in seconds (60-86400, typically 60, 300, 900, 1800, or 3600)",
+            "maximum": 86400,
+            "minimum": 60,
+            "title": "Frequency",
+            "type": "integer"
           },
           "description": {
             "anyOf": [
@@ -970,46 +987,8 @@
               }
             ],
             "default": null,
-            "description": "Longer description",
+            "description": "Trigger description",
             "title": "Description"
-          },
-          "threshold": {
-            "$ref": "#/$defs/TriggerThreshold",
-            "description": "Threshold configuration"
-          },
-          "frequency": {
-            "default": 900,
-            "description": "Check frequency in seconds (60-86400, must be multiple of 60)",
-            "maximum": 86400,
-            "minimum": 60,
-            "multipleOf": 60,
-            "title": "Frequency",
-            "type": "integer"
-          },
-          "query": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/TriggerQuery"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Inline query"
-          },
-          "query_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Reference to saved query",
-            "title": "Query Id"
           },
           "disabled": {
             "default": false,
@@ -1018,16 +997,20 @@
             "type": "boolean"
           },
           "alert_type": {
-            "$ref": "#/$defs/TriggerAlertType",
             "default": "on_change",
-            "description": "When to send alerts"
+            "description": "When to send alerts",
+            "enum": [
+              "on_change",
+              "on_true"
+            ],
+            "title": "Alert Type",
+            "type": "string"
           },
           "recipients": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/$defs/RecipientInput"
                 },
                 "type": "array"
               },
@@ -1036,7 +1019,7 @@
               }
             ],
             "default": null,
-            "description": "Notification recipients",
+            "description": "Notification recipients (inline or by ID)",
             "title": "Recipients"
           },
           "tags": {
@@ -1052,22 +1035,49 @@
               }
             ],
             "default": null,
-            "description": "Tags for organizing triggers (max 10)",
+            "description": "Trigger tags",
             "title": "Tags"
           },
-          "baseline_details": {
+          "evaluation_schedule_type": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "enum": [
+                  "frequency",
+                  "window"
+                ],
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Baseline threshold configuration for comparing against historical data",
-            "title": "Baseline Details"
+            "description": "Schedule type: 'frequency' (default, always runs) or 'window' (only runs during specified time windows)",
+            "title": "Evaluation Schedule Type"
+          },
+          "evaluation_schedule": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BaseTriggerEvaluationSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Time window configuration (required if evaluation_schedule_type='window'). Specifies days of week and UTC time range."
+          },
+          "baseline_details": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BaseTriggerBaselineDetails"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Dynamic threshold configuration for anomaly detection. Compare current values against historical baseline (e.g., alert if 20% higher than 1 day ago)."
           },
           "confidence": {
             "type": "string",
@@ -1116,38 +1126,115 @@
           }
         },
         "required": [
-          "dataset",
           "name",
+          "dataset",
+          "query",
           "threshold"
         ],
         "$defs": {
-          "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
-            "enum": [
-              "COUNT",
-              "SUM",
-              "AVG",
-              "MIN",
-              "MAX",
-              "P001",
-              "P01",
-              "P05",
-              "P10",
-              "P25",
-              "P50",
-              "P75",
-              "P90",
-              "P95",
-              "P99",
-              "P999",
-              "COUNT_DISTINCT",
-              "CONCURRENCY",
-              "HEATMAP",
-              "RATE_AVG",
-              "RATE_SUM",
-              "RATE_MAX"
+          "BaseTriggerBaselineDetails": {
+            "description": "Additional properties needed to configure this trigger with a dynamic baseline threshold.",
+            "properties": {
+              "offset_minutes": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsOffsetMinutes",
+                "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.\n"
+              },
+              "type": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsType",
+                "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.\n"
+              }
+            },
+            "required": [
+              "offset_minutes",
+              "type"
             ],
-            "title": "CalcOp",
+            "title": "BaseTriggerBaselineDetails",
+            "type": "object"
+          },
+          "BaseTriggerBaselineDetailsOffsetMinutes": {
+            "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.",
+            "enum": [
+              60,
+              1440,
+              10080,
+              40320
+            ],
+            "title": "BaseTriggerBaselineDetailsOffsetMinutes",
+            "type": "integer"
+          },
+          "BaseTriggerBaselineDetailsType": {
+            "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.",
+            "enum": [
+              "percentage",
+              "value"
+            ],
+            "title": "BaseTriggerBaselineDetailsType",
+            "type": "string"
+          },
+          "BaseTriggerEvaluationSchedule": {
+            "description": "A schedule that determines when the trigger is run. When the time is within the scheduled\nwindow, the trigger will be run at the specified frequency. Outside of the window, the trigger\nwill not be run.",
+            "properties": {
+              "window": {
+                "$ref": "#/$defs/BaseTriggerEvaluationScheduleWindow",
+                "description": "Window start/end times and days of the week are calculated in UTC. If the end time is the same as or earlier than the start time, the end time is treated as being in the following day.\n"
+              }
+            },
+            "required": [
+              "window"
+            ],
+            "title": "BaseTriggerEvaluationSchedule",
+            "type": "object"
+          },
+          "BaseTriggerEvaluationScheduleWindow": {
+            "description": "Window start/end times and days of the week are calculated in UTC. If the end time is the same as or earlier than the start time, the end time is treated as being in the following day.",
+            "properties": {
+              "days_of_week": {
+                "items": {
+                  "$ref": "#/$defs/BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum"
+                },
+                "maxItems": 7,
+                "minItems": 1,
+                "title": "Days Of Week",
+                "type": "array"
+              },
+              "start_time": {
+                "description": "A UTC time in HH:mm format (13:00)",
+                "examples": [
+                  840
+                ],
+                "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+                "title": "Start Time",
+                "type": "string"
+              },
+              "end_time": {
+                "description": "A UTC time in HH:mm format (13:00)",
+                "examples": [
+                  1260
+                ],
+                "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+                "title": "End Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "days_of_week",
+              "start_time",
+              "end_time"
+            ],
+            "title": "BaseTriggerEvaluationScheduleWindow",
+            "type": "object"
+          },
+          "BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum": {
+            "enum": [
+              "sunday",
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday"
+            ],
+            "title": "BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum",
             "type": "string"
           },
           "Calculation": {
@@ -1155,7 +1242,7 @@
             "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
+                "$ref": "#/$defs/QueryOp",
                 "description": "Calculation operation (COUNT, AVG, P99, etc.)"
               },
               "column": {
@@ -1204,17 +1291,7 @@
             "title": "Filter",
             "type": "object"
           },
-          "FilterCombination": {
-            "description": "How to combine multiple filters.",
-            "enum": [
-              "AND",
-              "OR"
-            ],
-            "title": "FilterCombination",
-            "type": "string"
-          },
           "FilterOp": {
-            "description": "Filter operations for Honeycomb queries and board views.\n\nIMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.",
             "enum": [
               "=",
               "!=",
@@ -1226,15 +1303,108 @@
               "does-not-start-with",
               "ends-with",
               "does-not-end-with",
-              "contains",
-              "does-not-contain",
               "exists",
               "does-not-exist",
+              "contains",
+              "does-not-contain",
               "in",
               "not-in"
             ],
             "title": "FilterOp",
             "type": "string"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "RecipientInput": {
+            "additionalProperties": false,
+            "description": "Recipient specification (shared across triggers, SLOs, burn alerts).\n\nEither reference an existing recipient by ID, OR create a new one inline\nby providing type and target.\n\nNote: Only 'email' and 'webhook' types are testable without external integrations.\nOther types ('slack', 'pagerduty', 'msteams') require service configuration.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Existing recipient ID",
+                "title": "Id"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "email",
+                      "webhook",
+                      "slack",
+                      "pagerduty",
+                      "msteams"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient type (for inline creation)",
+                "title": "Type"
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient target (email address, webhook URL, or integration ID)",
+                "title": "Target"
+              }
+            },
+            "title": "RecipientInput",
+            "type": "object"
           },
           "TagInput": {
             "additionalProperties": false,
@@ -1264,75 +1434,30 @@
             "title": "TagInput",
             "type": "object"
           },
-          "TriggerAlertType": {
-            "description": "How often to fire an alert when threshold is crossed.",
-            "enum": [
-              "on_change",
-              "on_true"
-            ],
-            "title": "TriggerAlertType",
-            "type": "string"
-          },
-          "TriggerQuery": {
-            "description": "Inline query specification for a trigger.\n\nAccepts both typed models and dicts for flexibility:\n    >>> # Using typed models\n    >>> TriggerQuery(calculations=[Calculation(op=CalcOp.P99, column=\"duration_ms\")])\n\n    >>> # Using dicts\n    >>> TriggerQuery(calculations=[{\"op\": \"P99\", \"column\": \"duration_ms\"}])",
+          "TriggerQueryInput": {
+            "additionalProperties": false,
+            "description": "Query specification for trigger tool input.\n\nTriggers support a subset of query features:\n- Single calculation only (min/max enforced by field validator)\n- No HEATMAP calculations\n- No orders, limit, or granularity fields (not supported by Honeycomb API)\n- Relative time ranges only (no absolute start/end times)\n- Maximum time range of 3600 seconds (1 hour)",
             "properties": {
               "time_range": {
-                "default": 900,
-                "description": "Query time range in seconds (300-3600, i.e. 5 min to 1 hour)",
-                "maximum": 3600,
-                "minimum": 300,
+                "description": "Query time range in seconds (max 3600 for triggers)",
                 "title": "Time Range",
                 "type": "integer"
               },
-              "granularity": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Time granularity in seconds",
-                "title": "Granularity"
-              },
               "calculations": {
-                "anyOf": [
-                  {
-                    "items": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/$defs/Calculation"
-                        },
-                        {
-                          "additionalProperties": true,
-                          "type": "object"
-                        }
-                      ]
-                    },
-                    "type": "array"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "Calculations to perform",
-                "title": "Calculations"
+                "description": "Calculation (triggers support exactly one calculation)",
+                "items": {
+                  "$ref": "#/$defs/Calculation"
+                },
+                "maxItems": 1,
+                "minItems": 1,
+                "title": "Calculations",
+                "type": "array"
               },
               "filters": {
                 "anyOf": [
                   {
                     "items": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/$defs/Filter"
-                        },
-                        {
-                          "additionalProperties": true,
-                          "type": "object"
-                        }
-                      ]
+                      "$ref": "#/$defs/Filter"
                     },
                     "type": "array"
                   },
@@ -1363,29 +1488,37 @@
               "filter_combination": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/FilterCombination"
-                  },
-                  {
-                    "type": "string"
+                    "$ref": "#/$defs/QueryFilterCombination"
                   },
                   {
                     "type": "null"
                   }
                 ],
                 "default": null,
-                "description": "How to combine filters (AND/OR)",
-                "title": "Filter Combination"
+                "description": "How to combine filters (AND or OR)"
               }
             },
-            "title": "TriggerQuery",
+            "required": [
+              "time_range",
+              "calculations"
+            ],
+            "title": "TriggerQueryInput",
             "type": "object"
           },
-          "TriggerThreshold": {
-            "description": "Threshold configuration for a trigger.",
+          "TriggerThresholdInput": {
+            "additionalProperties": false,
+            "description": "Threshold specification for trigger tool input.",
             "properties": {
               "op": {
-                "$ref": "#/$defs/TriggerThresholdOp",
-                "description": "Comparison operator"
+                "description": "Threshold comparison operator",
+                "enum": [
+                  ">",
+                  ">=",
+                  "<",
+                  "<="
+                ],
+                "title": "Op",
+                "type": "string"
               },
               "value": {
                 "description": "Threshold value",
@@ -1404,7 +1537,7 @@
                   }
                 ],
                 "default": null,
-                "description": "Number of times threshold must be exceeded (1-5, default 1)",
+                "description": "Consecutive evaluations that must exceed threshold (1-5)",
                 "title": "Exceeded Limit"
               }
             },
@@ -1412,19 +1545,8 @@
               "op",
               "value"
             ],
-            "title": "TriggerThreshold",
+            "title": "TriggerThresholdInput",
             "type": "object"
-          },
-          "TriggerThresholdOp": {
-            "description": "Threshold comparison operators.",
-            "enum": [
-              ">",
-              ">=",
-              "<",
-              "<="
-            ],
-            "title": "TriggerThresholdOp",
-            "type": "string"
           }
         }
       },
@@ -1543,24 +1665,6 @@
           ]
         },
         {
-          "dataset": "traces",
-          "name": "Request Duration Distribution",
-          "query": {
-            "time_range": 3600,
-            "calculations": [
-              {
-                "op": "HEATMAP",
-                "column": "duration_ms"
-              }
-            ]
-          },
-          "threshold": {
-            "op": ">",
-            "value": 1000
-          },
-          "frequency": 3600
-        },
-        {
           "dataset": "api-logs",
           "name": "Unique Error Messages",
           "query": {
@@ -1594,17 +1698,34 @@
         "type": "object",
         "properties": {
           "dataset": {
-            "type": "string",
-            "description": "The dataset slug"
+            "description": "Dataset slug",
+            "title": "Dataset",
+            "type": "string"
           },
           "trigger_id": {
             "type": "string",
             "description": "The trigger ID to update"
           },
           "name": {
-            "description": "Human-readable name for the trigger",
+            "description": "Trigger name",
             "title": "Name",
             "type": "string"
+          },
+          "query": {
+            "$ref": "#/$defs/TriggerQueryInput",
+            "description": "Query specification"
+          },
+          "threshold": {
+            "$ref": "#/$defs/TriggerThresholdInput",
+            "description": "Threshold configuration"
+          },
+          "frequency": {
+            "default": 900,
+            "description": "Evaluation frequency in seconds (60-86400, typically 60, 300, 900, 1800, or 3600)",
+            "maximum": 86400,
+            "minimum": 60,
+            "title": "Frequency",
+            "type": "integer"
           },
           "description": {
             "anyOf": [
@@ -1616,46 +1737,8 @@
               }
             ],
             "default": null,
-            "description": "Longer description",
+            "description": "Trigger description",
             "title": "Description"
-          },
-          "threshold": {
-            "$ref": "#/$defs/TriggerThreshold",
-            "description": "Threshold configuration"
-          },
-          "frequency": {
-            "default": 900,
-            "description": "Check frequency in seconds (60-86400, must be multiple of 60)",
-            "maximum": 86400,
-            "minimum": 60,
-            "multipleOf": 60,
-            "title": "Frequency",
-            "type": "integer"
-          },
-          "query": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/TriggerQuery"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Inline query"
-          },
-          "query_id": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Reference to saved query",
-            "title": "Query Id"
           },
           "disabled": {
             "default": false,
@@ -1664,16 +1747,20 @@
             "type": "boolean"
           },
           "alert_type": {
-            "$ref": "#/$defs/TriggerAlertType",
             "default": "on_change",
-            "description": "When to send alerts"
+            "description": "When to send alerts",
+            "enum": [
+              "on_change",
+              "on_true"
+            ],
+            "title": "Alert Type",
+            "type": "string"
           },
           "recipients": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "$ref": "#/$defs/RecipientInput"
                 },
                 "type": "array"
               },
@@ -1682,7 +1769,7 @@
               }
             ],
             "default": null,
-            "description": "Notification recipients",
+            "description": "Notification recipients (inline or by ID)",
             "title": "Recipients"
           },
           "tags": {
@@ -1698,22 +1785,49 @@
               }
             ],
             "default": null,
-            "description": "Tags for organizing triggers (max 10)",
+            "description": "Trigger tags",
             "title": "Tags"
           },
-          "baseline_details": {
+          "evaluation_schedule_type": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "enum": [
+                  "frequency",
+                  "window"
+                ],
+                "type": "string"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Baseline threshold configuration for comparing against historical data",
-            "title": "Baseline Details"
+            "description": "Schedule type: 'frequency' (default, always runs) or 'window' (only runs during specified time windows)",
+            "title": "Evaluation Schedule Type"
+          },
+          "evaluation_schedule": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BaseTriggerEvaluationSchedule"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Time window configuration (required if evaluation_schedule_type='window'). Specifies days of week and UTC time range."
+          },
+          "baseline_details": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BaseTriggerBaselineDetails"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Dynamic threshold configuration for anomaly detection. Compare current values against historical baseline (e.g., alert if 20% higher than 1 day ago)."
           },
           "confidence": {
             "type": "string",
@@ -1762,39 +1876,116 @@
           }
         },
         "required": [
+          "name",
           "dataset",
           "trigger_id",
-          "name",
+          "query",
           "threshold"
         ],
         "$defs": {
-          "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
-            "enum": [
-              "COUNT",
-              "SUM",
-              "AVG",
-              "MIN",
-              "MAX",
-              "P001",
-              "P01",
-              "P05",
-              "P10",
-              "P25",
-              "P50",
-              "P75",
-              "P90",
-              "P95",
-              "P99",
-              "P999",
-              "COUNT_DISTINCT",
-              "CONCURRENCY",
-              "HEATMAP",
-              "RATE_AVG",
-              "RATE_SUM",
-              "RATE_MAX"
+          "BaseTriggerBaselineDetails": {
+            "description": "Additional properties needed to configure this trigger with a dynamic baseline threshold.",
+            "properties": {
+              "offset_minutes": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsOffsetMinutes",
+                "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.\n"
+              },
+              "type": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsType",
+                "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.\n"
+              }
+            },
+            "required": [
+              "offset_minutes",
+              "type"
             ],
-            "title": "CalcOp",
+            "title": "BaseTriggerBaselineDetails",
+            "type": "object"
+          },
+          "BaseTriggerBaselineDetailsOffsetMinutes": {
+            "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.",
+            "enum": [
+              60,
+              1440,
+              10080,
+              40320
+            ],
+            "title": "BaseTriggerBaselineDetailsOffsetMinutes",
+            "type": "integer"
+          },
+          "BaseTriggerBaselineDetailsType": {
+            "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.",
+            "enum": [
+              "percentage",
+              "value"
+            ],
+            "title": "BaseTriggerBaselineDetailsType",
+            "type": "string"
+          },
+          "BaseTriggerEvaluationSchedule": {
+            "description": "A schedule that determines when the trigger is run. When the time is within the scheduled\nwindow, the trigger will be run at the specified frequency. Outside of the window, the trigger\nwill not be run.",
+            "properties": {
+              "window": {
+                "$ref": "#/$defs/BaseTriggerEvaluationScheduleWindow",
+                "description": "Window start/end times and days of the week are calculated in UTC. If the end time is the same as or earlier than the start time, the end time is treated as being in the following day.\n"
+              }
+            },
+            "required": [
+              "window"
+            ],
+            "title": "BaseTriggerEvaluationSchedule",
+            "type": "object"
+          },
+          "BaseTriggerEvaluationScheduleWindow": {
+            "description": "Window start/end times and days of the week are calculated in UTC. If the end time is the same as or earlier than the start time, the end time is treated as being in the following day.",
+            "properties": {
+              "days_of_week": {
+                "items": {
+                  "$ref": "#/$defs/BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum"
+                },
+                "maxItems": 7,
+                "minItems": 1,
+                "title": "Days Of Week",
+                "type": "array"
+              },
+              "start_time": {
+                "description": "A UTC time in HH:mm format (13:00)",
+                "examples": [
+                  840
+                ],
+                "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+                "title": "Start Time",
+                "type": "string"
+              },
+              "end_time": {
+                "description": "A UTC time in HH:mm format (13:00)",
+                "examples": [
+                  1260
+                ],
+                "pattern": "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$",
+                "title": "End Time",
+                "type": "string"
+              }
+            },
+            "required": [
+              "days_of_week",
+              "start_time",
+              "end_time"
+            ],
+            "title": "BaseTriggerEvaluationScheduleWindow",
+            "type": "object"
+          },
+          "BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum": {
+            "enum": [
+              "sunday",
+              "monday",
+              "tuesday",
+              "wednesday",
+              "thursday",
+              "friday",
+              "saturday"
+            ],
+            "title": "BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum",
             "type": "string"
           },
           "Calculation": {
@@ -1802,7 +1993,7 @@
             "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
+                "$ref": "#/$defs/QueryOp",
                 "description": "Calculation operation (COUNT, AVG, P99, etc.)"
               },
               "column": {
@@ -1851,17 +2042,7 @@
             "title": "Filter",
             "type": "object"
           },
-          "FilterCombination": {
-            "description": "How to combine multiple filters.",
-            "enum": [
-              "AND",
-              "OR"
-            ],
-            "title": "FilterCombination",
-            "type": "string"
-          },
           "FilterOp": {
-            "description": "Filter operations for Honeycomb queries and board views.\n\nIMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.",
             "enum": [
               "=",
               "!=",
@@ -1873,15 +2054,108 @@
               "does-not-start-with",
               "ends-with",
               "does-not-end-with",
-              "contains",
-              "does-not-contain",
               "exists",
               "does-not-exist",
+              "contains",
+              "does-not-contain",
               "in",
               "not-in"
             ],
             "title": "FilterOp",
             "type": "string"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "RecipientInput": {
+            "additionalProperties": false,
+            "description": "Recipient specification (shared across triggers, SLOs, burn alerts).\n\nEither reference an existing recipient by ID, OR create a new one inline\nby providing type and target.\n\nNote: Only 'email' and 'webhook' types are testable without external integrations.\nOther types ('slack', 'pagerduty', 'msteams') require service configuration.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Existing recipient ID",
+                "title": "Id"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "email",
+                      "webhook",
+                      "slack",
+                      "pagerduty",
+                      "msteams"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient type (for inline creation)",
+                "title": "Type"
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient target (email address, webhook URL, or integration ID)",
+                "title": "Target"
+              }
+            },
+            "title": "RecipientInput",
+            "type": "object"
           },
           "TagInput": {
             "additionalProperties": false,
@@ -1911,75 +2185,30 @@
             "title": "TagInput",
             "type": "object"
           },
-          "TriggerAlertType": {
-            "description": "How often to fire an alert when threshold is crossed.",
-            "enum": [
-              "on_change",
-              "on_true"
-            ],
-            "title": "TriggerAlertType",
-            "type": "string"
-          },
-          "TriggerQuery": {
-            "description": "Inline query specification for a trigger.\n\nAccepts both typed models and dicts for flexibility:\n    >>> # Using typed models\n    >>> TriggerQuery(calculations=[Calculation(op=CalcOp.P99, column=\"duration_ms\")])\n\n    >>> # Using dicts\n    >>> TriggerQuery(calculations=[{\"op\": \"P99\", \"column\": \"duration_ms\"}])",
+          "TriggerQueryInput": {
+            "additionalProperties": false,
+            "description": "Query specification for trigger tool input.\n\nTriggers support a subset of query features:\n- Single calculation only (min/max enforced by field validator)\n- No HEATMAP calculations\n- No orders, limit, or granularity fields (not supported by Honeycomb API)\n- Relative time ranges only (no absolute start/end times)\n- Maximum time range of 3600 seconds (1 hour)",
             "properties": {
               "time_range": {
-                "default": 900,
-                "description": "Query time range in seconds (300-3600, i.e. 5 min to 1 hour)",
-                "maximum": 3600,
-                "minimum": 300,
+                "description": "Query time range in seconds (max 3600 for triggers)",
                 "title": "Time Range",
                 "type": "integer"
               },
-              "granularity": {
-                "anyOf": [
-                  {
-                    "type": "integer"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Time granularity in seconds",
-                "title": "Granularity"
-              },
               "calculations": {
-                "anyOf": [
-                  {
-                    "items": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/$defs/Calculation"
-                        },
-                        {
-                          "additionalProperties": true,
-                          "type": "object"
-                        }
-                      ]
-                    },
-                    "type": "array"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "description": "Calculations to perform",
-                "title": "Calculations"
+                "description": "Calculation (triggers support exactly one calculation)",
+                "items": {
+                  "$ref": "#/$defs/Calculation"
+                },
+                "maxItems": 1,
+                "minItems": 1,
+                "title": "Calculations",
+                "type": "array"
               },
               "filters": {
                 "anyOf": [
                   {
                     "items": {
-                      "anyOf": [
-                        {
-                          "$ref": "#/$defs/Filter"
-                        },
-                        {
-                          "additionalProperties": true,
-                          "type": "object"
-                        }
-                      ]
+                      "$ref": "#/$defs/Filter"
                     },
                     "type": "array"
                   },
@@ -2010,29 +2239,37 @@
               "filter_combination": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/FilterCombination"
-                  },
-                  {
-                    "type": "string"
+                    "$ref": "#/$defs/QueryFilterCombination"
                   },
                   {
                     "type": "null"
                   }
                 ],
                 "default": null,
-                "description": "How to combine filters (AND/OR)",
-                "title": "Filter Combination"
+                "description": "How to combine filters (AND or OR)"
               }
             },
-            "title": "TriggerQuery",
+            "required": [
+              "time_range",
+              "calculations"
+            ],
+            "title": "TriggerQueryInput",
             "type": "object"
           },
-          "TriggerThreshold": {
-            "description": "Threshold configuration for a trigger.",
+          "TriggerThresholdInput": {
+            "additionalProperties": false,
+            "description": "Threshold specification for trigger tool input.",
             "properties": {
               "op": {
-                "$ref": "#/$defs/TriggerThresholdOp",
-                "description": "Comparison operator"
+                "description": "Threshold comparison operator",
+                "enum": [
+                  ">",
+                  ">=",
+                  "<",
+                  "<="
+                ],
+                "title": "Op",
+                "type": "string"
               },
               "value": {
                 "description": "Threshold value",
@@ -2051,7 +2288,7 @@
                   }
                 ],
                 "default": null,
-                "description": "Number of times threshold must be exceeded (1-5, default 1)",
+                "description": "Consecutive evaluations that must exceed threshold (1-5)",
                 "title": "Exceeded Limit"
               }
             },
@@ -2059,19 +2296,8 @@
               "op",
               "value"
             ],
-            "title": "TriggerThreshold",
+            "title": "TriggerThresholdInput",
             "type": "object"
-          },
-          "TriggerThresholdOp": {
-            "description": "Threshold comparison operators.",
-            "enum": [
-              ">",
-              ">=",
-              "<",
-              "<="
-            ],
-            "title": "TriggerThresholdOp",
-            "type": "string"
           }
         }
       },
@@ -2776,13 +3002,20 @@
             "description": "The SLO ID to update"
           },
           "name": {
-            "description": "Human-readable name for the SLO",
+            "description": "The name of the SLO.",
+            "examples": [
+              "My SLO"
+            ],
+            "maxLength": 120,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
           "description": {
             "anyOf": [
               {
+                "maxLength": 1023,
+                "minLength": 0,
                 "type": "string"
               },
               {
@@ -2790,23 +3023,34 @@
               }
             ],
             "default": null,
-            "description": "Longer description",
+            "description": "A nice description of the SLO's intent and context.",
+            "examples": [
+              "SLO to ensure requests succeed and are fast"
+            ],
             "title": "Description"
           },
           "sli": {
-            "$ref": "#/$defs/SLI",
-            "description": "SLI configuration"
+            "$ref": "#/$defs/SLOCreateSli",
+            "examples": [
+              {
+                "alias": "error_sli"
+              }
+            ]
           },
           "time_period_days": {
-            "default": 30,
-            "description": "Time period for the SLO in days (1-90)",
-            "maximum": 90,
+            "description": "The time period, in days, over which the SLO will be evaluated.",
+            "examples": [
+              30
+            ],
             "minimum": 1,
             "title": "Time Period Days",
             "type": "integer"
           },
           "target_per_million": {
-            "description": "Target success rate per million (e.g., 999000 = 99.9%)",
+            "description": "The number of events out of one million (1,000,000) that you expected qualified events to succeed.",
+            "examples": [
+              990000
+            ],
             "maximum": 999999,
             "minimum": 0,
             "title": "Target Per Million",
@@ -2816,8 +3060,9 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/$defs/TagInput"
+                  "$ref": "#/$defs/Tag"
                 },
+                "maxItems": 10,
                 "type": "array"
               },
               {
@@ -2825,15 +3070,40 @@
               }
             ],
             "default": null,
-            "description": "Key-value pairs for organizing SLOs (max 10 tags)",
+            "description": "A list of key-value pairs to help identify the SLO.",
+            "examples": [
+              [
+                {
+                  "key": "team",
+                  "value": "blue"
+                }
+              ]
+            ],
             "title": "Tags"
+          },
+          "reset_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The ISO8601-formatted time the SLO was last reset. The value will be `null` if the SLO has not yet been reset.",
+            "examples": [
+              "2022-011-11T09:53:04Z"
+            ],
+            "title": "Reset At"
           },
           "dataset_slugs": {
             "anyOf": [
               {
-                "items": {
-                  "type": "string"
-                },
+                "items": {},
+                "maxItems": 10,
+                "minItems": 1,
                 "type": "array"
               },
               {
@@ -2841,7 +3111,13 @@
               }
             ],
             "default": null,
-            "description": "Dataset slugs for multi-dataset SLOs (used with __all__ endpoint)",
+            "description": "The dataset(s) the SLO will be evaluated against. Required if using `__all__` in the path.",
+            "examples": [
+              [
+                "mydataset1",
+                "mydataset2"
+              ]
+            ],
             "title": "Dataset Slugs"
           },
           "confidence": {
@@ -2895,72 +3171,38 @@
           "slo_id",
           "name",
           "sli",
+          "time_period_days",
           "target_per_million"
         ],
         "$defs": {
-          "SLI": {
-            "description": "Service Level Indicator configuration.\n\nThe SLI references a derived column by alias. You can either:\n1. Reference an existing derived column: just provide alias\n2. Create a new derived column inline: provide alias + expression\n\nWhen expression is provided, a new derived column will be created automatically\nbefore the SLO is created.",
+          "SLOCreateSli": {
+            "description": "Reference to the [Calculated Field (also called Derived Column)](/api/calculated-fields/) used as the indicator of event success.",
             "properties": {
               "alias": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Alias for the derived column (existing or new)",
-                "title": "Alias"
-              },
-              "expression": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "If provided, creates a new derived column with this expression. If omitted, uses an existing derived column with the given alias.",
-                "title": "Expression"
-              },
-              "description": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Description for the new derived column (only used when expression is provided)",
-                "title": "Description"
+                "description": "The alias of the Calculated Field (also called Derived Column).",
+                "maxLength": 255,
+                "minLength": 1,
+                "title": "Alias",
+                "type": "string"
               }
             },
-            "title": "SLI",
+            "required": [
+              "alias"
+            ],
+            "title": "SLOCreateSli",
             "type": "object"
           },
-          "TagInput": {
-            "additionalProperties": false,
-            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters only (e.g., \"team\", \"servicetype\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"servicetype\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
+          "Tag": {
             "properties": {
               "key": {
-                "description": "Tag key: lowercase letters only, 1-32 chars",
+                "description": "A key to identify the tag, lowercase letters only.",
                 "maxLength": 32,
-                "minLength": 1,
-                "pattern": "^[a-z]+$",
                 "title": "Key",
                 "type": "string"
               },
               "value": {
-                "description": "Tag value: must start with lowercase letter, can contain lowercase letters, numbers, / and -, 1-128 chars",
+                "description": "A value for the tag, must begin with a lowercase letter, contain only alphanumeric characters (all letters lowercase) and special characters of `/` and `-` allowed.",
                 "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[a-z][a-z0-9/-]*$",
                 "title": "Value",
                 "type": "string"
               }
@@ -2969,7 +3211,7 @@
               "key",
               "value"
             ],
-            "title": "TagInput",
+            "title": "Tag",
             "type": "object"
           }
         }
@@ -3226,73 +3468,32 @@
             "description": "The dataset slug to create the burn alert in"
           },
           "alert_type": {
-            "$ref": "#/$defs/BurnAlertType",
-            "description": "Type of burn alert"
+            "type": "string",
+            "description": "Type of burn alert: 'exhaustion_time' or 'budget_rate'"
           },
           "slo_id": {
-            "description": "ID of the SLO to monitor",
-            "title": "Slo Id",
-            "type": "string"
+            "type": "string",
+            "description": "The SLO ID to attach this burn alert to"
           },
           "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Description of the burn alert",
-            "title": "Description"
-          },
-          "recipients": {
-            "description": "List of recipients to notify when alert fires",
-            "items": {
-              "$ref": "#/$defs/BurnAlertRecipient"
-            },
-            "title": "Recipients",
-            "type": "array"
+            "type": "string",
+            "description": "Description of the burn alert (optional)"
           },
           "exhaustion_minutes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Minutes until SLO budget exhaustion (for exhaustion_time alerts)",
-            "title": "Exhaustion Minutes"
+            "type": "integer",
+            "description": "Minutes until budget exhaustion (required for exhaustion_time alerts)"
           },
           "budget_rate_window_minutes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Time window in minutes (for budget_rate alerts)",
-            "title": "Budget Rate Window Minutes"
+            "type": "integer",
+            "description": "Time window in minutes (required for budget_rate alerts)"
           },
           "budget_rate_decrease_threshold_per_million": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Budget decrease threshold per million (for budget_rate alerts)",
-            "title": "Budget Rate Decrease Threshold Per Million"
+            "type": "integer",
+            "description": "Budget decrease threshold per million (required for budget_rate alerts)"
+          },
+          "recipients": {
+            "type": "array",
+            "description": "List of recipients (optional, can use inline type+target or id)"
           },
           "confidence": {
             "type": "string",
@@ -3344,78 +3545,7 @@
           "dataset",
           "alert_type",
           "slo_id"
-        ],
-        "$defs": {
-          "BurnAlertRecipient": {
-            "description": "A recipient for burn alert notifications.\n\nEither id (recommended) OR type+target (deprecated) must be provided.",
-            "properties": {
-              "id": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "ID of the recipient",
-                "title": "Id"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Type of recipient (email, slack, etc)",
-                "title": "Type"
-              },
-              "target": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Target address (for backwards compat)",
-                "title": "Target"
-              },
-              "details": {
-                "anyOf": [
-                  {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Additional details",
-                "title": "Details"
-              }
-            },
-            "title": "BurnAlertRecipient",
-            "type": "object"
-          },
-          "BurnAlertType": {
-            "description": "Burn alert types.",
-            "enum": [
-              "exhaustion_time",
-              "budget_rate"
-            ],
-            "title": "BurnAlertType",
-            "type": "string"
-          }
-        }
+        ]
       },
       "input_examples": [
         {
@@ -3486,73 +3616,32 @@
             "description": "The burn alert ID to update"
           },
           "alert_type": {
-            "$ref": "#/$defs/BurnAlertType",
-            "description": "Type of burn alert"
+            "type": "string",
+            "description": "Type of burn alert: 'exhaustion_time' or 'budget_rate'"
           },
           "slo_id": {
-            "description": "ID of the SLO to monitor",
-            "title": "Slo Id",
-            "type": "string"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Description of the burn alert",
-            "title": "Description"
+            "type": "string",
+            "description": "The SLO ID"
           },
           "recipients": {
-            "description": "List of recipients to notify when alert fires",
-            "items": {
-              "$ref": "#/$defs/BurnAlertRecipient"
-            },
-            "title": "Recipients",
-            "type": "array"
+            "type": "array",
+            "description": "List of recipients (required for updates)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the burn alert (optional)"
           },
           "exhaustion_minutes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Minutes until SLO budget exhaustion (for exhaustion_time alerts)",
-            "title": "Exhaustion Minutes"
+            "type": "integer",
+            "description": "Minutes until budget exhaustion (for exhaustion_time alerts)"
           },
           "budget_rate_window_minutes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Time window in minutes (for budget_rate alerts)",
-            "title": "Budget Rate Window Minutes"
+            "type": "integer",
+            "description": "Time window in minutes (for budget_rate alerts)"
           },
           "budget_rate_decrease_threshold_per_million": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Budget decrease threshold per million (for budget_rate alerts)",
-            "title": "Budget Rate Decrease Threshold Per Million"
+            "type": "integer",
+            "description": "Budget decrease threshold per million (for budget_rate alerts)"
           },
           "confidence": {
             "type": "string",
@@ -3604,79 +3693,9 @@
           "dataset",
           "burn_alert_id",
           "alert_type",
-          "slo_id"
-        ],
-        "$defs": {
-          "BurnAlertRecipient": {
-            "description": "A recipient for burn alert notifications.\n\nEither id (recommended) OR type+target (deprecated) must be provided.",
-            "properties": {
-              "id": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "ID of the recipient",
-                "title": "Id"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Type of recipient (email, slack, etc)",
-                "title": "Type"
-              },
-              "target": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Target address (for backwards compat)",
-                "title": "Target"
-              },
-              "details": {
-                "anyOf": [
-                  {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Additional details",
-                "title": "Details"
-              }
-            },
-            "title": "BurnAlertRecipient",
-            "type": "object"
-          },
-          "BurnAlertType": {
-            "description": "Burn alert types.",
-            "enum": [
-              "exhaustion_time",
-              "budget_rate"
-            ],
-            "title": "BurnAlertType",
-            "type": "string"
-          }
-        }
+          "slo_id",
+          "recipients"
+        ]
       },
       "input_examples": [
         {
@@ -3903,30 +3922,47 @@
         "type": "object",
         "properties": {
           "name": {
-            "description": "Human-readable name for the dataset",
+            "description": "The name of the dataset.",
+            "maxLength": 255,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
           "description": {
             "anyOf": [
               {
+                "maxLength": 1024,
+                "minLength": 0,
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "Longer description",
+            "default": "",
+            "description": "A description for the dataset.",
+            "examples": [
+              "A nice description of my dataset"
+            ],
             "title": "Description"
           },
           "expand_json_depth": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": 0,
-            "description": "Depth to expand JSON fields (0-10)",
-            "maximum": 10,
-            "minimum": 0,
-            "title": "Expand Json Depth",
-            "type": "integer"
+            "description": "The maximum unpacking depth of nested JSON fields.",
+            "examples": [
+              3
+            ],
+            "title": "Expand Json Depth"
           },
           "confidence": {
             "type": "string",
@@ -3995,7 +4031,7 @@
     },
     {
       "name": "honeycomb_update_dataset",
-      "description": "Updates an existing dataset's name, description, JSON expansion settings, or delete protection. Use this to correct dataset metadata, add documentation, adjust JSON parsing behavior, or toggle delete protection. Requires the dataset slug. All other fields are optional - only provided fields will be updated. Set delete_protected=true to prevent accidental deletion, or delete_protected=false to allow deletion. Note: The slug itself cannot be changed. Changing expand_json_depth only affects new events, not existing data.",
+      "description": "Updates an existing dataset's description, JSON expansion settings, or delete protection. Use this to add documentation, adjust JSON parsing behavior, or toggle delete protection. Requires the dataset slug. All other fields are optional - only provided fields will be updated. Set delete_protected=true to prevent accidental deletion, or delete_protected=false to allow deletion. Note: Dataset name and slug cannot be changed after creation. Changing expand_json_depth only affects new events, not existing data.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -4003,30 +4039,22 @@
             "type": "string",
             "description": "The dataset slug to update"
           },
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Human-readable name for the dataset",
-            "title": "Name"
-          },
           "description": {
             "anyOf": [
               {
+                "maxLength": 1024,
+                "minLength": 0,
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "Longer description",
+            "default": "",
+            "description": "A description for the dataset.",
+            "examples": [
+              "A nice description of my dataset"
+            ],
             "title": "Description"
           },
           "expand_json_depth": {
@@ -4040,22 +4068,24 @@
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "Depth to expand JSON fields (0-10)",
+            "default": 0,
+            "description": "The maximum unpacking depth of nested JSON fields.",
+            "examples": [
+              3
+            ],
             "title": "Expand Json Depth"
           },
-          "delete_protected": {
+          "settings": {
             "anyOf": [
               {
-                "type": "boolean"
+                "$ref": "#/$defs/DatasetUpdatePayloadSettings"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "If true, the dataset cannot be deleted",
-            "title": "Delete Protected"
+            "description": "Dataset settings (e.g., delete_protected)"
           },
           "confidence": {
             "type": "string",
@@ -4110,8 +4140,7 @@
       "input_examples": [
         {
           "slug": "api-logs",
-          "name": "API Logs",
-          "description": "Updated description"
+          "description": "Updated description for API logs"
         },
         {
           "slug": "production",
@@ -4119,11 +4148,15 @@
         },
         {
           "slug": "critical-data",
-          "delete_protected": true
+          "settings": {
+            "delete_protected": true
+          }
         },
         {
           "slug": "test-dataset",
-          "delete_protected": false
+          "settings": {
+            "delete_protected": false
+          }
         }
       ]
     },
@@ -4352,18 +4385,35 @@
             "description": "The dataset slug"
           },
           "key_name": {
-            "description": "Name of the column",
+            "description": "Name of the Column.",
+            "examples": [
+              "my_column"
+            ],
+            "maxLength": 255,
+            "minLength": 1,
             "title": "Key Name",
             "type": "string"
           },
           "type": {
-            "$ref": "#/$defs/ColumnType",
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CreateColumnColumnType"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": "string",
-            "description": "Type of data the column contains"
+            "description": "Type of data that the Column will contain. Histogram is in beta and only works in your Metrics dataset.",
+            "examples": [
+              "integer"
+            ],
+            "title": "ColumnType"
           },
           "description": {
             "anyOf": [
               {
+                "maxLength": 255,
                 "type": "string"
               },
               {
@@ -4371,14 +4421,24 @@
               }
             ],
             "default": null,
-            "description": "Column description",
+            "description": "Column description.",
+            "examples": [
+              "An integer column"
+            ],
             "title": "Description"
           },
           "hidden": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": false,
-            "description": "If true, column is excluded from autocomplete and raw data field lists",
-            "title": "Hidden",
-            "type": "boolean"
+            "description": "If `true`, the column is excluded from autocomplete and raw data field lists.",
+            "title": "Hidden"
           },
           "confidence": {
             "type": "string",
@@ -4431,15 +4491,16 @@
           "key_name"
         ],
         "$defs": {
-          "ColumnType": {
-            "description": "Column data types.",
+          "CreateColumnColumnType": {
+            "description": "Type of data that the Column will contain. Histogram is in beta and only works in your Metrics dataset.",
             "enum": [
               "string",
-              "integer",
               "float",
-              "boolean"
+              "integer",
+              "boolean",
+              "histogram"
             ],
-            "title": "ColumnType",
+            "title": "CreateColumnColumnType",
             "type": "string"
           }
         }
@@ -4480,18 +4541,35 @@
             "description": "The column ID to update"
           },
           "key_name": {
-            "description": "Name of the column",
+            "description": "Name of the Column.",
+            "examples": [
+              "my_column"
+            ],
+            "maxLength": 255,
+            "minLength": 1,
             "title": "Key Name",
             "type": "string"
           },
           "type": {
-            "$ref": "#/$defs/ColumnType",
+            "anyOf": [
+              {
+                "$ref": "#/$defs/CreateColumnColumnType"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": "string",
-            "description": "Type of data the column contains"
+            "description": "Type of data that the Column will contain. Histogram is in beta and only works in your Metrics dataset.",
+            "examples": [
+              "integer"
+            ],
+            "title": "ColumnType"
           },
           "description": {
             "anyOf": [
               {
+                "maxLength": 255,
                 "type": "string"
               },
               {
@@ -4499,14 +4577,24 @@
               }
             ],
             "default": null,
-            "description": "Column description",
+            "description": "Column description.",
+            "examples": [
+              "An integer column"
+            ],
             "title": "Description"
           },
           "hidden": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": false,
-            "description": "If true, column is excluded from autocomplete and raw data field lists",
-            "title": "Hidden",
-            "type": "boolean"
+            "description": "If `true`, the column is excluded from autocomplete and raw data field lists.",
+            "title": "Hidden"
           },
           "confidence": {
             "type": "string",
@@ -4560,15 +4648,16 @@
           "key_name"
         ],
         "$defs": {
-          "ColumnType": {
-            "description": "Column data types.",
+          "CreateColumnColumnType": {
+            "description": "Type of data that the Column will contain. Histogram is in beta and only works in your Metrics dataset.",
             "enum": [
               "string",
-              "integer",
               "float",
-              "boolean"
+              "integer",
+              "boolean",
+              "histogram"
             ],
-            "title": "ColumnType",
+            "title": "CreateColumnColumnType",
             "type": "string"
           }
         }
@@ -5968,6 +6057,7 @@
           },
           "alias": {
             "description": "Name of the derived column",
+            "maxLength": 255,
             "title": "Alias",
             "type": "string"
           },
@@ -6077,6 +6167,7 @@
           },
           "alias": {
             "description": "Name of the derived column",
+            "maxLength": 255,
             "title": "Alias",
             "type": "string"
           },
@@ -6251,112 +6342,13 @@
             "type": "string",
             "description": "Optional name for the query annotation (saves query with a display name)"
           },
-          "time_range": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Query time range in seconds",
-            "title": "Time Range"
-          },
-          "start_time": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Absolute start time (Unix timestamp)",
-            "title": "Start Time"
-          },
-          "end_time": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Absolute end time (Unix timestamp)",
-            "title": "End Time"
-          },
-          "granularity": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Time granularity in seconds",
-            "title": "Granularity"
-          },
-          "calculations": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Calculation"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Calculations to perform",
-            "title": "Calculations"
-          },
-          "filters": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Filter"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Query filters",
-            "title": "Filters"
-          },
           "breakdowns": {
             "anyOf": [
               {
                 "items": {
                   "type": "string"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -6364,52 +6356,59 @@
               }
             ],
             "default": null,
-            "description": "Columns to group by",
+            "description": "the columns by which to break events down into groups",
             "title": "Breakdowns"
+          },
+          "calculations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryCalculation"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "the calculations to return as a time series and summary table",
+            "title": "Calculations"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryFilter"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "the filters with which to restrict the considered events",
+            "title": "Filters"
           },
           "filter_combination": {
             "anyOf": [
               {
-                "$ref": "#/$defs/FilterCombination"
-              },
-              {
-                "type": "string"
+                "$ref": "#/$defs/QueryFilterCombination"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "How to combine filters (AND/OR)",
-            "title": "Filter Combination"
+            "default": "AND",
+            "description": "set to \"OR\" to match ANY filter in the filter list"
           },
-          "orders": {
+          "granularity": {
             "anyOf": [
               {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Order"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Result ordering",
-            "title": "Orders"
-          },
-          "limit": {
-            "anyOf": [
-              {
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -6417,23 +6416,16 @@
               }
             ],
             "default": null,
-            "description": "Result limit (max 1000 for saved queries, 10K when using disable_series=True)",
-            "title": "Limit"
+            "description": "The time resolution of the query's graph, in seconds. Given a query time range T, valid values (T/1000...T/1). If left blank, granularity may be set to a sub-second value for queries with short time ranges.\n",
+            "title": "Granularity"
           },
-          "havings": {
+          "orders": {
             "anyOf": [
               {
                 "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Having"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
+                  "$ref": "#/$defs/QueryOrder"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -6441,18 +6433,90 @@
               }
             ],
             "default": null,
-            "description": "Having clauses",
+            "description": "The terms on which to order the query results. Each term must appear in either the `breakdowns` field or the `calculations` field.\n",
+            "title": "Orders"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "maximum": 10000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The maximum number of unique groups returned in 'results'. Aggregating many unique groups across a large time range is computationally expensive, and too high a limit with too many unique groups may cause queries to fail completely. Limiting the results to only the needed values can significantly speed up queries.\nThe normal allowed maximum value when creating a query is 1_000. When running 'disable_series' queries, this can be overridden to be up to 10_000, so the maximum value returned from the API when fetching a query may be up to 10_000.\n",
+            "title": "Limit"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Absolute start time of query, in seconds since UNIX epoch. Must be <= `end_time`.\n",
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Absolute end time of query, in seconds since UNIX epoch.",
+            "title": "End Time"
+          },
+          "time_range": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 7200,
+            "description": "Time range of query in seconds. Can be used with either `start_time` (seconds after `start_time`), `end_time` (seconds before `end_time`), or without either (seconds before now).\n",
+            "title": "Time Range"
+          },
+          "havings": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryHaving"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The Having clause allows you to filter on the results table. This operation is distinct from the Where clause, which filters the underlying events. Order By allows you to order the results, and Having filters them.\n",
             "title": "Havings"
           },
           "calculated_fields": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
+                  "$ref": "#/$defs/QueryCalculatedField"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -6460,21 +6524,20 @@
               }
             ],
             "default": null,
-            "description": "Inline calculated fields (derived columns) for this query",
+            "description": "Computed properties that are calculated by a formula.\n",
             "title": "Calculated Fields"
           },
           "compare_time_offset_seconds": {
             "anyOf": [
               {
-                "type": "integer"
+                "$ref": "#/$defs/QueryCompareTimeOffsetSeconds"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Compare against historical data offset by N seconds (1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800)",
-            "title": "Compare Time Offset Seconds"
+            "description": "When set, offsets the query's time range by this number of seconds into the past, allowing comparison with historical data from an earlier time period. For example, setting this to 86400 (24 hours) will compare current results against data from 24 hours ago.\n##### Note\n  - The offset must be greater than or equal to the query's time range duration.\n\n##### Allowed values\n- same time range as query time range\n- `1800` - 30 minutes\n- `3600` - 1 hour\n- `7200` - 2 hours\n- `28800` - 8 hours\n- `86400` - 24 hours\n- `604800` - 7 days\n- `2419200` - 28 days\n- `15724800` - 6 months\n"
           },
           "confidence": {
             "type": "string",
@@ -6526,100 +6589,7 @@
           "dataset"
         ],
         "$defs": {
-          "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
-            "enum": [
-              "COUNT",
-              "SUM",
-              "AVG",
-              "MIN",
-              "MAX",
-              "P001",
-              "P01",
-              "P05",
-              "P10",
-              "P25",
-              "P50",
-              "P75",
-              "P90",
-              "P95",
-              "P99",
-              "P999",
-              "COUNT_DISTINCT",
-              "CONCURRENCY",
-              "HEATMAP",
-              "RATE_AVG",
-              "RATE_SUM",
-              "RATE_MAX"
-            ],
-            "title": "CalcOp",
-            "type": "string"
-          },
-          "Calculation": {
-            "additionalProperties": false,
-            "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
-            "properties": {
-              "op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
-              },
-              "column": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Column to calculate on",
-                "title": "Column"
-              }
-            },
-            "required": [
-              "op"
-            ],
-            "title": "Calculation",
-            "type": "object"
-          },
-          "Filter": {
-            "additionalProperties": false,
-            "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS)  # No value needed\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
-            "properties": {
-              "column": {
-                "description": "Column to filter on",
-                "title": "Column",
-                "type": "string"
-              },
-              "op": {
-                "$ref": "#/$defs/FilterOp",
-                "description": "Filter operator (=, !=, >, <, contains, etc.)"
-              },
-              "value": {
-                "default": null,
-                "description": "Filter value. Not used for 'exists' and 'does-not-exist' operations.",
-                "title": "Value"
-              }
-            },
-            "required": [
-              "column",
-              "op"
-            ],
-            "title": "Filter",
-            "type": "object"
-          },
-          "FilterCombination": {
-            "description": "How to combine multiple filters.",
-            "enum": [
-              "AND",
-              "OR"
-            ],
-            "title": "FilterCombination",
-            "type": "string"
-          },
           "FilterOp": {
-            "description": "Filter operations for Honeycomb queries and board views.\n\nIMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.",
             "enum": [
               "=",
               "!=",
@@ -6631,62 +6601,81 @@
               "does-not-start-with",
               "ends-with",
               "does-not-end-with",
-              "contains",
-              "does-not-contain",
               "exists",
               "does-not-exist",
+              "contains",
+              "does-not-contain",
               "in",
               "not-in"
             ],
             "title": "FilterOp",
             "type": "string"
           },
-          "Having": {
-            "additionalProperties": false,
-            "description": "A having clause for post-aggregation filtering.\n\nExamples:\n    >>> Having(calculate_op=CalcOp.COUNT, op=FilterOp.GREATER_THAN, value=100)\n    >>> Having(calculate_op=CalcOp.AVG, column=\"duration_ms\", op=\">\", value=500.0)",
+          "HavingCalculateOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "HavingCalculateOp",
+            "type": "string"
+          },
+          "HavingOp": {
+            "enum": [
+              "=",
+              "!=",
+              ">",
+              ">=",
+              "<",
+              "<="
+            ],
+            "title": "HavingOp",
+            "type": "string"
+          },
+          "QueryCalculatedField": {
             "properties": {
-              "calculate_op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation to filter on"
+              "name": {
+                "description": "The field name",
+                "title": "Name",
+                "type": "string"
               },
-              "column": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Column for the calculation",
-                "title": "Column"
-              },
-              "op": {
-                "$ref": "#/$defs/FilterOp",
-                "description": "Comparison operator"
-              },
-              "value": {
-                "description": "Threshold value",
-                "title": "Value",
-                "type": "number"
+              "expression": {
+                "description": "The formula for your Calculated Field. To learn more about syntax and available functions, and to explore some example formulas, visit [Calculated Field Formula Reference](https://docs.honeycomb.io/reference/derived-column-formula/).",
+                "title": "Expression",
+                "type": "string"
               }
             },
             "required": [
-              "calculate_op",
-              "op",
-              "value"
+              "name",
+              "expression"
             ],
-            "title": "Having",
+            "title": "QueryCalculatedField",
             "type": "object"
           },
-          "Order": {
-            "additionalProperties": false,
-            "description": "An ordering specification for query results.\n\nExamples:\n    >>> Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)\n    >>> Order(op=CalcOp.AVG, column=\"duration_ms\", order=OrderDirection.ASCENDING)",
+          "QueryCalculation": {
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation to order by"
+                "$ref": "#/$defs/QueryOp"
               },
               "column": {
                 "anyOf": [
@@ -6698,28 +6687,213 @@
                   }
                 ],
                 "default": null,
-                "description": "Column for the calculation",
+                "description": "the name of the column",
                 "title": "Column"
-              },
-              "order": {
-                "$ref": "#/$defs/OrderDirection",
-                "default": "descending",
-                "description": "Sort direction"
               }
             },
             "required": [
               "op"
             ],
-            "title": "Order",
+            "title": "QueryCalculation",
             "type": "object"
           },
-          "OrderDirection": {
-            "description": "Order directions for query results.",
+          "QueryCompareTimeOffsetSeconds": {
+            "description": "When set, offsets the query's time range by this number of seconds into the past, allowing comparison with historical data from an earlier time period. For example, setting this to 86400 (24 hours) will compare current results against data from 24 hours ago.\n##### Note\n  - The offset must be greater than or equal to the query's time range duration.\n\n##### Allowed values\n- same time range as query time range\n- `1800` - 30 minutes\n- `3600` - 1 hour\n- `7200` - 2 hours\n- `28800` - 8 hours\n- `86400` - 24 hours\n- `604800` - 7 days\n- `2419200` - 28 days\n- `15724800` - 6 months",
+            "enum": [
+              1800,
+              3600,
+              7200,
+              28800,
+              86400,
+              604800,
+              2419200,
+              15724800
+            ],
+            "title": "QueryCompareTimeOffsetSeconds",
+            "type": "integer"
+          },
+          "QueryFilter": {
+            "properties": {
+              "op": {
+                "$ref": "#/$defs/FilterOp"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Column"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "items": {},
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Value"
+              }
+            },
+            "required": [
+              "op",
+              "column"
+            ],
+            "title": "QueryFilter",
+            "type": "object"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryHaving": {
+            "properties": {
+              "calculate_op": {
+                "$ref": "#/$defs/HavingCalculateOp"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "The name of the column to filter against",
+                "title": "Column"
+              },
+              "op": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/HavingOp"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": 10,
+                "title": "Value"
+              }
+            },
+            "required": [
+              "calculate_op"
+            ],
+            "title": "QueryHaving",
+            "type": "object"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "QueryOrder": {
+            "properties": {
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Column"
+              },
+              "op": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/QueryOp"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "order": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/QueryOrderOrder"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": "ascending"
+              }
+            },
+            "title": "QueryOrder",
+            "type": "object"
+          },
+          "QueryOrderOrder": {
             "enum": [
               "ascending",
               "descending"
             ],
-            "title": "OrderDirection",
+            "title": "QueryOrderOrder",
             "type": "string"
           }
         }
@@ -6856,112 +7030,13 @@
             "type": "string",
             "description": "The dataset slug"
           },
-          "time_range": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Query time range in seconds",
-            "title": "Time Range"
-          },
-          "start_time": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Absolute start time (Unix timestamp)",
-            "title": "Start Time"
-          },
-          "end_time": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Absolute end time (Unix timestamp)",
-            "title": "End Time"
-          },
-          "granularity": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Time granularity in seconds",
-            "title": "Granularity"
-          },
-          "calculations": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Calculation"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Calculations to perform",
-            "title": "Calculations"
-          },
-          "filters": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Filter"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Query filters",
-            "title": "Filters"
-          },
           "breakdowns": {
             "anyOf": [
               {
                 "items": {
                   "type": "string"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -6969,52 +7044,59 @@
               }
             ],
             "default": null,
-            "description": "Columns to group by",
+            "description": "the columns by which to break events down into groups",
             "title": "Breakdowns"
+          },
+          "calculations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryCalculation"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "the calculations to return as a time series and summary table",
+            "title": "Calculations"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryFilter"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "the filters with which to restrict the considered events",
+            "title": "Filters"
           },
           "filter_combination": {
             "anyOf": [
               {
-                "$ref": "#/$defs/FilterCombination"
-              },
-              {
-                "type": "string"
+                "$ref": "#/$defs/QueryFilterCombination"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "How to combine filters (AND/OR)",
-            "title": "Filter Combination"
+            "default": "AND",
+            "description": "set to \"OR\" to match ANY filter in the filter list"
           },
-          "orders": {
+          "granularity": {
             "anyOf": [
               {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Order"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Result ordering",
-            "title": "Orders"
-          },
-          "limit": {
-            "anyOf": [
-              {
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -7022,23 +7104,16 @@
               }
             ],
             "default": null,
-            "description": "Result limit (max 1000 for saved queries, 10K when using disable_series=True)",
-            "title": "Limit"
+            "description": "The time resolution of the query's graph, in seconds. Given a query time range T, valid values (T/1000...T/1). If left blank, granularity may be set to a sub-second value for queries with short time ranges.\n",
+            "title": "Granularity"
           },
-          "havings": {
+          "orders": {
             "anyOf": [
               {
                 "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Having"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
+                  "$ref": "#/$defs/QueryOrder"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -7046,18 +7121,90 @@
               }
             ],
             "default": null,
-            "description": "Having clauses",
+            "description": "The terms on which to order the query results. Each term must appear in either the `breakdowns` field or the `calculations` field.\n",
+            "title": "Orders"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "maximum": 10000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The maximum number of unique groups returned in 'results'. Aggregating many unique groups across a large time range is computationally expensive, and too high a limit with too many unique groups may cause queries to fail completely. Limiting the results to only the needed values can significantly speed up queries.\nThe normal allowed maximum value when creating a query is 1_000. When running 'disable_series' queries, this can be overridden to be up to 10_000, so the maximum value returned from the API when fetching a query may be up to 10_000.\n",
+            "title": "Limit"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Absolute start time of query, in seconds since UNIX epoch. Must be <= `end_time`.\n",
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Absolute end time of query, in seconds since UNIX epoch.",
+            "title": "End Time"
+          },
+          "time_range": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 7200,
+            "description": "Time range of query in seconds. Can be used with either `start_time` (seconds after `start_time`), `end_time` (seconds before `end_time`), or without either (seconds before now).\n",
+            "title": "Time Range"
+          },
+          "havings": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryHaving"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The Having clause allows you to filter on the results table. This operation is distinct from the Where clause, which filters the underlying events. Order By allows you to order the results, and Having filters them.\n",
             "title": "Havings"
           },
           "calculated_fields": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
+                  "$ref": "#/$defs/QueryCalculatedField"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -7065,21 +7212,20 @@
               }
             ],
             "default": null,
-            "description": "Inline calculated fields (derived columns) for this query",
+            "description": "Computed properties that are calculated by a formula.\n",
             "title": "Calculated Fields"
           },
           "compare_time_offset_seconds": {
             "anyOf": [
               {
-                "type": "integer"
+                "$ref": "#/$defs/QueryCompareTimeOffsetSeconds"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Compare against historical data offset by N seconds (1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800)",
-            "title": "Compare Time Offset Seconds"
+            "description": "When set, offsets the query's time range by this number of seconds into the past, allowing comparison with historical data from an earlier time period. For example, setting this to 86400 (24 hours) will compare current results against data from 24 hours ago.\n##### Note\n  - The offset must be greater than or equal to the query's time range duration.\n\n##### Allowed values\n- same time range as query time range\n- `1800` - 30 minutes\n- `3600` - 1 hour\n- `7200` - 2 hours\n- `28800` - 8 hours\n- `86400` - 24 hours\n- `604800` - 7 days\n- `2419200` - 28 days\n- `15724800` - 6 months\n"
           },
           "confidence": {
             "type": "string",
@@ -7131,100 +7277,7 @@
           "dataset"
         ],
         "$defs": {
-          "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
-            "enum": [
-              "COUNT",
-              "SUM",
-              "AVG",
-              "MIN",
-              "MAX",
-              "P001",
-              "P01",
-              "P05",
-              "P10",
-              "P25",
-              "P50",
-              "P75",
-              "P90",
-              "P95",
-              "P99",
-              "P999",
-              "COUNT_DISTINCT",
-              "CONCURRENCY",
-              "HEATMAP",
-              "RATE_AVG",
-              "RATE_SUM",
-              "RATE_MAX"
-            ],
-            "title": "CalcOp",
-            "type": "string"
-          },
-          "Calculation": {
-            "additionalProperties": false,
-            "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
-            "properties": {
-              "op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
-              },
-              "column": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Column to calculate on",
-                "title": "Column"
-              }
-            },
-            "required": [
-              "op"
-            ],
-            "title": "Calculation",
-            "type": "object"
-          },
-          "Filter": {
-            "additionalProperties": false,
-            "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS)  # No value needed\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
-            "properties": {
-              "column": {
-                "description": "Column to filter on",
-                "title": "Column",
-                "type": "string"
-              },
-              "op": {
-                "$ref": "#/$defs/FilterOp",
-                "description": "Filter operator (=, !=, >, <, contains, etc.)"
-              },
-              "value": {
-                "default": null,
-                "description": "Filter value. Not used for 'exists' and 'does-not-exist' operations.",
-                "title": "Value"
-              }
-            },
-            "required": [
-              "column",
-              "op"
-            ],
-            "title": "Filter",
-            "type": "object"
-          },
-          "FilterCombination": {
-            "description": "How to combine multiple filters.",
-            "enum": [
-              "AND",
-              "OR"
-            ],
-            "title": "FilterCombination",
-            "type": "string"
-          },
           "FilterOp": {
-            "description": "Filter operations for Honeycomb queries and board views.\n\nIMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.",
             "enum": [
               "=",
               "!=",
@@ -7236,62 +7289,81 @@
               "does-not-start-with",
               "ends-with",
               "does-not-end-with",
-              "contains",
-              "does-not-contain",
               "exists",
               "does-not-exist",
+              "contains",
+              "does-not-contain",
               "in",
               "not-in"
             ],
             "title": "FilterOp",
             "type": "string"
           },
-          "Having": {
-            "additionalProperties": false,
-            "description": "A having clause for post-aggregation filtering.\n\nExamples:\n    >>> Having(calculate_op=CalcOp.COUNT, op=FilterOp.GREATER_THAN, value=100)\n    >>> Having(calculate_op=CalcOp.AVG, column=\"duration_ms\", op=\">\", value=500.0)",
+          "HavingCalculateOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "HavingCalculateOp",
+            "type": "string"
+          },
+          "HavingOp": {
+            "enum": [
+              "=",
+              "!=",
+              ">",
+              ">=",
+              "<",
+              "<="
+            ],
+            "title": "HavingOp",
+            "type": "string"
+          },
+          "QueryCalculatedField": {
             "properties": {
-              "calculate_op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation to filter on"
+              "name": {
+                "description": "The field name",
+                "title": "Name",
+                "type": "string"
               },
-              "column": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Column for the calculation",
-                "title": "Column"
-              },
-              "op": {
-                "$ref": "#/$defs/FilterOp",
-                "description": "Comparison operator"
-              },
-              "value": {
-                "description": "Threshold value",
-                "title": "Value",
-                "type": "number"
+              "expression": {
+                "description": "The formula for your Calculated Field. To learn more about syntax and available functions, and to explore some example formulas, visit [Calculated Field Formula Reference](https://docs.honeycomb.io/reference/derived-column-formula/).",
+                "title": "Expression",
+                "type": "string"
               }
             },
             "required": [
-              "calculate_op",
-              "op",
-              "value"
+              "name",
+              "expression"
             ],
-            "title": "Having",
+            "title": "QueryCalculatedField",
             "type": "object"
           },
-          "Order": {
-            "additionalProperties": false,
-            "description": "An ordering specification for query results.\n\nExamples:\n    >>> Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)\n    >>> Order(op=CalcOp.AVG, column=\"duration_ms\", order=OrderDirection.ASCENDING)",
+          "QueryCalculation": {
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation to order by"
+                "$ref": "#/$defs/QueryOp"
               },
               "column": {
                 "anyOf": [
@@ -7303,28 +7375,213 @@
                   }
                 ],
                 "default": null,
-                "description": "Column for the calculation",
+                "description": "the name of the column",
                 "title": "Column"
-              },
-              "order": {
-                "$ref": "#/$defs/OrderDirection",
-                "default": "descending",
-                "description": "Sort direction"
               }
             },
             "required": [
               "op"
             ],
-            "title": "Order",
+            "title": "QueryCalculation",
             "type": "object"
           },
-          "OrderDirection": {
-            "description": "Order directions for query results.",
+          "QueryCompareTimeOffsetSeconds": {
+            "description": "When set, offsets the query's time range by this number of seconds into the past, allowing comparison with historical data from an earlier time period. For example, setting this to 86400 (24 hours) will compare current results against data from 24 hours ago.\n##### Note\n  - The offset must be greater than or equal to the query's time range duration.\n\n##### Allowed values\n- same time range as query time range\n- `1800` - 30 minutes\n- `3600` - 1 hour\n- `7200` - 2 hours\n- `28800` - 8 hours\n- `86400` - 24 hours\n- `604800` - 7 days\n- `2419200` - 28 days\n- `15724800` - 6 months",
+            "enum": [
+              1800,
+              3600,
+              7200,
+              28800,
+              86400,
+              604800,
+              2419200,
+              15724800
+            ],
+            "title": "QueryCompareTimeOffsetSeconds",
+            "type": "integer"
+          },
+          "QueryFilter": {
+            "properties": {
+              "op": {
+                "$ref": "#/$defs/FilterOp"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Column"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "items": {},
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Value"
+              }
+            },
+            "required": [
+              "op",
+              "column"
+            ],
+            "title": "QueryFilter",
+            "type": "object"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryHaving": {
+            "properties": {
+              "calculate_op": {
+                "$ref": "#/$defs/HavingCalculateOp"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "The name of the column to filter against",
+                "title": "Column"
+              },
+              "op": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/HavingOp"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": 10,
+                "title": "Value"
+              }
+            },
+            "required": [
+              "calculate_op"
+            ],
+            "title": "QueryHaving",
+            "type": "object"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "QueryOrder": {
+            "properties": {
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Column"
+              },
+              "op": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/QueryOp"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "order": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/QueryOrderOrder"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": "ascending"
+              }
+            },
+            "title": "QueryOrder",
+            "type": "object"
+          },
+          "QueryOrderOrder": {
             "enum": [
               "ascending",
               "descending"
             ],
-            "title": "OrderDirection",
+            "title": "QueryOrderOrder",
             "type": "string"
           }
         }
@@ -7581,35 +7838,6 @@
             "title": "BoardViewInput",
             "type": "object"
           },
-          "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
-            "enum": [
-              "COUNT",
-              "SUM",
-              "AVG",
-              "MIN",
-              "MAX",
-              "P001",
-              "P01",
-              "P05",
-              "P10",
-              "P25",
-              "P50",
-              "P75",
-              "P90",
-              "P95",
-              "P99",
-              "P999",
-              "COUNT_DISTINCT",
-              "CONCURRENCY",
-              "HEATMAP",
-              "RATE_AVG",
-              "RATE_SUM",
-              "RATE_MAX"
-            ],
-            "title": "CalcOp",
-            "type": "string"
-          },
           "CalculatedFieldInput": {
             "additionalProperties": false,
             "description": "Inline calculated field (derived column) for queries.\n\nCreates a computed column available only within this query.\nFor reusable derived columns, use the Derived Columns API instead.\n\nExample expressions:\n    - \"MULTIPLY($duration_ms, 1000)\" - convert ms to microseconds\n    - \"IF(LT($status_code, 400), 1, 0)\" - success indicator\n    - \"CONCAT($service, '/', $endpoint)\" - combine strings",
@@ -7637,7 +7865,7 @@
             "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
+                "$ref": "#/$defs/QueryOp",
                 "description": "Calculation operation (COUNT, AVG, P99, etc.)"
               },
               "column": {
@@ -7728,17 +7956,7 @@
             "title": "Filter",
             "type": "object"
           },
-          "FilterCombination": {
-            "description": "How to combine multiple filters.",
-            "enum": [
-              "AND",
-              "OR"
-            ],
-            "title": "FilterCombination",
-            "type": "string"
-          },
           "FilterOp": {
-            "description": "Filter operations for Honeycomb queries and board views.\n\nIMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.",
             "enum": [
               "=",
               "!=",
@@ -7750,10 +7968,10 @@
               "does-not-start-with",
               "ends-with",
               "does-not-end-with",
-              "contains",
-              "does-not-contain",
               "exists",
               "does-not-exist",
+              "contains",
+              "does-not-contain",
               "in",
               "not-in"
             ],
@@ -7765,7 +7983,7 @@
             "description": "A having clause for post-aggregation filtering.\n\nExamples:\n    >>> Having(calculate_op=CalcOp.COUNT, op=FilterOp.GREATER_THAN, value=100)\n    >>> Having(calculate_op=CalcOp.AVG, column=\"duration_ms\", op=\">\", value=500.0)",
             "properties": {
               "calculate_op": {
-                "$ref": "#/$defs/CalcOp",
+                "$ref": "#/$defs/QueryOp",
                 "description": "Calculation to filter on"
               },
               "column": {
@@ -7801,10 +8019,10 @@
           },
           "Order": {
             "additionalProperties": false,
-            "description": "An ordering specification for query results.\n\nExamples:\n    >>> Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)\n    >>> Order(op=CalcOp.AVG, column=\"duration_ms\", order=OrderDirection.ASCENDING)",
+            "description": "An ordering specification for query results.\n\nExamples:\n    >>> Order(op=CalcOp.COUNT, order=OrderDirection.descending)\n    >>> Order(op=CalcOp.AVG, column=\"duration_ms\", order=OrderDirection.ascending)",
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
+                "$ref": "#/$defs/QueryOp",
                 "description": "Calculation to order by"
               },
               "column": {
@@ -7821,7 +8039,7 @@
                 "title": "Column"
               },
               "order": {
-                "$ref": "#/$defs/OrderDirection",
+                "$ref": "#/$defs/QueryOrderOrder",
                 "default": "descending",
                 "description": "Sort direction"
               }
@@ -7831,15 +8049,6 @@
             ],
             "title": "Order",
             "type": "object"
-          },
-          "OrderDirection": {
-            "description": "Order directions for query results.",
-            "enum": [
-              "ascending",
-              "descending"
-            ],
-            "title": "OrderDirection",
-            "type": "string"
           },
           "PositionInput": {
             "additionalProperties": false,
@@ -7902,6 +8111,53 @@
             ],
             "title": "PresetFilterInput",
             "type": "object"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "QueryOrderOrder": {
+            "enum": [
+              "ascending",
+              "descending"
+            ],
+            "title": "QueryOrderOrder",
+            "type": "string"
           },
           "QueryPanelInput": {
             "additionalProperties": false,
@@ -8098,7 +8354,7 @@
               "filter_combination": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/FilterCombination"
+                    "$ref": "#/$defs/QueryFilterCombination"
                   },
                   {
                     "type": "null"
@@ -8816,13 +9072,20 @@
             "description": "The board ID to update"
           },
           "name": {
-            "description": "Human-readable name for the board (1-255 chars)",
+            "description": "The name of the Board.",
+            "examples": [
+              "My Board"
+            ],
+            "maxLength": 255,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
           "description": {
             "anyOf": [
               {
+                "maxLength": 1024,
+                "minLength": 0,
                 "type": "string"
               },
               {
@@ -8830,21 +9093,40 @@
               }
             ],
             "default": null,
-            "description": "Longer description (0-1024 chars)",
+            "description": "A description of the Board.",
+            "examples": [
+              "A board created via the API"
+            ],
             "title": "Description"
           },
           "type": {
+            "$ref": "#/$defs/BoardType",
             "default": "flexible",
-            "description": "Board type: only 'flexible' is supported",
-            "title": "Type",
-            "type": "string"
+            "description": "Board type (only 'flexible' is currently supported)"
           },
           "panels": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "discriminator": {
+                    "mapping": {
+                      "query": "#/$defs/QueryPanel",
+                      "slo": "#/$defs/SLOPanel",
+                      "text": "#/$defs/TextPanel"
+                    },
+                    "propertyName": "type"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/QueryPanel"
+                    },
+                    {
+                      "$ref": "#/$defs/SLOPanel"
+                    },
+                    {
+                      "$ref": "#/$defs/TextPanel"
+                    }
+                  ]
                 },
                 "type": "array"
               },
@@ -8853,28 +9135,28 @@
               }
             ],
             "default": null,
-            "description": "Array of board panels (queries, SLOs, text)",
+            "description": "Array of board panels (query panels, SLO panels, or text panels)",
             "title": "Panels"
           },
           "layout_generation": {
-            "default": "manual",
-            "description": "Layout mode: 'auto' or 'manual'",
-            "enum": [
-              "auto",
-              "manual"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BoardLayoutGeneration"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Layout Generation",
-            "type": "string"
+            "default": "manual",
+            "description": "The layout generation mode for the board. When set to \"auto\", the board will be automatically laid out based on the panels. When set to \"manual\", the board will be laid out manually by the user.\n"
           },
           "tags": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
+                  "$ref": "#/$defs/Tag"
                 },
+                "maxItems": 10,
                 "type": "array"
               },
               {
@@ -8882,18 +9164,24 @@
               }
             ],
             "default": null,
-            "description": "Array of tag objects (max 10)",
+            "description": "A list of key-value pairs to help identify the Trigger.",
+            "examples": [
+              [
+                {
+                  "key": "team",
+                  "value": "blue"
+                }
+              ]
+            ],
             "title": "Tags"
           },
           "preset_filters": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
+                  "$ref": "#/$defs/PresetFilter"
                 },
+                "maxItems": 5,
                 "type": "array"
               },
               {
@@ -8901,7 +9189,15 @@
               }
             ],
             "default": null,
-            "description": "Array of preset filter objects",
+            "description": "A list of preset filters to apply to the board. For backwards compatibility, if no preset filters are provided, the existing preset filters will be preserved. If an empty array is provided, all preset filters will be deleted.\n**Note**: Each board is limited to a maximum of 5 preset filters. Attempting to create or update a board with more than 5 preset filters will result in an error.\n",
+            "examples": [
+              [
+                {
+                  "alias": "Service",
+                  "column": "app.Service"
+                }
+              ]
+            ],
             "title": "Preset Filters"
           },
           "confidence": {
@@ -9115,16 +9411,6 @@
             "type": "string",
             "description": "Optional hex color (e.g., '#FF5733')"
           },
-          "message": {
-            "description": "Message to describe this marker",
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "description": "Groups similar markers (e.g., 'deploy')",
-            "title": "Type",
-            "type": "string"
-          },
           "start_time": {
             "anyOf": [
               {
@@ -9135,7 +9421,10 @@
               }
             ],
             "default": null,
-            "description": "Unix timestamp when marker should be placed (defaults to now)",
+            "description": "Indicates the time the Marker should be placed. If missing, defaults to the time the request arrives. Expressed in Unix Time.",
+            "examples": [
+              1471040808
+            ],
             "title": "Start Time"
           },
           "end_time": {
@@ -9148,8 +9437,43 @@
               }
             ],
             "default": null,
-            "description": "Unix timestamp for end of marker (for time ranges)",
+            "description": "Specifies end time, and allows a Marker to be recorded as representing a time range, such as a 5 minute deploy. Expressed in Unix Time.",
+            "examples": [
+              1668453920
+            ],
             "title": "End Time"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A message to describe this specific Marker.",
+            "examples": [
+              "backend deploy #123"
+            ],
+            "title": "Message"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Groups similar Markers. For example, `deploys`. All Markers of the same type appear with the same color on the graph. Refer to the [Marker Settings](/api/marker-settings/) API for altering the color of each type.",
+            "examples": [
+              "deploy"
+            ],
+            "title": "Type"
           },
           "url": {
             "anyOf": [
@@ -9161,7 +9485,10 @@
               }
             ],
             "default": null,
-            "description": "Target URL for the marker",
+            "description": "A target for the marker. Clicking the marker text will take you to this URL.",
+            "examples": [
+              "http://link-to-build.here"
+            ],
             "title": "Url"
           },
           "confidence": {
@@ -9211,9 +9538,7 @@
           }
         },
         "required": [
-          "dataset",
-          "message",
-          "type"
+          "dataset"
         ]
       },
       "input_examples": [
@@ -9251,16 +9576,6 @@
             "type": "string",
             "description": "The marker ID to update"
           },
-          "message": {
-            "description": "Message to describe this marker",
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "description": "Groups similar markers (e.g., 'deploy')",
-            "title": "Type",
-            "type": "string"
-          },
           "start_time": {
             "anyOf": [
               {
@@ -9271,7 +9586,10 @@
               }
             ],
             "default": null,
-            "description": "Unix timestamp when marker should be placed (defaults to now)",
+            "description": "Indicates the time the Marker should be placed. If missing, defaults to the time the request arrives. Expressed in Unix Time.",
+            "examples": [
+              1471040808
+            ],
             "title": "Start Time"
           },
           "end_time": {
@@ -9284,8 +9602,43 @@
               }
             ],
             "default": null,
-            "description": "Unix timestamp for end of marker (for time ranges)",
+            "description": "Specifies end time, and allows a Marker to be recorded as representing a time range, such as a 5 minute deploy. Expressed in Unix Time.",
+            "examples": [
+              1668453920
+            ],
             "title": "End Time"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A message to describe this specific Marker.",
+            "examples": [
+              "backend deploy #123"
+            ],
+            "title": "Message"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Groups similar Markers. For example, `deploys`. All Markers of the same type appear with the same color on the graph. Refer to the [Marker Settings](/api/marker-settings/) API for altering the color of each type.",
+            "examples": [
+              "deploy"
+            ],
+            "title": "Type"
           },
           "url": {
             "anyOf": [
@@ -9297,7 +9650,10 @@
               }
             ],
             "default": null,
-            "description": "Target URL for the marker",
+            "description": "A target for the marker. Clicking the marker text will take you to this URL.",
+            "examples": [
+              "http://link-to-build.here"
+            ],
             "title": "Url"
           },
           "confidence": {
@@ -9348,9 +9704,7 @@
         },
         "required": [
           "dataset",
-          "marker_id",
-          "message",
-          "type"
+          "marker_id"
         ]
       },
       "input_examples": [
@@ -9586,12 +9940,18 @@
             "description": "The dataset slug (or '__all__' for environment-wide)"
           },
           "type": {
-            "description": "Marker type to configure",
+            "description": "Groups similar Markers. For example, 'deploys'. All Markers of the same type appears with the same color on the graph.\n",
+            "examples": [
+              "deploy"
+            ],
             "title": "Type",
             "type": "string"
           },
           "color": {
-            "description": "Hex color code (e.g., '#F96E11')",
+            "description": "Color to use for display of this marker type. Specified as hexadecimal RGB. For example, \"#F96E11\".\n",
+            "examples": [
+              "#7b1fa2"
+            ],
             "title": "Color",
             "type": "string"
           },
@@ -9675,12 +10035,18 @@
             "description": "The marker setting ID to update"
           },
           "type": {
-            "description": "Marker type to configure",
+            "description": "Groups similar Markers. For example, 'deploys'. All Markers of the same type appears with the same color on the graph.\n",
+            "examples": [
+              "deploy"
+            ],
             "title": "Type",
             "type": "string"
           },
           "color": {
-            "description": "Hex color code (e.g., '#F96E11')",
+            "description": "Color to use for display of this marker type. Specified as hexadecimal RGB. For example, \"#F96E11\".\n",
+            "examples": [
+              "#7b1fa2"
+            ],
             "title": "Color",
             "type": "string"
           },
@@ -10035,7 +10401,10 @@
               }
             ],
             "default": null,
-            "description": "Absolute start time in seconds since UNIX epoch",
+            "description": "Absolute start time to evaluate dependencies, in seconds since UNIX epoch. Must be <= `end_time` (when `time_range` is not provided).\n",
+            "examples": [
+              1622548800
+            ],
             "title": "Start Time"
           },
           "end_time": {
@@ -10048,21 +10417,34 @@
               }
             ],
             "default": null,
-            "description": "Absolute end time in seconds since UNIX epoch",
+            "description": "Absolute end time to evaluate dependencies, in seconds since UNIX epoch. Must be >= `start_time` (when `time_range` is not provided).\n",
+            "examples": [
+              1622635200
+            ],
             "title": "End Time"
           },
           "time_range": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": 7200,
-            "description": "Time range in seconds (default: 7200 = 2 hours)",
-            "minimum": 1,
-            "title": "Time Range",
-            "type": "integer"
+            "description": "Time range in seconds (minimum 1). Can be used with either `start_time` (seconds after `start_time`), `end_time` (seconds before `end_time`), or without either (seconds before now).\n",
+            "examples": [
+              7200
+            ],
+            "title": "Time Range"
           },
           "filters": {
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/$defs/ServiceMapNode"
+                  "$ref": "#/$defs/MapNode"
                 },
                 "type": "array"
               },
@@ -10071,7 +10453,7 @@
               }
             ],
             "default": null,
-            "description": "Optional list of service nodes to filter dependencies by",
+            "description": "Optional list of service nodes to filter dependencies by. Only dependencies involving these nodes will be returned.\n",
             "title": "Filters"
           },
           "max_pages": {
@@ -10126,32 +10508,45 @@
         },
         "required": [],
         "$defs": {
-          "ServiceMapNode": {
-            "description": "A node in the service map (typically a service).\n\nAttributes:\n    name: Name of the service or node.\n    type: Type of the node. Currently only 'service' is supported.",
+          "MapNode": {
+            "description": "A node in the service map (typically a service).",
             "properties": {
               "name": {
-                "description": "Name of the service or node",
+                "description": "Name of the service or node.\n",
+                "examples": [
+                  "user-service"
+                ],
                 "title": "Name",
                 "type": "string"
               },
               "type": {
-                "$ref": "#/$defs/ServiceMapNodeType",
-                "default": "service",
-                "description": "Type of the node. Currently only 'service' is supported."
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/MapNodeType"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Type of the node. Currently only \"service\" is supported. Defaults to \"service\" if not specified.\n",
+                "examples": [
+                  "service"
+                ]
               }
             },
             "required": [
               "name"
             ],
-            "title": "ServiceMapNode",
+            "title": "MapNode",
             "type": "object"
           },
-          "ServiceMapNodeType": {
-            "description": "Type of node in the service map.",
+          "MapNodeType": {
+            "description": "Type of the node. Currently only \"service\" is supported. Defaults to \"service\" if not specified.",
             "enum": [
               "service"
             ],
-            "title": "ServiceMapNodeType",
+            "title": "MapNodeType",
             "type": "string"
           }
         }

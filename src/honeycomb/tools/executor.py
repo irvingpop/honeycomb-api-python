@@ -9,18 +9,25 @@ from typing import TYPE_CHECKING, Any
 
 from honeycomb.models import (
     BatchEvent,
-    BurnAlertCreate,
     BurnAlertRecipient,
+    BurnAlertType,
     ColumnCreate,
+    CreateBudgetRateBurnAlertRequest,
+    CreateBudgetRateBurnAlertRequestSlo,
+    CreateBurnAlertRequest,
+    CreateExhaustionTimeBurnAlertRequest,
+    CreateExhaustionTimeBurnAlertRequestSlo,
     DatasetCreate,
     DatasetUpdate,
     DerivedColumnCreate,
     MarkerCreate,
     MarkerSettingCreate,
     QuerySpec,
-    RecipientCreate,
     ServiceMapDependencyRequestCreate,
     SLOCreate,
+    UpdateBudgetRateBurnAlert,
+    UpdateBurnAlertRequest,
+    UpdateExhaustionTimeBurnAlertRequest,
 )
 from honeycomb.tools.builders import _build_board, _build_slo, _build_trigger
 
@@ -283,13 +290,48 @@ async def _execute_get_api_key(client: "HoneycombClient", tool_input: dict[str, 
 
 async def _execute_create_api_key(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_create_api_key tool."""
-    from honeycomb.models.api_keys import ApiKeyCreate, ApiKeyType
+    from honeycomb._generated_models import (
+        ApiKeyCreateRequestData,
+        ApiKeyCreateRequestDataRelationships,
+        ApiKeyObjectType,
+        ConfigurationKey,
+        EnvironmentRelationship,
+        EnvironmentRelationshipData,
+        EnvironmentRelationshipDataType,
+        IngestKey,
+    )
+    from honeycomb.models.api_keys import ApiKeyCreateRequest
 
-    api_key = ApiKeyCreate(
-        name=tool_input["name"],
-        key_type=ApiKeyType(tool_input["key_type"]),
-        environment_id=tool_input["environment_id"],
-        permissions=tool_input.get("permissions"),
+    key_type_str = tool_input["key_type"]
+    if key_type_str == "ingest":
+        attributes: IngestKey | ConfigurationKey = IngestKey(
+            key_type="ingest",
+            name=tool_input["name"],
+            disabled=False,
+        )
+    elif key_type_str == "configuration":
+        attributes = ConfigurationKey(
+            key_type="configuration",
+            name=tool_input["name"],
+            disabled=False,
+            permissions=tool_input.get("permissions"),
+        )
+    else:
+        raise ValueError(f"Invalid key_type: {key_type_str}")
+
+    api_key = ApiKeyCreateRequest(
+        data=ApiKeyCreateRequestData(
+            type=ApiKeyObjectType.api_keys,
+            attributes=attributes,
+            relationships=ApiKeyCreateRequestDataRelationships(
+                environment=EnvironmentRelationship(
+                    data=EnvironmentRelationshipData(
+                        type=EnvironmentRelationshipDataType.environments,
+                        id=tool_input["environment_id"],
+                    )
+                )
+            ),
+        )
     )
     created = await client.api_keys.create_async(api_key=api_key)
     return json.dumps(created.model_dump(), default=str)
@@ -297,15 +339,11 @@ async def _execute_create_api_key(client: "HoneycombClient", tool_input: dict[st
 
 async def _execute_update_api_key(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_update_api_key tool."""
-    from honeycomb.models.api_keys import ApiKeyUpdate
-
-    update = ApiKeyUpdate(
-        name=tool_input.get("name"),
-        disabled=tool_input.get("disabled"),
-    )
+    # Use convenience wrapper (handles both config and ingest keys automatically)
     updated = await client.api_keys.update_async(
         key_id=tool_input["key_id"],
-        api_key=update,
+        name=tool_input.get("name"),
+        disabled=tool_input.get("disabled"),
     )
     return json.dumps(updated.model_dump(), default=str)
 
@@ -348,14 +386,14 @@ async def _execute_get_environment(client: "HoneycombClient", tool_input: dict[s
 
             async with HoneycombClient(api_key=api_key) as api_key_client:
                 # Verify the API key is for this environment (force v1 for environment_slug)
-                from honeycomb.models.auth import AuthInfo
+                from honeycomb.models.auth import Auth
 
                 auth_info = await api_key_client.auth.get_async(use_v2=False)
-                assert isinstance(auth_info, AuthInfo)  # use_v2=False always returns AuthInfo
-                if auth_info.environment_slug != result["slug"]:
+                assert isinstance(auth_info, Auth)  # use_v2=False always returns AuthInfo
+                if auth_info.environment.slug != result["slug"]:
                     result["datasets_error"] = (
                         f"Cannot list datasets: HONEYCOMB_API_KEY is for environment "
-                        f"'{auth_info.environment_slug}' but requested '{result['slug']}'"
+                        f"'{auth_info.environment.slug}' but requested '{result['slug']}'"
                     )
                 else:
                     # Environment matches - list datasets
@@ -366,32 +404,24 @@ async def _execute_get_environment(client: "HoneycombClient", tool_input: dict[s
 
 
 async def _execute_create_environment(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
-    """Execute honeycomb_create_environment tool."""
-    from honeycomb.models.environments import EnvironmentColor, EnvironmentCreate
-
-    environment = EnvironmentCreate(
+    """Execute honeycomb_create_environment tool using convenience wrapper."""
+    created = await client.environments.create_async(
         name=tool_input["name"],
         description=tool_input.get("description"),
-        color=EnvironmentColor(tool_input["color"]) if tool_input.get("color") else None,
+        color=tool_input.get("color"),
     )
-    created = await client.environments.create_async(environment=environment)
-    return json.dumps(created.model_dump(), default=str)
+    return json.dumps(created.model_dump(mode="json"), default=str)
 
 
 async def _execute_update_environment(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
-    """Execute honeycomb_update_environment tool."""
-    from honeycomb.models.environments import EnvironmentColor, EnvironmentUpdate
-
-    environment = EnvironmentUpdate(
-        description=tool_input.get("description"),
-        color=EnvironmentColor(tool_input["color"]) if tool_input.get("color") else None,
-        delete_protected=tool_input.get("delete_protected"),
-    )
+    """Execute honeycomb_update_environment tool using convenience wrapper."""
     updated = await client.environments.update_async(
         env_id=tool_input["env_id"],
-        environment=environment,
+        description=tool_input.get("description"),
+        color=tool_input.get("color"),
+        delete_protected=tool_input.get("delete_protected"),
     )
-    return json.dumps(updated.model_dump(), default=str)
+    return json.dumps(updated.model_dump(mode="json"), default=str)
 
 
 async def _execute_delete_environment(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
@@ -552,13 +582,38 @@ async def _execute_create_burn_alert(client: "HoneycombClient", tool_input: dict
     from honeycomb.resources._recipient_utils import process_inline_recipients
 
     dataset = tool_input.pop("dataset")
+    alert_type = BurnAlertType(tool_input["alert_type"])
+    slo_id = tool_input["slo_id"]
 
     # Process inline recipients with idempotent handling
     recipients_data = tool_input.pop("recipients", [])
     processed = await process_inline_recipients(client, recipients_data)
     recipients = [BurnAlertRecipient(**r) for r in processed]
 
-    burn_alert = BurnAlertCreate(**tool_input, recipients=recipients)
+    # Build discriminated union
+    if alert_type == BurnAlertType.EXHAUSTION_TIME:
+        req: CreateExhaustionTimeBurnAlertRequest | CreateBudgetRateBurnAlertRequest = (
+            CreateExhaustionTimeBurnAlertRequest(
+                alert_type="exhaustion_time",
+                slo=CreateExhaustionTimeBurnAlertRequestSlo(id=slo_id),
+                recipients=recipients or None,
+                description=tool_input.get("description"),
+                exhaustion_minutes=tool_input.get("exhaustion_minutes"),
+            )
+        )
+    else:  # BUDGET_RATE
+        req = CreateBudgetRateBurnAlertRequest(
+            alert_type="budget_rate",
+            slo=CreateBudgetRateBurnAlertRequestSlo(id=slo_id),
+            recipients=recipients or None,
+            description=tool_input.get("description"),
+            budget_rate_window_minutes=tool_input.get("budget_rate_window_minutes"),
+            budget_rate_decrease_threshold_per_million=tool_input.get(
+                "budget_rate_decrease_threshold_per_million"
+            ),
+        )
+    burn_alert = CreateBurnAlertRequest(root=req)
+
     created = await client.burn_alerts.create_async(dataset=dataset, burn_alert=burn_alert)
     return json.dumps(created.model_dump(), default=str)
 
@@ -569,13 +624,35 @@ async def _execute_update_burn_alert(client: "HoneycombClient", tool_input: dict
 
     dataset = tool_input.pop("dataset")
     burn_alert_id = tool_input.pop("burn_alert_id")
+    alert_type = BurnAlertType(tool_input["alert_type"])
 
     # Process inline recipients with idempotent handling
     recipients_data = tool_input.pop("recipients", [])
     processed = await process_inline_recipients(client, recipients_data)
     recipients = [BurnAlertRecipient(**r) for r in processed]
 
-    burn_alert = BurnAlertCreate(**tool_input, recipients=recipients)
+    # Build discriminated union for update
+    if alert_type == BurnAlertType.EXHAUSTION_TIME:
+        req: UpdateExhaustionTimeBurnAlertRequest | UpdateBudgetRateBurnAlert = (
+            UpdateExhaustionTimeBurnAlertRequest(
+                alert_type="exhaustion_time",
+                recipients=recipients or [],  # Update requires list
+                description=tool_input.get("description"),
+                exhaustion_minutes=tool_input.get("exhaustion_minutes"),
+            )
+        )
+    else:  # BUDGET_RATE
+        req = UpdateBudgetRateBurnAlert(
+            alert_type="budget_rate",
+            recipients=recipients or [],
+            description=tool_input.get("description"),
+            budget_rate_window_minutes=tool_input.get("budget_rate_window_minutes"),
+            budget_rate_decrease_threshold_per_million=tool_input.get(
+                "budget_rate_decrease_threshold_per_million"
+            ),
+        )
+    burn_alert = UpdateBurnAlertRequest(root=req)
+
     updated = await client.burn_alerts.update_async(
         dataset=dataset,
         burn_alert_id=burn_alert_id,
@@ -706,15 +783,21 @@ async def _execute_get_recipient(client: "HoneycombClient", tool_input: dict[str
 
 async def _execute_create_recipient(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_create_recipient."""
-    recipient = RecipientCreate(**tool_input)
+    from honeycomb.models.recipients import get_recipient_class
+
+    recipient_class = get_recipient_class(tool_input["type"])
+    recipient = recipient_class(**tool_input)
     created = await client.recipients.create_async(recipient=recipient)
     return json.dumps(created.model_dump(), default=str)
 
 
 async def _execute_update_recipient(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_update_recipient."""
+    from honeycomb.models.recipients import get_recipient_class
+
     recipient_id = tool_input.pop("recipient_id")
-    recipient = RecipientCreate(**tool_input)
+    recipient_class = get_recipient_class(tool_input["type"])
+    recipient = recipient_class(**tool_input)
     updated = await client.recipients.update_async(recipient_id=recipient_id, recipient=recipient)
     return json.dumps(updated.model_dump(), default=str)
 

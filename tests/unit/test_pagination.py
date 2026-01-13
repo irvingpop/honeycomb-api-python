@@ -5,7 +5,6 @@ from httpx import Response
 
 from honeycomb import HoneycombClient
 from honeycomb.models import (
-    ApiKeyType,
     ServiceMapDependencyRequestCreate,
     ServiceMapDependencyRequestStatus,
     ServiceMapNode,
@@ -59,9 +58,11 @@ class TestApiKeysPagination:
                             "type": "api-keys",
                             "attributes": {
                                 "name": "Key 1",
-                                "type": "ingest",
-                                "environment_id": "env-1",
+                                "key_type": "ingest",
                                 "disabled": False,
+                            },
+                            "relationships": {
+                                "environment": {"data": {"type": "environments", "id": "env-1"}}
                             },
                         },
                         {
@@ -69,9 +70,12 @@ class TestApiKeysPagination:
                             "type": "api-keys",
                             "attributes": {
                                 "name": "Key 2",
-                                "type": "configuration",
-                                "environment_id": "env-1",
+                                "key_type": "configuration",
                                 "disabled": False,
+                                "permissions": {},
+                            },
+                            "relationships": {
+                                "environment": {"data": {"type": "environments", "id": "env-1"}}
                             },
                         },
                     ],
@@ -134,9 +138,11 @@ class TestApiKeysPagination:
                                 "type": "api-keys",
                                 "attributes": {
                                     "name": f"Key {i}",
-                                    "type": "ingest",
-                                    "environment_id": "env-1",
+                                    "key_type": "ingest",
                                     "disabled": False,
+                                },
+                                "relationships": {
+                                    "environment": {"data": {"type": "environments", "id": "env-1"}}
                                 },
                             }
                             for i in range(1, 4)
@@ -157,9 +163,11 @@ class TestApiKeysPagination:
                                 "type": "api-keys",
                                 "attributes": {
                                     "name": f"Key {i}",
-                                    "type": "ingest",
-                                    "environment_id": "env-1",
+                                    "key_type": "ingest",
                                     "disabled": False,
+                                },
+                                "relationships": {
+                                    "environment": {"data": {"type": "environments", "id": "env-1"}}
                                 },
                             }
                             for i in range(4, 6)
@@ -222,9 +230,11 @@ class TestApiKeysPagination:
                             "type": "api-keys",
                             "attributes": {
                                 "name": "Ingest Key",
-                                "type": "ingest",
-                                "environment_id": "env-1",
+                                "key_type": "ingest",
                                 "disabled": False,
+                            },
+                            "relationships": {
+                                "environment": {"data": {"type": "environments", "id": "env-1"}}
                             },
                         },
                     ],
@@ -239,7 +249,10 @@ class TestApiKeysPagination:
             keys = await client.api_keys.list_async(key_type="ingest")
 
         assert len(keys) == 1
-        assert keys[0].key_type == ApiKeyType.INGEST
+        assert keys[0].attributes is not None
+        from honeycomb.models.api_keys import IngestKey
+
+        assert isinstance(keys[0].attributes, IngestKey)
         # Verify filter was passed
         assert "filter%5Btype%5D=ingest" in str(route.calls[0].request.url)
 
@@ -291,21 +304,25 @@ class TestEnvironmentsPagination:
                         {
                             "id": "env-1",
                             "type": "environments",
+                            "links": {"self": "/2/teams/my-team/environments/env-1"},
                             "attributes": {
                                 "name": "Production",
                                 "slug": "production",
                                 "color": "red",
                                 "description": "Prod environment",
+                                "settings": {"delete_protected": False},
                             },
                         },
                         {
                             "id": "env-2",
                             "type": "environments",
+                            "links": {"self": "/2/teams/my-team/environments/env-2"},
                             "attributes": {
                                 "name": "Staging",
                                 "slug": "staging",
                                 "color": "gold",
                                 "description": "Staging environment",
+                                "settings": {"delete_protected": False},
                             },
                         },
                     ],
@@ -321,9 +338,9 @@ class TestEnvironmentsPagination:
 
         assert len(envs) == 2
         assert envs[0].id == "env-1"
-        assert envs[0].name == "Production"
+        assert envs[0].attributes.name == "Production"
         assert envs[1].id == "env-2"
-        assert envs[1].name == "Staging"
+        assert envs[1].attributes.name == "Staging"
 
     @respx.mock
     async def test_list_multiple_pages(self):
@@ -369,10 +386,13 @@ class TestEnvironmentsPagination:
                             {
                                 "id": f"env-{i}",
                                 "type": "environments",
+                                "links": {"self": f"/2/teams/my-team/environments/env-{i}"},
                                 "attributes": {
                                     "name": f"Environment {i}",
                                     "slug": f"environment-{i}",
+                                    "description": "",
                                     "color": "blue",
+                                    "settings": {"delete_protected": False},
                                 },
                             }
                             for i in range(1, 4)
@@ -391,10 +411,13 @@ class TestEnvironmentsPagination:
                             {
                                 "id": f"env-{i}",
                                 "type": "environments",
+                                "links": {"self": f"/2/teams/my-team/environments/env-{i}"},
                                 "attributes": {
                                     "name": f"Environment {i}",
                                     "slug": f"environment-{i}",
+                                    "description": "",
                                     "color": "blue",
+                                    "settings": {"delete_protected": False},
                                 },
                             }
                             for i in range(4, 6)
@@ -445,7 +468,7 @@ class TestServiceMapDependencies:
             )
 
         assert req.request_id == "req-123"
-        assert req.status == ServiceMapDependencyRequestStatus.PENDING
+        assert req.status == ServiceMapDependencyRequestStatus.pending
 
     @respx.mock
     async def test_get_result_single_page(self):
@@ -477,7 +500,7 @@ class TestServiceMapDependencies:
             result = await client.service_map_dependencies.get_result_async("req-123")
 
         assert result.request_id == "req-123"
-        assert result.status == ServiceMapDependencyRequestStatus.READY
+        assert result.status == ServiceMapDependencyRequestStatus.ready
         assert len(result.dependencies) == 2
         assert result.dependencies[0].parent_node.name == "service-a"
         assert result.dependencies[0].child_node.name == "service-b"
@@ -588,7 +611,7 @@ class TestServiceMapDependencies:
         async with HoneycombClient(api_key="test-api-key") as client:
             result = await client.service_map_dependencies.get_result_async("req-123")
 
-        assert result.status == ServiceMapDependencyRequestStatus.PENDING
+        assert result.status == ServiceMapDependencyRequestStatus.pending
         assert result.dependencies is None
 
     @respx.mock
@@ -641,7 +664,7 @@ class TestServiceMapDependenciesModels:
             time_range=3600,
             filters=[ServiceMapNode(name="svc-a")],
         )
-        data = req.model_dump_for_api()
+        data = req.model_dump(mode="json", exclude_none=True)
 
         assert data["start_time"] == 1622548800
         assert data["time_range"] == 3600
@@ -649,11 +672,19 @@ class TestServiceMapDependenciesModels:
         assert "end_time" not in data  # None values excluded
 
     def test_map_node_default_type(self):
-        """Test ServiceMapNode default type."""
+        """Test ServiceMapNode default type.
+
+        Note: The generated model has type=None by default. The API server
+        defaults to 'service' when type is not specified.
+        """
+        node = ServiceMapNode(name="my-service")
+        assert node.type is None  # None means API will default to 'service'
+
+        # Explicit type works
         from honeycomb.models import ServiceMapNodeType
 
-        node = ServiceMapNode(name="my-service")
-        assert node.type == ServiceMapNodeType.SERVICE
+        node_explicit = ServiceMapNode(name="my-service", type=ServiceMapNodeType.service)
+        assert node_explicit.type == ServiceMapNodeType.service
 
 
 # =============================================================================
@@ -729,8 +760,8 @@ class TestQueryResultsPagination:
                 200,
                 json={
                     "data": {
-                        "results": [{"count": 100}],
-                        "series": [{"time": 123, "count": 100}],
+                        "results": [{"data": {"count": 100}}],
+                        "series": [{"time": "2024-01-01T00:00:00Z", "data": {"count": 100}}],
                     }
                 },
             )
@@ -798,8 +829,8 @@ class TestQueryResultsPaginationHelpers:
 
         assert key == ("api", "/users", 100)
 
-    def test_build_row_key_with_alias(self):
-        """Test building composite key with calculation alias."""
+    def test_build_row_key_with_calculation(self):
+        """Test building composite key with calculation (uses op name as field)."""
         from honeycomb.models import QuerySpec
 
         client = HoneycombClient(api_key="test", sync=True)
@@ -807,11 +838,12 @@ class TestQueryResultsPaginationHelpers:
 
         spec = QuerySpec(
             time_range=3600,
-            calculations=[{"op": "AVG", "column": "duration_ms", "alias": "avg_duration"}],
+            calculations=[{"op": "AVG", "column": "duration_ms"}],
             breakdowns=["service"],
         )
 
-        row = {"service": "api", "avg_duration": 150.5}
+        # Result rows use uppercase op name as field (e.g., "AVG", not "avg")
+        row = {"service": "api", "AVG": 150.5}
         key = resource._build_row_key(row, spec)
 
         assert key == ("api", 150.5)
@@ -841,8 +873,8 @@ class TestRunAllAsync:
                 json={
                     "data": {
                         "results": [
-                            {"service": "api", "count": 100},
-                            {"service": "worker", "count": 50},
+                            {"data": {"service": "api", "count": 100}},
+                            {"data": {"service": "worker", "count": 50}},
                         ],
                         "series": [],
                     }

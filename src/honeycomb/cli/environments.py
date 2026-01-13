@@ -3,9 +3,21 @@
 import typer
 from rich.console import Console
 
+from honeycomb._generated_models import (
+    CreateEnvironmentRequestData,
+    CreateEnvironmentRequestDataAttributes,
+    EnvironmentRelationshipDataType,
+    UpdateEnvironmentRequestData,
+    UpdateEnvironmentRequestDataAttributes,
+    UpdateEnvironmentRequestDataAttributesSettings,
+)
 from honeycomb.cli.config import get_api_key_from_config, get_client
 from honeycomb.cli.formatters import DEFAULT_OUTPUT_FORMAT, OutputFormat, output_result
-from honeycomb.models.environments import EnvironmentColor, EnvironmentCreate
+from honeycomb.models.environments import (
+    CreateEnvironmentRequest,
+    EnvironmentColor,
+    UpdateEnvironmentRequest,
+)
 
 app = typer.Typer(help="Manage environments (requires management key)")
 console = Console()
@@ -89,14 +101,14 @@ def get_environment(
 
             with HoneycombClient(api_key=api_key, sync=True) as api_key_client:
                 # Verify the API key is for this environment (force v1 for environment_slug)
-                from honeycomb.models.auth import AuthInfo
+                from honeycomb.models.auth import Auth
 
                 auth_info = api_key_client.auth.get(use_v2=False)
-                assert isinstance(auth_info, AuthInfo)  # use_v2=False always returns AuthInfo
-                if auth_info.environment_slug != env.slug:
+                assert isinstance(auth_info, Auth)  # use_v2=False always returns Auth
+                if auth_info.environment.slug != env.attributes.slug:
                     console.print(
                         f"\n[yellow]Cannot list datasets:[/yellow] HONEYCOMB_API_KEY is for environment "
-                        f"'{auth_info.environment_slug}' but you requested '{env.slug}'. "
+                        f"'{auth_info.environment.slug}' but you requested '{env.attributes.slug}'. "
                         "Provide an API key for the correct environment.",
                         style="bold",
                     )
@@ -139,10 +151,16 @@ def create_environment(
             management_secret=management_secret,
         )
 
-        environment = EnvironmentCreate(
-            name=name,
-            description=description,
-            color=color,
+        # Build JSON:API request
+        environment = CreateEnvironmentRequest(
+            data=CreateEnvironmentRequestData(
+                type=EnvironmentRelationshipDataType.environments,
+                attributes=CreateEnvironmentRequestDataAttributes(
+                    name=name,
+                    description=description,
+                    color=color,
+                ),
+            )
         )
 
         created = client.environments.create(environment=environment)
@@ -177,18 +195,28 @@ def update_environment(
         hny environments update env-123 --no-delete-protected
     """
     try:
-        from honeycomb.models.environments import EnvironmentUpdate
-
         client = get_client(
             profile=profile,
             management_key=management_key,
             management_secret=management_secret,
         )
 
-        update = EnvironmentUpdate(
+        # Build JSON:API request
+        attrs = UpdateEnvironmentRequestDataAttributes(
             description=description,
             color=color,
-            delete_protected=delete_protected,
+            settings=(
+                UpdateEnvironmentRequestDataAttributesSettings(delete_protected=delete_protected)
+                if delete_protected is not None
+                else None
+            ),
+        )
+        update = UpdateEnvironmentRequest(
+            data=UpdateEnvironmentRequestData(
+                id=env_id,
+                type=EnvironmentRelationshipDataType.environments,
+                attributes=attrs,
+            )
         )
 
         updated = client.environments.update(env_id=env_id, environment=update)

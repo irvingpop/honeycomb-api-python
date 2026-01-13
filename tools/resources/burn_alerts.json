@@ -163,73 +163,32 @@
             "description": "The dataset slug to create the burn alert in"
           },
           "alert_type": {
-            "$ref": "#/$defs/BurnAlertType",
-            "description": "Type of burn alert"
+            "type": "string",
+            "description": "Type of burn alert: 'exhaustion_time' or 'budget_rate'"
           },
           "slo_id": {
-            "description": "ID of the SLO to monitor",
-            "title": "Slo Id",
-            "type": "string"
+            "type": "string",
+            "description": "The SLO ID to attach this burn alert to"
           },
           "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Description of the burn alert",
-            "title": "Description"
-          },
-          "recipients": {
-            "description": "List of recipients to notify when alert fires",
-            "items": {
-              "$ref": "#/$defs/BurnAlertRecipient"
-            },
-            "title": "Recipients",
-            "type": "array"
+            "type": "string",
+            "description": "Description of the burn alert (optional)"
           },
           "exhaustion_minutes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Minutes until SLO budget exhaustion (for exhaustion_time alerts)",
-            "title": "Exhaustion Minutes"
+            "type": "integer",
+            "description": "Minutes until budget exhaustion (required for exhaustion_time alerts)"
           },
           "budget_rate_window_minutes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Time window in minutes (for budget_rate alerts)",
-            "title": "Budget Rate Window Minutes"
+            "type": "integer",
+            "description": "Time window in minutes (required for budget_rate alerts)"
           },
           "budget_rate_decrease_threshold_per_million": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Budget decrease threshold per million (for budget_rate alerts)",
-            "title": "Budget Rate Decrease Threshold Per Million"
+            "type": "integer",
+            "description": "Budget decrease threshold per million (required for budget_rate alerts)"
+          },
+          "recipients": {
+            "type": "array",
+            "description": "List of recipients (optional, can use inline type+target or id)"
           },
           "confidence": {
             "type": "string",
@@ -281,78 +240,7 @@
           "dataset",
           "alert_type",
           "slo_id"
-        ],
-        "$defs": {
-          "BurnAlertRecipient": {
-            "description": "A recipient for burn alert notifications.\n\nEither id (recommended) OR type+target (deprecated) must be provided.",
-            "properties": {
-              "id": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "ID of the recipient",
-                "title": "Id"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Type of recipient (email, slack, etc)",
-                "title": "Type"
-              },
-              "target": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Target address (for backwards compat)",
-                "title": "Target"
-              },
-              "details": {
-                "anyOf": [
-                  {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Additional details",
-                "title": "Details"
-              }
-            },
-            "title": "BurnAlertRecipient",
-            "type": "object"
-          },
-          "BurnAlertType": {
-            "description": "Burn alert types.",
-            "enum": [
-              "exhaustion_time",
-              "budget_rate"
-            ],
-            "title": "BurnAlertType",
-            "type": "string"
-          }
-        }
+        ]
       },
       "input_examples": [
         {
@@ -423,73 +311,32 @@
             "description": "The burn alert ID to update"
           },
           "alert_type": {
-            "$ref": "#/$defs/BurnAlertType",
-            "description": "Type of burn alert"
+            "type": "string",
+            "description": "Type of burn alert: 'exhaustion_time' or 'budget_rate'"
           },
           "slo_id": {
-            "description": "ID of the SLO to monitor",
-            "title": "Slo Id",
-            "type": "string"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Description of the burn alert",
-            "title": "Description"
+            "type": "string",
+            "description": "The SLO ID"
           },
           "recipients": {
-            "description": "List of recipients to notify when alert fires",
-            "items": {
-              "$ref": "#/$defs/BurnAlertRecipient"
-            },
-            "title": "Recipients",
-            "type": "array"
+            "type": "array",
+            "description": "List of recipients (required for updates)"
+          },
+          "description": {
+            "type": "string",
+            "description": "Description of the burn alert (optional)"
           },
           "exhaustion_minutes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Minutes until SLO budget exhaustion (for exhaustion_time alerts)",
-            "title": "Exhaustion Minutes"
+            "type": "integer",
+            "description": "Minutes until budget exhaustion (for exhaustion_time alerts)"
           },
           "budget_rate_window_minutes": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Time window in minutes (for budget_rate alerts)",
-            "title": "Budget Rate Window Minutes"
+            "type": "integer",
+            "description": "Time window in minutes (for budget_rate alerts)"
           },
           "budget_rate_decrease_threshold_per_million": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Budget decrease threshold per million (for budget_rate alerts)",
-            "title": "Budget Rate Decrease Threshold Per Million"
+            "type": "integer",
+            "description": "Budget decrease threshold per million (for budget_rate alerts)"
           },
           "confidence": {
             "type": "string",
@@ -541,79 +388,9 @@
           "dataset",
           "burn_alert_id",
           "alert_type",
-          "slo_id"
-        ],
-        "$defs": {
-          "BurnAlertRecipient": {
-            "description": "A recipient for burn alert notifications.\n\nEither id (recommended) OR type+target (deprecated) must be provided.",
-            "properties": {
-              "id": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "ID of the recipient",
-                "title": "Id"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Type of recipient (email, slack, etc)",
-                "title": "Type"
-              },
-              "target": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Target address (for backwards compat)",
-                "title": "Target"
-              },
-              "details": {
-                "anyOf": [
-                  {
-                    "additionalProperties": true,
-                    "type": "object"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Additional details",
-                "title": "Details"
-              }
-            },
-            "title": "BurnAlertRecipient",
-            "type": "object"
-          },
-          "BurnAlertType": {
-            "description": "Burn alert types.",
-            "enum": [
-              "exhaustion_time",
-              "budget_rate"
-            ],
-            "title": "BurnAlertType",
-            "type": "string"
-          }
-        }
+          "slo_id",
+          "recipients"
+        ]
       },
       "input_examples": [
         {

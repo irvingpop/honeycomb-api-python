@@ -37,8 +37,6 @@ packages = [{ include = "honeycomb", from = "src" }]
 python = ">=3.10"
 httpx = ">=0.27"
 pydantic = ">=2.0"
-attrs = ">=23.0"          # Used by generated client
-python-dateutil = ">=2.8" # Used by generated client
 pytest-xdist = "^3.8.0"
 typer = ">=0.21.0"
 rich = ">=13.0"
@@ -54,6 +52,9 @@ mkdocs-include-markdown-plugin = "^7.2.0"
 types-pyyaml = "^6.0.12.20250915"
 isort = "^7.0.0"
 pytest-cov = "^7.0.0"
+datamodel-code-generator = {extras = ["http", "ruff"], version = "^0.52.2"}
+jsonschema = ">=4.23.0"
+types-jsonschema = "^4.26.0.20260109"
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = ">=1.5"
@@ -90,7 +91,7 @@ markers = [
 target-version = "py310"
 line-length = 100
 src = ["src", "tests"]
-exclude = ["src/honeycomb/_generated"]  # Generated code - don't lint
+exclude = ["src/honeycomb/_generated_models.py"]  # Generated code - don't lint
 
 [tool.ruff.lint]
 select = [
@@ -125,5 +126,5 @@ disallow_any_generics = false
 warn_return_any = false
 
 [[tool.mypy.overrides]]
-module = "honeycomb._generated.*"
+module = "honeycomb._generated_models"
 ignore_errors = true

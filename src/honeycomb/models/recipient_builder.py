@@ -6,7 +6,16 @@ from typing import Any, Literal
 
 from typing_extensions import Self
 
-from .recipients import RecipientCreate, RecipientType
+from .recipients import (
+    EmailRecipient,
+    EmailRecipientDetails,
+    PagerDutyRecipient,
+    PagerDutyRecipientDetails,
+    RecipientCreate,
+    SlackRecipient,
+    SlackRecipientDetails,
+    WebhookRecipient,
+)
 
 
 class RecipientMixin:
@@ -179,7 +188,7 @@ class RecipientBuilder:
         Returns:
             RecipientCreate object.
         """
-        return RecipientCreate(type=RecipientType.EMAIL, details={"email_address": address})
+        return EmailRecipient(type="email", details=EmailRecipientDetails(email_address=address))
 
     @staticmethod
     def slack(channel: str) -> RecipientCreate:
@@ -191,7 +200,7 @@ class RecipientBuilder:
         Returns:
             RecipientCreate object.
         """
-        return RecipientCreate(type=RecipientType.SLACK, details={"slack_channel": channel})
+        return SlackRecipient(type="slack", details=SlackRecipientDetails(slack_channel=channel))
 
     @staticmethod
     def pagerduty(
@@ -207,12 +216,12 @@ class RecipientBuilder:
         Returns:
             RecipientCreate object.
         """
-        return RecipientCreate(
-            type=RecipientType.PAGERDUTY,
-            details={
-                "pagerduty_integration_key": integration_key,
-                "pagerduty_integration_name": integration_name,
-            },
+        return PagerDutyRecipient(
+            type="pagerduty",
+            details=PagerDutyRecipientDetails(
+                pagerduty_integration_key=integration_key,
+                pagerduty_integration_name=integration_name,
+            ),
         )
 
     @staticmethod
@@ -273,7 +282,7 @@ class RecipientBuilder:
             if payload_templates:
                 webhook_payloads["payload_templates"] = payload_templates
             details["webhook_payloads"] = webhook_payloads
-        return RecipientCreate(type=RecipientType.WEBHOOK, details=details)
+        return WebhookRecipient(type="webhook", details=details)
 
     @staticmethod
     def msteams(workflow_url: str, name: str = "MS Teams") -> RecipientCreate:
@@ -286,10 +295,12 @@ class RecipientBuilder:
         Returns:
             RecipientCreate object.
         """
-        return RecipientCreate(
-            type=RecipientType.MSTEAMS_WORKFLOW,
-            details={
-                "webhook_url": workflow_url,
-                "webhook_name": name,
-            },
+        from .recipients import MSTeamsWorkflowRecipient, MSTeamsWorkflowRecipientDetails
+
+        return MSTeamsWorkflowRecipient(
+            type="msteams_workflow",
+            details=MSTeamsWorkflowRecipientDetails(
+                webhook_url=workflow_url,
+                webhook_name=name,
+            ),
         )

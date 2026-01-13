@@ -3,7 +3,6 @@
 import pytest
 
 from honeycomb import (
-    SLI,
     BurnAlertBuilder,
     BurnAlertDefinition,
     BurnAlertType,
@@ -11,6 +10,7 @@ from honeycomb import (
     SLOBuilder,
     SLOBundle,
     SLOCreate,
+    SLOCreateSli,
 )
 from honeycomb.models.slos import SLO
 
@@ -442,7 +442,7 @@ class TestSLOBuilderSLI:
             .build()
         )
 
-        assert bundle.slo.sli == SLI(alias="existing_column")
+        assert bundle.slo.sli == SLOCreateSli(alias="existing_column")
         assert bundle.derived_column is None
 
     def test_sli_new_derived_column(self):
@@ -459,7 +459,7 @@ class TestSLOBuilderSLI:
             .build()
         )
 
-        assert bundle.slo.sli == SLI(alias="new_column")
+        assert bundle.slo.sli == SLOCreateSli(alias="new_column")
         assert bundle.derived_column is not None
         assert bundle.derived_column.alias == "new_column"
         assert bundle.derived_column.expression == "IF(LT($status, 400), 1, 0)"
@@ -755,7 +755,7 @@ class TestSLOModel:
             (995000, 99.5),
             (990000, 99.0),
             (999900, 99.99),
-            (1000000, 100.0),
+            (999999, 99.9999),  # max valid value per API spec
             (0, 0.0),
         ]
         for target_per_million, expected_percentage in test_cases:
@@ -771,32 +771,33 @@ class TestSLOModel:
                 f"Expected {expected_percentage} for {target_per_million}, got {slo.target_percentage}"
             )
 
-    def test_dataset_property_returns_first_dataset(self) -> None:
-        """SLO.dataset property returns the first dataset slug."""
+    def test_dataset_property_returns_all_for_multi_dataset(self) -> None:
+        """SLO.dataset returns __all__ for multi-dataset SLOs."""
         slo = SLO(
             id="test",
             name="Test",
-            dataset_slugs=["first-dataset", "second-dataset"],
+            dataset_slugs=["dataset-a", "dataset-b"],
             sli={"alias": "test"},
             target_per_million=999000,
             time_period_days=30,
         )
-        assert slo.dataset == "first-dataset"
+        assert slo.dataset == "__all__"
 
-    def test_dataset_property_returns_none_for_empty_list(self) -> None:
-        """SLO.dataset property returns None when dataset_slugs is empty."""
+    def test_dataset_property_returns_slug_for_single_dataset(self) -> None:
+        """SLO.dataset returns the slug for single-dataset SLOs."""
         slo = SLO(
             id="test",
             name="Test",
-            dataset_slugs=[],
+            dataset_slugs=["my-dataset"],
             sli={"alias": "test"},
             target_per_million=999000,
             time_period_days=30,
         )
-        assert slo.dataset is None
+        assert slo.dataset == "my-dataset"
 
-    def test_dataset_property_returns_none_when_not_set(self) -> None:
-        """SLO.dataset property returns None when dataset_slugs is None."""
+    def test_dataset_property_returns_none_when_unset(self) -> None:
+        """SLO.dataset returns None when dataset_slugs is None."""
+        # Note: Empty list is rejected by API schema (min_length=1)
         slo = SLO(
             id="test",
             name="Test",
@@ -806,3 +807,27 @@ class TestSLOModel:
             time_period_days=30,
         )
         assert slo.dataset is None
+
+    def test_datasets_property_returns_list(self) -> None:
+        """SLO.datasets returns the list of dataset slugs."""
+        slo = SLO(
+            id="test",
+            name="Test",
+            dataset_slugs=["dataset-a", "dataset-b"],
+            sli={"alias": "test"},
+            target_per_million=999000,
+            time_period_days=30,
+        )
+        assert slo.datasets == ["dataset-a", "dataset-b"]
+
+    def test_datasets_property_returns_empty_list_when_unset(self) -> None:
+        """SLO.datasets returns empty list when dataset_slugs is None."""
+        slo = SLO(
+            id="test",
+            name="Test",
+            dataset_slugs=None,
+            sli={"alias": "test"},
+            target_per_million=999000,
+            time_period_days=30,
+        )
+        assert slo.datasets == []

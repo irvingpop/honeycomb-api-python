@@ -2,90 +2,114 @@
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from collections.abc import Sequence
+from typing import Annotated
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import Field
 
-from .query_builder import FilterOp
+from honeycomb._generated_models import Board as _BoardGenerated
+from honeycomb._generated_models import (
+    BoardLayoutGeneration,
+    BoardPanelPosition,
+    BoardQueryVisualizationSettings,
+    BoardQueryVisualizationSettingsChart,
+    BoardType,
+    BoardViewFilterBoardViewFilterOperation,
+)
+from honeycomb._generated_models import BoardViewResponse as _BoardViewResponseGenerated
+from honeycomb._generated_models import CreateBoardViewRequest as _CreateBoardViewRequestGenerated
+from honeycomb._generated_models import QueryPanel as _QueryPanelGenerated
+from honeycomb._generated_models import QueryPanelQueryPanel as _QueryPanelQueryPanelGenerated
+from honeycomb._generated_models import SLOPanel as _SLOPanelGenerated
+from honeycomb._generated_models import SLOPanelSloPanel as _SLOPanelSloPanelGenerated
+from honeycomb._generated_models import TextPanel as _TextPanelGenerated
+from honeycomb._generated_models import TextPanelTextPanel as _TextPanelTextPanelGenerated
+
+# Alias the long generated enum name to something shorter
+BoardViewFilterOperation = BoardViewFilterBoardViewFilterOperation
 
 
-class BoardCreate(BaseModel):
-    """Model for creating a new board.
+# Wrapper models to handle API inconsistencies (some boards return panels without data)
+class QueryPanel(_QueryPanelGenerated):
+    """Query panel wrapper that makes query_panel optional for broken API responses."""
+
+    query_panel: _QueryPanelQueryPanelGenerated | None = None  # type: ignore[assignment]
+
+
+class SLOPanel(_SLOPanelGenerated):
+    """SLO panel wrapper that makes slo_panel optional for broken API responses."""
+
+    slo_panel: _SLOPanelSloPanelGenerated | None = None  # type: ignore[assignment]
+
+
+class TextPanel(_TextPanelGenerated):
+    """Text panel wrapper that makes text_panel optional for broken API responses."""
+
+    text_panel: _TextPanelTextPanelGenerated | None = None  # type: ignore[assignment]
+
+
+# Re-export generated types for public API
+__all__ = [
+    "Board",
+    "BoardCreate",
+    "BoardType",
+    "BoardLayoutGeneration",
+    "BoardPanelPosition",
+    "BoardQueryVisualizationSettings",
+    "BoardQueryVisualizationSettingsChart",
+    "QueryPanel",
+    "SLOPanel",
+    "TextPanel",
+    "BoardView",
+    "BoardViewCreate",
+    "BoardViewFilter",
+    "BoardViewFilterOperation",
+]
+
+
+class BoardCreate(_BoardGenerated):
+    """Board creation model.
+
+    Uses the generated Board model which has optional id/links.
+    Pydantic will exclude unset fields during serialization.
 
     The Honeycomb Board API only supports flexible boards.
 
-    Attributes:
-        name: Human-readable name (1-255 chars)
-        description: Longer description (0-1024 chars)
-        type: Board type (only "flexible" is supported)
-        panels: Array of board panels (queries, SLOs, text)
-        layout_generation: Layout mode - "auto" or "manual" (default: "manual")
-        tags: Array of tag objects (max 10 items)
-        preset_filters: Array of preset filter objects
+    Example:
+        >>> from honeycomb.models.boards import BoardCreate
+        >>> board = BoardCreate(
+        ...     name="My Board",
+        ...     description="A test board",
+        ...     panels=[...],  # QueryPanel, SLOPanel, or TextPanel objects
+        ... )
     """
 
-    name: str = Field(description="Human-readable name for the board (1-255 chars)")
-    description: str | None = Field(default=None, description="Longer description (0-1024 chars)")
-    type: str = Field(
-        default="flexible",
-        description="Board type: only 'flexible' is supported",
+    # Override to add defaults and descriptions for Claude tool schema
+    type: BoardType = Field(
+        default=BoardType.flexible,
+        description="Board type (only 'flexible' is currently supported)",
     )
-    panels: list[dict[str, Any]] | None = Field(
+    panels: (
+        list[Annotated[QueryPanel | SLOPanel | TextPanel, Field(discriminator="type")]] | None
+    ) = Field(  # type: ignore[assignment]
         default=None,
-        description="Array of board panels (queries, SLOs, text)",
-    )
-    layout_generation: Literal["auto", "manual"] = Field(
-        default="manual",
-        description="Layout mode: 'auto' or 'manual'",
-    )
-    tags: list[dict[str, str]] | None = Field(
-        default=None,
-        description="Array of tag objects (max 10)",
-    )
-    preset_filters: list[dict[str, str]] | None = Field(
-        default=None,
-        description="Array of preset filter objects",
+        description="Array of board panels (query panels, SLO panels, or text panels)",
     )
 
-    def model_dump_for_api(self) -> dict[str, Any]:
-        """Serialize for API request."""
-        data: dict[str, Any] = {
-            "name": self.name,
-            "type": self.type,
-            "layout_generation": self.layout_generation,
-        }
 
-        if self.description:
-            data["description"] = self.description
+class Board(_BoardGenerated):
+    """Honeycomb board (response model).
 
-        if self.panels:
-            data["panels"] = self.panels
-
-        if self.tags:
-            data["tags"] = self.tags
-
-        if self.preset_filters:
-            data["preset_filters"] = self.preset_filters
-
-        return data
-
-
-class Board(BaseModel):
-    """A Honeycomb board (response model)."""
-
-    id: str = Field(description="Unique identifier")
-    name: str = Field(description="Human-readable name")
-    description: str | None = Field(default=None, description="Longer description")
-    type: str = Field(default="flexible", description="Board type")
-    panels: list[dict] | None = Field(default=None, description="Board panels")
-    links: dict | None = Field(default=None, description="Board links")
-    layout_generation: str | None = Field(
-        default=None,
-        description="Layout mode: 'auto' or 'manual'",
-    )
-    tags: list[dict] | None = Field(default=None, description="Board tags")
+    Extends generated Board with convenience methods.
+    Overrides panels field to use wrapper types that handle incomplete API responses.
+    """
 
     model_config = {"extra": "allow"}
+
+    # Override panels to use wrapper types with optional nested data
+    panels: (
+        list[Annotated[QueryPanel | SLOPanel | TextPanel, Field(discriminator="type")]] | None
+    ) = None  # type: ignore[assignment]
 
 
 # =============================================================================
@@ -93,88 +117,54 @@ class Board(BaseModel):
 # =============================================================================
 
 
-class BoardViewFilter(BaseModel):
-    """Filter for board views.
+# Import generated BoardViewFilter to wrap it
+from honeycomb._generated_models import BoardViewFilter as _BoardViewFilterGenerated  # noqa: E402
 
-    Uses the same FilterOp enum as QueryBuilder for consistency.
 
-    Attributes:
-        column: Column name to filter on
-        operation: Filter operation to apply
-        value: Filter value (optional for exists/does-not-exist operations)
+class BoardViewFilter(_BoardViewFilterGenerated):
+    """Board view filter.
 
-    Example:
-        >>> BoardViewFilter(column="status", operation=FilterOp.EQUALS, value="active")
-        >>> BoardViewFilter(column="error", operation=FilterOp.EXISTS)
+    Extends generated filter with strict validation (extra="forbid").
     """
 
-    model_config = ConfigDict(extra="forbid")
-
-    column: str = Field(description="Column name to filter on")
-    operation: FilterOp = Field(description="Filter operation")
-    value: Any | None = Field(
-        default=None,
-        description="Filter value (optional for exists/does-not-exist)",
-    )
-
-    def model_dump_for_api(self) -> dict[str, Any]:
-        """Serialize for API request."""
-        data: dict[str, Any] = {
-            "column": self.column,
-            "operation": self.operation.value,
-        }
-        if self.value is not None:
-            data["value"] = self.value
-        return data
+    model_config = {"extra": "forbid"}
 
 
-class BoardViewCreate(BaseModel):
-    """Model for creating or updating a board view.
-
-    Attributes:
-        name: View name
-        filters: List of filters to apply to this view
-
-    Example:
-        >>> BoardViewCreate(
-        ...     name="Active Services",
-        ...     filters=[
-        ...         BoardViewFilter(column="status", operation=FilterOp.EQUALS, value="active")
-        ...     ]
-        ... )
-    """
-
-    name: str = Field(description="View name")
-    filters: list[BoardViewFilter] = Field(
-        default_factory=list,
-        description="List of filters",
-    )
-
-    def model_dump_for_api(self) -> dict[str, Any]:
-        """Serialize for API request."""
-        return {
-            "name": self.name,
-            "filters": [f.model_dump_for_api() for f in self.filters],
-        }
-
-
-class BoardView(BaseModel):
-    """A board view (response model).
+class BoardViewCreate(_CreateBoardViewRequestGenerated):
+    """Board view creation/update model.
 
     Board views are filtered perspectives on a board, with each board
     supporting up to 50 views maximum.
 
-    Attributes:
-        id: Unique identifier
-        name: View name
-        filters: List of filters applied to this view
+    Example:
+        >>> from honeycomb.models.boards import BoardViewCreate, BoardViewFilter, BoardViewFilterOperation
+        >>> view = BoardViewCreate(
+        ...     name="Active Services",
+        ...     filters=[
+        ...         BoardViewFilter(
+        ...             column="status",
+        ...             operation=BoardViewFilterOperation.EQUALS,
+        ...             value="active"
+        ...         )
+        ...     ]
+        ... )
     """
 
-    id: str = Field(description="Unique identifier")
-    name: str = Field(description="View name")
-    filters: list[BoardViewFilter] = Field(
+    # Override to allow empty filters (no min_length constraint) and use our wrapped type
+    filters: Sequence[BoardViewFilter] = Field(  # type: ignore[assignment]
         default_factory=list,
-        description="Filters",
+        description="The filters to apply to this view",
     )
 
+
+class BoardView(_BoardViewResponseGenerated):
+    """A board view (response model).
+
+    Board views are filtered perspectives on a board, with each board
+    supporting up to 50 views maximum.
+    """
+
     model_config = {"extra": "allow"}
+
+    # Override filters to use our wrapped BoardViewFilter type
+    filters: list[BoardViewFilter] = []  # type: ignore[assignment]

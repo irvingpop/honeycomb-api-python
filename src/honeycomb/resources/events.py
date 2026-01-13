@@ -89,7 +89,7 @@ class EventsResource(BaseResource):
             List of BatchEventResult objects indicating status for each event.
         """
         path = f"/1/batch/{dataset}"
-        payload = [event.model_dump_for_api() for event in events]
+        payload = [event.model_dump(mode="json", exclude_none=True) for event in events]
         data = await self._post_async(path, json=payload)  # type: ignore[arg-type]
 
         # Parse results
@@ -147,7 +147,7 @@ class EventsResource(BaseResource):
             raise RuntimeError("Use send_batch_async() for async mode, or pass sync=True to client")
 
         path = f"/1/batch/{dataset}"
-        payload = [event.model_dump_for_api() for event in events]
+        payload = [event.model_dump(mode="json", exclude_none=True) for event in events]
         data = self._post_sync(path, json=payload)  # type: ignore[arg-type]
 
         # Parse results

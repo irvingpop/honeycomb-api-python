@@ -5,7 +5,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlparse
 
-from ..models.environments import Environment, EnvironmentCreate, EnvironmentUpdate
+from ..models.environments import (
+    CreateEnvironmentRequest,
+    Environment,
+    EnvironmentListResponse,
+    EnvironmentResponse,
+    UpdateEnvironmentRequest,
+)
 from .base import BaseResource
 
 if TYPE_CHECKING:
@@ -34,13 +40,8 @@ class EnvironmentsResource(BaseResource):
         ...     management_secret="xxx"
         ... ) as client:
         ...     envs = await client.environments.list_async()
-        ...     env = await client.environments.create_async(
-        ...         environment=EnvironmentCreate(
-        ...             name="Production",
-        ...             description="Production environment",
-        ...             color=EnvironmentColor.RED
-        ...         )
-        ...     )
+        ...     # See models.environments for CreateEnvironmentRequest structure
+        ...     env = await client.environments.create_async(request)
 
     Example (sync):
         >>> with HoneycombClient(
@@ -62,12 +63,36 @@ class EnvironmentsResource(BaseResource):
             return self._cached_team_slug
 
         # Auto-detect from auth endpoint
-        auth_info = await self._client.auth.get_async()
-        if not hasattr(auth_info, "team_slug") or not auth_info.team_slug:
-            raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        from honeycomb.models.auth import Auth, AuthV2Response
 
-        self._cached_team_slug = auth_info.team_slug
-        return self._cached_team_slug
+        auth_info = await self._client.auth.get_async()
+
+        # Extract team slug based on auth response type
+        if isinstance(auth_info, AuthV2Response):
+            # v2 management key - extract team slug from included resources
+            if not auth_info.included:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+            team_slug = None
+            for resource in auth_info.included:
+                if resource.type == "teams":
+                    attrs = resource.attributes
+                    if hasattr(attrs, "slug") and attrs is not None:
+                        team_slug = attrs.slug
+                    elif isinstance(attrs, dict):
+                        team_slug = attrs.get("slug")
+                    break
+            if not team_slug:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        elif isinstance(auth_info, Auth):
+            # v1 API key - team slug is in nested team object
+            team_slug = auth_info.team.slug
+            if not team_slug:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        else:
+            raise ValueError("Unexpected auth response type")
+
+        self._cached_team_slug = team_slug
+        return team_slug
 
     def _get_team_slug(self) -> str:
         """Get team slug (sync), auto-detecting from auth."""
@@ -76,12 +101,36 @@ class EnvironmentsResource(BaseResource):
             return self._cached_team_slug
 
         # Auto-detect from auth endpoint
-        auth_info = self._client.auth.get()
-        if not hasattr(auth_info, "team_slug") or not auth_info.team_slug:
-            raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        from honeycomb.models.auth import Auth, AuthV2Response
 
-        self._cached_team_slug = auth_info.team_slug
-        return self._cached_team_slug
+        auth_info = self._client.auth.get()
+
+        # Extract team slug based on auth response type
+        if isinstance(auth_info, AuthV2Response):
+            # v2 management key - extract team slug from included resources
+            if not auth_info.included:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+            team_slug = None
+            for resource in auth_info.included:
+                if resource.type == "teams":
+                    attrs = resource.attributes
+                    if hasattr(attrs, "slug") and attrs is not None:
+                        team_slug = attrs.slug
+                    elif isinstance(attrs, dict):
+                        team_slug = attrs.get("slug")
+                    break
+            if not team_slug:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        elif isinstance(auth_info, Auth):
+            # v1 API key - team slug is in nested team object
+            team_slug = auth_info.team.slug
+            if not team_slug:
+                raise ValueError("Cannot auto-detect team slug from management key credentials.")
+        else:
+            raise ValueError("Unexpected auth response type")
+
+        self._cached_team_slug = team_slug
+        return team_slug
 
     def _build_path(self, team: str, env_id: str | None = None) -> str:
         """Build API path for environments."""
@@ -137,16 +186,12 @@ class EnvironmentsResource(BaseResource):
             data = await self._get_async(path, params=params)
 
             # Parse JSON:API response
-            if isinstance(data, dict) and "data" in data:
-                items = data["data"]
-                results.extend(Environment.from_jsonapi({"data": item}) for item in items)
+            response = self._parse_model(EnvironmentListResponse, data)
+            results.extend(response.data)
 
-                # Check for next page
-                next_link = data.get("links", {}).get("next")
-                cursor = self._extract_cursor(next_link)
-                if not cursor:
-                    break
-            else:
+            # Check for next page
+            cursor = self._extract_cursor(response.links.next if response.links else None)
+            if not cursor:
                 break
 
         return results
@@ -162,42 +207,145 @@ class EnvironmentsResource(BaseResource):
         """
         team = await self._get_team_slug_async()
         data = await self._get_async(self._build_path(team, env_id))
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
-    async def create_async(self, environment: EnvironmentCreate) -> Environment:
+    async def create_async(
+        self,
+        environment: CreateEnvironmentRequest | None = None,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        color: str | None = None,
+    ) -> Environment:
         """Create a new environment (async).
 
         Args:
-            environment: Environment configuration.
+            environment: Full JSON:API environment creation request (advanced usage).
+            name: Environment name (convenience parameter).
+            description: Environment description (convenience parameter).
+            color: Environment color (convenience parameter).
 
         Returns:
             Created Environment object.
+
+        Examples:
+            >>> # Simple convenience syntax
+            >>> env = await client.environments.create_async(
+            ...     name="Staging",
+            ...     description="Staging environment",
+            ...     color="blue"
+            ... )
+            >>>
+            >>> # Advanced JSON:API syntax
+            >>> env = await client.environments.create_async(
+            ...     environment=CreateEnvironmentRequest(...)
+            ... )
         """
+        from honeycomb._generated_models import (
+            CreateEnvironmentRequestData,
+            CreateEnvironmentRequestDataAttributes,
+            EnvironmentRelationshipDataType,
+        )
+
+        # Build request from convenience parameters if not provided
+        if environment is None:
+            if name is None:
+                raise ValueError("Either 'environment' or 'name' must be provided")
+
+            environment = CreateEnvironmentRequest(
+                data=CreateEnvironmentRequestData(
+                    type=EnvironmentRelationshipDataType.environments,
+                    attributes=CreateEnvironmentRequestDataAttributes(
+                        name=name,
+                        description=description,
+                        color=color,
+                    ),
+                )
+            )
+
         team = await self._get_team_slug_async()
         data = await self._post_async(
             self._build_path(team),
-            json=environment.to_jsonapi(),
+            json=environment.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
-    async def update_async(self, env_id: str, environment: EnvironmentUpdate) -> Environment:
+    async def update_async(
+        self,
+        env_id: str,
+        environment: UpdateEnvironmentRequest | None = None,
+        *,
+        description: str | None = None,
+        color: str | None = None,
+        delete_protected: bool | None = None,
+    ) -> Environment:
         """Update an existing environment (async).
 
         Args:
-            env_id: Environment ID.
-            environment: Updated environment configuration.
+            env_id: Environment ID to update.
+            environment: Full JSON:API update request (advanced usage).
+            description: New description (convenience parameter).
+            color: New color (convenience parameter).
+            delete_protected: Enable/disable delete protection (convenience parameter).
 
         Returns:
             Updated Environment object.
+
+        Examples:
+            >>> # Simple convenience syntax
+            >>> env = await client.environments.update_async(
+            ...     env_id="hcaen_123",
+            ...     description="Updated description",
+            ...     delete_protected=False
+            ... )
+            >>>
+            >>> # Advanced JSON:API syntax
+            >>> env = await client.environments.update_async(
+            ...     env_id="hcaen_123",
+            ...     environment=UpdateEnvironmentRequest(...)
+            ... )
         """
+        from honeycomb._generated_models import (
+            EnvironmentRelationshipDataType,
+            UpdateEnvironmentRequestData,
+            UpdateEnvironmentRequestDataAttributes,
+            UpdateEnvironmentRequestDataAttributesSettings,
+        )
+
+        # Build request from convenience parameters if not provided
+        if environment is None:
+            settings = None
+            if delete_protected is not None:
+                settings = UpdateEnvironmentRequestDataAttributesSettings(
+                    delete_protected=delete_protected
+                )
+
+            environment = UpdateEnvironmentRequest(
+                data=UpdateEnvironmentRequestData(
+                    id=env_id,
+                    type=EnvironmentRelationshipDataType.environments,
+                    attributes=UpdateEnvironmentRequestDataAttributes(
+                        description=description,
+                        color=color,
+                        settings=settings,
+                    ),
+                )
+            )
+        else:
+            # env_id comes from environment.data.id if using advanced syntax
+            env_id = environment.data.id
+
         team = await self._get_team_slug_async()
         data = await self._patch_async(
             self._build_path(team, env_id),
-            json=environment.to_jsonapi(env_id),
+            json=environment.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
     async def delete_async(self, env_id: str) -> None:
         """Delete an environment (async).
@@ -238,16 +386,12 @@ class EnvironmentsResource(BaseResource):
             data = self._get_sync(path, params=params)
 
             # Parse JSON:API response
-            if isinstance(data, dict) and "data" in data:
-                items = data["data"]
-                results.extend(Environment.from_jsonapi({"data": item}) for item in items)
+            response = self._parse_model(EnvironmentListResponse, data)
+            results.extend(response.data)
 
-                # Check for next page
-                next_link = data.get("links", {}).get("next")
-                cursor = self._extract_cursor(next_link)
-                if not cursor:
-                    break
-            else:
+            # Check for next page
+            cursor = self._extract_cursor(response.links.next if response.links else None)
+            if not cursor:
                 break
 
         return results
@@ -265,46 +409,124 @@ class EnvironmentsResource(BaseResource):
             raise RuntimeError("Use get_async() for async mode, or pass sync=True to client")
         team = self._get_team_slug()
         data = self._get_sync(self._build_path(team, env_id))
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
-    def create(self, environment: EnvironmentCreate) -> Environment:
+    def create(
+        self,
+        environment: CreateEnvironmentRequest | None = None,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        color: str | None = None,
+    ) -> Environment:
         """Create a new environment.
 
         Args:
-            environment: Environment configuration.
+            environment: Full JSON:API environment creation request (advanced usage).
+            name: Environment name (convenience parameter).
+            description: Environment description (convenience parameter).
+            color: Environment color (convenience parameter).
 
         Returns:
             Created Environment object.
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
+
+        from honeycomb._generated_models import (
+            CreateEnvironmentRequestData,
+            CreateEnvironmentRequestDataAttributes,
+            EnvironmentRelationshipDataType,
+        )
+
+        # Build request from convenience parameters if not provided
+        if environment is None:
+            if name is None:
+                raise ValueError("Either 'environment' or 'name' must be provided")
+
+            environment = CreateEnvironmentRequest(
+                data=CreateEnvironmentRequestData(
+                    type=EnvironmentRelationshipDataType.environments,
+                    attributes=CreateEnvironmentRequestDataAttributes(
+                        name=name,
+                        description=description,
+                        color=color,
+                    ),
+                )
+            )
+
         team = self._get_team_slug()
         data = self._post_sync(
             self._build_path(team),
-            json=environment.to_jsonapi(),
+            json=environment.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
-    def update(self, env_id: str, environment: EnvironmentUpdate) -> Environment:
+    def update(
+        self,
+        env_id: str,
+        environment: UpdateEnvironmentRequest | None = None,
+        *,
+        description: str | None = None,
+        color: str | None = None,
+        delete_protected: bool | None = None,
+    ) -> Environment:
         """Update an existing environment.
 
         Args:
-            env_id: Environment ID.
-            environment: Updated environment configuration.
+            env_id: Environment ID to update.
+            environment: Full JSON:API update request (advanced usage).
+            description: New description (convenience parameter).
+            color: New color (convenience parameter).
+            delete_protected: Enable/disable delete protection (convenience parameter).
 
         Returns:
             Updated Environment object.
         """
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
+
+        from honeycomb._generated_models import (
+            EnvironmentRelationshipDataType,
+            UpdateEnvironmentRequestData,
+            UpdateEnvironmentRequestDataAttributes,
+            UpdateEnvironmentRequestDataAttributesSettings,
+        )
+
+        # Build request from convenience parameters if not provided
+        if environment is None:
+            settings = None
+            if delete_protected is not None:
+                settings = UpdateEnvironmentRequestDataAttributesSettings(
+                    delete_protected=delete_protected
+                )
+
+            environment = UpdateEnvironmentRequest(
+                data=UpdateEnvironmentRequestData(
+                    id=env_id,
+                    type=EnvironmentRelationshipDataType.environments,
+                    attributes=UpdateEnvironmentRequestDataAttributes(
+                        description=description,
+                        color=color,
+                        settings=settings,
+                    ),
+                )
+            )
+        else:
+            # env_id comes from environment.data.id if using advanced syntax
+            env_id = environment.data.id
+
         team = self._get_team_slug()
         data = self._patch_sync(
             self._build_path(team, env_id),
-            json=environment.to_jsonapi(env_id),
+            json=environment.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        return Environment.from_jsonapi(data)
+        response = self._parse_model(EnvironmentResponse, data)
+        return response.data
 
     def delete(self, env_id: str) -> None:
         """Delete an environment.

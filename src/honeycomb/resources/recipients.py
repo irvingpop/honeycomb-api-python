@@ -22,7 +22,7 @@ class RecipientsResource(BaseResource):
         ...     recipients = await client.recipients.list()
         ...     recipient = await client.recipients.create(
         ...         recipient=RecipientCreate(
-        ...             type=RecipientType.EMAIL,
+        ...             type=RecipientType.email,
         ...             details={"email_address": "alerts@example.com"}
         ...         )
         ...     )
@@ -76,7 +76,9 @@ class RecipientsResource(BaseResource):
         Returns:
             Created Recipient object.
         """
-        data = await self._post_async(self._build_path(), json=recipient.model_dump_for_api())
+        data = await self._post_async(
+            self._build_path(), json=recipient.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(Recipient, data)
 
     async def update_async(self, recipient_id: str, recipient: RecipientCreate) -> Recipient:
@@ -90,7 +92,8 @@ class RecipientsResource(BaseResource):
             Updated Recipient object.
         """
         data = await self._put_async(
-            self._build_path(recipient_id), json=recipient.model_dump_for_api()
+            self._build_path(recipient_id),
+            json=recipient.model_dump(mode="json", exclude_none=True),
         )
         return self._parse_model(Recipient, data)
 
@@ -156,7 +159,9 @@ class RecipientsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
-        data = self._post_sync(self._build_path(), json=recipient.model_dump_for_api())
+        data = self._post_sync(
+            self._build_path(), json=recipient.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(Recipient, data)
 
     def update(self, recipient_id: str, recipient: RecipientCreate) -> Recipient:
@@ -171,7 +176,10 @@ class RecipientsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
-        data = self._put_sync(self._build_path(recipient_id), json=recipient.model_dump_for_api())
+        data = self._put_sync(
+            self._build_path(recipient_id),
+            json=recipient.model_dump(mode="json", exclude_none=True),
+        )
         return self._parse_model(Recipient, data)
 
     def delete(self, recipient_id: str) -> None:

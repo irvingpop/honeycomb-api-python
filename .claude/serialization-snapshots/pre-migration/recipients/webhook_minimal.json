@@ -1,0 +1,10 @@
+{
+  "details": {
+    "webhook_headers": null,
+    "webhook_name": "My Webhook",
+    "webhook_payloads": null,
+    "webhook_secret": null,
+    "webhook_url": "https://example.com/webhook"
+  },
+  "type": "webhook"
+}

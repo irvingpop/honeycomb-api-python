@@ -13,7 +13,6 @@ from honeycomb import (
     OrderDirection,
     QueryBuilder,
     QuerySpec,
-    TriggerQuery,
 )
 
 
@@ -27,9 +26,9 @@ class TestCalculation:
         assert calc.column is None
 
     def test_create_with_string(self):
-        """Test creating Calculation with string op."""
+        """Test creating Calculation with string op (Pydantic coerces to enum)."""
         calc = Calculation(op="P99", column="duration_ms")
-        assert calc.op == "P99"
+        assert calc.op == CalcOp.P99  # Pydantic auto-converts string → enum
         assert calc.column == "duration_ms"
 
     def test_to_dict_basic(self):
@@ -56,9 +55,9 @@ class TestFilter:
         assert filt.value == 200
 
     def test_create_with_string(self):
-        """Test creating Filter with string op."""
+        """Test creating Filter with string op (Pydantic coerces to enum)."""
         filt = Filter(column="error", op="exists", value=True)
-        assert filt.op == "exists"
+        assert filt.op == FilterOp.EXISTS  # Pydantic auto-converts string → enum
 
     def test_to_dict(self):
         """Test converting Filter to dict."""
@@ -74,16 +73,16 @@ class TestOrder:
         """Test creating Order with defaults."""
         order = Order(op=CalcOp.COUNT)
         assert order.op == CalcOp.COUNT
-        assert order.order == OrderDirection.DESCENDING
+        assert order.order == OrderDirection.descending
 
     def test_create_ascending(self):
         """Test creating ascending Order."""
-        order = Order(op=CalcOp.AVG, column="duration_ms", order=OrderDirection.ASCENDING)
-        assert order.order == OrderDirection.ASCENDING
+        order = Order(op=CalcOp.AVG, column="duration_ms", order=OrderDirection.ascending)
+        assert order.order == OrderDirection.ascending
 
     def test_to_dict(self):
         """Test converting Order to dict."""
-        order = Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)
+        order = Order(op=CalcOp.COUNT, order=OrderDirection.descending)
         d = order.to_dict()
         assert d == {"op": "COUNT", "order": "descending"}
 
@@ -263,10 +262,10 @@ class TestQueryBuilder:
 
     def test_order_by(self):
         """Test adding order."""
-        spec = QueryBuilder().order_by(CalcOp.COUNT, OrderDirection.DESCENDING).build()
+        spec = QueryBuilder().order_by(CalcOp.COUNT, OrderDirection.descending).build()
         assert len(spec.orders) == 1
         assert spec.orders[0].op == CalcOp.COUNT
-        assert spec.orders[0].order == OrderDirection.DESCENDING
+        assert spec.orders[0].order == OrderDirection.descending
 
     def test_order_by_count(self):
         """Test order_by_count shortcut."""
@@ -282,8 +281,9 @@ class TestQueryBuilder:
         """Test adding having clause."""
         spec = QueryBuilder().having(CalcOp.COUNT, FilterOp.GREATER_THAN, 100).build()
         assert len(spec.havings) == 1
-        assert spec.havings[0].calculate_op == CalcOp.COUNT
-        assert spec.havings[0].op == FilterOp.GREATER_THAN
+        # After build(), QuerySpec contains generated types with same values
+        assert spec.havings[0].calculate_op.value == "COUNT"
+        assert spec.havings[0].op.value == ">"
         assert spec.havings[0].value == 100
 
     def test_complex_query(self):
@@ -299,7 +299,7 @@ class TestQueryBuilder:
             .where_exists("error")
             .filter_with(FilterCombination.AND)
             .breakdown("service", "endpoint")
-            .order_by_count(OrderDirection.DESCENDING)
+            .order_by_count(OrderDirection.descending)
             .limit(100)
             .having(CalcOp.COUNT, FilterOp.GREATER_THAN, 10)
             .build()
@@ -315,10 +315,10 @@ class TestQueryBuilder:
         assert len(spec.havings) == 1
 
     def test_build_for_trigger(self):
-        """Test building TriggerQuery."""
+        """Test building trigger query dict."""
         trigger_query = QueryBuilder().last_30_minutes().p99("duration_ms").build_for_trigger()
-        assert isinstance(trigger_query, TriggerQuery)
-        assert trigger_query.time_range == 1800
+        assert isinstance(trigger_query, dict)
+        assert trigger_query["time_range"] == 1800
 
     def test_build_for_trigger_validates_time_range(self):
         """Test that build_for_trigger validates time range <= 3600."""
@@ -327,7 +327,7 @@ class TestQueryBuilder:
 
     def test_build_for_trigger_rejects_absolute_time(self):
         """Test that build_for_trigger rejects absolute time ranges."""
-        with pytest.raises(ValueError, match="does not support absolute time"):
+        with pytest.raises(ValueError, match="do not support absolute time"):
             QueryBuilder().absolute_time(1000, 2000).count().build_for_trigger()
 
     # -------------------------------------------------------------------------
@@ -423,78 +423,6 @@ class TestQuerySpecBuilder:
         assert spec.time_range == 3600
 
 
-class TestQuerySpecWithTypedModels:
-    """Tests for QuerySpec accepting typed models."""
-
-    def test_accept_calculation_objects(self):
-        """Test that QuerySpec accepts Calculation objects."""
-        spec = QuerySpec(
-            time_range=3600,
-            calculations=[Calculation(op=CalcOp.COUNT)],
-        )
-        assert spec.calculations[0].op == CalcOp.COUNT
-
-    def test_accept_filter_objects(self):
-        """Test that QuerySpec accepts Filter objects."""
-        spec = QuerySpec(
-            time_range=3600,
-            filters=[Filter(column="status", op=FilterOp.EQUALS, value=200)],
-        )
-        assert spec.filters[0].column == "status"
-
-    def test_accept_mixed_calculations(self):
-        """Test that QuerySpec accepts mixed Calculation objects and dicts."""
-        spec = QuerySpec(
-            time_range=3600,
-            calculations=[
-                Calculation(op=CalcOp.COUNT),
-                {"op": "P99", "column": "duration_ms"},
-            ],
-        )
-        assert len(spec.calculations) == 2
-
-    def test_model_dump_for_api_normalizes_typed_models(self):
-        """Test that model_dump_for_api normalizes typed models to dicts."""
-        spec = QuerySpec(
-            time_range=3600,
-            calculations=[Calculation(op=CalcOp.P99, column="duration_ms")],
-            filters=[Filter(column="status", op=FilterOp.GREATER_THAN_OR_EQUAL, value=500)],
-        )
-        data = spec.model_dump_for_api()
-        assert data["calculations"] == [{"op": "P99", "column": "duration_ms"}]
-        assert data["filters"] == [{"column": "status", "op": ">=", "value": 500}]
-
-    def test_model_dump_for_api_handles_dicts(self):
-        """Test that model_dump_for_api handles dicts (backward compat)."""
-        spec = QuerySpec(
-            time_range=3600,
-            calculations=[{"op": "COUNT"}],
-        )
-        data = spec.model_dump_for_api()
-        assert data["calculations"] == [{"op": "COUNT"}]
-
-
-class TestTriggerQueryWithTypedModels:
-    """Tests for TriggerQuery accepting typed models."""
-
-    def test_accept_calculation_objects(self):
-        """Test that TriggerQuery accepts Calculation objects."""
-        query = TriggerQuery(
-            time_range=900,
-            calculations=[Calculation(op=CalcOp.P99, column="duration_ms")],
-        )
-        assert query.calculations[0].op == CalcOp.P99
-
-    def test_accept_filter_objects(self):
-        """Test that TriggerQuery accepts Filter objects."""
-        query = TriggerQuery(
-            time_range=900,
-            filters=[Filter(column="error", op=FilterOp.EXISTS, value=True)],
-        )
-        assert query.filters[0].op == FilterOp.EXISTS
-
-    def test_default_calculations(self):
-        """Test that TriggerQuery has default calculations."""
-        query = TriggerQuery()
-        assert len(query.calculations) == 1
-        assert query.calculations[0].op == CalcOp.COUNT
+# Note: TriggerQuery is no longer a separate class - it's now a dict built by TriggerBuilder
+# The typed models (Calculation, Filter) are converted to dicts at build time
+# This functionality is tested in test_trigger_builder.py

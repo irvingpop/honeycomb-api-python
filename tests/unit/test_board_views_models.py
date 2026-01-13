@@ -4,40 +4,40 @@ from honeycomb.models.boards import (
     BoardView,
     BoardViewCreate,
     BoardViewFilter,
+    BoardViewFilterOperation,
 )
-from honeycomb.models.query_builder import FilterOp
 
 
-class TestFilterOp:
-    """Tests for FilterOp enum (board view operations)."""
+class TestBoardViewFilterOperation:
+    """Tests for BoardViewFilterOperation enum (board view operations)."""
 
     def test_comparison_operators(self):
         """Test comparison operator values."""
-        assert FilterOp.EQUALS.value == "="
-        assert FilterOp.NOT_EQUALS.value == "!="
-        assert FilterOp.GREATER_THAN.value == ">"
-        assert FilterOp.GREATER_THAN_OR_EQUAL.value == ">="
-        assert FilterOp.LESS_THAN.value == "<"
-        assert FilterOp.LESS_THAN_OR_EQUAL.value == "<="
+        assert BoardViewFilterOperation.EQUALS.value == "="
+        assert BoardViewFilterOperation.NOT_EQUALS.value == "!="
+        assert BoardViewFilterOperation.GREATER_THAN.value == ">"
+        assert BoardViewFilterOperation.GREATER_THAN_OR_EQUAL.value == ">="
+        assert BoardViewFilterOperation.LESS_THAN.value == "<"
+        assert BoardViewFilterOperation.LESS_THAN_OR_EQUAL.value == "<="
 
     def test_string_operators(self):
         """Test string operator values."""
-        assert FilterOp.CONTAINS.value == "contains"
-        assert FilterOp.DOES_NOT_CONTAIN.value == "does-not-contain"
-        assert FilterOp.STARTS_WITH.value == "starts-with"
-        assert FilterOp.DOES_NOT_START_WITH.value == "does-not-start-with"
-        assert FilterOp.ENDS_WITH.value == "ends-with"
-        assert FilterOp.DOES_NOT_END_WITH.value == "does-not-end-with"
+        assert BoardViewFilterOperation.CONTAINS.value == "contains"
+        assert BoardViewFilterOperation.DOES_NOT_CONTAIN.value == "does-not-contain"
+        assert BoardViewFilterOperation.STARTS_WITH.value == "starts-with"
+        assert BoardViewFilterOperation.DOES_NOT_START_WITH.value == "does-not-start-with"
+        assert BoardViewFilterOperation.ENDS_WITH.value == "ends-with"
+        assert BoardViewFilterOperation.DOES_NOT_END_WITH.value == "does-not-end-with"
 
     def test_existence_operators(self):
         """Test existence check operator values."""
-        assert FilterOp.EXISTS.value == "exists"
-        assert FilterOp.DOES_NOT_EXIST.value == "does-not-exist"
+        assert BoardViewFilterOperation.EXISTS.value == "exists"
+        assert BoardViewFilterOperation.DOES_NOT_EXIST.value == "does-not-exist"
 
     def test_set_operators(self):
         """Test set operation values."""
-        assert FilterOp.IN.value == "in"
-        assert FilterOp.NOT_IN.value == "not-in"
+        assert BoardViewFilterOperation.IN.value == "in"
+        assert BoardViewFilterOperation.NOT_IN.value == "not-in"
 
 
 class TestBoardViewFilter:
@@ -45,22 +45,26 @@ class TestBoardViewFilter:
 
     def test_filter_with_value(self):
         """Test filter with value."""
-        f = BoardViewFilter(column="status", operation=FilterOp.EQUALS, value="active")
+        f = BoardViewFilter(
+            column="status", operation=BoardViewFilterOperation.EQUALS, value="active"
+        )
         assert f.column == "status"
-        assert f.operation == FilterOp.EQUALS
+        assert f.operation == BoardViewFilterOperation.EQUALS
         assert f.value == "active"
 
     def test_filter_without_value(self):
         """Test filter without value (exists/does-not-exist)."""
-        f = BoardViewFilter(column="error", operation=FilterOp.EXISTS)
+        f = BoardViewFilter(column="error", operation=BoardViewFilterOperation.EXISTS)
         assert f.column == "error"
-        assert f.operation == FilterOp.EXISTS
+        assert f.operation == BoardViewFilterOperation.EXISTS
         assert f.value is None
 
     def test_filter_with_numeric_value(self):
         """Test filter with numeric value."""
         f = BoardViewFilter(
-            column="status_code", operation=FilterOp.GREATER_THAN_OR_EQUAL, value=400
+            column="status_code",
+            operation=BoardViewFilterOperation.GREATER_THAN_OR_EQUAL,
+            value=400,
         )
         assert f.column == "status_code"
         assert f.value == 400
@@ -69,7 +73,7 @@ class TestBoardViewFilter:
         """Test filter with list value for IN operation."""
         f = BoardViewFilter(
             column="environment",
-            operation=FilterOp.IN,
+            operation=BoardViewFilterOperation.IN,
             value=["prod", "staging"],
         )
         assert f.column == "environment"
@@ -78,25 +82,27 @@ class TestBoardViewFilter:
     def test_filter_serialization_with_value(self):
         """Test serialization with value."""
         f = BoardViewFilter(
-            column="status_code", operation=FilterOp.GREATER_THAN_OR_EQUAL, value=400
+            column="status_code",
+            operation=BoardViewFilterOperation.GREATER_THAN_OR_EQUAL,
+            value=400,
         )
-        data = f.model_dump_for_api()
+        data = f.model_dump(mode="json", exclude_none=True)
         assert data == {"column": "status_code", "operation": ">=", "value": 400}
 
     def test_filter_serialization_without_value(self):
         """Test serialization without value."""
-        f = BoardViewFilter(column="trace_id", operation=FilterOp.EXISTS)
-        data = f.model_dump_for_api()
+        f = BoardViewFilter(column="trace_id", operation=BoardViewFilterOperation.EXISTS)
+        data = f.model_dump(mode="json", exclude_none=True)
         assert data == {"column": "trace_id", "operation": "exists"}
         assert "value" not in data
 
     def test_filter_from_dict(self):
         """Test creating filter from dict."""
         f = BoardViewFilter.model_validate(
-            {"column": "status", "operation": FilterOp.EQUALS, "value": "active"}
+            {"column": "status", "operation": BoardViewFilterOperation.EQUALS, "value": "active"}
         )
         assert f.column == "status"
-        assert f.operation == FilterOp.EQUALS
+        assert f.operation == BoardViewFilterOperation.EQUALS
         assert f.value == "active"
 
 
@@ -107,7 +113,11 @@ class TestBoardViewCreate:
         """Test creating view with filters."""
         view = BoardViewCreate(
             name="Active Services",
-            filters=[BoardViewFilter(column="status", operation=FilterOp.EQUALS, value="active")],
+            filters=[
+                BoardViewFilter(
+                    column="status", operation=BoardViewFilterOperation.EQUALS, value="active"
+                )
+            ],
         )
         assert view.name == "Active Services"
         assert len(view.filters) == 1
@@ -126,12 +136,12 @@ class TestBoardViewCreate:
             filters=[
                 BoardViewFilter(
                     column="environment",
-                    operation=FilterOp.EQUALS,
+                    operation=BoardViewFilterOperation.EQUALS,
                     value="production",
                 ),
                 BoardViewFilter(
                     column="status_code",
-                    operation=FilterOp.GREATER_THAN_OR_EQUAL,
+                    operation=BoardViewFilterOperation.GREATER_THAN_OR_EQUAL,
                     value=400,
                 ),
             ],
@@ -146,12 +156,12 @@ class TestBoardViewCreate:
             filters=[
                 BoardViewFilter(
                     column="status_code",
-                    operation=FilterOp.GREATER_THAN_OR_EQUAL,
+                    operation=BoardViewFilterOperation.GREATER_THAN_OR_EQUAL,
                     value=400,
                 )
             ],
         )
-        data = view.model_dump_for_api()
+        data = view.model_dump(mode="json", exclude_none=True)
         assert data["name"] == "Error View"
         assert len(data["filters"]) == 1
         assert data["filters"][0]["column"] == "status_code"
@@ -161,7 +171,7 @@ class TestBoardViewCreate:
     def test_serialization_empty_filters(self):
         """Test serialization with empty filters."""
         view = BoardViewCreate(name="All Data", filters=[])
-        data = view.model_dump_for_api()
+        data = view.model_dump(mode="json", exclude_none=True)
         assert data["name"] == "All Data"
         assert data["filters"] == []
 
@@ -195,7 +205,11 @@ class TestBoardView:
         view = BoardView(
             id="view-789",
             name="Test View",
-            filters=[BoardViewFilter(column="status", operation=FilterOp.EQUALS, value="active")],
+            filters=[
+                BoardViewFilter(
+                    column="status", operation=BoardViewFilterOperation.EQUALS, value="active"
+                )
+            ],
         )
         data = view.model_dump(exclude={"id"}, mode="json")
         assert "id" not in data

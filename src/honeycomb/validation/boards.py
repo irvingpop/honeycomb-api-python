@@ -47,7 +47,7 @@ def generate_query_signature(panel: QueryPanelInput) -> str:
     filters_sorted = None
     if panel.filters:
         filters_sorted = sorted(
-            [f.model_dump() for f in panel.filters], key=lambda x: x.get("column", "")
+            [f.model_dump(mode="json") for f in panel.filters], key=lambda x: x.get("column", "")
         )
 
     breakdowns_sorted = None
@@ -57,17 +57,26 @@ def generate_query_signature(panel: QueryPanelInput) -> str:
     calculated_fields_sorted = None
     if panel.calculated_fields:
         calculated_fields_sorted = sorted(
-            [cf.model_dump() for cf in panel.calculated_fields], key=lambda x: x["name"]
+            [cf.model_dump(mode="json") for cf in panel.calculated_fields], key=lambda x: x["name"]
         )
 
     havings_sorted = None
     if panel.havings:
-        havings_sorted = sorted([h.model_dump() for h in panel.havings], key=str)
+        havings_sorted = sorted([h.model_dump(mode="json") for h in panel.havings], key=str)
+
+    # Convert filter_combination enum to value if needed
+    filter_combination_value = None
+    if panel.filter_combination:
+        filter_combination_value = (
+            panel.filter_combination.value
+            if hasattr(panel.filter_combination, "value")
+            else panel.filter_combination
+        )
 
     # Build signature dict with only QueryID-affecting fields
     sig = {
         "dataset": panel.dataset,
-        "calculations": [c.model_dump() for c in panel.calculations]
+        "calculations": [c.model_dump(mode="json") for c in panel.calculations]
         if panel.calculations
         else None,
         "filters": filters_sorted,
@@ -76,7 +85,7 @@ def generate_query_signature(panel: QueryPanelInput) -> str:
         "start_time": panel.start_time,
         "end_time": panel.end_time,
         "granularity": panel.granularity,
-        "filter_combination": panel.filter_combination,
+        "filter_combination": filter_combination_value,
         "havings": havings_sorted,
         "calculated_fields": calculated_fields_sorted,
     }

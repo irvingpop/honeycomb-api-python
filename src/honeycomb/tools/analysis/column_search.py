@@ -5,7 +5,9 @@ related derived columns that reference matched columns.
 """
 
 import asyncio
+import contextlib
 import re
+from datetime import datetime
 from difflib import SequenceMatcher
 from typing import TYPE_CHECKING
 
@@ -85,13 +87,19 @@ def _column_to_result(
     similarity: float,
 ) -> ColumnSearchResult:
     """Convert a Column model to ColumnSearchResult."""
+    # Parse ISO8601 timestamp if present
+    last_written_dt: datetime | None = None
+    if col.last_written:
+        with contextlib.suppress(ValueError, AttributeError):
+            last_written_dt = datetime.fromisoformat(col.last_written.replace("Z", "+00:00"))
+
     return ColumnSearchResult(
-        column=col.key_name,
+        column=col.key_name or "",  # Provide default if None
         dataset=dataset,
         type=col.type.value if col.type else "string",
         description=col.description,
         similarity=similarity,
-        last_written=format_relative_time(col.last_written),
+        last_written=format_relative_time(last_written_dt),
         is_derived=False,
         derived_expression=None,
     )
@@ -147,7 +155,8 @@ async def search_columns_async(
         datasets_to_search = [dataset]
     else:
         all_datasets = await client.datasets.list_async()
-        datasets_to_search = [d.slug for d in all_datasets]
+        # Filter out datasets without slugs
+        datasets_to_search = [d.slug for d in all_datasets if d.slug is not None]
 
     # Fetch columns and derived columns from all datasets in parallel
     async def fetch_dataset_data(
@@ -180,6 +189,9 @@ async def search_columns_async(
 
         # Score regular columns
         for col in columns:
+            # Skip columns without key_name
+            if col.key_name is None:
+                continue
             score = calculate_similarity(query, col.key_name)
             if score >= MIN_SIMILARITY_THRESHOLD:
                 all_matches.append(_column_to_result(col, ds, score))

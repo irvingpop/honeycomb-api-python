@@ -597,13 +597,20 @@
             "description": "The SLO ID to update"
           },
           "name": {
-            "description": "Human-readable name for the SLO",
+            "description": "The name of the SLO.",
+            "examples": [
+              "My SLO"
+            ],
+            "maxLength": 120,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
           "description": {
             "anyOf": [
               {
+                "maxLength": 1023,
+                "minLength": 0,
                 "type": "string"
               },
               {
@@ -611,23 +618,34 @@
               }
             ],
             "default": null,
-            "description": "Longer description",
+            "description": "A nice description of the SLO's intent and context.",
+            "examples": [
+              "SLO to ensure requests succeed and are fast"
+            ],
             "title": "Description"
           },
           "sli": {
-            "$ref": "#/$defs/SLI",
-            "description": "SLI configuration"
+            "$ref": "#/$defs/SLOCreateSli",
+            "examples": [
+              {
+                "alias": "error_sli"
+              }
+            ]
           },
           "time_period_days": {
-            "default": 30,
-            "description": "Time period for the SLO in days (1-90)",
-            "maximum": 90,
+            "description": "The time period, in days, over which the SLO will be evaluated.",
+            "examples": [
+              30
+            ],
             "minimum": 1,
             "title": "Time Period Days",
             "type": "integer"
           },
           "target_per_million": {
-            "description": "Target success rate per million (e.g., 999000 = 99.9%)",
+            "description": "The number of events out of one million (1,000,000) that you expected qualified events to succeed.",
+            "examples": [
+              990000
+            ],
             "maximum": 999999,
             "minimum": 0,
             "title": "Target Per Million",
@@ -637,8 +655,9 @@
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/$defs/TagInput"
+                  "$ref": "#/$defs/Tag"
                 },
+                "maxItems": 10,
                 "type": "array"
               },
               {
@@ -646,15 +665,40 @@
               }
             ],
             "default": null,
-            "description": "Key-value pairs for organizing SLOs (max 10 tags)",
+            "description": "A list of key-value pairs to help identify the SLO.",
+            "examples": [
+              [
+                {
+                  "key": "team",
+                  "value": "blue"
+                }
+              ]
+            ],
             "title": "Tags"
+          },
+          "reset_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The ISO8601-formatted time the SLO was last reset. The value will be `null` if the SLO has not yet been reset.",
+            "examples": [
+              "2022-011-11T09:53:04Z"
+            ],
+            "title": "Reset At"
           },
           "dataset_slugs": {
             "anyOf": [
               {
-                "items": {
-                  "type": "string"
-                },
+                "items": {},
+                "maxItems": 10,
+                "minItems": 1,
                 "type": "array"
               },
               {
@@ -662,7 +706,13 @@
               }
             ],
             "default": null,
-            "description": "Dataset slugs for multi-dataset SLOs (used with __all__ endpoint)",
+            "description": "The dataset(s) the SLO will be evaluated against. Required if using `__all__` in the path.",
+            "examples": [
+              [
+                "mydataset1",
+                "mydataset2"
+              ]
+            ],
             "title": "Dataset Slugs"
           },
           "confidence": {
@@ -716,72 +766,38 @@
           "slo_id",
           "name",
           "sli",
+          "time_period_days",
           "target_per_million"
         ],
         "$defs": {
-          "SLI": {
-            "description": "Service Level Indicator configuration.\n\nThe SLI references a derived column by alias. You can either:\n1. Reference an existing derived column: just provide alias\n2. Create a new derived column inline: provide alias + expression\n\nWhen expression is provided, a new derived column will be created automatically\nbefore the SLO is created.",
+          "SLOCreateSli": {
+            "description": "Reference to the [Calculated Field (also called Derived Column)](/api/calculated-fields/) used as the indicator of event success.",
             "properties": {
               "alias": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Alias for the derived column (existing or new)",
-                "title": "Alias"
-              },
-              "expression": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "If provided, creates a new derived column with this expression. If omitted, uses an existing derived column with the given alias.",
-                "title": "Expression"
-              },
-              "description": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Description for the new derived column (only used when expression is provided)",
-                "title": "Description"
+                "description": "The alias of the Calculated Field (also called Derived Column).",
+                "maxLength": 255,
+                "minLength": 1,
+                "title": "Alias",
+                "type": "string"
               }
             },
-            "title": "SLI",
+            "required": [
+              "alias"
+            ],
+            "title": "SLOCreateSli",
             "type": "object"
           },
-          "TagInput": {
-            "additionalProperties": false,
-            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters only (e.g., \"team\", \"servicetype\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"servicetype\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
+          "Tag": {
             "properties": {
               "key": {
-                "description": "Tag key: lowercase letters only, 1-32 chars",
+                "description": "A key to identify the tag, lowercase letters only.",
                 "maxLength": 32,
-                "minLength": 1,
-                "pattern": "^[a-z]+$",
                 "title": "Key",
                 "type": "string"
               },
               "value": {
-                "description": "Tag value: must start with lowercase letter, can contain lowercase letters, numbers, / and -, 1-128 chars",
+                "description": "A value for the tag, must begin with a lowercase letter, contain only alphanumeric characters (all letters lowercase) and special characters of `/` and `-` allowed.",
                 "maxLength": 128,
-                "minLength": 1,
-                "pattern": "^[a-z][a-z0-9/-]*$",
                 "title": "Value",
                 "type": "string"
               }
@@ -790,7 +806,7 @@
               "key",
               "value"
             ],
-            "title": "TagInput",
+            "title": "Tag",
             "type": "object"
           }
         }

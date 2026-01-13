@@ -10,7 +10,7 @@ from rich.console import Console
 
 from honeycomb.cli.config import get_client
 from honeycomb.cli.formatters import DEFAULT_OUTPUT_FORMAT, OutputFormat, output_result
-from honeycomb.models.datasets import DatasetCreate, DatasetUpdate
+from honeycomb.models.datasets import DatasetCreate, DatasetUpdate, DatasetUpdatePayloadSettings
 
 app = typer.Typer(help="Manage datasets")
 console = Console()
@@ -95,7 +95,6 @@ def create_dataset(
 @app.command("update")
 def update_dataset(
     slug: str = typer.Argument(..., help="Dataset slug"),
-    name: str | None = typer.Option(None, "--name", "-n", help="New dataset name"),
     description: str | None = typer.Option(None, "--description", "-d", help="New description"),
     delete_protected: bool | None = typer.Option(
         None, "--delete-protected/--no-delete-protected", help="Enable/disable delete protection"
@@ -108,6 +107,8 @@ def update_dataset(
     output: OutputFormat = typer.Option(DEFAULT_OUTPUT_FORMAT, "--output", "-o"),
 ) -> None:
     """Update an existing dataset.
+
+    Note: Dataset name cannot be changed after creation (use slug to identify dataset).
 
     Examples:
         hny datasets update my-dataset --description "Updated description"
@@ -125,16 +126,20 @@ def update_dataset(
             data.pop("created_at", None)
             data.pop("updated_at", None)
             update_payload = DatasetCreate.model_validate(data)
-        elif name or description is not None or delete_protected is not None:
+        elif description is not None or delete_protected is not None:
             # Use DatasetUpdate for partial updates
+            # Note: name is not updateable via API, only description and settings
+            settings = None
+            if delete_protected is not None:
+                settings = DatasetUpdatePayloadSettings(delete_protected=delete_protected)
+
             update_payload = DatasetUpdate(
-                name=name,
                 description=description,
-                delete_protected=delete_protected,
+                settings=settings,
             )
         else:
             console.print(
-                "[red]Error:[/red] Provide --name, --description, "
+                "[red]Error:[/red] Provide --description, "
                 "--delete-protected/--no-delete-protected, or --from-file",
                 style="bold",
             )

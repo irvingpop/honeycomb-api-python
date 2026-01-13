@@ -217,20 +217,17 @@ async def create_board_with_views(client: HoneycombClient, dataset: str = "integ
 async def manage_board_views(client: HoneycombClient, board_id: str) -> None:
     """List, create, get, update, and delete board views."""
     from honeycomb.models.boards import BoardViewCreate, BoardViewFilter
-    from honeycomb.models.query_builder import FilterOp
 
     # List all views
     views = await client.boards.list_views_async(board_id)
     print(f"Found {len(views)} views")
 
-    # Create a new view
+    # Create a new view (using automatic enum conversion from string)
     new_view = await client.boards.create_view_async(
         board_id,
         BoardViewCreate(
             name="Slow Requests",
-            filters=[
-                BoardViewFilter(column="duration_ms", operation=FilterOp.GREATER_THAN, value=1000)
-            ],
+            filters=[BoardViewFilter(column="duration_ms", operation=">", value=1000)],
         ),
     )
 
@@ -276,15 +273,33 @@ async def test_lifecycle(client: HoneycombClient, board_id: str, expected_name: 
     board = await client.boards.get_async(board_id)
     assert board.id == board_id
     assert board.name == expected_name
-    assert board.type == "flexible"
+    assert board.type.value == "flexible"
 
 
 # CLEANUP
 async def cleanup(client: HoneycombClient, board_id: str, dataset: str = "my-dataset") -> None:
     """Clean up resources (called even on test failure)."""
-    # Delete board
+    # Delete board first
     try:
         if board_id:
             await client.boards.delete_async(board_id)
+    except Exception:
+        pass  # Already deleted or doesn't exist
+
+    # Delete any SLOs that might be using the derived column
+    try:
+        slos = await client.slos.list_async(dataset=dataset)
+        for slo in slos:
+            if "board_sli_success" in (slo.name or "").lower() or "api availability" in (slo.name or "").lower():
+                try:
+                    await client.slos.delete_async(dataset=dataset, slo_id=slo.id)
+                except Exception:
+                    pass
+    except Exception:
+        pass
+
+    # Delete derived column created by SLO
+    try:
+        await client.derived_columns.delete_async(dataset=dataset, alias="board_sli_success")
     except Exception:
         pass  # Already deleted or doesn't exist

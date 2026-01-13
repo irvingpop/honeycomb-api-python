@@ -138,7 +138,7 @@ async def test_create_board(client: HoneycombClient, board_id: str) -> None:
     """Verify the example worked correctly."""
     board = await client.boards.get_async(board_id)
     assert board.name == "Service Overview"
-    assert board.type == "flexible"
+    assert board.type.value == "flexible"
 
 
 async def test_list_boards(boards: list[Board]) -> None:

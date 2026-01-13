@@ -40,16 +40,15 @@ TEST_CASES = [
     {
         "id": "dataset_update",
         "description": "Update dataset description",
-        "prompt": "Update dataset 'api-logs' to have name 'API Logs' and description 'Updated logs'",
+        "prompt": "Update dataset 'api-logs' with description 'Updated production logs'",
         "expected_tool": "honeycomb_update_dataset",
         "expected_params": {
             "slug": "api-logs",
-            "name": "API Logs",
-            "description": "Updated logs",
+            "description": "Updated production logs",
         },
         "assertion_checks": [
             "'slug' in params",
-            "'name' in params",
+            "'description' in params",
         ],
     },
     {

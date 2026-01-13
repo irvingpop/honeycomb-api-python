@@ -1,7 +1,23 @@
 """Pydantic models for Honeycomb API resources."""
 
-from .api_keys import ApiKey, ApiKeyCreate, ApiKeyType, ApiKeyUpdate
-from .auth import AuthInfo, AuthInfoV2
+# Import specific trigger types for advanced usage
+from honeycomb._generated_models import TriggerWithInlineQuery, TriggerWithQueryReference
+
+from .api_keys import (
+    ApiKey,
+    ApiKeyCreate,
+    ApiKeyCreateRequest,
+    ApiKeyListResponse,
+    ApiKeyObject,
+    ApiKeyObjectType,
+    ApiKeyResponse,
+    ApiKeyType,
+    ApiKeyUpdate,
+    ApiKeyUpdateRequest,
+    ConfigurationKey,
+    IngestKey,
+)
+from .auth import Auth, AuthV2Response
 from .board_builder import (
     BoardBuilder,
     BoardBundle,
@@ -18,11 +34,39 @@ from .boards import (
     BoardViewCreate,
     BoardViewFilter,
 )
-from .burn_alerts import BurnAlert, BurnAlertCreate, BurnAlertRecipient, BurnAlertType
+from .burn_alerts import (
+    AlertType,
+    BudgetRateBurnAlertDetailResponse,
+    BurnAlert,
+    BurnAlertCreate,
+    BurnAlertDetailResponse,
+    BurnAlertListResponse,
+    BurnAlertRecipient,
+    BurnAlertType,
+    CreateBudgetRateBurnAlertRequest,
+    CreateBudgetRateBurnAlertRequestSlo,
+    CreateBurnAlertRequest,
+    CreateExhaustionTimeBurnAlertRequest,
+    CreateExhaustionTimeBurnAlertRequestSlo,
+    ExhaustionTime1,
+    NotificationRecipient,
+    UpdateBudgetRateBurnAlert,
+    UpdateBurnAlertRequest,
+    UpdateExhaustionTimeBurnAlertRequest,
+)
 from .columns import Column, ColumnCreate, ColumnType
 from .datasets import Dataset, DatasetCreate, DatasetUpdate
 from .derived_columns import DerivedColumn, DerivedColumnBuilder, DerivedColumnCreate
-from .environments import Environment, EnvironmentColor, EnvironmentCreate, EnvironmentUpdate
+from .environments import (
+    CreateEnvironmentRequest,
+    Environment,
+    EnvironmentColor,
+    EnvironmentCreate,
+    EnvironmentListResponse,
+    EnvironmentResponse,
+    EnvironmentUpdate,
+    UpdateEnvironmentRequest,
+)
 from .events import BatchEvent, BatchEventResult
 from .marker_builder import MarkerBuilder
 from .markers import Marker, MarkerCreate, MarkerSetting, MarkerSettingCreate
@@ -41,19 +85,26 @@ from .query_builder import (
 )
 from .recipient_builder import RecipientBuilder, RecipientMixin
 from .recipients import (
+    EmailRecipient,
     EmailRecipientDetails,
+    MSTeamsRecipient,
     MSTeamsRecipientDetails,
+    MSTeamsWorkflowRecipient,
     MSTeamsWorkflowRecipientDetails,
+    PagerDutyRecipient,
     PagerDutyRecipientDetails,
     Recipient,
     RecipientCreate,
     RecipientType,
+    SlackRecipient,
     SlackRecipientDetails,
     WebhookHeader,
     WebhookPayloads,
     WebhookPayloadTemplate,
+    WebhookRecipient,
     WebhookRecipientDetails,
     WebhookTemplateVariable,
+    get_recipient_class,
 )
 from .service_map_dependencies import (
     ServiceMapDependency,
@@ -65,14 +116,14 @@ from .service_map_dependencies import (
     ServiceMapNodeType,
 )
 from .slo_builder import BurnAlertBuilder, BurnAlertDefinition, SLIDefinition, SLOBuilder, SLOBundle
-from .slos import SLI, SLO, SLOCreate
+from .slos import SLO, SLOCreate, SLOCreateSli
 from .tags_mixin import TagsMixin
+from .tool_inputs import TriggerToolInput
 from .trigger_builder import TriggerBuilder, TriggerBundle
 from .triggers import (
     Trigger,
     TriggerAlertType,
     TriggerCreate,
-    TriggerQuery,
     TriggerThreshold,
     TriggerThresholdOp,
 )
@@ -90,17 +141,19 @@ __all__ = [
     "QueryBuilder",
     # Triggers
     "Trigger",
-    "TriggerCreate",
+    "TriggerCreate",  # Union type: TriggerWithInlineQuery | TriggerWithQueryReference
+    "TriggerWithInlineQuery",  # Specific type for inline queries (from builder)
+    "TriggerWithQueryReference",  # Specific type for query references
     "TriggerThreshold",
     "TriggerThresholdOp",
     "TriggerAlertType",
-    "TriggerQuery",
+    "TriggerToolInput",  # Tool input model with proper validation
     "TriggerBuilder",
     "TriggerBundle",
     # SLOs
     "SLO",
     "SLOCreate",
-    "SLI",
+    "SLOCreateSli",
     "SLOBuilder",
     "SLOBundle",
     "SLIDefinition",
@@ -152,39 +205,72 @@ __all__ = [
     "RecipientType",
     "RecipientBuilder",
     "RecipientMixin",
+    "get_recipient_class",
+    "EmailRecipient",
     "EmailRecipientDetails",
+    "SlackRecipient",
     "SlackRecipientDetails",
+    "PagerDutyRecipient",
     "PagerDutyRecipientDetails",
+    "WebhookRecipient",
     "WebhookRecipientDetails",
     "WebhookHeader",
     "WebhookPayloads",
     "WebhookPayloadTemplate",
     "WebhookTemplateVariable",
+    "MSTeamsRecipient",
     "MSTeamsRecipientDetails",
+    "MSTeamsWorkflowRecipient",
     "MSTeamsWorkflowRecipientDetails",
     # Tags
     "TagsMixin",
     # Burn Alerts
+    "AlertType",
+    "BudgetRateBurnAlertDetailResponse",
     "BurnAlert",
     "BurnAlertCreate",
+    "BurnAlertDetailResponse",
+    "BurnAlertListResponse",
     "BurnAlertRecipient",
     "BurnAlertType",
+    "CreateBudgetRateBurnAlertRequest",
+    "CreateBudgetRateBurnAlertRequestSlo",
+    "CreateBurnAlertRequest",
+    "CreateExhaustionTimeBurnAlertRequest",
+    "CreateExhaustionTimeBurnAlertRequestSlo",
+    "ExhaustionTime1",
+    "NotificationRecipient",
+    "UpdateBudgetRateBurnAlert",
+    "UpdateBurnAlertRequest",
+    "UpdateExhaustionTimeBurnAlertRequest",
     # Events
     "BatchEvent",
     "BatchEventResult",
     # API Keys (v2)
     "ApiKey",
     "ApiKeyCreate",
+    "ApiKeyCreateRequest",
+    "ApiKeyListResponse",
+    "ApiKeyObject",
+    "ApiKeyObjectType",
+    "ApiKeyResponse",
     "ApiKeyType",
     "ApiKeyUpdate",
+    "ApiKeyUpdateRequest",
+    "ConfigurationKey",
+    "IngestKey",
     # Auth
-    "AuthInfo",
-    "AuthInfoV2",
+    "Auth",
+    "AuthV2Response",
     # Environments (v2)
+    "CreateEnvironmentRequest",
     "Environment",
+    "EnvironmentColor",
     "EnvironmentCreate",
     "EnvironmentUpdate",
-    "EnvironmentColor",
+    "EnvironmentListResponse",
+    "EnvironmentResponse",
+    "UpdateEnvironmentRequest",
     # Service Map Dependencies
     "ServiceMapDependency",
     "ServiceMapDependencyRequest",

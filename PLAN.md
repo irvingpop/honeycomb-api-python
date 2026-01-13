@@ -23,7 +23,7 @@
 
 ## Overview
 
-Build a clean, ergonomic, and maintainable Python client for the Honeycomb.io API using `openapi-python-client` as the generation foundation, with a hand-crafted ergonomic wrapper layer.
+Build a clean, ergonomic, and maintainable Python client for the Honeycomb.io API using `datamodel-code-generator` for Pydantic model generation, with a hand-crafted ergonomic wrapper layer.
 
 **API Scope:** 89 operations, ~70+ schemas across these resource groups:
 - Auth, Boards, Burn Alerts, Calculated Fields, Columns

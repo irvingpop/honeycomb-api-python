@@ -5,16 +5,15 @@ import respx
 from httpx import Response
 
 from honeycomb import (
-    SLI,
     CalcOp,
     Calculation,
     HoneycombClient,
     QuerySpec,
     SLOCreate,
-    TriggerCreate,
-    TriggerQuery,
+    SLOCreateSli,
     TriggerThreshold,
     TriggerThresholdOp,
+    TriggerWithInlineQuery,
 )
 
 
@@ -91,7 +90,7 @@ class TestQuickstartExamples:
 
             trigger = await client.triggers.create_async(
                 "my-dataset",
-                TriggerCreate(
+                TriggerWithInlineQuery(
                     name="High Error Rate",
                     description="Alert when error rate exceeds 5%",
                     threshold=TriggerThreshold(
@@ -99,10 +98,10 @@ class TestQuickstartExamples:
                         value=0.05,
                     ),
                     frequency=300,
-                    query=TriggerQuery(
-                        time_range=900,
-                        calculations=[Calculation(op=CalcOp.AVG, column="error_rate")],
-                    ),
+                    query={
+                        "time_range": 900,
+                        "calculations": [Calculation(op=CalcOp.AVG, column="error_rate")],
+                    },
                 ),
             )
             assert trigger.id == "trigger-123"
@@ -134,8 +133,8 @@ class TestQuickstartExamples:
                 json={
                     "data": {
                         "results": [
-                            {"endpoint": "/api/users", "duration_ms": 125.5},
-                            {"endpoint": "/api/orders", "duration_ms": 89.3},
+                            {"data": {"endpoint": "/api/users", "duration_ms": 125.5}},
+                            {"data": {"endpoint": "/api/orders", "duration_ms": 89.3}},
                         ],
                         "series": [],
                     }
@@ -192,7 +191,7 @@ class TestQuickstartExamples:
                 SLOCreate(
                     name="API Availability",
                     description="99.9% uptime target",
-                    sli=SLI(alias="api-availability"),
+                    sli=SLOCreateSli(alias="api-availability"),
                     time_period_days=30,
                     target_per_million=999000,
                 ),

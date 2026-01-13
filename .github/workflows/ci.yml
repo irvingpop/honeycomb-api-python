@@ -39,5 +39,8 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
+      - name: Check generated models sync
+        run: make check-models-sync
+
       - name: Run CI checks
         run: make ci

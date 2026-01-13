@@ -2,45 +2,36 @@
 
 from __future__ import annotations
 
-from datetime import datetime
-from typing import Any
-
 from pydantic import BaseModel, Field
 from typing_extensions import Self
 
+from honeycomb._generated_models import CalculatedField as _CalculatedFieldGenerated
+from honeycomb._generated_models import CalculatedFieldList
 
-class DerivedColumnCreate(BaseModel):
-    """Model for creating a derived column (calculated field).
 
-    Derived columns (also called Calculated Fields) allow you to run queries
-    based on the value of an expression that is calculated from the fields in an event.
+# Response model - extends generated
+class DerivedColumn(_CalculatedFieldGenerated):
+    """A derived column (calculated field) response model.
+
+    Extends generated CalculatedField.
     """
 
-    alias: str = Field(description="Name of the derived column")
+    pass
+
+
+# For creates, we need a simpler model without id/timestamps
+class DerivedColumnCreate(BaseModel):
+    """Model for creating a derived column."""
+
+    alias: str = Field(description="Name of the derived column", max_length=255)
     expression: str = Field(
         description="Expression to calculate the value. See https://docs.honeycomb.io/reference/derived-column-formula/"
     )
     description: str | None = Field(default=None, description="Human-readable description")
 
-    def model_dump_for_api(self) -> dict[str, Any]:
-        """Serialize for API request."""
-        data = {"alias": self.alias, "expression": self.expression}
-        if self.description:
-            data["description"] = self.description
-        return data
 
-
-class DerivedColumn(BaseModel):
-    """A derived column (calculated field) response model."""
-
-    id: str = Field(description="Unique identifier")
-    alias: str = Field(description="Name of the derived column")
-    expression: str = Field(description="Expression to calculate the value")
-    description: str | None = Field(default=None, description="Human-readable description")
-    created_at: datetime | None = Field(default=None, description="Creation timestamp")
-    updated_at: datetime | None = Field(default=None, description="Last update timestamp")
-
-    model_config = {"extra": "allow"}
+# List response
+DerivedColumnList = CalculatedFieldList
 
 
 class DerivedColumnBuilder:

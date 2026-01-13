@@ -21,8 +21,8 @@ async def get_auth_info_basic(client: HoneycombClient):
     """
     auth_info = await client.auth.get_async()
 
-    print(f"Team: {auth_info.team_name}")
-    print(f"Environment: {auth_info.environment_name}")
+    print(f"Team: {auth_info.team.name}")
+    print(f"Environment: {auth_info.environment.name}")
     print(f"Key Type: {auth_info.type}")
     return auth_info
 
@@ -41,9 +41,13 @@ async def get_auth_info_management(client: HoneycombClient):
         AuthInfoV2 object with scopes and team details
     """
     auth_info = await client.auth.get_async()  # Auto-detects v2
-    print(f"Key Name: {auth_info.name}")
-    print(f"Scopes: {auth_info.scopes}")
-    print(f"Team: {auth_info.team_name}")
+    print(f"Key Name: {auth_info.data.attributes.name}")
+    print(f"Scopes: {auth_info.data.attributes.scopes}")
+    # Team info is in included resources (JSON:API format)
+    if auth_info.included:
+        for resource in auth_info.included:
+            if resource.type == "teams":
+                print(f"Team: {resource.attributes.get('name')}")
     return auth_info
 
 
@@ -87,14 +91,14 @@ async def get_auth_explicit_v1(client: HoneycombClient):
 # TEST_ASSERTIONS
 async def test_basic_usage(auth_info) -> None:
     """Verify basic usage example worked correctly."""
-    assert auth_info.team_name is not None
-    assert auth_info.environment_name is not None
-    assert auth_info.type in ("configuration", "ingest")
+    assert auth_info.team.name is not None
+    assert auth_info.environment.name is not None
+    assert auth_info.type.value in ("configuration", "ingest")
 
 
 async def test_management_key(auth_info) -> None:
     """Verify management key example worked correctly."""
-    assert auth_info.name is not None
-    assert auth_info.key_type == "management"
-    assert isinstance(auth_info.scopes, list)
-    assert auth_info.team_name is not None
+    assert auth_info.data.attributes.name is not None
+    # key_type is an enum, so check the value
+    assert auth_info.data.attributes.key_type.value == "management"
+    assert isinstance(auth_info.data.attributes.scopes, list)

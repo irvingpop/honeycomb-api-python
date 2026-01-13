@@ -143,6 +143,8 @@ class TestSearchColumnsExecution:
                         "alias": "is_error",
                         "expression": "GTE($status_code, 400)",
                         "description": "Request had error status",
+                        "created_at": "2024-01-01T00:00:00Z",
+                        "updated_at": "2024-01-01T00:00:00Z",
                     }
                 ],
             )
@@ -180,6 +182,8 @@ class TestSearchColumnsExecution:
                         "alias": "is_slow",
                         "expression": "GT($duration_ms, 1000)",
                         "description": "Request took >1s",
+                        "created_at": "2024-01-01T00:00:00Z",
+                        "updated_at": "2024-01-01T00:00:00Z",
                     }
                 ],
             )
@@ -396,6 +400,8 @@ class TestEnvironmentSummaryExecution:
                         "alias": "sli.availability",
                         "expression": "LT($http.status_code, 500)",
                         "description": "Request succeeded",
+                        "created_at": "2024-01-01T00:00:00Z",
+                        "updated_at": "2024-01-01T00:00:00Z",
                     }
                 ],
             )

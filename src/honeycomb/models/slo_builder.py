@@ -5,9 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
+from honeycomb._generated_models import SLOCreateSli
 from honeycomb.models.burn_alerts import BurnAlertType
 from honeycomb.models.recipient_builder import RecipientMixin
-from honeycomb.models.slos import SLI, SLOCreate
+from honeycomb.models.slos import SLOCreate
 from honeycomb.validation.slos import validate_slo_target_percentage, validate_slo_time_period
 
 if TYPE_CHECKING:
@@ -456,7 +457,7 @@ class SLOBuilder:
         slo = SLOCreate(
             name=self._name,
             description=self._description,
-            sli=SLI(alias=self._sli.alias),
+            sli=SLOCreateSli(alias=self._sli.alias),
             time_period_days=self._time_period_days,
             target_per_million=self._target_per_million,
             tags=self._tags if self._tags else None,

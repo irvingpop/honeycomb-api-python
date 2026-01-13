@@ -135,7 +135,7 @@ class TestQueryResultsResourceAsync:
                 200,
                 json={
                     "data": {
-                        "results": [{"count": 100}],
+                        "results": [{"data": {"count": 100}}],
                         "series": [],
                     },
                     "links": None,
@@ -171,7 +171,7 @@ class TestQueryResultsResourceAsync:
                     200,
                     json={
                         "data": {
-                            "results": [{"count": 42}],
+                            "results": [{"data": {"count": 42}}],
                             "series": [],
                         }
                     },
@@ -245,7 +245,7 @@ class TestQueryResultsResourceAsync:
                 200,
                 json={
                     "data": {
-                        "results": [{"count": 999}],
+                        "results": [{"data": {"count": 999}}],
                         "series": [],
                     }
                 },
@@ -292,7 +292,7 @@ class TestQueryResultsResourceSync:
                 200,
                 json={
                     "data": {
-                        "results": [{"metric": "value"}],
+                        "results": [{"data": {"metric": "value"}}],
                         "series": [],
                     }
                 },
@@ -337,7 +337,7 @@ class TestQueryResultsResourceSync:
                 200,
                 json={
                     "data": {
-                        "results": [{"total": 555}],
+                        "results": [{"data": {"total": 555}}],
                         "series": [],
                     }
                 },
@@ -367,7 +367,7 @@ class TestQuerySpec:
             breakdowns=["endpoint"],
         )
 
-        data = spec.model_dump_for_api()
+        data = spec.model_dump(mode="json", exclude_none=True)
 
         assert data["time_range"] == 3600
         assert data["granularity"] == 60
@@ -378,7 +378,7 @@ class TestQuerySpec:
     def test_model_dump_excludes_none(self):
         """Test that None values are excluded."""
         spec = QuerySpec(time_range=1800)
-        data = spec.model_dump_for_api()
+        data = spec.model_dump(mode="json", exclude_none=True)
 
         assert "time_range" in data
         assert "granularity" not in data
@@ -393,7 +393,7 @@ class TestQuerySpec:
                 {"name": "is_error", "expression": "IF(GTE($status_code, 500), 1, 0)"}
             ],
         )
-        data = spec.model_dump_for_api()
+        data = spec.model_dump(mode="json", exclude_none=True)
 
         assert "calculated_fields" in data
         assert len(data["calculated_fields"]) == 1
@@ -407,7 +407,7 @@ class TestQuerySpec:
             calculations=[{"op": "COUNT"}],
             compare_time_offset_seconds=3600,
         )
-        data = spec.model_dump_for_api()
+        data = spec.model_dump(mode="json", exclude_none=True)
 
         assert "compare_time_offset_seconds" in data
         assert data["compare_time_offset_seconds"] == 3600
@@ -451,9 +451,11 @@ class TestQuerySpec:
 
     def test_compare_time_offset_validation_invalid_values(self):
         """Test that invalid compare_time_offset_seconds values raise error."""
+        from pydantic import ValidationError
+
         invalid_offsets = [0, 100, 1799, 1801, 3601, 99999, -3600]
         for offset in invalid_offsets:
-            with pytest.raises(ValueError, match="Invalid compare_time_offset_seconds"):
+            with pytest.raises(ValidationError, match="compare_time_offset_seconds"):
                 QuerySpec(
                     time_range=3600,
                     calculations=[{"op": "COUNT"}],

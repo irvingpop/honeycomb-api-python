@@ -5,6 +5,8 @@ including semantic groups detection and custom column extraction.
 """
 
 import asyncio
+import contextlib
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 from honeycomb.tools.analysis.models import (
@@ -69,23 +71,36 @@ async def get_environment_summary_async(
     # Fetch columns and derived columns for each dataset in parallel
     async def fetch_dataset_summary(dataset: "Dataset") -> DatasetSummary | None:
         try:
+            # Skip if dataset slug is missing
+            if not dataset.slug:
+                return None
+
             columns_coro = client.columns.list_async(dataset=dataset.slug)
             derived_coro = client.derived_columns.list_async(dataset=dataset.slug)
             columns, derived_cols = await asyncio.gather(columns_coro, derived_coro)
 
-            column_names = [c.key_name for c in columns]
+            # Filter out None key_names from columns
+            column_names = [c.key_name for c in columns if c.key_name is not None]
             semantic_groups = detect_semantic_groups(column_names)
 
             custom_cols: list[str] = []
             if include_sample_columns:
                 custom_cols = extract_custom_columns(column_names, sample_column_count)
 
+            # Parse ISO8601 timestamp if present
+            last_written_dt: datetime | None = None
+            if dataset.last_written_at:
+                with contextlib.suppress(ValueError):
+                    last_written_dt = datetime.fromisoformat(
+                        dataset.last_written_at.replace("Z", "+00:00")
+                    )
+
             return DatasetSummary(
                 name=dataset.slug,
                 description=dataset.description,
                 column_count=len(columns),
                 derived_column_count=len(derived_cols),
-                last_written=format_relative_time(dataset.last_written_at),
+                last_written=format_relative_time(last_written_dt),
                 semantic_groups=semantic_groups,
                 custom_columns=custom_cols,
             )

@@ -256,7 +256,7 @@ async def ensure_slo(
     """
     import asyncio
 
-    from honeycomb import SLI, SLOCreate
+    from honeycomb import SLOCreate, SLOCreateSli
 
     slo_name = "Test SLO for Integration Tests"
 
@@ -275,7 +275,7 @@ async def ensure_slo(
         SLOCreate(
             name=slo_name,
             description="Test SLO for integration testing",
-            sli=SLI(alias=ensure_sli),
+            sli=SLOCreateSli(alias=ensure_sli),
             time_period_days=7,
             target_per_million=990000,  # 99%
         ),
@@ -334,13 +334,13 @@ async def ensure_recipient(client: HoneycombClient) -> str:
     Returns:
         The recipient ID
     """
-    from honeycomb import RecipientCreate, RecipientType
+    from honeycomb import EmailRecipient
 
     # Check if recipient already exists
     try:
         existing = await client.recipients.list_async()
         for recipient in existing:
-            if recipient.type == RecipientType.EMAIL:
+            if recipient.type == "email":
                 # Use any existing email recipient
                 return recipient.id
     except Exception:
@@ -348,8 +348,8 @@ async def ensure_recipient(client: HoneycombClient) -> str:
 
     # Create a new email recipient
     recipient = await client.recipients.create_async(
-        RecipientCreate(
-            type=RecipientType.EMAIL,
+        EmailRecipient(
+            type="email",
             details={"email_address": "test-integration@example.com"},
         )
     )

@@ -4,14 +4,11 @@ import pytest
 
 from honeycomb import (
     CalcOp,
-    Calculation,
     TriggerAlertType,
     TriggerBuilder,
     TriggerBundle,
-    TriggerCreate,
-    TriggerQuery,
-    TriggerThreshold,
     TriggerThresholdOp,
+    TriggerWithInlineQuery,
 )
 
 
@@ -22,7 +19,7 @@ class TestTriggerBuilderBasics:
         """Test building minimal trigger with defaults."""
         bundle = TriggerBuilder("Test Trigger").last_30_minutes().count().threshold_gt(100).build()
         assert isinstance(bundle, TriggerBundle)
-        assert isinstance(bundle.trigger, TriggerCreate)
+        assert isinstance(bundle.trigger, TriggerWithInlineQuery)
         assert bundle.trigger.name == "Test Trigger"
         assert bundle.trigger.threshold.op == TriggerThresholdOp.GREATER_THAN
         assert bundle.trigger.threshold.value == 100.0
@@ -191,13 +188,15 @@ class TestTriggerBuilderFrequency:
             TriggerBuilder("Test").frequency(100000)
 
     def test_frequency_not_multiple_of_60_raises_error(self):
-        """Test that frequency not divisible by 60 raises error."""
-        with pytest.raises(ValueError, match="must be a multiple of 60"):
-            TriggerCreate(
-                name="Test",
-                threshold=TriggerThreshold(op=TriggerThresholdOp.GREATER_THAN, value=100),
-                frequency=61,  # Invalid - not multiple of 60
-                query=TriggerQuery(time_range=900),
+        """Test that frequency not divisible by 60 raises error in builder."""
+        with pytest.raises(ValueError, match="must be"):
+            # Validation happens in Builder, not direct model instantiation
+            (
+                TriggerBuilder("Test")
+                .count()
+                .threshold_gt(100)
+                .frequency(61)  # Invalid - not multiple of 60
+                .build()
             )
 
 
@@ -207,7 +206,7 @@ class TestTriggerBuilderAlertBehavior:
     def test_alert_on_change_default(self):
         """Test alert on change (default)."""
         bundle = TriggerBuilder("Test").last_30_minutes().count().threshold_gt(100).build()
-        assert bundle.trigger.alert_type == TriggerAlertType.ON_CHANGE
+        assert bundle.trigger.alert_type == TriggerAlertType.on_change
 
     def test_alert_on_change_explicit(self):
         """Test explicit alert on change."""
@@ -219,7 +218,7 @@ class TestTriggerBuilderAlertBehavior:
             .alert_on_change()
             .build()
         )
-        assert bundle.trigger.alert_type == TriggerAlertType.ON_CHANGE
+        assert bundle.trigger.alert_type == TriggerAlertType.on_change
 
     def test_alert_on_true(self):
         """Test alert on true."""
@@ -231,7 +230,7 @@ class TestTriggerBuilderAlertBehavior:
             .alert_on_true()
             .build()
         )
-        assert bundle.trigger.alert_type == TriggerAlertType.ON_TRUE
+        assert bundle.trigger.alert_type == TriggerAlertType.on_true
 
     def test_disabled_default(self):
         """Test trigger enabled by default."""
@@ -273,16 +272,16 @@ class TestTriggerBuilderQueryIntegration:
             .threshold_gt(100)
             .build()
         )
-        assert len(bundle.trigger.query.filters) == 2
-        assert bundle.trigger.query.breakdowns == ["endpoint"]
+        assert len(bundle.trigger.query["filters"]) == 2
+        assert bundle.trigger.query["breakdowns"] == ["endpoint"]
 
     def test_single_calculation_allowed(self):
         """Test that single calculation is allowed."""
         bundle = (
             TriggerBuilder("Test").last_30_minutes().p99("duration_ms").threshold_gt(500).build()
         )
-        assert len(bundle.trigger.query.calculations) == 1
-        assert bundle.trigger.query.calculations[0].op == CalcOp.P99
+        assert len(bundle.trigger.query["calculations"]) == 1
+        assert bundle.trigger.query["calculations"][0]["op"] == CalcOp.P99.value
 
     def test_multiple_calculations_raise_error(self):
         """Test that multiple calculations raise error in builder."""
@@ -296,21 +295,22 @@ class TestTriggerBuilderQueryIntegration:
                 .build()
             )
 
-    def test_multiple_calculations_rejected_by_model(self):
-        """Test that TriggerQuery model validates single calculation."""
-        with pytest.raises(ValueError, match="only a single calculation"):
-            TriggerQuery(
-                time_range=900,
-                calculations=[
-                    Calculation(op=CalcOp.COUNT),
-                    Calculation(op=CalcOp.P99, column="duration_ms"),
-                ],
+    def test_multiple_calculations_rejected_by_builder(self):
+        """Test that builder rejects multiple calculations for triggers."""
+        with pytest.raises(ValueError, match="can only have one calculation"):
+            (
+                TriggerBuilder("Test")
+                .last_30_minutes()
+                .count()
+                .p99("duration_ms")  # Second calculation - not allowed
+                .threshold_gt(100)
+                .build()
             )
 
     def test_time_range_within_limit(self):
         """Test that time range <= 3600 is allowed."""
         bundle = TriggerBuilder("Test").time_range(3600).count().threshold_gt(100).build()
-        assert bundle.trigger.query.time_range == 3600
+        assert bundle.trigger.query["time_range"] == 3600
 
     def test_time_range_exceeds_limit_raises_error(self):
         """Test that time range > 3600 raises error."""
@@ -426,7 +426,7 @@ class TestTriggerBuilderRecipients:
             .build()
         )
         assert len(bundle.trigger.recipients) == 1
-        assert bundle.trigger.recipients[0]["id"] == "recipient-123"
+        assert bundle.trigger.recipients[0].id == "recipient-123"
 
     def test_multiple_recipients(self):
         """Test adding multiple recipients."""
@@ -472,11 +472,11 @@ class TestTriggerBuilderComplexScenarios:
         )
         assert bundle.trigger.name == "High Error Rate"
         assert bundle.trigger.description == "Alert when error rate is high"
-        assert bundle.trigger.query.time_range == 1200
+        assert bundle.trigger.query["time_range"] == 1200
         assert bundle.trigger.threshold.value == 100.0
         assert bundle.trigger.threshold.exceeded_limit == 3
         assert bundle.trigger.frequency == 300
-        assert bundle.trigger.alert_type == TriggerAlertType.ON_TRUE
+        assert bundle.trigger.alert_type == TriggerAlertType.on_true
         assert len(bundle.inline_recipients) == 3
 
     def test_p99_latency_trigger(self):
@@ -492,8 +492,8 @@ class TestTriggerBuilderComplexScenarios:
             .email("oncall@example.com")
             .build()
         )
-        assert bundle.trigger.query.calculations[0].op == CalcOp.P99
-        assert bundle.trigger.query.calculations[0].column == "duration_ms"
+        assert bundle.trigger.query["calculations"][0]["op"] == CalcOp.P99.value
+        assert bundle.trigger.query["calculations"][0]["column"] == "duration_ms"
         assert bundle.trigger.frequency == 120
 
     def test_error_rate_trigger(self):
@@ -509,7 +509,7 @@ class TestTriggerBuilderComplexScenarios:
             .pagerduty("routing-key", severity="critical")
             .build()
         )
-        assert bundle.trigger.query.filters[0].column == "status"
+        assert bundle.trigger.query["filters"][0]["column"] == "status"
         assert bundle.trigger.threshold.op == TriggerThresholdOp.GREATER_THAN
 
     def test_method_chaining(self):
@@ -774,14 +774,14 @@ class TestTriggerBuilderValidationConstraints:
             .every_15_minutes()  # 900s: 3600 == 900 * 4 (OK)
             .build()
         )
-        assert bundle.trigger.query.time_range == 3600
+        assert bundle.trigger.query["time_range"] == 3600
         assert bundle.trigger.frequency == 900
 
     def test_default_frequency_with_default_duration(self):
         """Test default frequency (900s) works with default duration (3600s)."""
         # Default: 1 hour (3600s) with 15 min frequency (900s): 3600 <= 900 * 4 = 3600 (OK)
         bundle = TriggerBuilder("Test").count().threshold_gt(100).build()
-        assert bundle.trigger.query.time_range == 3600
+        assert bundle.trigger.query["time_range"] == 3600
         assert bundle.trigger.frequency == 900
 
 

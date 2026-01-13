@@ -17,6 +17,10 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import Self
 
+from honeycomb._generated_models import (
+    BaseTriggerBaselineDetails,
+    BaseTriggerEvaluationSchedule,
+)
 from honeycomb.models.query_builder import (
     Calculation,
     Filter,
@@ -383,7 +387,7 @@ class TriggerQueryInput(BaseModel):
     Triggers support a subset of query features:
     - Single calculation only (min/max enforced by field validator)
     - No HEATMAP calculations
-    - No orders or limit fields (not present in this model)
+    - No orders, limit, or granularity fields (not supported by Honeycomb API)
     - Relative time ranges only (no absolute start/end times)
     - Maximum time range of 3600 seconds (1 hour)
     """
@@ -401,7 +405,6 @@ class TriggerQueryInput(BaseModel):
     filter_combination: FilterCombination | None = Field(
         default=None, description="How to combine filters (AND or OR)"
     )
-    granularity: int | None = Field(default=None, description="Time granularity in seconds")
 
     @model_validator(mode="after")
     def validate_trigger_query_constraints(self) -> Self:
@@ -466,6 +469,20 @@ class TriggerToolInput(BaseModel):
         default=None, description="Notification recipients (inline or by ID)"
     )
     tags: list[TagInput] | None = Field(default=None, description="Trigger tags")
+
+    # Advanced features
+    evaluation_schedule_type: Literal["frequency", "window"] | None = Field(
+        default=None,
+        description="Schedule type: 'frequency' (default, always runs) or 'window' (only runs during specified time windows)",
+    )
+    evaluation_schedule: BaseTriggerEvaluationSchedule | None = Field(
+        default=None,
+        description="Time window configuration (required if evaluation_schedule_type='window'). Specifies days of week and UTC time range.",
+    )
+    baseline_details: BaseTriggerBaselineDetails | None = Field(
+        default=None,
+        description="Dynamic threshold configuration for anomaly detection. Compare current values against historical baseline (e.g., alert if 20% higher than 1 day ago).",
+    )
 
     @model_validator(mode="after")
     def validate_trigger_constraints(self) -> Self:

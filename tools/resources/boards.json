@@ -196,35 +196,6 @@
             "title": "BoardViewInput",
             "type": "object"
           },
-          "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
-            "enum": [
-              "COUNT",
-              "SUM",
-              "AVG",
-              "MIN",
-              "MAX",
-              "P001",
-              "P01",
-              "P05",
-              "P10",
-              "P25",
-              "P50",
-              "P75",
-              "P90",
-              "P95",
-              "P99",
-              "P999",
-              "COUNT_DISTINCT",
-              "CONCURRENCY",
-              "HEATMAP",
-              "RATE_AVG",
-              "RATE_SUM",
-              "RATE_MAX"
-            ],
-            "title": "CalcOp",
-            "type": "string"
-          },
           "CalculatedFieldInput": {
             "additionalProperties": false,
             "description": "Inline calculated field (derived column) for queries.\n\nCreates a computed column available only within this query.\nFor reusable derived columns, use the Derived Columns API instead.\n\nExample expressions:\n    - \"MULTIPLY($duration_ms, 1000)\" - convert ms to microseconds\n    - \"IF(LT($status_code, 400), 1, 0)\" - success indicator\n    - \"CONCAT($service, '/', $endpoint)\" - combine strings",
@@ -252,7 +223,7 @@
             "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
+                "$ref": "#/$defs/QueryOp",
                 "description": "Calculation operation (COUNT, AVG, P99, etc.)"
               },
               "column": {
@@ -343,17 +314,7 @@
             "title": "Filter",
             "type": "object"
           },
-          "FilterCombination": {
-            "description": "How to combine multiple filters.",
-            "enum": [
-              "AND",
-              "OR"
-            ],
-            "title": "FilterCombination",
-            "type": "string"
-          },
           "FilterOp": {
-            "description": "Filter operations for Honeycomb queries and board views.\n\nIMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.",
             "enum": [
               "=",
               "!=",
@@ -365,10 +326,10 @@
               "does-not-start-with",
               "ends-with",
               "does-not-end-with",
-              "contains",
-              "does-not-contain",
               "exists",
               "does-not-exist",
+              "contains",
+              "does-not-contain",
               "in",
               "not-in"
             ],
@@ -380,7 +341,7 @@
             "description": "A having clause for post-aggregation filtering.\n\nExamples:\n    >>> Having(calculate_op=CalcOp.COUNT, op=FilterOp.GREATER_THAN, value=100)\n    >>> Having(calculate_op=CalcOp.AVG, column=\"duration_ms\", op=\">\", value=500.0)",
             "properties": {
               "calculate_op": {
-                "$ref": "#/$defs/CalcOp",
+                "$ref": "#/$defs/QueryOp",
                 "description": "Calculation to filter on"
               },
               "column": {
@@ -416,10 +377,10 @@
           },
           "Order": {
             "additionalProperties": false,
-            "description": "An ordering specification for query results.\n\nExamples:\n    >>> Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)\n    >>> Order(op=CalcOp.AVG, column=\"duration_ms\", order=OrderDirection.ASCENDING)",
+            "description": "An ordering specification for query results.\n\nExamples:\n    >>> Order(op=CalcOp.COUNT, order=OrderDirection.descending)\n    >>> Order(op=CalcOp.AVG, column=\"duration_ms\", order=OrderDirection.ascending)",
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
+                "$ref": "#/$defs/QueryOp",
                 "description": "Calculation to order by"
               },
               "column": {
@@ -436,7 +397,7 @@
                 "title": "Column"
               },
               "order": {
-                "$ref": "#/$defs/OrderDirection",
+                "$ref": "#/$defs/QueryOrderOrder",
                 "default": "descending",
                 "description": "Sort direction"
               }
@@ -446,15 +407,6 @@
             ],
             "title": "Order",
             "type": "object"
-          },
-          "OrderDirection": {
-            "description": "Order directions for query results.",
-            "enum": [
-              "ascending",
-              "descending"
-            ],
-            "title": "OrderDirection",
-            "type": "string"
           },
           "PositionInput": {
             "additionalProperties": false,
@@ -517,6 +469,53 @@
             ],
             "title": "PresetFilterInput",
             "type": "object"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "QueryOrderOrder": {
+            "enum": [
+              "ascending",
+              "descending"
+            ],
+            "title": "QueryOrderOrder",
+            "type": "string"
           },
           "QueryPanelInput": {
             "additionalProperties": false,
@@ -713,7 +712,7 @@
               "filter_combination": {
                 "anyOf": [
                   {
-                    "$ref": "#/$defs/FilterCombination"
+                    "$ref": "#/$defs/QueryFilterCombination"
                   },
                   {
                     "type": "null"
@@ -1431,13 +1430,20 @@
             "description": "The board ID to update"
           },
           "name": {
-            "description": "Human-readable name for the board (1-255 chars)",
+            "description": "The name of the Board.",
+            "examples": [
+              "My Board"
+            ],
+            "maxLength": 255,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
           "description": {
             "anyOf": [
               {
+                "maxLength": 1024,
+                "minLength": 0,
                 "type": "string"
               },
               {
@@ -1445,21 +1451,40 @@
               }
             ],
             "default": null,
-            "description": "Longer description (0-1024 chars)",
+            "description": "A description of the Board.",
+            "examples": [
+              "A board created via the API"
+            ],
             "title": "Description"
           },
           "type": {
+            "$ref": "#/$defs/BoardType",
             "default": "flexible",
-            "description": "Board type: only 'flexible' is supported",
-            "title": "Type",
-            "type": "string"
+            "description": "Board type (only 'flexible' is currently supported)"
           },
           "panels": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": true,
-                  "type": "object"
+                  "discriminator": {
+                    "mapping": {
+                      "query": "#/$defs/QueryPanel",
+                      "slo": "#/$defs/SLOPanel",
+                      "text": "#/$defs/TextPanel"
+                    },
+                    "propertyName": "type"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/QueryPanel"
+                    },
+                    {
+                      "$ref": "#/$defs/SLOPanel"
+                    },
+                    {
+                      "$ref": "#/$defs/TextPanel"
+                    }
+                  ]
                 },
                 "type": "array"
               },
@@ -1468,28 +1493,28 @@
               }
             ],
             "default": null,
-            "description": "Array of board panels (queries, SLOs, text)",
+            "description": "Array of board panels (query panels, SLO panels, or text panels)",
             "title": "Panels"
           },
           "layout_generation": {
-            "default": "manual",
-            "description": "Layout mode: 'auto' or 'manual'",
-            "enum": [
-              "auto",
-              "manual"
+            "anyOf": [
+              {
+                "$ref": "#/$defs/BoardLayoutGeneration"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Layout Generation",
-            "type": "string"
+            "default": "manual",
+            "description": "The layout generation mode for the board. When set to \"auto\", the board will be automatically laid out based on the panels. When set to \"manual\", the board will be laid out manually by the user.\n"
           },
           "tags": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
+                  "$ref": "#/$defs/Tag"
                 },
+                "maxItems": 10,
                 "type": "array"
               },
               {
@@ -1497,18 +1522,24 @@
               }
             ],
             "default": null,
-            "description": "Array of tag objects (max 10)",
+            "description": "A list of key-value pairs to help identify the Trigger.",
+            "examples": [
+              [
+                {
+                  "key": "team",
+                  "value": "blue"
+                }
+              ]
+            ],
             "title": "Tags"
           },
           "preset_filters": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
+                  "$ref": "#/$defs/PresetFilter"
                 },
+                "maxItems": 5,
                 "type": "array"
               },
               {
@@ -1516,7 +1547,15 @@
               }
             ],
             "default": null,
-            "description": "Array of preset filter objects",
+            "description": "A list of preset filters to apply to the board. For backwards compatibility, if no preset filters are provided, the existing preset filters will be preserved. If an empty array is provided, all preset filters will be deleted.\n**Note**: Each board is limited to a maximum of 5 preset filters. Attempting to create or update a board with more than 5 preset filters will result in an error.\n",
+            "examples": [
+              [
+                {
+                  "alias": "Service",
+                  "column": "app.Service"
+                }
+              ]
+            ],
             "title": "Preset Filters"
           },
           "confidence": {

@@ -1,124 +1,191 @@
-"""Pydantic models for Honeycomb Burn Alerts."""
+"""Pydantic models for Honeycomb Burn Alerts.
 
-from __future__ import annotations
+Re-exports generated models with discriminated unions for alert types.
+"""
 
-from datetime import datetime
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic.types import AwareDatetime
+
+from honeycomb._generated_models import AlertType as _AlertType
+from honeycomb._generated_models import (
+    BudgetRateBurnAlertDetailResponse,
+    CreateBudgetRateBurnAlertRequest,
+    CreateBudgetRateBurnAlertRequestSlo,
+    CreateBurnAlertRequest,
+    CreateExhaustionTimeBurnAlertRequest,
+    CreateExhaustionTimeBurnAlertRequestSlo,
+    ExhaustionTime1,
+    NotificationRecipient,
+    UpdateBudgetRateBurnAlert,
+    UpdateBurnAlertRequest,
+    UpdateExhaustionTimeBurnAlertRequest,
+)
+from honeycomb._generated_models import (
+    BurnAlertDetailResponse as _BurnAlertDetailResponseGenerated,
+)
+from honeycomb._generated_models import (
+    BurnAlertListResponse as _BurnAlertListResponseGenerated,
+)
 
 
+# Backward-compatible enum with uppercase names
 class BurnAlertType(str, Enum):
-    """Burn alert types."""
+    """Burn alert types (backward-compatible with uppercase names)."""
 
     EXHAUSTION_TIME = "exhaustion_time"
     BUDGET_RATE = "budget_rate"
+    # Lowercase aliases (match generated AlertType)
+    exhaustion_time = "exhaustion_time"
+    budget_rate = "budget_rate"
 
 
-class BurnAlertRecipient(BaseModel):
-    """A recipient for burn alert notifications.
+# Re-export generated types
+AlertType = _AlertType
+BurnAlertRecipient = NotificationRecipient
 
-    Either id (recommended) OR type+target (deprecated) must be provided.
+
+class BurnAlertListResponse(_BurnAlertListResponseGenerated):
+    """Burn alert list response with property accessors.
+
+    Extends generated BurnAlertListResponse RootModel to hide .root accessor requirement.
     """
 
-    id: str | None = Field(default=None, description="ID of the recipient")
-    type: str | None = Field(default=None, description="Type of recipient (email, slack, etc)")
-    target: str | None = Field(default=None, description="Target address (for backwards compat)")
-    details: dict[str, Any] | None = Field(default=None, description="Additional details")
+    @property
+    def id(self) -> str | None:
+        """Get burn alert ID."""
+        return self.root.id
+
+    @property
+    def alert_type(self) -> str:
+        """Get alert type (discriminator)."""
+        return self.root.alert_type
+
+    @property
+    def description(self) -> str | None:
+        """Get burn alert description."""
+        return self.root.description
+
+    @property
+    def triggered(self) -> bool | None:
+        """Get triggered status."""
+        return self.root.triggered
+
+    @property
+    def created_at(self) -> AwareDatetime | None:
+        """Get creation timestamp."""
+        return self.root.created_at
+
+    @property
+    def updated_at(self) -> AwareDatetime | None:
+        """Get last update timestamp."""
+        return self.root.updated_at
+
+    @property
+    def slo(self) -> Any:
+        """Get SLO details."""
+        return self.root.slo
+
+    @property
+    def exhaustion_minutes(self) -> int | None:
+        """Get exhaustion minutes (exhaustion_time alerts only)."""
+        return getattr(self.root, "exhaustion_minutes", None)
+
+    @property
+    def budget_rate_window_minutes(self) -> int | None:
+        """Get budget rate window minutes (budget_rate alerts only)."""
+        return getattr(self.root, "budget_rate_window_minutes", None)
+
+    @property
+    def budget_rate_decrease_threshold_per_million(self) -> int | None:
+        """Get budget rate decrease threshold (budget_rate alerts only)."""
+        return getattr(self.root, "budget_rate_decrease_threshold_per_million", None)
 
 
-class BurnAlertCreate(BaseModel):
-    """Model for creating a new burn alert."""
+class BurnAlertDetailResponse(_BurnAlertDetailResponseGenerated):
+    """Burn alert detail response with property accessors.
 
-    alert_type: BurnAlertType = Field(description="Type of burn alert")
-    slo_id: str = Field(description="ID of the SLO to monitor")
-    description: str | None = Field(default=None, description="Description of the burn alert")
-    recipients: list[BurnAlertRecipient] = Field(
-        default_factory=list,
-        description="List of recipients to notify when alert fires",
-    )
+    Extends generated BurnAlertDetailResponse RootModel to hide .root accessor requirement.
+    """
 
-    # Exhaustion time fields (required when alert_type=exhaustion_time)
-    exhaustion_minutes: int | None = Field(
-        default=None,
-        description="Minutes until SLO budget exhaustion (for exhaustion_time alerts)",
-    )
+    @property
+    def id(self) -> str | None:
+        """Get burn alert ID."""
+        return self.root.id
 
-    # Budget rate fields (required when alert_type=budget_rate)
-    budget_rate_window_minutes: int | None = Field(
-        default=None, description="Time window in minutes (for budget_rate alerts)"
-    )
-    budget_rate_decrease_threshold_per_million: int | None = Field(
-        default=None,
-        description="Budget decrease threshold per million (for budget_rate alerts)",
-    )
+    @property
+    def alert_type(self) -> str:
+        """Get alert type (discriminator)."""
+        return self.root.alert_type
 
-    def model_dump_for_api(self) -> dict[str, Any]:
-        """Serialize for API request."""
-        # Build recipient list - support both id-based and inline (type+target) formats
-        recipients_data = []
-        for r in self.recipients:
-            recipient_dict: dict[str, Any] = {}
-            if r.id:
-                # ID-based recipient (recommended)
-                recipient_dict["id"] = r.id
-                if r.type:
-                    recipient_dict["type"] = r.type
-            else:
-                # Inline recipient (deprecated but still supported)
-                if r.type:
-                    recipient_dict["type"] = r.type
-                if r.target:
-                    recipient_dict["target"] = r.target
-                if r.details:
-                    recipient_dict["details"] = r.details
-            recipients_data.append(recipient_dict)
+    @property
+    def description(self) -> str | None:
+        """Get burn alert description."""
+        return self.root.description
 
-        data: dict[str, Any] = {
-            "alert_type": self.alert_type.value,
-            "slo": {"id": self.slo_id},
-            "recipients": recipients_data,
-        }
+    @property
+    def triggered(self) -> bool | None:
+        """Get triggered status."""
+        return self.root.triggered
 
-        if self.description:
-            data["description"] = self.description
+    @property
+    def created_at(self) -> AwareDatetime | None:
+        """Get creation timestamp."""
+        return self.root.created_at
 
-        if self.alert_type == BurnAlertType.EXHAUSTION_TIME and self.exhaustion_minutes:
-            data["exhaustion_minutes"] = self.exhaustion_minutes
-        elif self.alert_type == BurnAlertType.BUDGET_RATE:
-            if self.budget_rate_window_minutes:
-                data["budget_rate_window_minutes"] = self.budget_rate_window_minutes
-            if self.budget_rate_decrease_threshold_per_million:
-                data["budget_rate_decrease_threshold_per_million"] = (
-                    self.budget_rate_decrease_threshold_per_million
-                )
+    @property
+    def updated_at(self) -> AwareDatetime | None:
+        """Get last update timestamp."""
+        return self.root.updated_at
 
-        return data
+    @property
+    def slo(self) -> Any:
+        """Get SLO details."""
+        return self.root.slo
+
+    @property
+    def exhaustion_minutes(self) -> int | None:
+        """Get exhaustion minutes (exhaustion_time alerts only)."""
+        return getattr(self.root, "exhaustion_minutes", None)
+
+    @property
+    def budget_rate_window_minutes(self) -> int | None:
+        """Get budget rate window minutes (budget_rate alerts only)."""
+        return getattr(self.root, "budget_rate_window_minutes", None)
+
+    @property
+    def budget_rate_decrease_threshold_per_million(self) -> int | None:
+        """Get budget rate decrease threshold (budget_rate alerts only)."""
+        return getattr(self.root, "budget_rate_decrease_threshold_per_million", None)
+
+    @property
+    def recipients(self) -> list[NotificationRecipient] | None:
+        """Get recipients list."""
+        return self.root.recipients
 
 
-class BurnAlert(BaseModel):
-    """A Honeycomb burn alert (response model)."""
+# Type aliases for convenience - both list and detail responses are discriminated unions
+BurnAlert = BurnAlertDetailResponse  # For single alert operations
+BurnAlertCreate = CreateBurnAlertRequest  # For create operations
 
-    id: str = Field(description="Unique identifier")
-    alert_type: BurnAlertType = Field(description="Type of burn alert")
-    slo_id: str | None = Field(default=None, description="ID of the associated SLO")
-    description: str | None = Field(default=None, description="Description of the burn alert")
-    triggered: bool = Field(default=False, description="Whether alert is currently triggered")
-
-    # Exhaustion time fields
-    exhaustion_minutes: int | None = Field(default=None, description="Minutes until exhaustion")
-
-    # Budget rate fields
-    budget_rate_window_minutes: int | None = Field(default=None, description="Time window")
-    budget_rate_decrease_threshold_per_million: int | None = Field(
-        default=None, description="Budget decrease threshold"
-    )
-
-    recipients: list[dict] | None = Field(default=None, description="List of recipients")
-    slo: dict | None = Field(default=None, description="SLO details")
-
-    created_at: datetime | None = Field(default=None, description="Creation timestamp")
-    updated_at: datetime | None = Field(default=None, description="Last update timestamp")
-
-    model_config = {"extra": "allow"}
+__all__ = [
+    "AlertType",
+    "BudgetRateBurnAlertDetailResponse",
+    "BurnAlert",
+    "BurnAlertCreate",
+    "BurnAlertDetailResponse",
+    "BurnAlertListResponse",
+    "BurnAlertRecipient",
+    "BurnAlertType",
+    "CreateBudgetRateBurnAlertRequest",
+    "CreateBudgetRateBurnAlertRequestSlo",
+    "CreateBurnAlertRequest",
+    "CreateExhaustionTimeBurnAlertRequest",
+    "CreateExhaustionTimeBurnAlertRequestSlo",
+    "ExhaustionTime1",
+    "NotificationRecipient",
+    "UpdateBudgetRateBurnAlert",
+    "UpdateBurnAlertRequest",
+    "UpdateExhaustionTimeBurnAlertRequest",
+]

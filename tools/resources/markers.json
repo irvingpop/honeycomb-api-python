@@ -83,16 +83,6 @@
             "type": "string",
             "description": "Optional hex color (e.g., '#FF5733')"
           },
-          "message": {
-            "description": "Message to describe this marker",
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "description": "Groups similar markers (e.g., 'deploy')",
-            "title": "Type",
-            "type": "string"
-          },
           "start_time": {
             "anyOf": [
               {
@@ -103,7 +93,10 @@
               }
             ],
             "default": null,
-            "description": "Unix timestamp when marker should be placed (defaults to now)",
+            "description": "Indicates the time the Marker should be placed. If missing, defaults to the time the request arrives. Expressed in Unix Time.",
+            "examples": [
+              1471040808
+            ],
             "title": "Start Time"
           },
           "end_time": {
@@ -116,8 +109,43 @@
               }
             ],
             "default": null,
-            "description": "Unix timestamp for end of marker (for time ranges)",
+            "description": "Specifies end time, and allows a Marker to be recorded as representing a time range, such as a 5 minute deploy. Expressed in Unix Time.",
+            "examples": [
+              1668453920
+            ],
             "title": "End Time"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A message to describe this specific Marker.",
+            "examples": [
+              "backend deploy #123"
+            ],
+            "title": "Message"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Groups similar Markers. For example, `deploys`. All Markers of the same type appear with the same color on the graph. Refer to the [Marker Settings](/api/marker-settings/) API for altering the color of each type.",
+            "examples": [
+              "deploy"
+            ],
+            "title": "Type"
           },
           "url": {
             "anyOf": [
@@ -129,7 +157,10 @@
               }
             ],
             "default": null,
-            "description": "Target URL for the marker",
+            "description": "A target for the marker. Clicking the marker text will take you to this URL.",
+            "examples": [
+              "http://link-to-build.here"
+            ],
             "title": "Url"
           },
           "confidence": {
@@ -179,9 +210,7 @@
           }
         },
         "required": [
-          "dataset",
-          "message",
-          "type"
+          "dataset"
         ]
       },
       "input_examples": [
@@ -219,16 +248,6 @@
             "type": "string",
             "description": "The marker ID to update"
           },
-          "message": {
-            "description": "Message to describe this marker",
-            "title": "Message",
-            "type": "string"
-          },
-          "type": {
-            "description": "Groups similar markers (e.g., 'deploy')",
-            "title": "Type",
-            "type": "string"
-          },
           "start_time": {
             "anyOf": [
               {
@@ -239,7 +258,10 @@
               }
             ],
             "default": null,
-            "description": "Unix timestamp when marker should be placed (defaults to now)",
+            "description": "Indicates the time the Marker should be placed. If missing, defaults to the time the request arrives. Expressed in Unix Time.",
+            "examples": [
+              1471040808
+            ],
             "title": "Start Time"
           },
           "end_time": {
@@ -252,8 +274,43 @@
               }
             ],
             "default": null,
-            "description": "Unix timestamp for end of marker (for time ranges)",
+            "description": "Specifies end time, and allows a Marker to be recorded as representing a time range, such as a 5 minute deploy. Expressed in Unix Time.",
+            "examples": [
+              1668453920
+            ],
             "title": "End Time"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "A message to describe this specific Marker.",
+            "examples": [
+              "backend deploy #123"
+            ],
+            "title": "Message"
+          },
+          "type": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Groups similar Markers. For example, `deploys`. All Markers of the same type appear with the same color on the graph. Refer to the [Marker Settings](/api/marker-settings/) API for altering the color of each type.",
+            "examples": [
+              "deploy"
+            ],
+            "title": "Type"
           },
           "url": {
             "anyOf": [
@@ -265,7 +322,10 @@
               }
             ],
             "default": null,
-            "description": "Target URL for the marker",
+            "description": "A target for the marker. Clicking the marker text will take you to this URL.",
+            "examples": [
+              "http://link-to-build.here"
+            ],
             "title": "Url"
           },
           "confidence": {
@@ -316,9 +376,7 @@
         },
         "required": [
           "dataset",
-          "marker_id",
-          "message",
-          "type"
+          "marker_id"
         ]
       },
       "input_examples": [

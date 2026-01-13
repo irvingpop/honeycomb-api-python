@@ -2,28 +2,19 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from pydantic import BaseModel, Field
 
+from honeycomb._generated_models import BatchEvent as _BatchEventGenerated
 
-class BatchEvent(BaseModel):
-    """Model for a batch event."""
 
-    data: dict[str, Any] = Field(description="Event payload (key-value pairs)")
-    time: str | None = Field(
-        default=None, description="Event timestamp (ISO8601 format). Defaults to server time."
-    )
-    samplerate: int | None = Field(default=None, description="Sample rate. Defaults to 1.")
+class BatchEvent(_BatchEventGenerated):
+    """Model for a batch event.
 
-    def model_dump_for_api(self) -> dict:
-        """Serialize for API request."""
-        result: dict[str, Any] = {"data": self.data}
-        if self.time:
-            result["time"] = self.time
-        if self.samplerate:
-            result["samplerate"] = self.samplerate
-        return result
+    Extends generated BatchEvent model with no modifications.
+    The spec was patched to make data field required.
+    """
+
+    pass
 
 
 class BatchEventResult(BaseModel):

@@ -1,0 +1,46 @@
+{
+  "alert_type": "on_true",
+  "description": "Comprehensive trigger with all optional fields",
+  "disabled": true,
+  "frequency": 1800,
+  "name": "Full Featured Trigger",
+  "query": {
+    "breakdowns": [
+      "endpoint",
+      "method"
+    ],
+    "calculations": [
+      {
+        "column": "duration_ms",
+        "op": "P99"
+      }
+    ],
+    "filter_combination": "OR",
+    "filters": [
+      {
+        "column": "status_code",
+        "op": "=",
+        "value": 500
+      },
+      {
+        "column": "error",
+        "op": "exists"
+      }
+    ],
+    "granularity": 60,
+    "time_range": 1800
+  },
+  "recipients": [
+    {
+      "id": "recip1"
+    },
+    {
+      "id": "recip2"
+    }
+  ],
+  "threshold": {
+    "exceeded_limit": 3,
+    "op": ">=",
+    "value": 150.0
+  }
+}

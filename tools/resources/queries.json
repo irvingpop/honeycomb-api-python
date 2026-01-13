@@ -14,112 +14,13 @@
             "type": "string",
             "description": "Optional name for the query annotation (saves query with a display name)"
           },
-          "time_range": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Query time range in seconds",
-            "title": "Time Range"
-          },
-          "start_time": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Absolute start time (Unix timestamp)",
-            "title": "Start Time"
-          },
-          "end_time": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Absolute end time (Unix timestamp)",
-            "title": "End Time"
-          },
-          "granularity": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Time granularity in seconds",
-            "title": "Granularity"
-          },
-          "calculations": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Calculation"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Calculations to perform",
-            "title": "Calculations"
-          },
-          "filters": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Filter"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Query filters",
-            "title": "Filters"
-          },
           "breakdowns": {
             "anyOf": [
               {
                 "items": {
                   "type": "string"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -127,52 +28,59 @@
               }
             ],
             "default": null,
-            "description": "Columns to group by",
+            "description": "the columns by which to break events down into groups",
             "title": "Breakdowns"
+          },
+          "calculations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryCalculation"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "the calculations to return as a time series and summary table",
+            "title": "Calculations"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryFilter"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "the filters with which to restrict the considered events",
+            "title": "Filters"
           },
           "filter_combination": {
             "anyOf": [
               {
-                "$ref": "#/$defs/FilterCombination"
-              },
-              {
-                "type": "string"
+                "$ref": "#/$defs/QueryFilterCombination"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "How to combine filters (AND/OR)",
-            "title": "Filter Combination"
+            "default": "AND",
+            "description": "set to \"OR\" to match ANY filter in the filter list"
           },
-          "orders": {
+          "granularity": {
             "anyOf": [
               {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Order"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Result ordering",
-            "title": "Orders"
-          },
-          "limit": {
-            "anyOf": [
-              {
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -180,23 +88,16 @@
               }
             ],
             "default": null,
-            "description": "Result limit (max 1000 for saved queries, 10K when using disable_series=True)",
-            "title": "Limit"
+            "description": "The time resolution of the query's graph, in seconds. Given a query time range T, valid values (T/1000...T/1). If left blank, granularity may be set to a sub-second value for queries with short time ranges.\n",
+            "title": "Granularity"
           },
-          "havings": {
+          "orders": {
             "anyOf": [
               {
                 "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Having"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
+                  "$ref": "#/$defs/QueryOrder"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -204,18 +105,90 @@
               }
             ],
             "default": null,
-            "description": "Having clauses",
+            "description": "The terms on which to order the query results. Each term must appear in either the `breakdowns` field or the `calculations` field.\n",
+            "title": "Orders"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "maximum": 10000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The maximum number of unique groups returned in 'results'. Aggregating many unique groups across a large time range is computationally expensive, and too high a limit with too many unique groups may cause queries to fail completely. Limiting the results to only the needed values can significantly speed up queries.\nThe normal allowed maximum value when creating a query is 1_000. When running 'disable_series' queries, this can be overridden to be up to 10_000, so the maximum value returned from the API when fetching a query may be up to 10_000.\n",
+            "title": "Limit"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Absolute start time of query, in seconds since UNIX epoch. Must be <= `end_time`.\n",
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Absolute end time of query, in seconds since UNIX epoch.",
+            "title": "End Time"
+          },
+          "time_range": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 7200,
+            "description": "Time range of query in seconds. Can be used with either `start_time` (seconds after `start_time`), `end_time` (seconds before `end_time`), or without either (seconds before now).\n",
+            "title": "Time Range"
+          },
+          "havings": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryHaving"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The Having clause allows you to filter on the results table. This operation is distinct from the Where clause, which filters the underlying events. Order By allows you to order the results, and Having filters them.\n",
             "title": "Havings"
           },
           "calculated_fields": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
+                  "$ref": "#/$defs/QueryCalculatedField"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -223,21 +196,20 @@
               }
             ],
             "default": null,
-            "description": "Inline calculated fields (derived columns) for this query",
+            "description": "Computed properties that are calculated by a formula.\n",
             "title": "Calculated Fields"
           },
           "compare_time_offset_seconds": {
             "anyOf": [
               {
-                "type": "integer"
+                "$ref": "#/$defs/QueryCompareTimeOffsetSeconds"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Compare against historical data offset by N seconds (1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800)",
-            "title": "Compare Time Offset Seconds"
+            "description": "When set, offsets the query's time range by this number of seconds into the past, allowing comparison with historical data from an earlier time period. For example, setting this to 86400 (24 hours) will compare current results against data from 24 hours ago.\n##### Note\n  - The offset must be greater than or equal to the query's time range duration.\n\n##### Allowed values\n- same time range as query time range\n- `1800` - 30 minutes\n- `3600` - 1 hour\n- `7200` - 2 hours\n- `28800` - 8 hours\n- `86400` - 24 hours\n- `604800` - 7 days\n- `2419200` - 28 days\n- `15724800` - 6 months\n"
           },
           "confidence": {
             "type": "string",
@@ -289,100 +261,7 @@
           "dataset"
         ],
         "$defs": {
-          "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
-            "enum": [
-              "COUNT",
-              "SUM",
-              "AVG",
-              "MIN",
-              "MAX",
-              "P001",
-              "P01",
-              "P05",
-              "P10",
-              "P25",
-              "P50",
-              "P75",
-              "P90",
-              "P95",
-              "P99",
-              "P999",
-              "COUNT_DISTINCT",
-              "CONCURRENCY",
-              "HEATMAP",
-              "RATE_AVG",
-              "RATE_SUM",
-              "RATE_MAX"
-            ],
-            "title": "CalcOp",
-            "type": "string"
-          },
-          "Calculation": {
-            "additionalProperties": false,
-            "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
-            "properties": {
-              "op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
-              },
-              "column": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Column to calculate on",
-                "title": "Column"
-              }
-            },
-            "required": [
-              "op"
-            ],
-            "title": "Calculation",
-            "type": "object"
-          },
-          "Filter": {
-            "additionalProperties": false,
-            "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS)  # No value needed\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
-            "properties": {
-              "column": {
-                "description": "Column to filter on",
-                "title": "Column",
-                "type": "string"
-              },
-              "op": {
-                "$ref": "#/$defs/FilterOp",
-                "description": "Filter operator (=, !=, >, <, contains, etc.)"
-              },
-              "value": {
-                "default": null,
-                "description": "Filter value. Not used for 'exists' and 'does-not-exist' operations.",
-                "title": "Value"
-              }
-            },
-            "required": [
-              "column",
-              "op"
-            ],
-            "title": "Filter",
-            "type": "object"
-          },
-          "FilterCombination": {
-            "description": "How to combine multiple filters.",
-            "enum": [
-              "AND",
-              "OR"
-            ],
-            "title": "FilterCombination",
-            "type": "string"
-          },
           "FilterOp": {
-            "description": "Filter operations for Honeycomb queries and board views.\n\nIMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.",
             "enum": [
               "=",
               "!=",
@@ -394,62 +273,81 @@
               "does-not-start-with",
               "ends-with",
               "does-not-end-with",
-              "contains",
-              "does-not-contain",
               "exists",
               "does-not-exist",
+              "contains",
+              "does-not-contain",
               "in",
               "not-in"
             ],
             "title": "FilterOp",
             "type": "string"
           },
-          "Having": {
-            "additionalProperties": false,
-            "description": "A having clause for post-aggregation filtering.\n\nExamples:\n    >>> Having(calculate_op=CalcOp.COUNT, op=FilterOp.GREATER_THAN, value=100)\n    >>> Having(calculate_op=CalcOp.AVG, column=\"duration_ms\", op=\">\", value=500.0)",
+          "HavingCalculateOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "HavingCalculateOp",
+            "type": "string"
+          },
+          "HavingOp": {
+            "enum": [
+              "=",
+              "!=",
+              ">",
+              ">=",
+              "<",
+              "<="
+            ],
+            "title": "HavingOp",
+            "type": "string"
+          },
+          "QueryCalculatedField": {
             "properties": {
-              "calculate_op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation to filter on"
+              "name": {
+                "description": "The field name",
+                "title": "Name",
+                "type": "string"
               },
-              "column": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Column for the calculation",
-                "title": "Column"
-              },
-              "op": {
-                "$ref": "#/$defs/FilterOp",
-                "description": "Comparison operator"
-              },
-              "value": {
-                "description": "Threshold value",
-                "title": "Value",
-                "type": "number"
+              "expression": {
+                "description": "The formula for your Calculated Field. To learn more about syntax and available functions, and to explore some example formulas, visit [Calculated Field Formula Reference](https://docs.honeycomb.io/reference/derived-column-formula/).",
+                "title": "Expression",
+                "type": "string"
               }
             },
             "required": [
-              "calculate_op",
-              "op",
-              "value"
+              "name",
+              "expression"
             ],
-            "title": "Having",
+            "title": "QueryCalculatedField",
             "type": "object"
           },
-          "Order": {
-            "additionalProperties": false,
-            "description": "An ordering specification for query results.\n\nExamples:\n    >>> Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)\n    >>> Order(op=CalcOp.AVG, column=\"duration_ms\", order=OrderDirection.ASCENDING)",
+          "QueryCalculation": {
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation to order by"
+                "$ref": "#/$defs/QueryOp"
               },
               "column": {
                 "anyOf": [
@@ -461,28 +359,213 @@
                   }
                 ],
                 "default": null,
-                "description": "Column for the calculation",
+                "description": "the name of the column",
                 "title": "Column"
-              },
-              "order": {
-                "$ref": "#/$defs/OrderDirection",
-                "default": "descending",
-                "description": "Sort direction"
               }
             },
             "required": [
               "op"
             ],
-            "title": "Order",
+            "title": "QueryCalculation",
             "type": "object"
           },
-          "OrderDirection": {
-            "description": "Order directions for query results.",
+          "QueryCompareTimeOffsetSeconds": {
+            "description": "When set, offsets the query's time range by this number of seconds into the past, allowing comparison with historical data from an earlier time period. For example, setting this to 86400 (24 hours) will compare current results against data from 24 hours ago.\n##### Note\n  - The offset must be greater than or equal to the query's time range duration.\n\n##### Allowed values\n- same time range as query time range\n- `1800` - 30 minutes\n- `3600` - 1 hour\n- `7200` - 2 hours\n- `28800` - 8 hours\n- `86400` - 24 hours\n- `604800` - 7 days\n- `2419200` - 28 days\n- `15724800` - 6 months",
+            "enum": [
+              1800,
+              3600,
+              7200,
+              28800,
+              86400,
+              604800,
+              2419200,
+              15724800
+            ],
+            "title": "QueryCompareTimeOffsetSeconds",
+            "type": "integer"
+          },
+          "QueryFilter": {
+            "properties": {
+              "op": {
+                "$ref": "#/$defs/FilterOp"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Column"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "items": {},
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Value"
+              }
+            },
+            "required": [
+              "op",
+              "column"
+            ],
+            "title": "QueryFilter",
+            "type": "object"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryHaving": {
+            "properties": {
+              "calculate_op": {
+                "$ref": "#/$defs/HavingCalculateOp"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "The name of the column to filter against",
+                "title": "Column"
+              },
+              "op": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/HavingOp"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": 10,
+                "title": "Value"
+              }
+            },
+            "required": [
+              "calculate_op"
+            ],
+            "title": "QueryHaving",
+            "type": "object"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "QueryOrder": {
+            "properties": {
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Column"
+              },
+              "op": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/QueryOp"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "order": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/QueryOrderOrder"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": "ascending"
+              }
+            },
+            "title": "QueryOrder",
+            "type": "object"
+          },
+          "QueryOrderOrder": {
             "enum": [
               "ascending",
               "descending"
             ],
-            "title": "OrderDirection",
+            "title": "QueryOrderOrder",
             "type": "string"
           }
         }
@@ -619,112 +702,13 @@
             "type": "string",
             "description": "The dataset slug"
           },
-          "time_range": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Query time range in seconds",
-            "title": "Time Range"
-          },
-          "start_time": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Absolute start time (Unix timestamp)",
-            "title": "Start Time"
-          },
-          "end_time": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Absolute end time (Unix timestamp)",
-            "title": "End Time"
-          },
-          "granularity": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Time granularity in seconds",
-            "title": "Granularity"
-          },
-          "calculations": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Calculation"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Calculations to perform",
-            "title": "Calculations"
-          },
-          "filters": {
-            "anyOf": [
-              {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Filter"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Query filters",
-            "title": "Filters"
-          },
           "breakdowns": {
             "anyOf": [
               {
                 "items": {
                   "type": "string"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -732,52 +716,59 @@
               }
             ],
             "default": null,
-            "description": "Columns to group by",
+            "description": "the columns by which to break events down into groups",
             "title": "Breakdowns"
+          },
+          "calculations": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryCalculation"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "the calculations to return as a time series and summary table",
+            "title": "Calculations"
+          },
+          "filters": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryFilter"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "the filters with which to restrict the considered events",
+            "title": "Filters"
           },
           "filter_combination": {
             "anyOf": [
               {
-                "$ref": "#/$defs/FilterCombination"
-              },
-              {
-                "type": "string"
+                "$ref": "#/$defs/QueryFilterCombination"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "How to combine filters (AND/OR)",
-            "title": "Filter Combination"
+            "default": "AND",
+            "description": "set to \"OR\" to match ANY filter in the filter list"
           },
-          "orders": {
+          "granularity": {
             "anyOf": [
               {
-                "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Order"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Result ordering",
-            "title": "Orders"
-          },
-          "limit": {
-            "anyOf": [
-              {
+                "minimum": 1,
                 "type": "integer"
               },
               {
@@ -785,23 +776,16 @@
               }
             ],
             "default": null,
-            "description": "Result limit (max 1000 for saved queries, 10K when using disable_series=True)",
-            "title": "Limit"
+            "description": "The time resolution of the query's graph, in seconds. Given a query time range T, valid values (T/1000...T/1). If left blank, granularity may be set to a sub-second value for queries with short time ranges.\n",
+            "title": "Granularity"
           },
-          "havings": {
+          "orders": {
             "anyOf": [
               {
                 "items": {
-                  "anyOf": [
-                    {
-                      "$ref": "#/$defs/Having"
-                    },
-                    {
-                      "additionalProperties": true,
-                      "type": "object"
-                    }
-                  ]
+                  "$ref": "#/$defs/QueryOrder"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -809,18 +793,90 @@
               }
             ],
             "default": null,
-            "description": "Having clauses",
+            "description": "The terms on which to order the query results. Each term must appear in either the `breakdowns` field or the `calculations` field.\n",
+            "title": "Orders"
+          },
+          "limit": {
+            "anyOf": [
+              {
+                "maximum": 10000,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The maximum number of unique groups returned in 'results'. Aggregating many unique groups across a large time range is computationally expensive, and too high a limit with too many unique groups may cause queries to fail completely. Limiting the results to only the needed values can significantly speed up queries.\nThe normal allowed maximum value when creating a query is 1_000. When running 'disable_series' queries, this can be overridden to be up to 10_000, so the maximum value returned from the API when fetching a query may be up to 10_000.\n",
+            "title": "Limit"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Absolute start time of query, in seconds since UNIX epoch. Must be <= `end_time`.\n",
+            "title": "Start Time"
+          },
+          "end_time": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Absolute end time of query, in seconds since UNIX epoch.",
+            "title": "End Time"
+          },
+          "time_range": {
+            "anyOf": [
+              {
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 7200,
+            "description": "Time range of query in seconds. Can be used with either `start_time` (seconds after `start_time`), `end_time` (seconds before `end_time`), or without either (seconds before now).\n",
+            "title": "Time Range"
+          },
+          "havings": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/$defs/QueryHaving"
+                },
+                "maxItems": 100,
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "The Having clause allows you to filter on the results table. This operation is distinct from the Where clause, which filters the underlying events. Order By allows you to order the results, and Having filters them.\n",
             "title": "Havings"
           },
           "calculated_fields": {
             "anyOf": [
               {
                 "items": {
-                  "additionalProperties": {
-                    "type": "string"
-                  },
-                  "type": "object"
+                  "$ref": "#/$defs/QueryCalculatedField"
                 },
+                "maxItems": 100,
                 "type": "array"
               },
               {
@@ -828,21 +884,20 @@
               }
             ],
             "default": null,
-            "description": "Inline calculated fields (derived columns) for this query",
+            "description": "Computed properties that are calculated by a formula.\n",
             "title": "Calculated Fields"
           },
           "compare_time_offset_seconds": {
             "anyOf": [
               {
-                "type": "integer"
+                "$ref": "#/$defs/QueryCompareTimeOffsetSeconds"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Compare against historical data offset by N seconds (1800, 3600, 7200, 28800, 86400, 604800, 2419200, 15724800)",
-            "title": "Compare Time Offset Seconds"
+            "description": "When set, offsets the query's time range by this number of seconds into the past, allowing comparison with historical data from an earlier time period. For example, setting this to 86400 (24 hours) will compare current results against data from 24 hours ago.\n##### Note\n  - The offset must be greater than or equal to the query's time range duration.\n\n##### Allowed values\n- same time range as query time range\n- `1800` - 30 minutes\n- `3600` - 1 hour\n- `7200` - 2 hours\n- `28800` - 8 hours\n- `86400` - 24 hours\n- `604800` - 7 days\n- `2419200` - 28 days\n- `15724800` - 6 months\n"
           },
           "confidence": {
             "type": "string",
@@ -894,100 +949,7 @@
           "dataset"
         ],
         "$defs": {
-          "CalcOp": {
-            "description": "Calculation operations for Honeycomb queries.\n\nIMPORTANT: All operations REQUIRE a 'column' field EXCEPT COUNT and CONCURRENCY.\nAll other operations (AVG, SUM, MIN, MAX, P99, etc.) MUST specify a column.",
-            "enum": [
-              "COUNT",
-              "SUM",
-              "AVG",
-              "MIN",
-              "MAX",
-              "P001",
-              "P01",
-              "P05",
-              "P10",
-              "P25",
-              "P50",
-              "P75",
-              "P90",
-              "P95",
-              "P99",
-              "P999",
-              "COUNT_DISTINCT",
-              "CONCURRENCY",
-              "HEATMAP",
-              "RATE_AVG",
-              "RATE_SUM",
-              "RATE_MAX"
-            ],
-            "title": "CalcOp",
-            "type": "string"
-          },
-          "Calculation": {
-            "additionalProperties": false,
-            "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
-            "properties": {
-              "op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
-              },
-              "column": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Column to calculate on",
-                "title": "Column"
-              }
-            },
-            "required": [
-              "op"
-            ],
-            "title": "Calculation",
-            "type": "object"
-          },
-          "Filter": {
-            "additionalProperties": false,
-            "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS)  # No value needed\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
-            "properties": {
-              "column": {
-                "description": "Column to filter on",
-                "title": "Column",
-                "type": "string"
-              },
-              "op": {
-                "$ref": "#/$defs/FilterOp",
-                "description": "Filter operator (=, !=, >, <, contains, etc.)"
-              },
-              "value": {
-                "default": null,
-                "description": "Filter value. Not used for 'exists' and 'does-not-exist' operations.",
-                "title": "Value"
-              }
-            },
-            "required": [
-              "column",
-              "op"
-            ],
-            "title": "Filter",
-            "type": "object"
-          },
-          "FilterCombination": {
-            "description": "How to combine multiple filters.",
-            "enum": [
-              "AND",
-              "OR"
-            ],
-            "title": "FilterCombination",
-            "type": "string"
-          },
           "FilterOp": {
-            "description": "Filter operations for Honeycomb queries and board views.\n\nIMPORTANT: The 'value' property is required for all operations except 'exists' and 'does-not-exist'.",
             "enum": [
               "=",
               "!=",
@@ -999,62 +961,81 @@
               "does-not-start-with",
               "ends-with",
               "does-not-end-with",
-              "contains",
-              "does-not-contain",
               "exists",
               "does-not-exist",
+              "contains",
+              "does-not-contain",
               "in",
               "not-in"
             ],
             "title": "FilterOp",
             "type": "string"
           },
-          "Having": {
-            "additionalProperties": false,
-            "description": "A having clause for post-aggregation filtering.\n\nExamples:\n    >>> Having(calculate_op=CalcOp.COUNT, op=FilterOp.GREATER_THAN, value=100)\n    >>> Having(calculate_op=CalcOp.AVG, column=\"duration_ms\", op=\">\", value=500.0)",
+          "HavingCalculateOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "HavingCalculateOp",
+            "type": "string"
+          },
+          "HavingOp": {
+            "enum": [
+              "=",
+              "!=",
+              ">",
+              ">=",
+              "<",
+              "<="
+            ],
+            "title": "HavingOp",
+            "type": "string"
+          },
+          "QueryCalculatedField": {
             "properties": {
-              "calculate_op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation to filter on"
+              "name": {
+                "description": "The field name",
+                "title": "Name",
+                "type": "string"
               },
-              "column": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "Column for the calculation",
-                "title": "Column"
-              },
-              "op": {
-                "$ref": "#/$defs/FilterOp",
-                "description": "Comparison operator"
-              },
-              "value": {
-                "description": "Threshold value",
-                "title": "Value",
-                "type": "number"
+              "expression": {
+                "description": "The formula for your Calculated Field. To learn more about syntax and available functions, and to explore some example formulas, visit [Calculated Field Formula Reference](https://docs.honeycomb.io/reference/derived-column-formula/).",
+                "title": "Expression",
+                "type": "string"
               }
             },
             "required": [
-              "calculate_op",
-              "op",
-              "value"
+              "name",
+              "expression"
             ],
-            "title": "Having",
+            "title": "QueryCalculatedField",
             "type": "object"
           },
-          "Order": {
-            "additionalProperties": false,
-            "description": "An ordering specification for query results.\n\nExamples:\n    >>> Order(op=CalcOp.COUNT, order=OrderDirection.DESCENDING)\n    >>> Order(op=CalcOp.AVG, column=\"duration_ms\", order=OrderDirection.ASCENDING)",
+          "QueryCalculation": {
             "properties": {
               "op": {
-                "$ref": "#/$defs/CalcOp",
-                "description": "Calculation to order by"
+                "$ref": "#/$defs/QueryOp"
               },
               "column": {
                 "anyOf": [
@@ -1066,28 +1047,213 @@
                   }
                 ],
                 "default": null,
-                "description": "Column for the calculation",
+                "description": "the name of the column",
                 "title": "Column"
-              },
-              "order": {
-                "$ref": "#/$defs/OrderDirection",
-                "default": "descending",
-                "description": "Sort direction"
               }
             },
             "required": [
               "op"
             ],
-            "title": "Order",
+            "title": "QueryCalculation",
             "type": "object"
           },
-          "OrderDirection": {
-            "description": "Order directions for query results.",
+          "QueryCompareTimeOffsetSeconds": {
+            "description": "When set, offsets the query's time range by this number of seconds into the past, allowing comparison with historical data from an earlier time period. For example, setting this to 86400 (24 hours) will compare current results against data from 24 hours ago.\n##### Note\n  - The offset must be greater than or equal to the query's time range duration.\n\n##### Allowed values\n- same time range as query time range\n- `1800` - 30 minutes\n- `3600` - 1 hour\n- `7200` - 2 hours\n- `28800` - 8 hours\n- `86400` - 24 hours\n- `604800` - 7 days\n- `2419200` - 28 days\n- `15724800` - 6 months",
+            "enum": [
+              1800,
+              3600,
+              7200,
+              28800,
+              86400,
+              604800,
+              2419200,
+              15724800
+            ],
+            "title": "QueryCompareTimeOffsetSeconds",
+            "type": "integer"
+          },
+          "QueryFilter": {
+            "properties": {
+              "op": {
+                "$ref": "#/$defs/FilterOp"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Column"
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "boolean"
+                  },
+                  {
+                    "items": {},
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Value"
+              }
+            },
+            "required": [
+              "op",
+              "column"
+            ],
+            "title": "QueryFilter",
+            "type": "object"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryHaving": {
+            "properties": {
+              "calculate_op": {
+                "$ref": "#/$defs/HavingCalculateOp"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "The name of the column to filter against",
+                "title": "Column"
+              },
+              "op": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/HavingOp"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "value": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": 10,
+                "title": "Value"
+              }
+            },
+            "required": [
+              "calculate_op"
+            ],
+            "title": "QueryHaving",
+            "type": "object"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "QueryOrder": {
+            "properties": {
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "title": "Column"
+              },
+              "op": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/QueryOp"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null
+              },
+              "order": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/QueryOrderOrder"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": "ascending"
+              }
+            },
+            "title": "QueryOrder",
+            "type": "object"
+          },
+          "QueryOrderOrder": {
             "enum": [
               "ascending",
               "descending"
             ],
-            "title": "OrderDirection",
+            "title": "QueryOrderOrder",
             "type": "string"
           }
         }

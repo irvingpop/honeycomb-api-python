@@ -224,7 +224,7 @@ async def test_lifecycle(
     slo = await client.slos.get_async(dataset, slo_id)
     assert slo.id == slo_id
     assert slo.name == "API Availability"
-    assert slo.sli["alias"] == sli_alias  # sli is dict, not SLI object
+    assert slo.sli.alias == sli_alias  # sli is SLOSli object
     assert slo.target_per_million == 999000  # 99.9%
 
 

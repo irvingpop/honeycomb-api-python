@@ -386,13 +386,12 @@ class BoardBuilder(TagsMixin):
             ])
 
         Example with BoardViewFilter objects:
-            from honeycomb.models.boards import BoardViewFilter
-            from honeycomb.models.query_builder import FilterOp
+            from honeycomb.models.boards import BoardViewFilter, BoardViewFilterOperation
 
             .add_view("Error View", [
                 BoardViewFilter(
                     column="status_code",
-                    operation=FilterOp.GREATER_THAN_OR_EQUAL,
+                    operation=BoardViewFilterOperation.GREATER_THAN_OR_EQUAL,
                     value=400
                 )
             ])

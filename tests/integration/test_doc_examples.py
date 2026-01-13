@@ -470,6 +470,25 @@ class TestBoardExamples:
             test_lifecycle,
         )
 
+        # Pre-cleanup: Delete ALL leftover SLOs and derived columns from test dataset
+        # Order matters: SLOs first (they depend on derived columns), then derived columns
+
+        # Delete ALL SLOs in test dataset (aggressive cleanup)
+        with contextlib.suppress(Exception):
+            slos = await client.slos.list_async(dataset=ensure_dataset)
+            for slo in slos:
+                with contextlib.suppress(Exception):
+                    await client.slos.delete_async(dataset=ensure_dataset, slo_id=slo.id)
+
+        # Delete ALL derived columns in test dataset (aggressive cleanup)
+        with contextlib.suppress(Exception):
+            cols = await client.derived_columns.list_async(dataset=ensure_dataset)
+            for col in cols:
+                with contextlib.suppress(Exception):
+                    await client.derived_columns.delete_async(
+                        dataset=ensure_dataset, column_id=col.id
+                    )
+
         board_id = await create_complex_board(client, ensure_dataset)
         try:
             await test_lifecycle(client, board_id, "Production Monitoring Dashboard")
@@ -757,7 +776,7 @@ class TestSLOExamples:
             test_list_slos,
         )
 
-        from honeycomb import SLI, SLOCreate
+        from honeycomb import SLOCreate, SLOCreateSli
 
         # List (before create)
         initial_slos = await list_slos(client, ensure_dataset)
@@ -770,7 +789,7 @@ class TestSLOExamples:
             SLOCreate(
                 name="API Availability Lifecycle Test",
                 description="99.9% availability target for API service",
-                sli=SLI(alias=create_unique_sli),
+                sli=SLOCreateSli(alias=create_unique_sli),
                 time_period_days=30,
                 target_per_million=999000,
             ),
@@ -790,7 +809,7 @@ class TestSLOExamples:
                 SLOCreate(
                     name="Updated API Availability Lifecycle Test",
                     description="Updated: 99.99% availability target",
-                    sli=SLI(alias=create_unique_sli),
+                    sli=SLOCreateSli(alias=create_unique_sli),
                     time_period_days=30,
                     target_per_million=999900,
                 ),
@@ -816,7 +835,7 @@ class TestSLOExamples:
             test_create_slo,
         )
 
-        from honeycomb import SLI, SLOCreate
+        from honeycomb import SLOCreate, SLOCreateSli
 
         # Create SLO with unique SLI
         slo = await client.slos.create_async(
@@ -824,7 +843,7 @@ class TestSLOExamples:
             SLOCreate(
                 name="API Availability Test",
                 description="99.9% availability target for API service",
-                sli=SLI(alias=create_unique_sli),
+                sli=SLOCreateSli(alias=create_unique_sli),
                 time_period_days=30,
                 target_per_million=999000,
             ),
@@ -878,12 +897,12 @@ class TestSLOExamples:
             # Verify SLO was created
             slo = await client.slos.get_async(ensure_dataset, slo_id)
             assert slo.id == slo_id
-            # sli is dict, not SLI object
-            assert "request_success" in slo.sli["alias"]  # Timestamped alias
+            # sli is SLOSli object
+            assert "request_success" in slo.sli.alias  # Timestamped alias
             assert slo.target_per_million == 995000  # 99.5%
 
             # Store alias for cleanup
-            sli_alias = slo.sli["alias"]
+            sli_alias = slo.sli.alias
         finally:
             await cleanup(client, ensure_dataset, slo_id)
             # Also clean up the derived column (with timestamp)
@@ -1129,6 +1148,7 @@ class TestEnvironmentExamples:
     async def test_environment_lifecycle(self, management_client: HoneycombClient) -> None:
         """Test full environment CRUD lifecycle: list -> create -> get -> update -> delete."""
         from docs.examples.environments.basic_environment import (
+            cleanup,
             create_environment,
             get_environment,
             list_environments,
@@ -1138,6 +1158,13 @@ class TestEnvironmentExamples:
             test_update_environment,
             update_environment,
         )
+
+        # Pre-cleanup: Delete any leftover "Staging" environment from previous failed runs
+        with contextlib.suppress(Exception):
+            envs = await management_client.environments.list_async()
+            for env in envs:
+                if env.name == "Staging":
+                    await cleanup(management_client, env.id)
 
         # List (before create)
         initial_envs = await list_environments(management_client)
@@ -1190,6 +1217,13 @@ class TestApiKeyExamples:
             test_update_api_key,
             update_api_key,
         )
+
+        # Pre-cleanup: Delete any leftover "Integration Test Key" from previous failed runs
+        with contextlib.suppress(Exception):
+            keys = await management_client.api_keys.list_async()
+            for key in keys:
+                if key.name == "Integration Test Key":
+                    await delete_api_key(management_client, key.id)
 
         # List (before create)
         initial_keys = await list_api_keys(management_client)

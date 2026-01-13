@@ -6,7 +6,7 @@ Requires management key authentication.
 
 from __future__ import annotations
 
-from honeycomb import Environment, EnvironmentColor, EnvironmentCreate, EnvironmentUpdate, HoneycombClient
+from honeycomb import Environment, EnvironmentCreate, EnvironmentUpdate, HoneycombClient
 
 
 # start_example:list
@@ -62,11 +62,9 @@ async def create_environment(client: HoneycombClient) -> str:
         The created environment ID
     """
     env = await client.environments.create_async(
-        EnvironmentCreate(
-            name="Staging",
-            description="Staging environment for testing",
-            color=EnvironmentColor.BLUE,
-        ),
+        name="Staging",
+        description="Staging environment for testing",
+        color="blue",
     )
     return env.id
 
@@ -87,11 +85,9 @@ async def update_environment(client: HoneycombClient, env_id: str) -> Environmen
     """
     updated = await client.environments.update_async(
         env_id,
-        EnvironmentUpdate(
-            description="Updated: Staging environment for pre-production testing",
-            color=EnvironmentColor.GREEN,
-            delete_protected=True,  # Prevent accidental deletion
-        ),
+        description="Updated: Staging environment for pre-production testing",
+        color="green",
+        delete_protected=True,  # Prevent accidental deletion
     )
     return updated
 
@@ -137,7 +133,7 @@ async def test_update_environment(updated: Environment, original_env_id: str) ->
     """Verify update example worked."""
     assert updated.id == original_env_id
     assert "Updated:" in updated.description
-    assert updated.color == EnvironmentColor.GREEN
+    assert updated.color.value == "green"
     assert updated.delete_protected is True
 
 
@@ -148,9 +144,12 @@ async def cleanup(client: HoneycombClient, env_id: str) -> None:
     try:
         await client.environments.update_async(
             env_id,
-            EnvironmentUpdate(delete_protected=False),
+            delete_protected=False,
         )
     except Exception:
         pass  # May already be unprotected
 
-    await delete_environment(client, env_id)
+    try:
+        await delete_environment(client, env_id)
+    except Exception:
+        pass  # May already be deleted

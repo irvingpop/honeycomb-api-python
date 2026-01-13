@@ -9,7 +9,7 @@ from honeycomb.tools.builders import _build_trigger
 
 def test_all_trigger_fields_are_mapped():
     """Test that all trigger tool input fields are correctly mapped to TriggerBuilder."""
-    # Tool input with ALL possible fields
+    # Tool input with ALL possible fields (except granularity - not supported by API)
     tool_input = {
         "name": "Complete Trigger Test",
         "description": "Tests all trigger fields",
@@ -20,7 +20,6 @@ def test_all_trigger_fields_are_mapped():
             "filters": [{"column": "status_code", "op": ">=", "value": 500}],
             "filter_combination": "AND",
             "breakdowns": ["service"],
-            "granularity": 60,
         },
         "threshold": {
             "op": ">",
@@ -42,11 +41,12 @@ def test_all_trigger_fields_are_mapped():
     # Verify all fields are set
     assert trigger.name == "Complete Trigger Test"
     assert trigger.description == "Tests all trigger fields"
-    assert trigger.query.time_range == 900
-    assert trigger.query.granularity == 60, "granularity not set!"
-    assert trigger.query.filters is not None and len(trigger.query.filters) == 1
-    assert trigger.query.filter_combination == "AND", "filter_combination not set!"
-    assert trigger.query.breakdowns == ["service"]
+    assert trigger.query["time_range"] == 900
+    # Note: granularity removed - API doesn't support it for triggers
+    assert "granularity" not in trigger.query
+    assert trigger.query["filters"] is not None and len(trigger.query["filters"]) == 1
+    assert trigger.query["filter_combination"] == "AND", "filter_combination not set!"
+    assert trigger.query["breakdowns"] == ["service"]
     assert trigger.threshold.op.value == ">"
     assert trigger.threshold.value == 100
     assert trigger.threshold.exceeded_limit == 3
@@ -57,21 +57,29 @@ def test_all_trigger_fields_are_mapped():
     assert bundle.trigger.tags[0].key == "team"
 
 
-def test_trigger_granularity_is_preserved():
-    """Regression test for granularity field in triggers."""
+def test_trigger_granularity_is_rejected():
+    """Test that granularity field is properly rejected by TriggerBuilder.
+
+    Honeycomb API does not support granularity in trigger queries.
+    """
+    import pytest
+    from pydantic import ValidationError
+
     tool_input = {
         "name": "Granularity Test",
         "dataset": "test",
         "query": {
             "time_range": 900,
             "calculations": [{"op": "COUNT"}],
-            "granularity": 120,  # Must be preserved
+            "granularity": 120,  # Should be rejected
         },
         "threshold": {"op": ">", "value": 100},
         "frequency": 900,
     }
 
-    builder = _build_trigger(tool_input)
-    bundle = builder.build()
+    # Should fail validation (granularity not allowed in TriggerQueryInput)
+    with pytest.raises(ValidationError) as exc_info:
+        _build_trigger(tool_input)
 
-    assert bundle.trigger.query.granularity == 120, "granularity was lost"
+    error_msg = str(exc_info.value).lower()
+    assert "granularity" in error_msg or "extra" in error_msg

@@ -63,7 +63,7 @@ def test_all_query_panel_fields_are_mapped():
     assert spec.granularity == 60, "granularity not set (BUG!)"
     assert spec.calculations is not None and len(spec.calculations) == 1, "calculations not set"
     assert spec.filters is not None and len(spec.filters) == 1, "filters not set"
-    assert spec.filter_combination == "AND", "filter_combination not set (BUG!)"
+    assert spec.filter_combination.value == "AND", "filter_combination not set (BUG!)"
     assert spec.breakdowns is not None and "service" in spec.breakdowns, "breakdowns not set"
     assert spec.orders is not None and len(spec.orders) == 1, "orders not set"
     assert spec.limit == 100, "limit not set"
@@ -120,7 +120,7 @@ def test_filter_combination_is_preserved():
     bundle = builder.build()
     spec = bundle.query_builder_panels[0].builder.build()
 
-    assert spec.filter_combination == "OR", "filter_combination was lost"
+    assert spec.filter_combination.value == "OR", "filter_combination was lost"
 
 
 def test_havings_is_preserved():

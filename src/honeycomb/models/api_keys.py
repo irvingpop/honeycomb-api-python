@@ -1,125 +1,107 @@
-"""Pydantic models for Honeycomb API Keys (v2 team-scoped)."""
+"""Pydantic models for Honeycomb API Keys (v2 team-scoped).
 
-from __future__ import annotations
+Re-exports generated models that match JSON:API structure exactly.
+"""
 
-from datetime import datetime
-from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field
+from honeycomb._generated_models import (
+    ApiKeyCreateRequest,
+    ApiKeyCreateResponse,
+    ApiKeyListResponse,
+    ApiKeyObjectType,
+    ApiKeyResponse,
+    ApiKeyUpdateRequest,
+    ConfigurationKey,
+    IngestKey,
+)
+from honeycomb._generated_models import (
+    ApiKeyObject as _ApiKeyObjectGenerated,
+)
 
 
-class ApiKeyType(str, Enum):
-    """API key types."""
+class ApiKeyObject(_ApiKeyObjectGenerated):
+    """API Key object with property accessors to hide JSON:API structure.
 
-    INGEST = "ingest"
-    CONFIGURATION = "configuration"
+    Extends generated ApiKeyObject to provide convenient access to nested attributes
+    and relationships without requiring .attributes.field or .relationships.field.
+    """
 
+    @property
+    def name(self) -> str | None:
+        """Get API key name from attributes."""
+        return self.attributes.name if self.attributes else None
 
-class ApiKeyCreate(BaseModel):
-    """Model for creating a new API key."""
+    @property
+    def key_type(self) -> Any:
+        """Get API key type from attributes."""
+        return self.attributes.key_type if self.attributes else None
 
-    name: str = Field(description="Name for the API key")
-    key_type: ApiKeyType = Field(description="Type of API key")
-    environment_id: str = Field(description="Environment ID this key belongs to")
-    disabled: bool = Field(default=False, description="Whether key is disabled")
-    permissions: dict[str, bool] | None = Field(
-        default=None,
-        description=(
-            "Permissions for configuration keys (REQUIRED for configuration type). "
-            "Available permissions: 'create_datasets', 'send_events', 'manage_markers', "
-            "'manage_triggers', 'manage_boards', 'run_queries', 'manage_columns', "
-            "'manage_slos', 'manage_recipients', 'manage_privateBoards', "
-            "'read_service_maps', 'visible_team_members'. "
-            "Ignored for ingest keys."
-        ),
-    )
+    @property
+    def disabled(self) -> bool | None:
+        """Get disabled status from attributes."""
+        return self.attributes.disabled if self.attributes else None
 
-    def to_jsonapi(self) -> dict[str, Any]:
-        """Convert to JSON:API format for API request."""
-        attributes: dict[str, Any] = {
-            "name": self.name,
-            "key_type": self.key_type.value,
-            "disabled": self.disabled,
-        }
+    @property
+    def permissions(self) -> Any:
+        """Get permissions from attributes."""
+        return self.attributes.permissions if self.attributes else None
 
-        # Add permissions for configuration keys
-        if self.permissions is not None:
-            attributes["permissions"] = self.permissions
+    @property
+    def timestamps(self) -> Any:
+        """Get timestamps from attributes."""
+        return self.attributes.timestamps if self.attributes else None
 
-        return {
-            "data": {
-                "type": "api-keys",
-                "attributes": attributes,
-                "relationships": {
-                    "environment": {"data": {"type": "environments", "id": self.environment_id}}
-                },
-            }
-        }
+    @property
+    def time_to_live(self) -> str | None:
+        """Get time_to_live from attributes (ingest keys only)."""
+        return getattr(self.attributes, "time_to_live", None) if self.attributes else None
 
+    @property
+    def secret(self) -> str | None:
+        """Get secret from attributes (only available during creation)."""
+        return getattr(self.attributes, "secret", None) if self.attributes else None
 
-class ApiKeyUpdate(BaseModel):
-    """Model for updating an API key."""
+    @property
+    def environment_id(self) -> str | None:
+        """Get environment ID from relationships."""
+        if self.relationships and self.relationships.environment:
+            return self.relationships.environment.data.id
+        return None
 
-    name: str | None = Field(default=None, description="New name for the API key")
-    disabled: bool | None = Field(default=None, description="Enable/disable the key")
+    @property
+    def creator_id(self) -> str | None:
+        """Get creator user ID from relationships."""
+        if self.relationships and self.relationships.creator:
+            return self.relationships.creator.data.id
+        return None
 
-    def to_jsonapi(self, key_id: str) -> dict[str, Any]:
-        """Convert to JSON:API format for API request."""
-        attributes: dict[str, Any] = {}
-        if self.name is not None:
-            attributes["name"] = self.name
-        if self.disabled is not None:
-            attributes["disabled"] = self.disabled
-
-        return {
-            "data": {
-                "id": key_id,
-                "type": "api-keys",
-                "attributes": attributes,
-            }
-        }
+    @property
+    def editor_id(self) -> str | None:
+        """Get editor user ID from relationships."""
+        if self.relationships and self.relationships.editor:
+            return self.relationships.editor.data.id
+        return None
 
 
-class ApiKey(BaseModel):
-    """A Honeycomb API key (response model)."""
+# Convenience type aliases
+ApiKeyType = ApiKeyObjectType
+ApiKey = ApiKeyObject  # Convenience alias for ApiKeyObject
+ApiKeyCreate = ApiKeyCreateRequest
+ApiKeyUpdate = ApiKeyUpdateRequest
 
-    id: str = Field(description="Unique identifier (includes key prefix)")
-    name: str = Field(description="Name of the API key")
-    key_type: ApiKeyType = Field(description="Type of API key")
-    environment_id: str | None = Field(default=None, description="Environment ID")
-    disabled: bool = Field(default=False, description="Whether key is disabled")
-    permissions: dict[str, bool] | None = Field(
-        default=None, description="Permissions for configuration keys"
-    )
-    secret: str | None = Field(
-        default=None, description="Key secret (only available during creation)"
-    )
-    created_at: datetime | None = Field(default=None, description="Creation timestamp")
-    updated_at: datetime | None = Field(default=None, description="Last update timestamp")
-
-    model_config = {"extra": "allow"}
-
-    @classmethod
-    def from_jsonapi(cls, data: dict[str, Any]) -> ApiKey:
-        """Parse from JSON:API format."""
-        obj = data.get("data", data)  # Handle both wrapped and unwrapped
-        attributes = obj.get("attributes", {})
-        relationships = obj.get("relationships", {})
-
-        env_id = None
-        if "environment" in relationships:
-            env_data = relationships["environment"].get("data", {})
-            env_id = env_data.get("id")
-
-        return cls(
-            id=obj.get("id", ""),
-            name=attributes.get("name", ""),
-            key_type=attributes.get("key_type", "ingest"),
-            environment_id=env_id,
-            disabled=attributes.get("disabled", False),
-            permissions=attributes.get("permissions"),
-            secret=attributes.get("secret"),
-            created_at=attributes.get("created_at"),
-            updated_at=attributes.get("updated_at"),
-        )
+__all__ = [
+    "ApiKey",  # Convenience alias
+    "ApiKeyCreate",  # Convenience alias
+    "ApiKeyUpdate",  # Convenience alias
+    "ApiKeyCreateRequest",
+    "ApiKeyCreateResponse",
+    "ApiKeyListResponse",
+    "ApiKeyObject",
+    "ApiKeyObjectType",
+    "ApiKeyResponse",
+    "ApiKeyUpdateRequest",
+    "ApiKeyType",
+    "ConfigurationKey",
+    "IngestKey",
+]

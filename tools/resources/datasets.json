@@ -134,30 +134,47 @@
         "type": "object",
         "properties": {
           "name": {
-            "description": "Human-readable name for the dataset",
+            "description": "The name of the dataset.",
+            "maxLength": 255,
+            "minLength": 1,
             "title": "Name",
             "type": "string"
           },
           "description": {
             "anyOf": [
               {
+                "maxLength": 1024,
+                "minLength": 0,
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "Longer description",
+            "default": "",
+            "description": "A description for the dataset.",
+            "examples": [
+              "A nice description of my dataset"
+            ],
             "title": "Description"
           },
           "expand_json_depth": {
+            "anyOf": [
+              {
+                "maximum": 10,
+                "minimum": 0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
             "default": 0,
-            "description": "Depth to expand JSON fields (0-10)",
-            "maximum": 10,
-            "minimum": 0,
-            "title": "Expand Json Depth",
-            "type": "integer"
+            "description": "The maximum unpacking depth of nested JSON fields.",
+            "examples": [
+              3
+            ],
+            "title": "Expand Json Depth"
           },
           "confidence": {
             "type": "string",
@@ -226,7 +243,7 @@
     },
     {
       "name": "honeycomb_update_dataset",
-      "description": "Updates an existing dataset's name, description, JSON expansion settings, or delete protection. Use this to correct dataset metadata, add documentation, adjust JSON parsing behavior, or toggle delete protection. Requires the dataset slug. All other fields are optional - only provided fields will be updated. Set delete_protected=true to prevent accidental deletion, or delete_protected=false to allow deletion. Note: The slug itself cannot be changed. Changing expand_json_depth only affects new events, not existing data.",
+      "description": "Updates an existing dataset's description, JSON expansion settings, or delete protection. Use this to add documentation, adjust JSON parsing behavior, or toggle delete protection. Requires the dataset slug. All other fields are optional - only provided fields will be updated. Set delete_protected=true to prevent accidental deletion, or delete_protected=false to allow deletion. Note: Dataset name and slug cannot be changed after creation. Changing expand_json_depth only affects new events, not existing data.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -234,30 +251,22 @@
             "type": "string",
             "description": "The dataset slug to update"
           },
-          "name": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Human-readable name for the dataset",
-            "title": "Name"
-          },
           "description": {
             "anyOf": [
               {
+                "maxLength": 1024,
+                "minLength": 0,
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "Longer description",
+            "default": "",
+            "description": "A description for the dataset.",
+            "examples": [
+              "A nice description of my dataset"
+            ],
             "title": "Description"
           },
           "expand_json_depth": {
@@ -271,22 +280,24 @@
                 "type": "null"
               }
             ],
-            "default": null,
-            "description": "Depth to expand JSON fields (0-10)",
+            "default": 0,
+            "description": "The maximum unpacking depth of nested JSON fields.",
+            "examples": [
+              3
+            ],
             "title": "Expand Json Depth"
           },
-          "delete_protected": {
+          "settings": {
             "anyOf": [
               {
-                "type": "boolean"
+                "$ref": "#/$defs/DatasetUpdatePayloadSettings"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "If true, the dataset cannot be deleted",
-            "title": "Delete Protected"
+            "description": "Dataset settings (e.g., delete_protected)"
           },
           "confidence": {
             "type": "string",
@@ -341,8 +352,7 @@
       "input_examples": [
         {
           "slug": "api-logs",
-          "name": "API Logs",
-          "description": "Updated description"
+          "description": "Updated description for API logs"
         },
         {
           "slug": "production",
@@ -350,11 +360,15 @@
         },
         {
           "slug": "critical-data",
-          "delete_protected": true
+          "settings": {
+            "delete_protected": true
+          }
         },
         {
           "slug": "test-dataset",
-          "delete_protected": false
+          "settings": {
+            "delete_protected": false
+          }
         }
       ]
     },

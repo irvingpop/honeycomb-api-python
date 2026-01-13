@@ -5,8 +5,7 @@ import respx
 from httpx import Response
 
 from honeycomb import HoneycombClient
-from honeycomb.models.boards import BoardViewCreate, BoardViewFilter
-from honeycomb.models.query_builder import FilterOp
+from honeycomb.models.boards import BoardViewCreate, BoardViewFilter, BoardViewFilterOperation
 
 
 @pytest.mark.asyncio
@@ -72,7 +71,9 @@ class TestBoardViewsResourceAsync:
             view_create = BoardViewCreate(
                 name="New View",
                 filters=[
-                    BoardViewFilter(column="status", operation=FilterOp.EQUALS, value="active")
+                    BoardViewFilter(
+                        column="status", operation=BoardViewFilterOperation.EQUALS, value="active"
+                    )
                 ],
             )
             view = await client.boards.create_view_async(board_id="board-1", view=view_create)

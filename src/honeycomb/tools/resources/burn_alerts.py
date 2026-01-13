@@ -6,8 +6,7 @@ burn alerts resources.
 
 from typing import Any
 
-from honeycomb.models import BurnAlertCreate
-from honeycomb.tools.schemas import add_parameter, generate_schema_from_model
+from honeycomb.tools.schemas import add_parameter
 
 # ==============================================================================
 # Burn Alerts Descriptions
@@ -133,21 +132,56 @@ def generate_get_burn_alert_tool() -> dict[str, Any]:
 
 def generate_create_burn_alert_tool() -> dict[str, Any]:
     """Generate honeycomb_create_burn_alert tool definition."""
-    base_schema = generate_schema_from_model(
-        BurnAlertCreate,
-        exclude_fields={"created_at", "updated_at", "id"},
-    )
+    schema: dict[str, Any] = {
+        "type": "object",
+        "properties": {},
+        "required": ["dataset", "alert_type", "slo_id"],
+    }
 
-    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
     add_parameter(
         schema, "dataset", "string", "The dataset slug to create the burn alert in", required=True
     )
-
-    schema["properties"].update(base_schema["properties"])
-    schema["required"].extend(base_schema.get("required", []))
-
-    if "$defs" in base_schema:
-        schema["$defs"] = base_schema["$defs"]
+    add_parameter(
+        schema,
+        "alert_type",
+        "string",
+        "Type of burn alert: 'exhaustion_time' or 'budget_rate'",
+        required=True,
+    )
+    add_parameter(
+        schema, "slo_id", "string", "The SLO ID to attach this burn alert to", required=True
+    )
+    add_parameter(
+        schema, "description", "string", "Description of the burn alert (optional)", required=False
+    )
+    add_parameter(
+        schema,
+        "exhaustion_minutes",
+        "integer",
+        "Minutes until budget exhaustion (required for exhaustion_time alerts)",
+        required=False,
+    )
+    add_parameter(
+        schema,
+        "budget_rate_window_minutes",
+        "integer",
+        "Time window in minutes (required for budget_rate alerts)",
+        required=False,
+    )
+    add_parameter(
+        schema,
+        "budget_rate_decrease_threshold_per_million",
+        "integer",
+        "Budget decrease threshold per million (required for budget_rate alerts)",
+        required=False,
+    )
+    add_parameter(
+        schema,
+        "recipients",
+        "array",
+        "List of recipients (optional, can use inline type+target or id)",
+        required=False,
+    )
 
     examples = [
         # Exhaustion time alert without recipients (recipients are optional)
@@ -205,24 +239,53 @@ def generate_create_burn_alert_tool() -> dict[str, Any]:
 
 def generate_update_burn_alert_tool() -> dict[str, Any]:
     """Generate honeycomb_update_burn_alert tool definition."""
-    base_schema = generate_schema_from_model(
-        BurnAlertCreate,
-        exclude_fields={"created_at", "updated_at", "id"},
-    )
-
     schema: dict[str, Any] = {
         "type": "object",
         "properties": {},
-        "required": ["dataset", "burn_alert_id"],
+        "required": ["dataset", "burn_alert_id", "alert_type", "slo_id", "recipients"],
     }
+
     add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
     add_parameter(schema, "burn_alert_id", "string", "The burn alert ID to update", required=True)
-
-    schema["properties"].update(base_schema["properties"])
-    schema["required"].extend(base_schema.get("required", []))
-
-    if "$defs" in base_schema:
-        schema["$defs"] = base_schema["$defs"]
+    add_parameter(
+        schema,
+        "alert_type",
+        "string",
+        "Type of burn alert: 'exhaustion_time' or 'budget_rate'",
+        required=True,
+    )
+    add_parameter(schema, "slo_id", "string", "The SLO ID", required=True)
+    add_parameter(
+        schema,
+        "recipients",
+        "array",
+        "List of recipients (required for updates)",
+        required=True,
+    )
+    add_parameter(
+        schema, "description", "string", "Description of the burn alert (optional)", required=False
+    )
+    add_parameter(
+        schema,
+        "exhaustion_minutes",
+        "integer",
+        "Minutes until budget exhaustion (for exhaustion_time alerts)",
+        required=False,
+    )
+    add_parameter(
+        schema,
+        "budget_rate_window_minutes",
+        "integer",
+        "Time window in minutes (for budget_rate alerts)",
+        required=False,
+    )
+    add_parameter(
+        schema,
+        "budget_rate_decrease_threshold_per_million",
+        "integer",
+        "Budget decrease threshold per million (for budget_rate alerts)",
+        required=False,
+    )
 
     examples = [
         {

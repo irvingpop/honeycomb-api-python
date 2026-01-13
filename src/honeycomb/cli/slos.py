@@ -88,22 +88,12 @@ def get_slo(
                 raise typer.Exit(1)
 
             slo = matching[0]
-            # Check if SLO spans multiple datasets
-            if slo.dataset_slugs and len(slo.dataset_slugs) > 1:
-                datasets_str = ", ".join(slo.dataset_slugs)
-                console.print(
-                    f"[yellow]Note:[/yellow] SLO {slo_id} spans multiple datasets: {datasets_str}"
-                )
-                console.print(
-                    "[yellow]Fetching from first dataset. Use --dataset to specify a different one.[/yellow]"
-                )
-
-            found_dataset = slo.dataset
-            if not found_dataset:
+            dataset = slo.dataset
+            if not dataset:
                 console.print(f"[red]Error:[/red] SLO {slo_id} has no dataset", style="bold")
                 raise typer.Exit(1)
-            dataset = found_dataset
-            console.print(f"[dim]Found SLO in dataset: {dataset}[/dim]")
+            if slo.datasets:
+                console.print(f"[dim]SLO datasets: {', '.join(slo.datasets)}[/dim]")
             # We already have the SLO from the list, just output it
             output_result(slo, output)
         else:
@@ -199,29 +189,21 @@ def delete_slo(
                 raise typer.Exit(1)
 
             slo = matching[0]
-            # Check if SLO spans multiple datasets - must use __all__ to delete
-            if slo.dataset_slugs and len(slo.dataset_slugs) > 1:
-                datasets_str = ", ".join(slo.dataset_slugs)
-                console.print(f"[dim]SLO {slo_id} spans multiple datasets: {datasets_str}[/dim]")
-                dataset = "__all__"
-                console.print("[dim]Using dataset=__all__ for deletion[/dim]")
-            else:
-                found_dataset = slo.dataset
-                if not found_dataset:
-                    console.print(f"[red]Error:[/red] SLO {slo_id} has no dataset", style="bold")
-                    raise typer.Exit(1)
-                dataset = found_dataset
-                console.print(f"[dim]Found SLO in dataset: {dataset}[/dim]")
+            dataset = slo.dataset
+            if not dataset:
+                console.print(f"[red]Error:[/red] SLO {slo_id} has no dataset", style="bold")
+                raise typer.Exit(1)
+            if slo.datasets:
+                console.print(f"[dim]SLO datasets: {', '.join(slo.datasets)}[/dim]")
         else:
             # If dataset is explicitly provided for a multi-dataset SLO and it's not __all__, error
             all_slos = client.slos.list(dataset="__all__")
             matching = [s for s in all_slos if s.id == slo_id]
             if matching:
                 slo = matching[0]
-                if slo.dataset_slugs and len(slo.dataset_slugs) > 1 and dataset != "__all__":
-                    datasets_str = ", ".join(slo.dataset_slugs)
+                if len(slo.datasets) > 1 and dataset != "__all__":
                     console.print(
-                        f"[red]Error:[/red] SLO {slo_id} spans multiple datasets: {datasets_str}",
+                        f"[red]Error:[/red] SLO {slo_id} spans multiple datasets: {', '.join(slo.datasets)}",
                         style="bold",
                     )
                     console.print(
@@ -271,22 +253,12 @@ def export_slo(
                 raise typer.Exit(1)
 
             slo = matching[0]
-            # Check if SLO spans multiple datasets
-            if slo.dataset_slugs and len(slo.dataset_slugs) > 1:
-                datasets_str = ", ".join(slo.dataset_slugs)
-                console.print(
-                    f"[yellow]Warning:[/yellow] SLO {slo_id} spans multiple datasets: {datasets_str}"
-                )
-                console.print(
-                    "[yellow]Exporting from first dataset. Use --dataset to specify a different one.[/yellow]"
-                )
-
-            found_dataset = slo.dataset
-            if not found_dataset:
+            dataset = slo.dataset
+            if not dataset:
                 console.print(f"[red]Error:[/red] SLO {slo_id} has no dataset", style="bold")
                 raise typer.Exit(1)
-            dataset = found_dataset
-            console.print(f"[dim]Exporting SLO from dataset: {dataset}[/dim]")
+            if slo.datasets:
+                console.print(f"[dim]SLO datasets: {', '.join(slo.datasets)}[/dim]")
         else:
             # Dataset provided, fetch directly
             slo = client.slos.get(dataset=dataset, slo_id=slo_id)

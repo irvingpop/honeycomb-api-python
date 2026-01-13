@@ -5,7 +5,8 @@ import respx
 from httpx import Response
 
 from honeycomb import HoneycombClient
-from honeycomb.models.auth import AuthInfo, AuthInfoV2
+from honeycomb._generated_models import AuthType
+from honeycomb.models.auth import Auth, AuthV2Response
 
 
 @pytest.fixture
@@ -45,11 +46,11 @@ class TestAuthResource:
 
         result = api_key_client.auth.get()
 
-        assert isinstance(result, AuthInfo)
+        assert isinstance(result, Auth)
         assert result.id == "key123"
-        assert result.type == "configuration"
-        assert result.team_name == "Test Team"
-        assert result.environment_slug == "test-env"
+        assert result.type == AuthType.configuration
+        assert result.team.name == "Test Team"
+        assert result.environment.slug == "test-env"
 
     @respx.mock
     def test_get_v2_auto_detect(self, management_client):
@@ -83,11 +84,12 @@ class TestAuthResource:
 
         result = management_client.auth.get()
 
-        assert isinstance(result, AuthInfoV2)
-        assert result.id == "mgmt123"
-        assert result.name == "My Mgmt Key"
-        assert result.team_name == "My Team"
-        assert "api-keys:write" in result.scopes
+        assert isinstance(result, AuthV2Response)
+        assert result.data.id == "mgmt123"
+        assert result.data.attributes.name == "My Mgmt Key"
+        assert result.included is not None
+        assert result.included[0].id == "team123"  # type: ignore[index,union-attr]
+        assert "api-keys:write" in result.data.attributes.scopes
 
     def test_explicit_v2_with_api_key_raises(self, api_key_client):
         """Raises ValueError when forcing v2 with API key credentials."""
@@ -112,4 +114,5 @@ class TestAuthResource:
 
         result = management_client.auth.get(use_v2=False)
 
-        assert isinstance(result, AuthInfo)
+        assert isinstance(result, Auth)
+        assert result.type == AuthType.ingest

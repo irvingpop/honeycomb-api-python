@@ -4,7 +4,15 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from ..models.burn_alerts import BurnAlertCreate, BurnAlertRecipient
+from ..models.burn_alerts import (
+    BurnAlertRecipient,
+    BurnAlertType,
+    CreateBudgetRateBurnAlertRequest,
+    CreateBudgetRateBurnAlertRequestSlo,
+    CreateBurnAlertRequest,
+    CreateExhaustionTimeBurnAlertRequest,
+    CreateExhaustionTimeBurnAlertRequestSlo,
+)
 from ..models.slos import SLO, SLOCreate
 from .base import BaseResource
 
@@ -78,7 +86,9 @@ class SLOsResource(BaseResource):
         Returns:
             Created SLO object.
         """
-        data = await self._post_async(self._build_path(dataset), json=slo.model_dump_for_api())
+        data = await self._post_async(
+            self._build_path(dataset), json=slo.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(SLO, data)
 
     async def update_async(self, dataset: str, slo_id: str, slo: SLOCreate) -> SLO:
@@ -93,7 +103,7 @@ class SLOsResource(BaseResource):
             Updated SLO object.
         """
         data = await self._put_async(
-            self._build_path(dataset, slo_id), json=slo.model_dump_for_api()
+            self._build_path(dataset, slo_id), json=slo.model_dump(mode="json", exclude_none=True)
         )
         return self._parse_model(SLO, data)
 
@@ -188,17 +198,29 @@ class SLOsResource(BaseResource):
             if alert_def.budget_rate_decrease_percent is not None:
                 budget_rate_threshold = int(alert_def.budget_rate_decrease_percent * 10000)
 
-            burn_alert = BurnAlertCreate(
-                alert_type=alert_def.alert_type,
-                slo_id=slo.id,
-                description=alert_def.description,
-                exhaustion_minutes=alert_def.exhaustion_minutes,
-                budget_rate_window_minutes=alert_def.budget_rate_window_minutes,
-                budget_rate_decrease_threshold_per_million=budget_rate_threshold,
-                recipients=recipients if recipients else [],
-            )
+            # Build discriminated union based on alert type
+            if alert_def.alert_type == BurnAlertType.EXHAUSTION_TIME:
+                req: CreateExhaustionTimeBurnAlertRequest | CreateBudgetRateBurnAlertRequest = (
+                    CreateExhaustionTimeBurnAlertRequest(
+                        alert_type="exhaustion_time",
+                        slo=CreateExhaustionTimeBurnAlertRequestSlo(id=slo.id),
+                        recipients=recipients or None,
+                        description=alert_def.description,
+                        exhaustion_minutes=alert_def.exhaustion_minutes,
+                    )
+                )
+            else:  # BUDGET_RATE
+                req = CreateBudgetRateBurnAlertRequest(
+                    alert_type="budget_rate",
+                    slo=CreateBudgetRateBurnAlertRequestSlo(id=slo.id),
+                    recipients=recipients or None,
+                    description=alert_def.description,
+                    budget_rate_window_minutes=alert_def.budget_rate_window_minutes,
+                    budget_rate_decrease_threshold_per_million=budget_rate_threshold,
+                )
+            burn_alert_request = CreateBurnAlertRequest(root=req)
 
-            await self._client.burn_alerts.create_async(burn_alert_dataset, burn_alert)
+            await self._client.burn_alerts.create_async(burn_alert_dataset, burn_alert_request)
 
         return created_slos
 
@@ -247,7 +269,9 @@ class SLOsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
-        data = self._post_sync(self._build_path(dataset), json=slo.model_dump_for_api())
+        data = self._post_sync(
+            self._build_path(dataset), json=slo.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(SLO, data)
 
     def update(self, dataset: str, slo_id: str, slo: SLOCreate) -> SLO:
@@ -263,7 +287,9 @@ class SLOsResource(BaseResource):
         """
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
-        data = self._put_sync(self._build_path(dataset, slo_id), json=slo.model_dump_for_api())
+        data = self._put_sync(
+            self._build_path(dataset, slo_id), json=slo.model_dump(mode="json", exclude_none=True)
+        )
         return self._parse_model(SLO, data)
 
     def delete(self, dataset: str, slo_id: str) -> None:
@@ -364,16 +390,28 @@ class SLOsResource(BaseResource):
             if alert_def.budget_rate_decrease_percent is not None:
                 budget_rate_threshold = int(alert_def.budget_rate_decrease_percent * 10000)
 
-            burn_alert = BurnAlertCreate(
-                alert_type=alert_def.alert_type,
-                slo_id=slo.id,
-                description=alert_def.description,
-                exhaustion_minutes=alert_def.exhaustion_minutes,
-                budget_rate_window_minutes=alert_def.budget_rate_window_minutes,
-                budget_rate_decrease_threshold_per_million=budget_rate_threshold,
-                recipients=recipients if recipients else [],
-            )
+            # Build discriminated union based on alert type
+            if alert_def.alert_type == BurnAlertType.EXHAUSTION_TIME:
+                req: CreateExhaustionTimeBurnAlertRequest | CreateBudgetRateBurnAlertRequest = (
+                    CreateExhaustionTimeBurnAlertRequest(
+                        alert_type="exhaustion_time",
+                        slo=CreateExhaustionTimeBurnAlertRequestSlo(id=slo.id),
+                        recipients=recipients or None,
+                        description=alert_def.description,
+                        exhaustion_minutes=alert_def.exhaustion_minutes,
+                    )
+                )
+            else:  # BUDGET_RATE
+                req = CreateBudgetRateBurnAlertRequest(
+                    alert_type="budget_rate",
+                    slo=CreateBudgetRateBurnAlertRequestSlo(id=slo.id),
+                    recipients=recipients or None,
+                    description=alert_def.description,
+                    budget_rate_window_minutes=alert_def.budget_rate_window_minutes,
+                    budget_rate_decrease_threshold_per_million=budget_rate_threshold,
+                )
+            burn_alert_request = CreateBurnAlertRequest(root=req)
 
-            self._client.burn_alerts.create(burn_alert_dataset, burn_alert)
+            self._client.burn_alerts.create(burn_alert_dataset, burn_alert_request)
 
         return created_slos

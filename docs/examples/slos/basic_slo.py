@@ -6,7 +6,7 @@ SLOs require an SLI (a derived column that returns a boolean).
 
 from __future__ import annotations
 
-from honeycomb import HoneycombClient, SLI, SLO, SLOCreate
+from honeycomb import HoneycombClient, SLO, SLOCreate
 
 
 # start_example:create_slo
@@ -28,7 +28,7 @@ async def create_basic_slo(
         SLOCreate(
             name="API Availability",
             description="99.9% availability target for API service",
-            sli=SLI(alias=sli_alias),
+            sli=sli_alias,
             time_period_days=30,
             target_per_million=999000,  # 99.9%
         ),
@@ -62,7 +62,7 @@ async def create_slo_with_targets(
         SLOCreate(
             name="API Request Success",
             description="High availability SLO",
-            sli=SLI(alias=sli_alias),
+            sli=sli_alias,
             time_period_days=7,  # 7-day rolling window
             target_per_million=995000,  # 99.5%
         ),
@@ -135,7 +135,7 @@ async def update_slo(
         SLOCreate(
             name="Updated API Availability",
             description=existing.description,
-            sli=SLI(alias=sli_alias),
+            sli=sli_alias,
             time_period_days=existing.time_period_days,
             target_per_million=999900,  # Increase to 99.99%
         ),

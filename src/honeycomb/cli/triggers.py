@@ -10,7 +10,11 @@ from rich.console import Console
 
 from honeycomb.cli.config import get_client
 from honeycomb.cli.formatters import DEFAULT_OUTPUT_FORMAT, OutputFormat, output_result
-from honeycomb.models.triggers import TriggerCreate
+from honeycomb.models.triggers import (
+    TriggerCreate,
+    TriggerWithInlineQuery,
+    TriggerWithQueryReference,
+)
 
 app = typer.Typer(help="Manage triggers (alerts)")
 console = Console()
@@ -108,7 +112,13 @@ def create_trigger(
         data.pop("created_at", None)
         data.pop("updated_at", None)
 
-        trigger_create = TriggerCreate.model_validate(data)
+        # Parse trigger - use query_id if present, otherwise inline query
+        trigger_create: TriggerCreate
+        if "query_id" in data and data["query_id"]:
+            trigger_create = TriggerWithQueryReference.model_validate(data)
+        else:
+            trigger_create = TriggerWithInlineQuery.model_validate(data)
+
         trigger = client.triggers.create(dataset=dataset, trigger=trigger_create)
 
         console.print(f"[green]Created trigger '{trigger.name}' with ID: {trigger.id}[/green]")
@@ -139,7 +149,13 @@ def update_trigger(
         data.pop("created_at", None)
         data.pop("updated_at", None)
 
-        trigger_update = TriggerCreate.model_validate(data)
+        # Parse trigger - use query_id if present, otherwise inline query
+        trigger_update: TriggerCreate
+        if "query_id" in data and data["query_id"]:
+            trigger_update = TriggerWithQueryReference.model_validate(data)
+        else:
+            trigger_update = TriggerWithInlineQuery.model_validate(data)
+
         trigger = client.triggers.update(
             dataset=dataset, trigger_id=trigger_id, trigger=trigger_update
         )
