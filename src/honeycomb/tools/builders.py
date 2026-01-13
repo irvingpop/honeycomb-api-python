@@ -592,7 +592,7 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
             filters.append(
                 {
                     "column": board_view_filter.column,
-                    "operation": board_view_filter.operation,
+                    "operation": board_view_filter.operation.value,  # Convert enum to string
                     "value": board_view_filter.value,
                 }
             )

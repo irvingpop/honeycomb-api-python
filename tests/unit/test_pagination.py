@@ -468,7 +468,7 @@ class TestServiceMapDependencies:
             )
 
         assert req.request_id == "req-123"
-        assert req.status == ServiceMapDependencyRequestStatus.PENDING
+        assert req.status == ServiceMapDependencyRequestStatus.pending
 
     @respx.mock
     async def test_get_result_single_page(self):
@@ -500,7 +500,7 @@ class TestServiceMapDependencies:
             result = await client.service_map_dependencies.get_result_async("req-123")
 
         assert result.request_id == "req-123"
-        assert result.status == ServiceMapDependencyRequestStatus.READY
+        assert result.status == ServiceMapDependencyRequestStatus.ready
         assert len(result.dependencies) == 2
         assert result.dependencies[0].parent_node.name == "service-a"
         assert result.dependencies[0].child_node.name == "service-b"
@@ -611,7 +611,7 @@ class TestServiceMapDependencies:
         async with HoneycombClient(api_key="test-api-key") as client:
             result = await client.service_map_dependencies.get_result_async("req-123")
 
-        assert result.status == ServiceMapDependencyRequestStatus.PENDING
+        assert result.status == ServiceMapDependencyRequestStatus.pending
         assert result.dependencies is None
 
     @respx.mock
@@ -664,7 +664,7 @@ class TestServiceMapDependenciesModels:
             time_range=3600,
             filters=[ServiceMapNode(name="svc-a")],
         )
-        data = req.model_dump_for_api()
+        data = req.model_dump(mode="json", exclude_none=True)
 
         assert data["start_time"] == 1622548800
         assert data["time_range"] == 3600
@@ -672,11 +672,19 @@ class TestServiceMapDependenciesModels:
         assert "end_time" not in data  # None values excluded
 
     def test_map_node_default_type(self):
-        """Test ServiceMapNode default type."""
+        """Test ServiceMapNode default type.
+
+        Note: The generated model has type=None by default. The API server
+        defaults to 'service' when type is not specified.
+        """
+        node = ServiceMapNode(name="my-service")
+        assert node.type is None  # None means API will default to 'service'
+
+        # Explicit type works
         from honeycomb.models import ServiceMapNodeType
 
-        node = ServiceMapNode(name="my-service")
-        assert node.type == ServiceMapNodeType.SERVICE
+        node_explicit = ServiceMapNode(name="my-service", type=ServiceMapNodeType.service)
+        assert node_explicit.type == ServiceMapNodeType.service
 
 
 # =============================================================================

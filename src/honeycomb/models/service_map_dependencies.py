@@ -1,36 +1,46 @@
-"""Pydantic models for Honeycomb Service Map Dependencies."""
+"""Pydantic models for Honeycomb Service Map Dependencies.
 
-from __future__ import annotations
+Re-exports generated models with backward-compatible names.
+"""
 
-from enum import Enum
-from typing import Any
+from honeycomb._generated_models import (
+    CreateMapDependenciesRequest as _CreateMapDependenciesRequestGenerated,
+)
+from honeycomb._generated_models import (
+    CreateMapDependenciesResponse as _CreateMapDependenciesResponseGenerated,
+)
+from honeycomb._generated_models import (
+    CreateMapDependenciesResponseStatus,
+    MapNodeType,
+)
+from honeycomb._generated_models import (
+    GetMapDependenciesResponse as _GetMapDependenciesResponseGenerated,
+)
+from honeycomb._generated_models import (
+    MapDependency as _MapDependencyGenerated,
+)
+from honeycomb._generated_models import (
+    MapNode as _MapNodeGenerated,
+)
 
-from pydantic import BaseModel, Field
+# Re-export enums with backward-compatible names
+ServiceMapNodeType = MapNodeType
+ServiceMapDependencyRequestStatus = CreateMapDependenciesResponseStatus
 
 
-class ServiceMapNodeType(str, Enum):
-    """Type of node in the service map."""
-
-    SERVICE = "service"
-
-
-class ServiceMapNode(BaseModel):
-    """A node in the service map (typically a service).
+class ServiceMapNode(_MapNodeGenerated):
+    """A node in the service map (extends generated MapNode).
 
     Attributes:
         name: Name of the service or node.
         type: Type of the node. Currently only 'service' is supported.
     """
 
-    name: str = Field(..., description="Name of the service or node")
-    type: ServiceMapNodeType = Field(
-        default=ServiceMapNodeType.SERVICE,
-        description="Type of the node. Currently only 'service' is supported.",
-    )
+    pass
 
 
-class ServiceMapDependency(BaseModel):
-    """A dependency relationship between two services.
+class ServiceMapDependency(_MapDependencyGenerated):
+    """A dependency relationship between two services (extends generated).
 
     Attributes:
         parent_node: The upstream service (caller).
@@ -38,21 +48,11 @@ class ServiceMapDependency(BaseModel):
         call_count: Number of calls between the parent and child services.
     """
 
-    parent_node: ServiceMapNode = Field(..., description="The upstream service (caller)")
-    child_node: ServiceMapNode = Field(..., description="The downstream service (callee)")
-    call_count: int = Field(..., description="Number of calls between services")
+    pass
 
 
-class ServiceMapDependencyRequestStatus(str, Enum):
-    """Status of a Service Map Dependencies request."""
-
-    PENDING = "pending"
-    READY = "ready"
-    ERROR = "error"
-
-
-class ServiceMapDependencyRequestCreate(BaseModel):
-    """Request to create a Service Map Dependencies query.
+class ServiceMapDependencyRequestCreate(_CreateMapDependenciesRequestGenerated):
+    """Request to create a Service Map Dependencies query (extends generated).
 
     Time range can be specified in several ways:
     - time_range only: Seconds before now
@@ -67,50 +67,22 @@ class ServiceMapDependencyRequestCreate(BaseModel):
         filters: Optional list of service nodes to filter by.
     """
 
-    start_time: int | None = Field(
-        default=None,
-        description="Absolute start time in seconds since UNIX epoch",
-    )
-    end_time: int | None = Field(
-        default=None,
-        description="Absolute end time in seconds since UNIX epoch",
-    )
-    time_range: int = Field(
-        default=7200,
-        ge=1,
-        description="Time range in seconds (default: 7200 = 2 hours)",
-    )
-    filters: list[ServiceMapNode] | None = Field(
-        default=None,
-        description="Optional list of service nodes to filter dependencies by",
-    )
-
-    def model_dump_for_api(self) -> dict[str, Any]:
-        """Serialize for API request, excluding None values."""
-        data: dict[str, Any] = {"time_range": self.time_range}
-        if self.start_time is not None:
-            data["start_time"] = self.start_time
-        if self.end_time is not None:
-            data["end_time"] = self.end_time
-        if self.filters:
-            data["filters"] = [f.model_dump() for f in self.filters]
-        return data
+    pass
 
 
-class ServiceMapDependencyRequest(BaseModel):
-    """Response from creating a Service Map Dependencies request.
+class ServiceMapDependencyRequest(_CreateMapDependenciesResponseGenerated):
+    """Response from creating a Service Map Dependencies request (extends generated).
 
     Attributes:
         request_id: Unique identifier for the request.
         status: Status of the request (pending, ready, error).
     """
 
-    request_id: str = Field(..., description="Unique identifier for the request")
-    status: ServiceMapDependencyRequestStatus = Field(..., description="Status of the request")
+    pass
 
 
-class ServiceMapDependencyResult(BaseModel):
-    """Result of a Service Map Dependencies query.
+class ServiceMapDependencyResult(_GetMapDependenciesResponseGenerated):
+    """Result of a Service Map Dependencies query (extends generated).
 
     Attributes:
         request_id: Unique identifier for the request.
@@ -118,9 +90,15 @@ class ServiceMapDependencyResult(BaseModel):
         dependencies: List of service dependencies (None if pending/error).
     """
 
-    request_id: str = Field(..., description="Unique identifier for the request")
-    status: ServiceMapDependencyRequestStatus = Field(..., description="Status of the request")
-    dependencies: list[ServiceMapDependency] | None = Field(
-        default=None,
-        description="List of service dependencies (None if pending/error)",
-    )
+    pass
+
+
+__all__ = [
+    "ServiceMapDependency",
+    "ServiceMapDependencyRequest",
+    "ServiceMapDependencyRequestCreate",
+    "ServiceMapDependencyRequestStatus",
+    "ServiceMapDependencyResult",
+    "ServiceMapNode",
+    "ServiceMapNodeType",
+]

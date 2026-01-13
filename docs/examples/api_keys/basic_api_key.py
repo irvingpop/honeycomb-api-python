@@ -107,10 +107,10 @@ async def create_api_key(client: HoneycombClient, environment_id: str) -> tuple[
 
     # Secret is only available during creation!
     print(f"Created key: {key.id}")
-    print(f"Secret: {key.secret}")
+    print(f"Secret: {key.attributes.secret}")
     print("⚠️  Save the secret - it won't be shown again!")
 
-    return key.id, key.secret or ""
+    return key.id, key.attributes.secret
 
 
 # end_example:create

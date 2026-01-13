@@ -30,6 +30,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from enum import Enum
 from typing import Any
 
 import pytest
@@ -80,13 +81,28 @@ def dump_tool_call(step: str, tool_name: str, tool_input: dict[str, Any], result
     print(f"STEP: {step}")
     print(f"TOOL: {tool_name}")
     print(f"{'=' * 80}")
-    print("INPUT:")
+
+    # Always show confidence and notes prominently
+    confidence = tool_input.get("confidence", "none")
+    notes = tool_input.get("notes", {})
+    print(f"CONFIDENCE: {confidence}")
+    if notes:
+        print(f"NOTES: {json.dumps(notes, indent=2)}")
+
+    print("\nINPUT:")
     print(json.dumps(tool_input, indent=2))
+
     print("\nRESULT:")
     # Pretty print if JSON, otherwise raw
     try:
         result_data = json.loads(result)
-        print(json.dumps(result_data, indent=2))
+        result_json = json.dumps(result_data, indent=2)
+        # Truncate if very long, but always show metadata
+        if len(result_json) > 5000:
+            print(result_json[:5000])
+            print(f"\n... [truncated {len(result_json) - 5000} characters] ...")
+        else:
+            print(result_json)
     except (json.JSONDecodeError, TypeError):
         print(result)
     print(f"{'=' * 80}\n")
@@ -284,7 +300,7 @@ Create a new environment named '{env_name}' with color 'blue' for organizing tes
         )
         env_data = json.loads(env_result)
         environment_id = env_data["id"]
-        environment_slug = env_data["slug"]
+        environment_slug = env_data["attributes"]["slug"]
         print(f"✓ Claude created environment: {environment_id} ({environment_slug})")
 
         # Step 0b: Ask Claude to create API key
@@ -307,7 +323,7 @@ This key will have full permissions to create datasets, triggers, SLOs, and boar
         )
         key_data = json.loads(key_result)
         api_key_id = key_data["id"]
-        api_key_secret = key_data["secret"]
+        api_key_secret = key_data["attributes"]["secret"]
         print(f"✓ Claude created API key: {api_key_id}")
         print(f"✓ API key secret: {api_key_secret[:20]}...")
 
@@ -514,8 +530,9 @@ Create the recipients inline with the trigger.
         assert trigger.threshold.value == 10, (
             f"Threshold should be 10, got {trigger.threshold.value}"
         )
-        assert trigger.threshold.op == ">", (
-            f"Threshold op should be '>', got {trigger.threshold.op}"
+        # Compare enum value (op is BaseTriggerThresholdOp enum)
+        assert trigger.threshold.op.value == ">", (
+            f"Threshold op should be '>', got {trigger.threshold.op.value}"
         )
 
         # Validate query (query may be dict or object)
@@ -539,18 +556,25 @@ Create the recipients inline with the trigger.
         filter_value = (
             status_filter.get("value") if isinstance(status_filter, dict) else status_filter.value
         )
-        assert filter_op == ">=", f"Filter op should be '>=', got {filter_op}"
+        # Handle enum or string comparison
+        filter_op_value = filter_op.value if isinstance(filter_op, Enum) else filter_op
+        assert filter_op_value == ">=", f"Filter op should be '>=', got {filter_op_value}"
         assert filter_value == 500, f"Filter value should be 500, got {filter_value}"
 
         # Validate recipients exist (email + webhook)
         assert len(trigger.recipients) >= 2, (
             f"Should have 2 recipients, got {len(trigger.recipients)}"
         )
-        recipient_types = {
-            (r.get("type") if isinstance(r, dict) else r.type) for r in trigger.recipients
-        }
-        assert "email" in recipient_types, "Should have email recipient"
-        assert "webhook" in recipient_types, "Should have webhook recipient"
+        # Extract type values (handle both dict and enum)
+        recipient_types = set()
+        for r in trigger.recipients:
+            if isinstance(r, dict):
+                recipient_types.add(r.get("type"))
+            else:
+                # r.type is RecipientType enum, get its value
+                recipient_types.add(r.type.value if isinstance(r.type, Enum) else r.type)
+        assert "email" in recipient_types, f"Should have email recipient, got {recipient_types}"
+        assert "webhook" in recipient_types, f"Should have webhook recipient, got {recipient_types}"
 
         print(
             f"✓ VALIDATED: Trigger '{trigger_name}' created with {len(trigger.recipients)} recipients"
@@ -666,10 +690,10 @@ IMPORTANT: Use inline creation for queries, SLO, and views to minimize API calls
             f"Board should have at least 3 panels, got {len(board_full.panels)}"
         )
 
-        # Validate panel types
-        query_panels = [p for p in board_full.panels if p["type"] == "query"]
-        text_panels = [p for p in board_full.panels if p["type"] == "text"]
-        slo_panels = [p for p in board_full.panels if p["type"] == "slo"]
+        # Validate panel types (panels are Pydantic objects, not dicts)
+        query_panels = [p for p in board_full.panels if p.type == "query"]
+        text_panels = [p for p in board_full.panels if p.type == "text"]
+        slo_panels = [p for p in board_full.panels if p.type == "slo"]
 
         assert len(query_panels) >= 2, (
             f"Should have at least 2 query panels, got {len(query_panels)}"
@@ -767,12 +791,10 @@ IMPORTANT: Use inline creation for queries, SLO, and views to minimize API calls
         # Delete environment (direct API call for fast cleanup)
         if environment_id:
             try:
-                # Disable delete protection first
-                from honeycomb.models.environments import EnvironmentUpdate
-
+                # Disable delete protection first using convenience parameter
                 await management_client.environments.update_async(
                     env_id=environment_id,
-                    environment=EnvironmentUpdate(delete_protected=False),
+                    delete_protected=False,
                 )
                 await management_client.environments.delete_async(env_id=environment_id)
                 print(f"✓ Deleted environment: {environment_id}")

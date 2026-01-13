@@ -5,8 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qs, urlparse
 
+from honeycomb._generated_models import ApiKeyCreateResponseData
+
 from ..models.api_keys import (
     ApiKeyCreateRequest,
+    ApiKeyCreateResponse,
     ApiKeyListResponse,
     ApiKeyObject,
     ApiKeyResponse,
@@ -247,7 +250,7 @@ class ApiKeysResource(BaseResource):
         self,
         api_key: ApiKeyCreateRequest | ConfigurationKey | IngestKey,
         environment_id: str | None = None,
-    ) -> ApiKeyObject:
+    ) -> ApiKeyCreateResponseData:
         """Create a new API key (async).
 
         Args:
@@ -256,7 +259,7 @@ class ApiKeysResource(BaseResource):
             environment_id: Environment ID (required when using ConfigurationKey/IngestKey).
 
         Returns:
-            Created ApiKeyObject (includes secret in attributes, save it immediately!).
+            Created API key with secret in attributes (save it immediately!).
 
         Examples:
             >>> # Simple syntax with ConfigurationKey
@@ -307,9 +310,9 @@ class ApiKeysResource(BaseResource):
             json=api_key.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        response = self._parse_model(ApiKeyResponse, data)
-        # Convert generated ApiKeyObject to our extended version
-        return ApiKeyObject.model_validate(response.data.model_dump())
+        response = self._parse_model(ApiKeyCreateResponse, data)
+        # Return create response data directly - attributes includes secret (only available at creation)
+        return response.data
 
     async def update_async(
         self,
@@ -474,7 +477,7 @@ class ApiKeysResource(BaseResource):
         self,
         api_key: ApiKeyCreateRequest | ConfigurationKey | IngestKey,
         environment_id: str | None = None,
-    ) -> ApiKeyObject:
+    ) -> ApiKeyCreateResponseData:
         """Create a new API key.
 
         Args:
@@ -483,7 +486,7 @@ class ApiKeysResource(BaseResource):
             environment_id: Environment ID (required when using ConfigurationKey/IngestKey).
 
         Returns:
-            Created ApiKeyObject (includes secret in attributes, save it immediately!).
+            Created API key with secret in attributes (save it immediately!).
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
@@ -525,9 +528,9 @@ class ApiKeysResource(BaseResource):
             json=api_key.model_dump(mode="json", exclude_none=True, by_alias=True),
             headers={"Content-Type": "application/vnd.api+json"},
         )
-        response = self._parse_model(ApiKeyResponse, data)
-        # Convert generated ApiKeyObject to our extended version
-        return ApiKeyObject.model_validate(response.data.model_dump())
+        response = self._parse_model(ApiKeyCreateResponse, data)
+        # Return create response data directly - attributes includes secret (only available at creation)
+        return response.data
 
     def update(self, api_key: ApiKeyUpdateRequest) -> ApiKeyObject:
         """Update an existing API key.
