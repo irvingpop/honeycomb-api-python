@@ -324,7 +324,9 @@ class BoardQueryVisualizationSettingsChartChartType(Enum):
 
 class BoardQueryVisualizationSettingsChart(BaseModel):
     chart_index: int | None = 0
-    chart_type: BoardQueryVisualizationSettingsChartChartType | None = "default"
+    chart_type: BoardQueryVisualizationSettingsChartChartType | None = (
+        BoardQueryVisualizationSettingsChartChartType.default
+    )
     log_scale: bool | None = False
     omit_missing_values: bool | None = False
 
@@ -387,7 +389,7 @@ class CreateColumn(BaseModel):
         ..., description="Name of the Column.", examples=["my_column"], max_length=255, min_length=1
     )
     type: CreateColumnColumnType | None = Field(
-        default="string",
+        default=CreateColumnColumnType.string,
         description="Type of data that the Column will contain. Histogram is in beta and only works in your Metrics dataset.",
         examples=["integer"],
         title="ColumnType",
@@ -710,7 +712,7 @@ class NotificationRecipientDetailsVariable(BaseModel):
 
 class NotificationRecipientDetails(BaseModel):
     pagerduty_severity: NotificationRecipientDetailsPagerdutySeverity | None = Field(
-        default="critical",
+        default=NotificationRecipientDetailsPagerdutySeverity.critical,
         description='When using a Recipient of `type = "pagerduty"`, the severity of the alert can be specified.\n',
     )
     variables: list[NotificationRecipientDetailsVariable] | None = Field(
@@ -1089,7 +1091,7 @@ class QueryOrderOrder(Enum):
 class QueryOrder(BaseModel):
     column: str | None = None
     op: QueryOp | None = None
-    order: QueryOrderOrder | None = "ascending"
+    order: QueryOrderOrder | None = QueryOrderOrder.ascending
 
 
 class QueryHaving(BaseModel):
@@ -1154,7 +1156,8 @@ class Query(BaseModel):
         max_length=100,
     )
     filter_combination: QueryFilterCombination | None = Field(
-        default="AND", description='set to "OR" to match ANY filter in the filter list'
+        default=QueryFilterCombination.AND,
+        description='set to "OR" to match ANY filter in the filter list',
     )
     granularity: int | None = Field(
         default=None,
@@ -2054,7 +2057,7 @@ class AlertType(Enum):
 
 class ExhaustionTime(BurnAlertSharedParams):
     alert_type: AlertType | None = Field(
-        default="exhaustion_time",
+        default=AlertType.exhaustion_time,
         description="One of the supported alert types:\n1. `exhaustion_time`: Notifies when you are about to run out of SLO budget within a specified number of hours.\n1. `budget_rate`: Notifies when budget drops by at least a specified percentage within a defined time window.\n",
         examples=["exhaustion_time"],
     )
@@ -2895,7 +2898,8 @@ class QueryPanelQueryPanel(BaseModel):
         examples=["abc1234e"],
     )
     query_style: QueryPanelQueryPanelQueryStyle | None = Field(
-        default="graph", description="How the query should be displayed on the board."
+        default=QueryPanelQueryPanelQueryStyle.graph,
+        description="How the query should be displayed on the board.",
     )
     query_annotation_id: str = Field(
         ...,
@@ -3102,7 +3106,7 @@ class BaseTrigger(BaseModel):
         description="The interval in seconds in which to check the results of the query’s calculation against the threshold. Cannot be more than 4 times the query's duration (i.e. `duration <= frequency*4`). See [A Caveat on Time](https://docs.honeycomb.io/investigate/collaborate/share-query/define-query-json/#how-to-specify-an-absolute-time-range) for more information on specifying a query's duration. minimum: 60 maximum: 86400 multipleOf: 60 default: 900\n",
     )
     alert_type: BaseTriggerAlertType | None = Field(
-        default="on_change",
+        default=BaseTriggerAlertType.on_change,
         description='How often to fire an alert when a trigger threshold is crossed.\n- `on_change` sends a trigger notification when the result of the specified calculation crosses the threshold.\n  The trigger resolves only when the result of the query no longer satisfies the threshold condition.\n- `on_true` keeps sending a trigger notification at current frequency when and while the threshold is met.\n  (This reflects the same behavior as the "Send an alert every time a threshold is met" checkbox in the Honeycomb UI.)\n',
     )
     disabled: bool | None = Field(
@@ -3452,7 +3456,7 @@ class Board(BaseModel):
         list[Annotated[QueryPanel | SLOPanel | TextPanel, Field(discriminator="type")]] | None
     ) = None
     layout_generation: BoardLayoutGeneration | None = Field(
-        default="manual",
+        default=BoardLayoutGeneration.manual,
         description='The layout generation mode for the board. When set to "auto", the board will be automatically laid out based on the panels. When set to "manual", the board will be laid out manually by the user.\n',
     )
     tags: list[Tag] | None = Field(

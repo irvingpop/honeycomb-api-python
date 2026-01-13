@@ -39,6 +39,7 @@ poetry run datamodel-codegen \
   --collapse-root-models \
   --reuse-model \
   --use-default-kwarg \
+  --set-default-enum-member \
   --disable-timestamp \
   --formatters ruff-format ruff-check
 
