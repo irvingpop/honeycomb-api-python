@@ -11,6 +11,8 @@ from ..models.api_keys import (
     ApiKeyObject,
     ApiKeyResponse,
     ApiKeyUpdateRequest,
+    ConfigurationKey,
+    IngestKey,
 )
 from .base import BaseResource
 
@@ -241,15 +243,64 @@ class ApiKeysResource(BaseResource):
         # Convert generated ApiKeyObject to our extended version
         return ApiKeyObject.model_validate(response.data.model_dump())
 
-    async def create_async(self, api_key: ApiKeyCreateRequest) -> ApiKeyObject:
+    async def create_async(
+        self,
+        api_key: ApiKeyCreateRequest | ConfigurationKey | IngestKey,
+        environment_id: str | None = None,
+    ) -> ApiKeyObject:
         """Create a new API key (async).
 
         Args:
-            api_key: API key creation request (JSON:API format).
+            api_key: Either a full ApiKeyCreateRequest (JSON:API format) or
+                    ConfigurationKey/IngestKey (convenience - auto-wrapped).
+            environment_id: Environment ID (required when using ConfigurationKey/IngestKey).
 
         Returns:
             Created ApiKeyObject (includes secret in attributes, save it immediately!).
+
+        Examples:
+            >>> # Simple syntax with ConfigurationKey
+            >>> from honeycomb import ConfigurationKey
+            >>> key = await client.api_keys.create_async(
+            ...     api_key=ConfigurationKey(
+            ...         key_type="configuration",
+            ...         name="My Key",
+            ...         permissions={"send_events": True}
+            ...     ),
+            ...     environment_id="hcaen_123"
+            ... )
         """
+        from honeycomb._generated_models import (
+            ApiKeyCreateRequestData,
+            ApiKeyCreateRequestDataRelationships,
+            ApiKeyObjectType,
+            EnvironmentRelationship,
+            EnvironmentRelationshipData,
+            EnvironmentRelationshipDataType,
+        )
+
+        # Auto-wrap ConfigurationKey or IngestKey in JSON:API structure
+        if isinstance(api_key, (ConfigurationKey, IngestKey)):
+            if not environment_id:
+                raise ValueError("environment_id is required when using ConfigurationKey/IngestKey")
+
+            # Build JSON:API request
+            api_key_request = ApiKeyCreateRequest(
+                data=ApiKeyCreateRequestData(
+                    type=ApiKeyObjectType.api_keys,
+                    attributes=api_key,
+                    relationships=ApiKeyCreateRequestDataRelationships(
+                        environment=EnvironmentRelationship(
+                            data=EnvironmentRelationshipData(
+                                id=environment_id,
+                                type=EnvironmentRelationshipDataType.environments,
+                            )
+                        )
+                    ),
+                )
+            )
+            api_key = api_key_request
+
         team = await self._get_team_slug_async()
         data = await self._post_async(
             self._build_path(team),
@@ -260,20 +311,79 @@ class ApiKeysResource(BaseResource):
         # Convert generated ApiKeyObject to our extended version
         return ApiKeyObject.model_validate(response.data.model_dump())
 
-    async def update_async(self, api_key: ApiKeyUpdateRequest) -> ApiKeyObject:
+    async def update_async(
+        self,
+        key_id: str,
+        api_key: ApiKeyUpdateRequest | None = None,
+        *,
+        name: str | None = None,
+        disabled: bool | None = None,
+        permissions: dict[str, bool] | None = None,
+    ) -> ApiKeyObject:
         """Update an existing API key (async).
 
         Args:
-            api_key: API key update request (JSON:API format, includes key_id in data.id).
+            key_id: API key ID to update.
+            api_key: Full JSON:API update request (advanced usage) or update attributes.
+            name: New name (convenience parameter).
+            disabled: Enable/disable the key (convenience parameter).
+            permissions: Updated permissions dict (convenience parameter).
 
         Returns:
             Updated ApiKeyObject.
+
+        Examples:
+            >>> # Simple syntax
+            >>> key = await client.api_keys.update_async(
+            ...     key_id="hcalk_123",
+            ...     name="Updated Key Name",
+            ...     disabled=True
+            ... )
         """
+        from honeycomb._generated_models import (
+            ApiKeyObjectType,
+            ConfigurationKeyUpdate,
+            ConfigurationKeyUpdateAttributes,
+            ConfigurationKeyUpdateAttributesPermissions,
+            IngestKeyUpdate,
+            IngestKeyUpdateAttributes,
+        )
+
         team = await self._get_team_slug_async()
-        # Extract key_id from the request data
-        key_id = api_key.data.id if hasattr(api_key.data, "id") else None
-        if not key_id:
-            raise ValueError("ApiKeyUpdateRequest must include data.id")
+
+        # Build request from convenience parameters if not provided
+        if api_key is None:
+            # Get existing key to determine type
+            existing = await self.get_async(key_id)
+
+            if existing.key_type == "configuration":
+                perms = None
+                if permissions is not None:
+                    perms = ConfigurationKeyUpdateAttributesPermissions(**permissions)
+
+                update_data = ConfigurationKeyUpdate(
+                    id=key_id,
+                    type=ApiKeyObjectType.api_keys,
+                    attributes=ConfigurationKeyUpdateAttributes(
+                        name=name,
+                        disabled=disabled,
+                        permissions=perms,
+                    ),
+                )
+            else:  # ingest key
+                update_data = IngestKeyUpdate(
+                    id=key_id,
+                    type=ApiKeyObjectType.api_keys,
+                    attributes=IngestKeyUpdateAttributes(
+                        name=name,
+                        disabled=disabled,
+                    ),
+                )
+
+            api_key = ApiKeyUpdateRequest(data=update_data)
+        else:
+            # Extract key_id from the request data if using full JSON:API request
+            key_id = api_key.data.id
 
         data = await self._patch_async(
             self._build_path(team, key_id),
@@ -359,17 +469,55 @@ class ApiKeysResource(BaseResource):
         # Convert generated ApiKeyObject to our extended version
         return ApiKeyObject.model_validate(response.data.model_dump())
 
-    def create(self, api_key: ApiKeyCreateRequest) -> ApiKeyObject:
+    def create(
+        self,
+        api_key: ApiKeyCreateRequest | ConfigurationKey | IngestKey,
+        environment_id: str | None = None,
+    ) -> ApiKeyObject:
         """Create a new API key.
 
         Args:
-            api_key: API key creation request (JSON:API format).
+            api_key: Either a full ApiKeyCreateRequest (JSON:API format) or
+                    ConfigurationKey/IngestKey (convenience - auto-wrapped).
+            environment_id: Environment ID (required when using ConfigurationKey/IngestKey).
 
         Returns:
             Created ApiKeyObject (includes secret in attributes, save it immediately!).
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
+
+        from honeycomb._generated_models import (
+            ApiKeyCreateRequestData,
+            ApiKeyCreateRequestDataRelationships,
+            ApiKeyObjectType,
+            EnvironmentRelationship,
+            EnvironmentRelationshipData,
+            EnvironmentRelationshipDataType,
+        )
+
+        # Auto-wrap ConfigurationKey or IngestKey in JSON:API structure
+        if isinstance(api_key, (ConfigurationKey, IngestKey)):
+            if not environment_id:
+                raise ValueError("environment_id is required when using ConfigurationKey/IngestKey")
+
+            # Build JSON:API request
+            api_key_request = ApiKeyCreateRequest(
+                data=ApiKeyCreateRequestData(
+                    type=ApiKeyObjectType.api_keys,
+                    attributes=api_key,
+                    relationships=ApiKeyCreateRequestDataRelationships(
+                        environment=EnvironmentRelationship(
+                            data=EnvironmentRelationshipData(
+                                id=environment_id,
+                                type=EnvironmentRelationshipDataType.environments,
+                            )
+                        )
+                    ),
+                )
+            )
+            api_key = api_key_request
+
         team = self._get_team_slug()
         data = self._post_sync(
             self._build_path(team),

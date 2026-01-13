@@ -2399,7 +2399,7 @@ class ApiKeyCreateResponseDataLinks(ApiKeyObjectLinks):
     pass
 
 
-class IngestKey1Attributes(BaseModel):
+class IngestKeyUpdateAttributes(BaseModel):
     name: str | None = Field(
         default=None,
         description="A human-readable name for the Ingest Key",
@@ -2410,18 +2410,18 @@ class IngestKey1Attributes(BaseModel):
     )
 
 
-class IngestKey1(BaseModel):
+class IngestKeyUpdate(BaseModel):
     id: str = Field(
         ...,
         description="The unique identifier of the Ingest Key ID with hcxik_ prefix",
         examples=["hcxik_12345678901234567890123456"],
-        pattern="^hcxik_[a-zA-Z0-9]{26}$",
+        pattern="^hc[a-z]ik_[a-zA-Z0-9]{26}$",
     )
     type: ApiKeyObjectType
-    attributes: IngestKey1Attributes
+    attributes: IngestKeyUpdateAttributes
 
 
-class ConfigurationKey1AttributesPermissions(BaseModel):
+class ConfigurationKeyUpdateAttributesPermissions(BaseModel):
     """
     The permissions granted to this Configuration API Key. Values omitted will not be replaced.
     """
@@ -2465,7 +2465,7 @@ class ConfigurationKey1AttributesPermissions(BaseModel):
     )
 
 
-class ConfigurationKey1Attributes(BaseModel):
+class ConfigurationKeyUpdateAttributes(BaseModel):
     name: str | None = Field(
         default=None,
         description="A human-readable name for the API Key",
@@ -2474,21 +2474,21 @@ class ConfigurationKey1Attributes(BaseModel):
     disabled: bool | None = Field(
         default=None, description="Whether the API Key is enabled", examples=[False]
     )
-    permissions: ConfigurationKey1AttributesPermissions | None = Field(
+    permissions: ConfigurationKeyUpdateAttributesPermissions | None = Field(
         default=None,
         description="The permissions granted to this Configuration API Key. Values omitted will not be replaced.",
     )
 
 
-class ConfigurationKey1(BaseModel):
+class ConfigurationKeyUpdate(BaseModel):
     id: str = Field(
         ...,
         description="The unique identifier of the Configuration Key ID with hcxlk_ prefix",
         examples=["hcxlk_12345678901234567890123456"],
-        pattern="^hcxlk_[a-zA-Z0-9]{26}$",
+        pattern="^hc[a-z]lk_[a-zA-Z0-9]{26}$",
     )
     type: ApiKeyObjectType
-    attributes: ConfigurationKey1Attributes
+    attributes: ConfigurationKeyUpdateAttributes
 
 
 class UpdateEnvironmentRequestDataAttributesSettings(BaseModel):
@@ -3287,7 +3287,7 @@ class ApiKeyCreateResponse(BaseModel):
 
 
 class ApiKeyUpdateRequest(BaseModel):
-    data: IngestKey1 | ConfigurationKey1
+    data: IngestKeyUpdate | ConfigurationKeyUpdate
 
 
 class CreateEnvironmentRequestDataAttributes(BaseModel):

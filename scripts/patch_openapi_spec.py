@@ -268,6 +268,43 @@ def patch_inline_titles(spec: dict) -> int:
             patches += 2  # Count both patches
             print(f"  ✓ BoardViewFilter.operation: added x-enum-varnames and title for usable enum names")
 
+    # Patch 13: Fix API key ID validation patterns
+    # The spec uses hcxik_ and hcxlk_ but actual API uses hcaik_ and hcalk_
+    # This causes validation errors when trying to update keys
+    for schema_name in list(schemas.keys()):
+        schema = schemas[schema_name]
+        if isinstance(schema, dict) and "properties" in schema:
+            props = schema["properties"]
+
+            # Fix IngestKey1 and ConfigurationKey1 id patterns (for update operations)
+            if "id" in props and isinstance(props["id"], dict):
+                pattern = props["id"].get("pattern", "")
+
+                # Fix ingest key pattern
+                if pattern == "^hcxik_[a-zA-Z0-9]{26}$":
+                    props["id"]["pattern"] = "^hc[a-z]ik_[a-zA-Z0-9]{26}$"
+                    patches += 1
+                    print(f"  ✓ {schema_name}.id: fixed ingest key pattern (hcxik_ -> hc[a-z]ik_)")
+
+                # Fix configuration key pattern
+                elif pattern == "^hcxlk_[a-zA-Z0-9]{26}$":
+                    props["id"]["pattern"] = "^hc[a-z]lk_[a-zA-Z0-9]{26}$"
+                    patches += 1
+                    print(f"  ✓ {schema_name}.id: fixed configuration key pattern (hcxlk_ -> hc[a-z]lk_)")
+
+    # Patch 14: Fix titles on IngestKeyRequest and ConfigurationKeyRequest to avoid numbered names
+    # DMCG generates IngestKey1/ConfigurationKey1 because the titles conflict with IngestKey/ConfigurationKey
+    # Change titles to unique names for cleaner generated code
+    if "IngestKeyRequest" in schemas:
+        schemas["IngestKeyRequest"]["title"] = "IngestKeyUpdate"
+        patches += 1
+        print(f"  ✓ IngestKeyRequest: changed title to 'IngestKeyUpdate'")
+
+    if "ConfigurationKeyRequest" in schemas:
+        schemas["ConfigurationKeyRequest"]["title"] = "ConfigurationKeyUpdate"
+        patches += 1
+        print(f"  ✓ ConfigurationKeyRequest: changed title to 'ConfigurationKeyUpdate'")
+
     return patches
 
 

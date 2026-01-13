@@ -1142,6 +1142,7 @@ class TestEnvironmentExamples:
     async def test_environment_lifecycle(self, management_client: HoneycombClient) -> None:
         """Test full environment CRUD lifecycle: list -> create -> get -> update -> delete."""
         from docs.examples.environments.basic_environment import (
+            cleanup,
             create_environment,
             get_environment,
             list_environments,
@@ -1151,6 +1152,13 @@ class TestEnvironmentExamples:
             test_update_environment,
             update_environment,
         )
+
+        # Pre-cleanup: Delete any leftover "Staging" environment from previous failed runs
+        with contextlib.suppress(Exception):
+            envs = await management_client.environments.list_async()
+            for env in envs:
+                if env.name == "Staging":
+                    await cleanup(management_client, env.id)
 
         # List (before create)
         initial_envs = await list_environments(management_client)
@@ -1203,6 +1211,13 @@ class TestApiKeyExamples:
             test_update_api_key,
             update_api_key,
         )
+
+        # Pre-cleanup: Delete any leftover "Integration Test Key" from previous failed runs
+        with contextlib.suppress(Exception):
+            keys = await management_client.api_keys.list_async()
+            for key in keys:
+                if key.name == "Integration Test Key":
+                    await delete_api_key(management_client, key.id)
 
         # List (before create)
         initial_keys = await list_api_keys(management_client)

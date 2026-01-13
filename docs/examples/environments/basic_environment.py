@@ -62,11 +62,9 @@ async def create_environment(client: HoneycombClient) -> str:
         The created environment ID
     """
     env = await client.environments.create_async(
-        EnvironmentCreate(
-            name="Staging",
-            description="Staging environment for testing",
-            color="blue",
-        ),
+        name="Staging",
+        description="Staging environment for testing",
+        color="blue",
     )
     return env.id
 
@@ -87,11 +85,9 @@ async def update_environment(client: HoneycombClient, env_id: str) -> Environmen
     """
     updated = await client.environments.update_async(
         env_id,
-        EnvironmentUpdate(
-            description="Updated: Staging environment for pre-production testing",
-            color="green",
-            delete_protected=True,  # Prevent accidental deletion
-        ),
+        description="Updated: Staging environment for pre-production testing",
+        color="green",
+        delete_protected=True,  # Prevent accidental deletion
     )
     return updated
 
@@ -148,9 +144,12 @@ async def cleanup(client: HoneycombClient, env_id: str) -> None:
     try:
         await client.environments.update_async(
             env_id,
-            EnvironmentUpdate(delete_protected=False),
+            delete_protected=False,
         )
     except Exception:
         pass  # May already be unprotected
 
-    await delete_environment(client, env_id)
+    try:
+        await delete_environment(client, env_id)
+    except Exception:
+        pass  # May already be deleted

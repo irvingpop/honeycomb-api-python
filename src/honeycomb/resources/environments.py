@@ -210,15 +210,60 @@ class EnvironmentsResource(BaseResource):
         response = self._parse_model(EnvironmentResponse, data)
         return response.data
 
-    async def create_async(self, environment: CreateEnvironmentRequest) -> Environment:
+    async def create_async(
+        self,
+        environment: CreateEnvironmentRequest | None = None,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        color: str | None = None,
+    ) -> Environment:
         """Create a new environment (async).
 
         Args:
-            environment: Environment creation request (JSON:API format).
+            environment: Full JSON:API environment creation request (advanced usage).
+            name: Environment name (convenience parameter).
+            description: Environment description (convenience parameter).
+            color: Environment color (convenience parameter).
 
         Returns:
             Created Environment object.
+
+        Examples:
+            >>> # Simple convenience syntax
+            >>> env = await client.environments.create_async(
+            ...     name="Staging",
+            ...     description="Staging environment",
+            ...     color="blue"
+            ... )
+            >>>
+            >>> # Advanced JSON:API syntax
+            >>> env = await client.environments.create_async(
+            ...     environment=CreateEnvironmentRequest(...)
+            ... )
         """
+        from honeycomb._generated_models import (
+            CreateEnvironmentRequestData,
+            CreateEnvironmentRequestDataAttributes,
+            EnvironmentRelationshipDataType,
+        )
+
+        # Build request from convenience parameters if not provided
+        if environment is None:
+            if name is None:
+                raise ValueError("Either 'environment' or 'name' must be provided")
+
+            environment = CreateEnvironmentRequest(
+                data=CreateEnvironmentRequestData(
+                    type=EnvironmentRelationshipDataType.environments,
+                    attributes=CreateEnvironmentRequestDataAttributes(
+                        name=name,
+                        description=description,
+                        color=color,
+                    ),
+                )
+            )
+
         team = await self._get_team_slug_async()
         data = await self._post_async(
             self._build_path(team),
@@ -228,17 +273,72 @@ class EnvironmentsResource(BaseResource):
         response = self._parse_model(EnvironmentResponse, data)
         return response.data
 
-    async def update_async(self, environment: UpdateEnvironmentRequest) -> Environment:
+    async def update_async(
+        self,
+        env_id: str,
+        environment: UpdateEnvironmentRequest | None = None,
+        *,
+        description: str | None = None,
+        color: str | None = None,
+        delete_protected: bool | None = None,
+    ) -> Environment:
         """Update an existing environment (async).
 
         Args:
-            environment: Environment update request (JSON:API format, includes env_id in data.id).
+            env_id: Environment ID to update.
+            environment: Full JSON:API update request (advanced usage).
+            description: New description (convenience parameter).
+            color: New color (convenience parameter).
+            delete_protected: Enable/disable delete protection (convenience parameter).
 
         Returns:
             Updated Environment object.
+
+        Examples:
+            >>> # Simple convenience syntax
+            >>> env = await client.environments.update_async(
+            ...     env_id="hcaen_123",
+            ...     description="Updated description",
+            ...     delete_protected=False
+            ... )
+            >>>
+            >>> # Advanced JSON:API syntax
+            >>> env = await client.environments.update_async(
+            ...     env_id="hcaen_123",
+            ...     environment=UpdateEnvironmentRequest(...)
+            ... )
         """
+        from honeycomb._generated_models import (
+            EnvironmentRelationshipDataType,
+            UpdateEnvironmentRequestData,
+            UpdateEnvironmentRequestDataAttributes,
+            UpdateEnvironmentRequestDataAttributesSettings,
+        )
+
+        # Build request from convenience parameters if not provided
+        if environment is None:
+            settings = None
+            if delete_protected is not None:
+                settings = UpdateEnvironmentRequestDataAttributesSettings(
+                    delete_protected=delete_protected
+                )
+
+            environment = UpdateEnvironmentRequest(
+                data=UpdateEnvironmentRequestData(
+                    id=env_id,
+                    type=EnvironmentRelationshipDataType.environments,
+                    attributes=UpdateEnvironmentRequestDataAttributes(
+                        description=description,
+                        color=color,
+                        settings=settings,
+                    ),
+                )
+            )
+        else:
+            # env_id comes from environment.data.id if using advanced syntax
+            env_id = environment.data.id
+
         team = await self._get_team_slug_async()
-        env_id = environment.data.id
         data = await self._patch_async(
             self._build_path(team, env_id),
             json=environment.model_dump(mode="json", exclude_none=True, by_alias=True),
@@ -312,17 +412,50 @@ class EnvironmentsResource(BaseResource):
         response = self._parse_model(EnvironmentResponse, data)
         return response.data
 
-    def create(self, environment: CreateEnvironmentRequest) -> Environment:
+    def create(
+        self,
+        environment: CreateEnvironmentRequest | None = None,
+        *,
+        name: str | None = None,
+        description: str | None = None,
+        color: str | None = None,
+    ) -> Environment:
         """Create a new environment.
 
         Args:
-            environment: Environment creation request (JSON:API format).
+            environment: Full JSON:API environment creation request (advanced usage).
+            name: Environment name (convenience parameter).
+            description: Environment description (convenience parameter).
+            color: Environment color (convenience parameter).
 
         Returns:
             Created Environment object.
         """
         if not self._client.is_sync:
             raise RuntimeError("Use create_async() for async mode, or pass sync=True to client")
+
+        from honeycomb._generated_models import (
+            CreateEnvironmentRequestData,
+            CreateEnvironmentRequestDataAttributes,
+            EnvironmentRelationshipDataType,
+        )
+
+        # Build request from convenience parameters if not provided
+        if environment is None:
+            if name is None:
+                raise ValueError("Either 'environment' or 'name' must be provided")
+
+            environment = CreateEnvironmentRequest(
+                data=CreateEnvironmentRequestData(
+                    type=EnvironmentRelationshipDataType.environments,
+                    attributes=CreateEnvironmentRequestDataAttributes(
+                        name=name,
+                        description=description,
+                        color=color,
+                    ),
+                )
+            )
+
         team = self._get_team_slug()
         data = self._post_sync(
             self._build_path(team),
@@ -332,19 +465,61 @@ class EnvironmentsResource(BaseResource):
         response = self._parse_model(EnvironmentResponse, data)
         return response.data
 
-    def update(self, environment: UpdateEnvironmentRequest) -> Environment:
+    def update(
+        self,
+        env_id: str,
+        environment: UpdateEnvironmentRequest | None = None,
+        *,
+        description: str | None = None,
+        color: str | None = None,
+        delete_protected: bool | None = None,
+    ) -> Environment:
         """Update an existing environment.
 
         Args:
-            environment: Environment update request (JSON:API format, includes env_id in data.id).
+            env_id: Environment ID to update.
+            environment: Full JSON:API update request (advanced usage).
+            description: New description (convenience parameter).
+            color: New color (convenience parameter).
+            delete_protected: Enable/disable delete protection (convenience parameter).
 
         Returns:
             Updated Environment object.
         """
         if not self._client.is_sync:
             raise RuntimeError("Use update_async() for async mode, or pass sync=True to client")
+
+        from honeycomb._generated_models import (
+            EnvironmentRelationshipDataType,
+            UpdateEnvironmentRequestData,
+            UpdateEnvironmentRequestDataAttributes,
+            UpdateEnvironmentRequestDataAttributesSettings,
+        )
+
+        # Build request from convenience parameters if not provided
+        if environment is None:
+            settings = None
+            if delete_protected is not None:
+                settings = UpdateEnvironmentRequestDataAttributesSettings(
+                    delete_protected=delete_protected
+                )
+
+            environment = UpdateEnvironmentRequest(
+                data=UpdateEnvironmentRequestData(
+                    id=env_id,
+                    type=EnvironmentRelationshipDataType.environments,
+                    attributes=UpdateEnvironmentRequestDataAttributes(
+                        description=description,
+                        color=color,
+                        settings=settings,
+                    ),
+                )
+            )
+        else:
+            # env_id comes from environment.data.id if using advanced syntax
+            env_id = environment.data.id
+
         team = self._get_team_slug()
-        env_id = environment.data.id
         data = self._patch_sync(
             self._build_path(team, env_id),
             json=environment.model_dump(mode="json", exclude_none=True, by_alias=True),

@@ -6,7 +6,7 @@ Requires management key authentication.
 
 from __future__ import annotations
 
-from honeycomb import ApiKey, ApiKeyCreate, ApiKeyType, HoneycombClient
+from honeycomb import ApiKey, ApiKeyCreate, ConfigurationKey, HoneycombClient
 
 
 # start_example:list
@@ -60,11 +60,12 @@ async def get_api_key(client: HoneycombClient, key_id: str) -> ApiKey:
     """
     key = await client.api_keys.get_async(key_id)
     print(f"Name: {key.name}")
-    print(f"Type: {key.key_type.value}")
+    print(f"Type: {key.key_type}")
     print(f"Environment: {key.environment_id}")
     print(f"Disabled: {key.disabled}")
     if key.permissions:
-        print(f"Permissions: {list(k for k, v in key.permissions.items() if v)}")
+        perms_dict = key.permissions.model_dump() if hasattr(key.permissions, "model_dump") else key.permissions
+        print(f"Permissions: {[k for k, v in perms_dict.items() if v]}")
     return key
 
 
@@ -85,10 +86,9 @@ async def create_api_key(client: HoneycombClient, environment_id: str) -> tuple[
     Note: The secret is only returned during creation. Save it securely!
     """
     key = await client.api_keys.create_async(
-        api_key=ApiKeyCreate(
+        api_key=ConfigurationKey(
+            key_type="configuration",
             name="Integration Test Key",
-            key_type=ApiKeyType.CONFIGURATION,
-            environment_id=environment_id,
             permissions={
                 "create_datasets": True,
                 "send_events": True,
@@ -102,6 +102,7 @@ async def create_api_key(client: HoneycombClient, environment_id: str) -> tuple[
                 "manage_privateBoards": True,
             },
         ),
+        environment_id=environment_id,
     )
 
     # Secret is only available during creation!
@@ -126,15 +127,11 @@ async def update_api_key(client: HoneycombClient, key_id: str) -> ApiKey:
     Returns:
         The updated API key
     """
-    from honeycomb.models.api_keys import ApiKeyUpdate
-
-    # Update with new values
+    # Update with new values using convenience parameters
     updated = await client.api_keys.update_async(
         key_id=key_id,
-        api_key=ApiKeyUpdate(
-            name="Updated Integration Test Key",
-            disabled=True,  # Disable the key
-        ),
+        name="Updated Integration Test Key",
+        disabled=True,  # Disable the key
     )
     return updated
 
