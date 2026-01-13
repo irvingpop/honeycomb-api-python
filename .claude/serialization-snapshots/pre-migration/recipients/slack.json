@@ -1,6 +1,0 @@
-{
-  "details": {
-    "slack_channel": "#alerts"
-  },
-  "type": "slack"
-}

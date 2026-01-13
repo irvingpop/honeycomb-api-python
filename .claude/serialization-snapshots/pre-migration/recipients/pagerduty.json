@@ -1,7 +1,0 @@
-{
-  "details": {
-    "pagerduty_integration_key": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "pagerduty_integration_name": "Production Alerts"
-  },
-  "type": "pagerduty"
-}

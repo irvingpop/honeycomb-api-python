@@ -1,8 +1,0 @@
-{
-  "name": "API Latency",
-  "sli": {
-    "alias": "latency_p99"
-  },
-  "target_per_million": 995000,
-  "time_period_days": 7
-}

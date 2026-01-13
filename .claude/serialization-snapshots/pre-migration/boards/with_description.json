@@ -1,6 +1,0 @@
-{
-  "description": "Key production API metrics and alerts",
-  "layout_generation": "manual",
-  "name": "Production Metrics",
-  "type": "flexible"
-}
