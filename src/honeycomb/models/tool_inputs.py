@@ -17,6 +17,10 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import Self
 
+from honeycomb._generated_models import (
+    BaseTriggerBaselineDetails,
+    BaseTriggerEvaluationSchedule,
+)
 from honeycomb.models.query_builder import (
     Calculation,
     Filter,
@@ -447,7 +451,12 @@ class TriggerToolInput(BaseModel):
     # Required fields
     name: str = Field(description="Trigger name")
     dataset: str = Field(description="Dataset slug")
-    query: TriggerQueryInput = Field(description="Query specification")
+    query: TriggerQueryInput | None = Field(
+        default=None, description="Inline query specification (use this OR query_id, not both)"
+    )
+    query_id: str | None = Field(
+        default=None, description="ID of existing saved query (use this OR query, not both)"
+    )
     threshold: TriggerThresholdInput = Field(description="Threshold configuration")
     frequency: int = Field(
         default=900,
@@ -467,6 +476,38 @@ class TriggerToolInput(BaseModel):
     )
     tags: list[TagInput] | None = Field(default=None, description="Trigger tags")
 
+    # Advanced features
+    evaluation_schedule_type: Literal["frequency", "window"] | None = Field(
+        default=None,
+        description="Schedule type: 'frequency' (default, always runs) or 'window' (only runs during specified time windows)",
+    )
+    evaluation_schedule: BaseTriggerEvaluationSchedule | None = Field(
+        default=None,
+        description="Time window configuration (required if evaluation_schedule_type='window'). Specifies days of week and UTC time range.",
+    )
+    baseline_details: BaseTriggerBaselineDetails | None = Field(
+        default=None,
+        description="Dynamic threshold configuration for anomaly detection. Compare current values against historical baseline (e.g., alert if 20% higher than 1 day ago).",
+    )
+
+    @model_validator(mode="after")
+    def validate_query_xor_query_id(self) -> Self:
+        """Validate exactly one of query or query_id is provided.
+
+        Raises:
+            ValueError: If both or neither are provided
+        """
+        if self.query and self.query_id:
+            raise ValueError(
+                "Cannot specify both 'query' and 'query_id'. "
+                "Use 'query' for inline query specification OR 'query_id' to reference an existing saved query."
+            )
+        if not self.query and not self.query_id:
+            raise ValueError(
+                "Must specify either 'query' (inline query) or 'query_id' (reference to saved query)."
+            )
+        return self
+
     @model_validator(mode="after")
     def validate_trigger_constraints(self) -> Self:
         """Validate trigger-specific constraints using shared validation logic.
@@ -483,14 +524,16 @@ class TriggerToolInput(BaseModel):
             validate_trigger_time_range,
         )
 
-        # Validate time range
-        validate_trigger_time_range(self.query.time_range)
+        # Only validate time range if using inline query (query_id doesn't have time_range here)
+        if self.query:
+            # Validate time range
+            validate_trigger_time_range(self.query.time_range)
 
-        # Validate frequency
-        validate_trigger_frequency(self.frequency)
+            # Validate frequency
+            validate_trigger_frequency(self.frequency)
 
-        # Validate time range vs frequency ratio
-        validate_time_range_frequency_ratio(self.query.time_range, self.frequency)
+            # Validate time range vs frequency ratio
+            validate_time_range_frequency_ratio(self.query.time_range, self.frequency)
 
         return self
 

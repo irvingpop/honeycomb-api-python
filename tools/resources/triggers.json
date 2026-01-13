@@ -151,11 +151,29 @@
       "input_schema": {
         "type": "object",
         "properties": {
-          "dataset": {
-            "type": "string",
-            "description": "The dataset slug to create the trigger in"
+          "name": {
+            "description": "Trigger name",
+            "title": "Name",
+            "type": "string"
           },
-          "dataset_slug": {
+          "dataset": {
+            "description": "Dataset slug",
+            "title": "Dataset",
+            "type": "string"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TriggerQueryInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Inline query specification (use this OR query_id, not both)"
+          },
+          "query_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -165,18 +183,24 @@
               }
             ],
             "default": null,
-            "description": "The slug of the dataset this trigger belongs to. For environment-wide triggers, this will be \"__all__\".",
-            "title": "Dataset Slug"
+            "description": "ID of existing saved query (use this OR query, not both)",
+            "title": "Query Id"
           },
-          "name": {
-            "description": "A short, human-readable name for this Trigger",
-            "title": "Name",
-            "type": "string"
+          "threshold": {
+            "$ref": "#/$defs/TriggerThresholdInput",
+            "description": "Threshold configuration"
+          },
+          "frequency": {
+            "default": 900,
+            "description": "Evaluation frequency in seconds (60-86400, typically 60, 300, 900, 1800, or 3600)",
+            "maximum": 86400,
+            "minimum": 60,
+            "title": "Frequency",
+            "type": "integer"
           },
           "description": {
             "anyOf": [
               {
-                "maxLength": 1023,
                 "type": "string"
               },
               {
@@ -184,94 +208,30 @@
               }
             ],
             "default": null,
-            "description": "A longer description, displayed on the Trigger's detail page.\n",
+            "description": "Trigger description",
             "title": "Description"
           },
-          "tags": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/Tag"
-                },
-                "maxItems": 10,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "A list of key-value pairs to help identify the Trigger.",
-            "examples": [
-              [
-                {
-                  "key": "team",
-                  "value": "blue"
-                }
-              ]
-            ],
-            "title": "Tags"
-          },
-          "threshold": {
-            "$ref": "#/$defs/BaseTriggerThreshold",
-            "description": "The threshold over which the trigger will fire"
-          },
-          "frequency": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "The interval in seconds in which to check the results of the query\u2019s calculation against the threshold. Cannot be more than 4 times the query's duration (i.e. `duration <= frequency*4`). See [A Caveat on Time](https://docs.honeycomb.io/investigate/collaborate/share-query/define-query-json/#how-to-specify-an-absolute-time-range) for more information on specifying a query's duration. minimum: 60 maximum: 86400 multipleOf: 60 default: 900\n",
-            "title": "Frequency"
+          "disabled": {
+            "default": false,
+            "description": "Whether trigger is disabled",
+            "title": "Disabled",
+            "type": "boolean"
           },
           "alert_type": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/BaseTriggerAlertType"
-              },
-              {
-                "type": "null"
-              }
-            ],
             "default": "on_change",
-            "description": "How often to fire an alert when a trigger threshold is crossed.\n- `on_change` sends a trigger notification when the result of the specified calculation crosses the threshold.\n  The trigger resolves only when the result of the query no longer satisfies the threshold condition.\n- `on_true` keeps sending a trigger notification at current frequency when and while the threshold is met.\n  (This reflects the same behavior as the \"Send an alert every time a threshold is met\" checkbox in the Honeycomb UI.)\n"
-          },
-          "disabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
+            "description": "When to send alerts",
+            "enum": [
+              "on_change",
+              "on_true"
             ],
-            "default": false,
-            "description": "If true, the trigger will not be evaluated and alerts will not be sent.\n",
-            "title": "Disabled"
-          },
-          "triggered": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "If true, the trigger has crossed its specified threshold without resolving.\n",
-            "title": "Triggered"
+            "title": "Alert Type",
+            "type": "string"
           },
           "recipients": {
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/$defs/NotificationRecipient"
+                  "$ref": "#/$defs/RecipientInput"
                 },
                 "type": "array"
               },
@@ -280,20 +240,41 @@
               }
             ],
             "default": null,
-            "description": "A list of [Recipients](/api/recipients/) to notify when the Trigger fires. Using `type`+`target` is deprecated. First, create the Recipient via the Recipients API, and then specify the ID.\n",
+            "description": "Notification recipients (inline or by ID)",
             "title": "Recipients"
           },
-          "evaluation_schedule_type": {
+          "tags": {
             "anyOf": [
               {
-                "$ref": "#/$defs/BaseTriggerEvaluationScheduleType"
+                "items": {
+                  "$ref": "#/$defs/TagInput"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "The schedule type used by the trigger. The default is frequency, where the trigger runs at the\nspecified frequency. The window type means that the trigger will run at the specified frequency,\nbut only in the time window specified in the evaluation_schedule field.\n"
+            "description": "Trigger tags",
+            "title": "Tags"
+          },
+          "evaluation_schedule_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "frequency",
+                  "window"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Schedule type: 'frequency' (default, always runs) or 'window' (only runs during specified time windows)",
+            "title": "Evaluation Schedule Type"
           },
           "evaluation_schedule": {
             "anyOf": [
@@ -305,35 +286,19 @@
               }
             ],
             "default": null,
-            "description": "A schedule that determines when the trigger is run. When the time is within the scheduled\nwindow, the trigger will be run at the specified frequency. Outside of the window, the trigger\nwill not be run.\n"
+            "description": "Time window configuration (required if evaluation_schedule_type='window'). Specifies days of week and UTC time range."
           },
           "baseline_details": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/$defs/BaseTriggerBaselineDetails"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Baseline threshold configuration for comparing against historical data. Allows dynamic thresholds based on past values (e.g., alert if 20% higher than 1 day ago).",
-            "title": "Baseline Details"
-          },
-          "query": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "A query ID or an inline query that is a strict subset of a Query Specification.\n",
-            "title": "Query"
+            "description": "Dynamic threshold configuration for anomaly detection. Compare current values against historical baseline (e.g., alert if 20% higher than 1 day ago)."
           },
           "confidence": {
             "type": "string",
@@ -382,18 +347,48 @@
           }
         },
         "required": [
-          "dataset",
           "name",
+          "dataset",
           "threshold"
         ],
         "$defs": {
-          "BaseTriggerAlertType": {
-            "description": "How often to fire an alert when a trigger threshold is crossed.\n- `on_change` sends a trigger notification when the result of the specified calculation crosses the threshold.\n  The trigger resolves only when the result of the query no longer satisfies the threshold condition.\n- `on_true` keeps sending a trigger notification at current frequency when and while the threshold is met.\n  (This reflects the same behavior as the \"Send an alert every time a threshold is met\" checkbox in the Honeycomb UI.)",
-            "enum": [
-              "on_change",
-              "on_true"
+          "BaseTriggerBaselineDetails": {
+            "description": "Additional properties needed to configure this trigger with a dynamic baseline threshold.",
+            "properties": {
+              "offset_minutes": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsOffsetMinutes",
+                "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.\n"
+              },
+              "type": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsType",
+                "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.\n"
+              }
+            },
+            "required": [
+              "offset_minutes",
+              "type"
             ],
-            "title": "BaseTriggerAlertType",
+            "title": "BaseTriggerBaselineDetails",
+            "type": "object"
+          },
+          "BaseTriggerBaselineDetailsOffsetMinutes": {
+            "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.",
+            "enum": [
+              60,
+              1440,
+              10080,
+              40320
+            ],
+            "title": "BaseTriggerBaselineDetailsOffsetMinutes",
+            "type": "integer"
+          },
+          "BaseTriggerBaselineDetailsType": {
+            "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.",
+            "enum": [
+              "percentage",
+              "value"
+            ],
+            "title": "BaseTriggerBaselineDetailsType",
             "type": "string"
           },
           "BaseTriggerEvaluationSchedule": {
@@ -409,15 +404,6 @@
             ],
             "title": "BaseTriggerEvaluationSchedule",
             "type": "object"
-          },
-          "BaseTriggerEvaluationScheduleType": {
-            "description": "The schedule type used by the trigger. The default is frequency, where the trigger runs at the\nspecified frequency. The window type means that the trigger will run at the specified frequency,\nbut only in the time window specified in the evaluation_schedule field.",
-            "enum": [
-              "frequency",
-              "window"
-            ],
-            "title": "BaseTriggerEvaluationScheduleType",
-            "type": "string"
           },
           "BaseTriggerEvaluationScheduleWindow": {
             "description": "Window start/end times and days of the week are calculated in UTC. If the end time is the same as or earlier than the start time, the end time is treated as being in the following day.",
@@ -471,13 +457,304 @@
             "title": "BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum",
             "type": "string"
           },
-          "BaseTriggerThreshold": {
-            "description": "The threshold over which the trigger will fire, specified as both an operator and a value.",
+          "Calculation": {
+            "additionalProperties": false,
+            "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
             "properties": {
               "op": {
-                "$ref": "#/$defs/BaseTriggerThresholdOp"
+                "$ref": "#/$defs/QueryOp",
+                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Column to calculate on",
+                "title": "Column"
+              }
+            },
+            "required": [
+              "op"
+            ],
+            "title": "Calculation",
+            "type": "object"
+          },
+          "Filter": {
+            "additionalProperties": false,
+            "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS)  # No value needed\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
+            "properties": {
+              "column": {
+                "description": "Column to filter on",
+                "title": "Column",
+                "type": "string"
+              },
+              "op": {
+                "$ref": "#/$defs/FilterOp",
+                "description": "Filter operator (=, !=, >, <, contains, etc.)"
               },
               "value": {
+                "default": null,
+                "description": "Filter value. Not used for 'exists' and 'does-not-exist' operations.",
+                "title": "Value"
+              }
+            },
+            "required": [
+              "column",
+              "op"
+            ],
+            "title": "Filter",
+            "type": "object"
+          },
+          "FilterOp": {
+            "enum": [
+              "=",
+              "!=",
+              ">",
+              ">=",
+              "<",
+              "<=",
+              "starts-with",
+              "does-not-start-with",
+              "ends-with",
+              "does-not-end-with",
+              "exists",
+              "does-not-exist",
+              "contains",
+              "does-not-contain",
+              "in",
+              "not-in"
+            ],
+            "title": "FilterOp",
+            "type": "string"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "RecipientInput": {
+            "additionalProperties": false,
+            "description": "Recipient specification (shared across triggers, SLOs, burn alerts).\n\nEither reference an existing recipient by ID, OR create a new one inline\nby providing type and target.\n\nNote: Only 'email' and 'webhook' types are testable without external integrations.\nOther types ('slack', 'pagerduty', 'msteams') require service configuration.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Existing recipient ID",
+                "title": "Id"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "email",
+                      "webhook",
+                      "slack",
+                      "pagerduty",
+                      "msteams"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient type (for inline creation)",
+                "title": "Type"
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient target (email address, webhook URL, or integration ID)",
+                "title": "Target"
+              }
+            },
+            "title": "RecipientInput",
+            "type": "object"
+          },
+          "TagInput": {
+            "additionalProperties": false,
+            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters only (e.g., \"team\", \"servicetype\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"servicetype\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
+            "properties": {
+              "key": {
+                "description": "Tag key: lowercase letters only, 1-32 chars",
+                "maxLength": 32,
+                "minLength": 1,
+                "pattern": "^[a-z]+$",
+                "title": "Key",
+                "type": "string"
+              },
+              "value": {
+                "description": "Tag value: must start with lowercase letter, can contain lowercase letters, numbers, / and -, 1-128 chars",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[a-z][a-z0-9/-]*$",
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "value"
+            ],
+            "title": "TagInput",
+            "type": "object"
+          },
+          "TriggerQueryInput": {
+            "additionalProperties": false,
+            "description": "Query specification for trigger tool input.\n\nTriggers support a subset of query features:\n- Single calculation only (min/max enforced by field validator)\n- No HEATMAP calculations\n- No orders or limit fields (not present in this model)\n- Relative time ranges only (no absolute start/end times)\n- Maximum time range of 3600 seconds (1 hour)",
+            "properties": {
+              "time_range": {
+                "description": "Query time range in seconds (max 3600 for triggers)",
+                "title": "Time Range",
+                "type": "integer"
+              },
+              "calculations": {
+                "description": "Calculation (triggers support exactly one calculation)",
+                "items": {
+                  "$ref": "#/$defs/Calculation"
+                },
+                "maxItems": 1,
+                "minItems": 1,
+                "title": "Calculations",
+                "type": "array"
+              },
+              "filters": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Filter"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Query filters",
+                "title": "Filters"
+              },
+              "breakdowns": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Columns to group by",
+                "title": "Breakdowns"
+              },
+              "filter_combination": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/QueryFilterCombination"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "How to combine filters (AND or OR)"
+              },
+              "granularity": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Time granularity in seconds",
+                "title": "Granularity"
+              }
+            },
+            "required": [
+              "time_range",
+              "calculations"
+            ],
+            "title": "TriggerQueryInput",
+            "type": "object"
+          },
+          "TriggerThresholdInput": {
+            "additionalProperties": false,
+            "description": "Threshold specification for trigger tool input.",
+            "properties": {
+              "op": {
+                "description": "Threshold comparison operator",
+                "enum": [
+                  ">",
+                  ">=",
+                  "<",
+                  "<="
+                ],
+                "title": "Op",
+                "type": "string"
+              },
+              "value": {
+                "description": "Threshold value",
                 "title": "Value",
                 "type": "number"
               },
@@ -492,8 +769,8 @@
                     "type": "null"
                   }
                 ],
-                "default": 1,
-                "description": "The number of times the threshold must be met before an alert is sent.\n",
+                "default": null,
+                "description": "Consecutive evaluations that must exceed threshold (1-5)",
                 "title": "Exceeded Limit"
               }
             },
@@ -501,187 +778,7 @@
               "op",
               "value"
             ],
-            "title": "BaseTriggerThreshold",
-            "type": "object"
-          },
-          "BaseTriggerThresholdOp": {
-            "enum": [
-              ">",
-              ">=",
-              "<",
-              "<="
-            ],
-            "title": "BaseTriggerThresholdOp",
-            "type": "string"
-          },
-          "NotificationRecipient": {
-            "properties": {
-              "id": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Id"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/RecipientType"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "deprecated": true,
-                "description": "One of the allowed Recipient types.\nDeprecated: Use the Recipients API first, then pass the Recipient ID.\n"
-              },
-              "target": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "deprecated": true,
-                "description": "The target of the notification. For example, the specific Slack channel or email address.\nFor Recipients of `type = \"webhook\"` or `type = \"msteams_workflow\"`,\nthis will be the Name in the UI and `webhook_name` in the Recipients API.\nDeprecated: Use the Recipients API first, then pass the Recipient ID.\n",
-                "title": "Target"
-              },
-              "details": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/NotificationRecipientDetails"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null
-              }
-            },
-            "title": "NotificationRecipient",
-            "type": "object"
-          },
-          "NotificationRecipientDetails": {
-            "properties": {
-              "pagerduty_severity": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/NotificationRecipientDetailsPagerdutySeverity"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": "critical",
-                "description": "When using a Recipient of `type = \"pagerduty\"`, the severity of the alert can be specified.\n"
-              },
-              "variables": {
-                "anyOf": [
-                  {
-                    "items": {
-                      "$ref": "#/$defs/NotificationRecipientDetailsVariable"
-                    },
-                    "type": "array"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "When using a Recipient of `type = \"webhook\"`, the alert-level variables can be specified.\n",
-                "title": "Variables"
-              }
-            },
-            "title": "NotificationRecipientDetails",
-            "type": "object"
-          },
-          "NotificationRecipientDetailsPagerdutySeverity": {
-            "description": "When using a Recipient of `type = \"pagerduty\"`, the severity of the alert can be specified.",
-            "enum": [
-              "critical",
-              "error",
-              "warning",
-              "info"
-            ],
-            "title": "NotificationRecipientDetailsPagerdutySeverity",
-            "type": "string"
-          },
-          "NotificationRecipientDetailsVariable": {
-            "properties": {
-              "name": {
-                "examples": [
-                  "severity"
-                ],
-                "maxLength": 64,
-                "pattern": "^[a-z](?:[a-zA-Z0-9]+$)?$",
-                "title": "Name",
-                "type": "string"
-              },
-              "value": {
-                "anyOf": [
-                  {
-                    "maxLength": 256,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "examples": [
-                  "warning"
-                ],
-                "title": "Value"
-              }
-            },
-            "required": [
-              "name"
-            ],
-            "title": "NotificationRecipientDetailsVariable",
-            "type": "object"
-          },
-          "RecipientType": {
-            "description": "One of the supported Recipient Types",
-            "enum": [
-              "pagerduty",
-              "email",
-              "slack",
-              "webhook",
-              "msteams",
-              "msteams_workflow"
-            ],
-            "title": "RecipientType",
-            "type": "string"
-          },
-          "Tag": {
-            "properties": {
-              "key": {
-                "description": "A key to identify the tag, lowercase letters only.",
-                "maxLength": 32,
-                "title": "Key",
-                "type": "string"
-              },
-              "value": {
-                "description": "A value for the tag, must begin with a lowercase letter, contain only alphanumeric characters (all letters lowercase) and special characters of `/` and `-` allowed.",
-                "maxLength": 128,
-                "title": "Value",
-                "type": "string"
-              }
-            },
-            "required": [
-              "key",
-              "value"
-            ],
-            "title": "Tag",
+            "title": "TriggerThresholdInput",
             "type": "object"
           }
         }
@@ -852,14 +949,32 @@
         "type": "object",
         "properties": {
           "dataset": {
-            "type": "string",
-            "description": "The dataset slug"
+            "description": "Dataset slug",
+            "title": "Dataset",
+            "type": "string"
           },
           "trigger_id": {
             "type": "string",
             "description": "The trigger ID to update"
           },
-          "dataset_slug": {
+          "name": {
+            "description": "Trigger name",
+            "title": "Name",
+            "type": "string"
+          },
+          "query": {
+            "anyOf": [
+              {
+                "$ref": "#/$defs/TriggerQueryInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Inline query specification (use this OR query_id, not both)"
+          },
+          "query_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -869,18 +984,24 @@
               }
             ],
             "default": null,
-            "description": "The slug of the dataset this trigger belongs to. For environment-wide triggers, this will be \"__all__\".",
-            "title": "Dataset Slug"
+            "description": "ID of existing saved query (use this OR query, not both)",
+            "title": "Query Id"
           },
-          "name": {
-            "description": "A short, human-readable name for this Trigger",
-            "title": "Name",
-            "type": "string"
+          "threshold": {
+            "$ref": "#/$defs/TriggerThresholdInput",
+            "description": "Threshold configuration"
+          },
+          "frequency": {
+            "default": 900,
+            "description": "Evaluation frequency in seconds (60-86400, typically 60, 300, 900, 1800, or 3600)",
+            "maximum": 86400,
+            "minimum": 60,
+            "title": "Frequency",
+            "type": "integer"
           },
           "description": {
             "anyOf": [
               {
-                "maxLength": 1023,
                 "type": "string"
               },
               {
@@ -888,94 +1009,30 @@
               }
             ],
             "default": null,
-            "description": "A longer description, displayed on the Trigger's detail page.\n",
+            "description": "Trigger description",
             "title": "Description"
           },
-          "tags": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/Tag"
-                },
-                "maxItems": 10,
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "A list of key-value pairs to help identify the Trigger.",
-            "examples": [
-              [
-                {
-                  "key": "team",
-                  "value": "blue"
-                }
-              ]
-            ],
-            "title": "Tags"
-          },
-          "threshold": {
-            "$ref": "#/$defs/BaseTriggerThreshold",
-            "description": "The threshold over which the trigger will fire"
-          },
-          "frequency": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "The interval in seconds in which to check the results of the query\u2019s calculation against the threshold. Cannot be more than 4 times the query's duration (i.e. `duration <= frequency*4`). See [A Caveat on Time](https://docs.honeycomb.io/investigate/collaborate/share-query/define-query-json/#how-to-specify-an-absolute-time-range) for more information on specifying a query's duration. minimum: 60 maximum: 86400 multipleOf: 60 default: 900\n",
-            "title": "Frequency"
+          "disabled": {
+            "default": false,
+            "description": "Whether trigger is disabled",
+            "title": "Disabled",
+            "type": "boolean"
           },
           "alert_type": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/BaseTriggerAlertType"
-              },
-              {
-                "type": "null"
-              }
-            ],
             "default": "on_change",
-            "description": "How often to fire an alert when a trigger threshold is crossed.\n- `on_change` sends a trigger notification when the result of the specified calculation crosses the threshold.\n  The trigger resolves only when the result of the query no longer satisfies the threshold condition.\n- `on_true` keeps sending a trigger notification at current frequency when and while the threshold is met.\n  (This reflects the same behavior as the \"Send an alert every time a threshold is met\" checkbox in the Honeycomb UI.)\n"
-          },
-          "disabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
+            "description": "When to send alerts",
+            "enum": [
+              "on_change",
+              "on_true"
             ],
-            "default": false,
-            "description": "If true, the trigger will not be evaluated and alerts will not be sent.\n",
-            "title": "Disabled"
-          },
-          "triggered": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "If true, the trigger has crossed its specified threshold without resolving.\n",
-            "title": "Triggered"
+            "title": "Alert Type",
+            "type": "string"
           },
           "recipients": {
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/$defs/NotificationRecipient"
+                  "$ref": "#/$defs/RecipientInput"
                 },
                 "type": "array"
               },
@@ -984,20 +1041,41 @@
               }
             ],
             "default": null,
-            "description": "A list of [Recipients](/api/recipients/) to notify when the Trigger fires. Using `type`+`target` is deprecated. First, create the Recipient via the Recipients API, and then specify the ID.\n",
+            "description": "Notification recipients (inline or by ID)",
             "title": "Recipients"
           },
-          "evaluation_schedule_type": {
+          "tags": {
             "anyOf": [
               {
-                "$ref": "#/$defs/BaseTriggerEvaluationScheduleType"
+                "items": {
+                  "$ref": "#/$defs/TagInput"
+                },
+                "type": "array"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "The schedule type used by the trigger. The default is frequency, where the trigger runs at the\nspecified frequency. The window type means that the trigger will run at the specified frequency,\nbut only in the time window specified in the evaluation_schedule field.\n"
+            "description": "Trigger tags",
+            "title": "Tags"
+          },
+          "evaluation_schedule_type": {
+            "anyOf": [
+              {
+                "enum": [
+                  "frequency",
+                  "window"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "description": "Schedule type: 'frequency' (default, always runs) or 'window' (only runs during specified time windows)",
+            "title": "Evaluation Schedule Type"
           },
           "evaluation_schedule": {
             "anyOf": [
@@ -1009,35 +1087,19 @@
               }
             ],
             "default": null,
-            "description": "A schedule that determines when the trigger is run. When the time is within the scheduled\nwindow, the trigger will be run at the specified frequency. Outside of the window, the trigger\nwill not be run.\n"
+            "description": "Time window configuration (required if evaluation_schedule_type='window'). Specifies days of week and UTC time range."
           },
           "baseline_details": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/$defs/BaseTriggerBaselineDetails"
               },
               {
                 "type": "null"
               }
             ],
             "default": null,
-            "description": "Baseline threshold configuration for comparing against historical data. Allows dynamic thresholds based on past values (e.g., alert if 20% higher than 1 day ago).",
-            "title": "Baseline Details"
-          },
-          "query": {
-            "anyOf": [
-              {
-                "additionalProperties": true,
-                "type": "object"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "A query ID or an inline query that is a strict subset of a Query Specification.\n",
-            "title": "Query"
+            "description": "Dynamic threshold configuration for anomaly detection. Compare current values against historical baseline (e.g., alert if 20% higher than 1 day ago)."
           },
           "confidence": {
             "type": "string",
@@ -1089,16 +1151,47 @@
           "dataset",
           "trigger_id",
           "name",
+          "dataset",
           "threshold"
         ],
         "$defs": {
-          "BaseTriggerAlertType": {
-            "description": "How often to fire an alert when a trigger threshold is crossed.\n- `on_change` sends a trigger notification when the result of the specified calculation crosses the threshold.\n  The trigger resolves only when the result of the query no longer satisfies the threshold condition.\n- `on_true` keeps sending a trigger notification at current frequency when and while the threshold is met.\n  (This reflects the same behavior as the \"Send an alert every time a threshold is met\" checkbox in the Honeycomb UI.)",
-            "enum": [
-              "on_change",
-              "on_true"
+          "BaseTriggerBaselineDetails": {
+            "description": "Additional properties needed to configure this trigger with a dynamic baseline threshold.",
+            "properties": {
+              "offset_minutes": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsOffsetMinutes",
+                "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.\n"
+              },
+              "type": {
+                "$ref": "#/$defs/BaseTriggerBaselineDetailsType",
+                "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.\n"
+              }
+            },
+            "required": [
+              "offset_minutes",
+              "type"
             ],
-            "title": "BaseTriggerAlertType",
+            "title": "BaseTriggerBaselineDetails",
+            "type": "object"
+          },
+          "BaseTriggerBaselineDetailsOffsetMinutes": {
+            "description": "For a given trigger run, how far back we should look to compare results. Currently only support comparison 1 hour, 24 hours, 7 days, or 28 days in the past.",
+            "enum": [
+              60,
+              1440,
+              10080,
+              40320
+            ],
+            "title": "BaseTriggerBaselineDetailsOffsetMinutes",
+            "type": "integer"
+          },
+          "BaseTriggerBaselineDetailsType": {
+            "description": "How to compare the change in the two time periods. Currently supports the difference in values (b-a) or the percentage difference in values (b-a)/b.",
+            "enum": [
+              "percentage",
+              "value"
+            ],
+            "title": "BaseTriggerBaselineDetailsType",
             "type": "string"
           },
           "BaseTriggerEvaluationSchedule": {
@@ -1114,15 +1207,6 @@
             ],
             "title": "BaseTriggerEvaluationSchedule",
             "type": "object"
-          },
-          "BaseTriggerEvaluationScheduleType": {
-            "description": "The schedule type used by the trigger. The default is frequency, where the trigger runs at the\nspecified frequency. The window type means that the trigger will run at the specified frequency,\nbut only in the time window specified in the evaluation_schedule field.",
-            "enum": [
-              "frequency",
-              "window"
-            ],
-            "title": "BaseTriggerEvaluationScheduleType",
-            "type": "string"
           },
           "BaseTriggerEvaluationScheduleWindow": {
             "description": "Window start/end times and days of the week are calculated in UTC. If the end time is the same as or earlier than the start time, the end time is treated as being in the following day.",
@@ -1176,13 +1260,304 @@
             "title": "BaseTriggerEvaluationScheduleWindowDaysOfWeekEnum",
             "type": "string"
           },
-          "BaseTriggerThreshold": {
-            "description": "The threshold over which the trigger will fire, specified as both an operator and a value.",
+          "Calculation": {
+            "additionalProperties": false,
+            "description": "A calculation in a query.\n\nExamples:\n    >>> Calculation(op=CalcOp.COUNT)\n    >>> Calculation(op=CalcOp.P99, column=\"duration_ms\")\n    >>> Calculation(op=\"AVG\", column=\"response_time\")",
             "properties": {
               "op": {
-                "$ref": "#/$defs/BaseTriggerThresholdOp"
+                "$ref": "#/$defs/QueryOp",
+                "description": "Calculation operation (COUNT, AVG, P99, etc.)"
+              },
+              "column": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Column to calculate on",
+                "title": "Column"
+              }
+            },
+            "required": [
+              "op"
+            ],
+            "title": "Calculation",
+            "type": "object"
+          },
+          "Filter": {
+            "additionalProperties": false,
+            "description": "A filter in a query.\n\nExamples:\n    >>> Filter(column=\"status\", op=FilterOp.EQUALS, value=200)\n    >>> Filter(column=\"error\", op=FilterOp.EXISTS)  # No value needed\n    >>> Filter(column=\"service\", op=\"in\", value=[\"api\", \"web\"])",
+            "properties": {
+              "column": {
+                "description": "Column to filter on",
+                "title": "Column",
+                "type": "string"
+              },
+              "op": {
+                "$ref": "#/$defs/FilterOp",
+                "description": "Filter operator (=, !=, >, <, contains, etc.)"
               },
               "value": {
+                "default": null,
+                "description": "Filter value. Not used for 'exists' and 'does-not-exist' operations.",
+                "title": "Value"
+              }
+            },
+            "required": [
+              "column",
+              "op"
+            ],
+            "title": "Filter",
+            "type": "object"
+          },
+          "FilterOp": {
+            "enum": [
+              "=",
+              "!=",
+              ">",
+              ">=",
+              "<",
+              "<=",
+              "starts-with",
+              "does-not-start-with",
+              "ends-with",
+              "does-not-end-with",
+              "exists",
+              "does-not-exist",
+              "contains",
+              "does-not-contain",
+              "in",
+              "not-in"
+            ],
+            "title": "FilterOp",
+            "type": "string"
+          },
+          "QueryFilterCombination": {
+            "description": "set to \"OR\" to match ANY filter in the filter list",
+            "enum": [
+              "AND",
+              "OR"
+            ],
+            "title": "QueryFilterCombination",
+            "type": "string"
+          },
+          "QueryOp": {
+            "enum": [
+              "COUNT",
+              "CONCURRENCY",
+              "SUM",
+              "AVG",
+              "COUNT_DISTINCT",
+              "HEATMAP",
+              "MAX",
+              "MIN",
+              "P001",
+              "P01",
+              "P05",
+              "P10",
+              "P20",
+              "P25",
+              "P50",
+              "P75",
+              "P80",
+              "P90",
+              "P95",
+              "P99",
+              "P999",
+              "RATE_AVG",
+              "RATE_SUM",
+              "RATE_MAX"
+            ],
+            "title": "QueryOp",
+            "type": "string"
+          },
+          "RecipientInput": {
+            "additionalProperties": false,
+            "description": "Recipient specification (shared across triggers, SLOs, burn alerts).\n\nEither reference an existing recipient by ID, OR create a new one inline\nby providing type and target.\n\nNote: Only 'email' and 'webhook' types are testable without external integrations.\nOther types ('slack', 'pagerduty', 'msteams') require service configuration.",
+            "properties": {
+              "id": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Existing recipient ID",
+                "title": "Id"
+              },
+              "type": {
+                "anyOf": [
+                  {
+                    "enum": [
+                      "email",
+                      "webhook",
+                      "slack",
+                      "pagerduty",
+                      "msteams"
+                    ],
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient type (for inline creation)",
+                "title": "Type"
+              },
+              "target": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Recipient target (email address, webhook URL, or integration ID)",
+                "title": "Target"
+              }
+            },
+            "title": "RecipientInput",
+            "type": "object"
+          },
+          "TagInput": {
+            "additionalProperties": false,
+            "description": "Tag for boards, triggers, and SLOs.\n\nTags are key-value pairs used to identify and organize resources in Honeycomb.\n\nConstraints:\n- Keys: 1-32 chars, lowercase letters only (e.g., \"team\", \"servicetype\")\n- Values: 1-128 chars, must start with lowercase letter, can contain lowercase letters,\n  numbers, forward slash (/), and dash (-) (e.g., \"platform\", \"api/backend\", \"staging-east-1\")\n- Maximum 10 tags per resource\n\nCommon examples:\n- {\"key\": \"team\", \"value\": \"platform\"}\n- {\"key\": \"environment\", \"value\": \"production\"}\n- {\"key\": \"servicetype\", \"value\": \"api/backend\"}\n- {\"key\": \"region\", \"value\": \"us-east-1\"}",
+            "properties": {
+              "key": {
+                "description": "Tag key: lowercase letters only, 1-32 chars",
+                "maxLength": 32,
+                "minLength": 1,
+                "pattern": "^[a-z]+$",
+                "title": "Key",
+                "type": "string"
+              },
+              "value": {
+                "description": "Tag value: must start with lowercase letter, can contain lowercase letters, numbers, / and -, 1-128 chars",
+                "maxLength": 128,
+                "minLength": 1,
+                "pattern": "^[a-z][a-z0-9/-]*$",
+                "title": "Value",
+                "type": "string"
+              }
+            },
+            "required": [
+              "key",
+              "value"
+            ],
+            "title": "TagInput",
+            "type": "object"
+          },
+          "TriggerQueryInput": {
+            "additionalProperties": false,
+            "description": "Query specification for trigger tool input.\n\nTriggers support a subset of query features:\n- Single calculation only (min/max enforced by field validator)\n- No HEATMAP calculations\n- No orders or limit fields (not present in this model)\n- Relative time ranges only (no absolute start/end times)\n- Maximum time range of 3600 seconds (1 hour)",
+            "properties": {
+              "time_range": {
+                "description": "Query time range in seconds (max 3600 for triggers)",
+                "title": "Time Range",
+                "type": "integer"
+              },
+              "calculations": {
+                "description": "Calculation (triggers support exactly one calculation)",
+                "items": {
+                  "$ref": "#/$defs/Calculation"
+                },
+                "maxItems": 1,
+                "minItems": 1,
+                "title": "Calculations",
+                "type": "array"
+              },
+              "filters": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "$ref": "#/$defs/Filter"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Query filters",
+                "title": "Filters"
+              },
+              "breakdowns": {
+                "anyOf": [
+                  {
+                    "items": {
+                      "type": "string"
+                    },
+                    "type": "array"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Columns to group by",
+                "title": "Breakdowns"
+              },
+              "filter_combination": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/QueryFilterCombination"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "How to combine filters (AND or OR)"
+              },
+              "granularity": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Time granularity in seconds",
+                "title": "Granularity"
+              }
+            },
+            "required": [
+              "time_range",
+              "calculations"
+            ],
+            "title": "TriggerQueryInput",
+            "type": "object"
+          },
+          "TriggerThresholdInput": {
+            "additionalProperties": false,
+            "description": "Threshold specification for trigger tool input.",
+            "properties": {
+              "op": {
+                "description": "Threshold comparison operator",
+                "enum": [
+                  ">",
+                  ">=",
+                  "<",
+                  "<="
+                ],
+                "title": "Op",
+                "type": "string"
+              },
+              "value": {
+                "description": "Threshold value",
                 "title": "Value",
                 "type": "number"
               },
@@ -1197,8 +1572,8 @@
                     "type": "null"
                   }
                 ],
-                "default": 1,
-                "description": "The number of times the threshold must be met before an alert is sent.\n",
+                "default": null,
+                "description": "Consecutive evaluations that must exceed threshold (1-5)",
                 "title": "Exceeded Limit"
               }
             },
@@ -1206,187 +1581,7 @@
               "op",
               "value"
             ],
-            "title": "BaseTriggerThreshold",
-            "type": "object"
-          },
-          "BaseTriggerThresholdOp": {
-            "enum": [
-              ">",
-              ">=",
-              "<",
-              "<="
-            ],
-            "title": "BaseTriggerThresholdOp",
-            "type": "string"
-          },
-          "NotificationRecipient": {
-            "properties": {
-              "id": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "title": "Id"
-              },
-              "type": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/RecipientType"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "deprecated": true,
-                "description": "One of the allowed Recipient types.\nDeprecated: Use the Recipients API first, then pass the Recipient ID.\n"
-              },
-              "target": {
-                "anyOf": [
-                  {
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "deprecated": true,
-                "description": "The target of the notification. For example, the specific Slack channel or email address.\nFor Recipients of `type = \"webhook\"` or `type = \"msteams_workflow\"`,\nthis will be the Name in the UI and `webhook_name` in the Recipients API.\nDeprecated: Use the Recipients API first, then pass the Recipient ID.\n",
-                "title": "Target"
-              },
-              "details": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/NotificationRecipientDetails"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null
-              }
-            },
-            "title": "NotificationRecipient",
-            "type": "object"
-          },
-          "NotificationRecipientDetails": {
-            "properties": {
-              "pagerduty_severity": {
-                "anyOf": [
-                  {
-                    "$ref": "#/$defs/NotificationRecipientDetailsPagerdutySeverity"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": "critical",
-                "description": "When using a Recipient of `type = \"pagerduty\"`, the severity of the alert can be specified.\n"
-              },
-              "variables": {
-                "anyOf": [
-                  {
-                    "items": {
-                      "$ref": "#/$defs/NotificationRecipientDetailsVariable"
-                    },
-                    "type": "array"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "description": "When using a Recipient of `type = \"webhook\"`, the alert-level variables can be specified.\n",
-                "title": "Variables"
-              }
-            },
-            "title": "NotificationRecipientDetails",
-            "type": "object"
-          },
-          "NotificationRecipientDetailsPagerdutySeverity": {
-            "description": "When using a Recipient of `type = \"pagerduty\"`, the severity of the alert can be specified.",
-            "enum": [
-              "critical",
-              "error",
-              "warning",
-              "info"
-            ],
-            "title": "NotificationRecipientDetailsPagerdutySeverity",
-            "type": "string"
-          },
-          "NotificationRecipientDetailsVariable": {
-            "properties": {
-              "name": {
-                "examples": [
-                  "severity"
-                ],
-                "maxLength": 64,
-                "pattern": "^[a-z](?:[a-zA-Z0-9]+$)?$",
-                "title": "Name",
-                "type": "string"
-              },
-              "value": {
-                "anyOf": [
-                  {
-                    "maxLength": 256,
-                    "type": "string"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ],
-                "default": null,
-                "examples": [
-                  "warning"
-                ],
-                "title": "Value"
-              }
-            },
-            "required": [
-              "name"
-            ],
-            "title": "NotificationRecipientDetailsVariable",
-            "type": "object"
-          },
-          "RecipientType": {
-            "description": "One of the supported Recipient Types",
-            "enum": [
-              "pagerduty",
-              "email",
-              "slack",
-              "webhook",
-              "msteams",
-              "msteams_workflow"
-            ],
-            "title": "RecipientType",
-            "type": "string"
-          },
-          "Tag": {
-            "properties": {
-              "key": {
-                "description": "A key to identify the tag, lowercase letters only.",
-                "maxLength": 32,
-                "title": "Key",
-                "type": "string"
-              },
-              "value": {
-                "description": "A value for the tag, must begin with a lowercase letter, contain only alphanumeric characters (all letters lowercase) and special characters of `/` and `-` allowed.",
-                "maxLength": 128,
-                "title": "Value",
-                "type": "string"
-              }
-            },
-            "required": [
-              "key",
-              "value"
-            ],
-            "title": "Tag",
+            "title": "TriggerThresholdInput",
             "type": "object"
           }
         }
