@@ -6,7 +6,7 @@ triggers resources.
 
 from typing import Any
 
-from honeycomb.models import TriggerCreate
+from honeycomb.models import TriggerToolInput
 from honeycomb.tools.schemas import add_parameter, generate_schema_from_model
 
 # ==============================================================================
@@ -138,21 +138,15 @@ def generate_get_trigger_tool() -> dict[str, Any]:
 
 def generate_create_trigger_tool() -> dict[str, Any]:
     """Generate honeycomb_create_trigger tool definition."""
-    # Start with TriggerCreate schema
+    # Use TriggerToolInput for proper validation (required fields with descriptions)
+    # TriggerCreate is a union type and generated models have all fields optional
     base_schema = generate_schema_from_model(
-        TriggerCreate,
+        TriggerToolInput,
         exclude_fields={"created_at", "updated_at", "id"},
     )
 
-    # Add dataset parameter
-    schema: dict[str, Any] = {"type": "object", "properties": {}, "required": ["dataset"]}
-    add_parameter(
-        schema, "dataset", "string", "The dataset slug to create the trigger in", required=True
-    )
-
-    # Merge with TriggerCreate schema
-    schema["properties"].update(base_schema["properties"])
-    schema["required"].extend(base_schema.get("required", []))
+    # TriggerToolInput already includes dataset, so use its schema directly
+    schema = base_schema
 
     # Add definitions if present
     if "$defs" in base_schema:
@@ -251,8 +245,9 @@ def generate_create_trigger_tool() -> dict[str, Any]:
 
 def generate_update_trigger_tool() -> dict[str, Any]:
     """Generate honeycomb_update_trigger tool definition."""
+    # Use TriggerToolInput for proper validation (required fields with descriptions)
     base_schema = generate_schema_from_model(
-        TriggerCreate,
+        TriggerToolInput,
         exclude_fields={"created_at", "updated_at", "id"},
     )
 
@@ -261,6 +256,7 @@ def generate_update_trigger_tool() -> dict[str, Any]:
         "properties": {},
         "required": ["dataset", "trigger_id"],
     }
+    # TriggerToolInput already has dataset, but we need to add it again for the tool schema
     add_parameter(schema, "dataset", "string", "The dataset slug", required=True)
     add_parameter(schema, "trigger_id", "string", "The trigger ID to update", required=True)
 

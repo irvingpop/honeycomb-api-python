@@ -118,6 +118,7 @@ from .service_map_dependencies import (
 from .slo_builder import BurnAlertBuilder, BurnAlertDefinition, SLIDefinition, SLOBuilder, SLOBundle
 from .slos import SLO, SLOCreate, SLOCreateSli
 from .tags_mixin import TagsMixin
+from .tool_inputs import TriggerToolInput
 from .trigger_builder import TriggerBuilder, TriggerBundle
 from .triggers import (
     Trigger,
@@ -146,6 +147,7 @@ __all__ = [
     "TriggerThreshold",
     "TriggerThresholdOp",
     "TriggerAlertType",
+    "TriggerToolInput",  # Tool input model with proper validation
     "TriggerBuilder",
     "TriggerBundle",
     # SLOs
