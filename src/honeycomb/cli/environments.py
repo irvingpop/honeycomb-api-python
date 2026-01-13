@@ -219,7 +219,7 @@ def update_environment(
             )
         )
 
-        updated = client.environments.update(environment=update)
+        updated = client.environments.update(env_id=env_id, environment=update)
         output_result(updated, output)
 
     except Exception as e:

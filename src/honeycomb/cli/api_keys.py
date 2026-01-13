@@ -12,8 +12,8 @@ from honeycomb._generated_models import (
     EnvironmentRelationshipData,
     EnvironmentRelationshipDataType,
     IngestKey,
-    IngestKey1,
-    IngestKey1Attributes,
+    IngestKeyUpdate,
+    IngestKeyUpdateAttributes,
 )
 from honeycomb.cli.config import get_client
 from honeycomb.cli.formatters import DEFAULT_OUTPUT_FORMAT, OutputFormat, output_result
@@ -192,8 +192,8 @@ def update_api_key(
 
         # Build update request - we need to determine key type from existing key
         # For simplicity, try ingest first (most common), fall back to configuration
-        update_attrs_ingest = IngestKey1Attributes(name=name, disabled=disabled)
-        update_ingest = IngestKey1(
+        update_attrs_ingest = IngestKeyUpdateAttributes(name=name, disabled=disabled)
+        update_ingest = IngestKeyUpdate(
             id=key_id, type=ApiKeyObjectType.api_keys, attributes=update_attrs_ingest
         )
         update = ApiKeyUpdateRequest(data=update_ingest)

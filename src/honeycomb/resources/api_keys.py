@@ -356,6 +356,7 @@ class ApiKeysResource(BaseResource):
             # Get existing key to determine type
             existing = await self.get_async(key_id)
 
+            update_data: ConfigurationKeyUpdate | IngestKeyUpdate
             if existing.key_type == "configuration":
                 perms = None
                 if permissions is not None:

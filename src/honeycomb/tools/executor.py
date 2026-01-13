@@ -339,19 +339,12 @@ async def _execute_create_api_key(client: "HoneycombClient", tool_input: dict[st
 
 async def _execute_update_api_key(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_update_api_key tool."""
-    from honeycomb._generated_models import ApiKeyObjectType, IngestKey1, IngestKey1Attributes
-    from honeycomb.models.api_keys import ApiKeyUpdateRequest
-
-    # For updates, we only support ingest keys for simplicity (most common)
-    # Configuration keys would need a different attributes type
-    update_attrs = IngestKey1Attributes(
-        name=tool_input.get("name"), disabled=tool_input.get("disabled")
+    # Use convenience wrapper (handles both config and ingest keys automatically)
+    updated = await client.api_keys.update_async(
+        key_id=tool_input["key_id"],
+        name=tool_input.get("name"),
+        disabled=tool_input.get("disabled"),
     )
-    update_data = IngestKey1(
-        id=tool_input["key_id"], type=ApiKeyObjectType.api_keys, attributes=update_attrs
-    )
-    update = ApiKeyUpdateRequest(data=update_data)
-    updated = await client.api_keys.update_async(api_key=update)
     return json.dumps(updated.model_dump(), default=str)
 
 
@@ -463,7 +456,9 @@ async def _execute_update_environment(client: "HoneycombClient", tool_input: dic
             attributes=attrs,
         )
     )
-    updated = await client.environments.update_async(environment=environment)
+    updated = await client.environments.update_async(
+        env_id=tool_input["env_id"], environment=environment
+    )
     return json.dumps(updated.model_dump(), default=str)
 
 
