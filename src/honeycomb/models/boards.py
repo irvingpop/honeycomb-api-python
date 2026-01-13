@@ -86,7 +86,7 @@ class BoardCreate(_BoardGenerated):
 
     # Override to add defaults and descriptions for Claude tool schema
     type: BoardType = Field(
-        default="flexible",  # type: ignore[assignment]
+        default=BoardType.flexible,
         description="Board type (only 'flexible' is currently supported)",
     )
     panels: (

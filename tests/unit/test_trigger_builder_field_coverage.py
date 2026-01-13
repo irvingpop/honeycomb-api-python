@@ -62,6 +62,7 @@ def test_trigger_granularity_is_rejected():
 
     Honeycomb API does not support granularity in trigger queries.
     """
+    import pytest
     from pydantic import ValidationError
 
     tool_input = {
@@ -77,8 +78,8 @@ def test_trigger_granularity_is_rejected():
     }
 
     # Should fail validation (granularity not allowed in TriggerQueryInput)
-    try:
+    with pytest.raises(ValidationError) as exc_info:
         _build_trigger(tool_input)
-        assert False, "Expected ValidationError for granularity field"
-    except ValidationError as e:
-        assert "granularity" in str(e).lower() or "extra" in str(e).lower()
+
+    error_msg = str(exc_info.value).lower()
+    assert "granularity" in error_msg or "extra" in error_msg
