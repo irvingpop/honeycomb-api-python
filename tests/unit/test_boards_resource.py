@@ -6,6 +6,7 @@ from httpx import Response
 
 from honeycomb import BoardBuilder, HoneycombClient
 from honeycomb.models.boards import BoardViewCreate, BoardViewFilter, BoardViewFilterOperation
+from tests.factories import BoardCreateFactory, BoardFactory, mock_list_response, mock_response
 
 
 @pytest.mark.asyncio
@@ -265,3 +266,188 @@ class TestBoardViewsResourceSync:
             view_create = BoardViewCreate(name="New View", filters=[])
             view = client.boards.create_view(board_id="board-1", view=view_create)
             assert view.id == "view-new"
+
+
+# =============================================================================
+# Core Board CRUD Tests (added for Phase 4)
+# =============================================================================
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_boards_async():
+    """Test listing boards (async)."""
+    respx.get("https://api.honeycomb.io/1/boards").mock(
+        return_value=Response(200, json=mock_list_response(BoardFactory, count=3))
+    )
+
+    async with HoneycombClient(api_key="test-key") as client:
+        boards = await client.boards.list_async()
+        assert len(boards) == 3
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_boards_empty_async():
+    """Test listing boards returns empty list (async)."""
+    respx.get("https://api.honeycomb.io/1/boards").mock(return_value=Response(200, json=[]))
+
+    async with HoneycombClient(api_key="test-key") as client:
+        boards = await client.boards.list_async()
+        assert len(boards) == 0
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_get_board_async():
+    """Test getting a specific board (async)."""
+    respx.get("https://api.honeycomb.io/1/boards/board-123").mock(
+        return_value=Response(
+            200, json=mock_response(BoardFactory, id="board-123", name="Test Board")
+        )
+    )
+
+    async with HoneycombClient(api_key="test-key") as client:
+        board = await client.boards.get_async(board_id="board-123")
+        assert board.id == "board-123"
+        assert board.name == "Test Board"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_create_board_async():
+    """Test creating a board (async)."""
+    respx.post("https://api.honeycomb.io/1/boards").mock(
+        return_value=Response(
+            201, json=mock_response(BoardFactory, id="new-board", name="New Board")
+        )
+    )
+
+    async with HoneycombClient(api_key="test-key") as client:
+        request = BoardCreateFactory.build(name="New Board")
+        board = await client.boards.create_async(board=request)
+        assert board.id == "new-board"
+        assert board.name == "New Board"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_update_board_async():
+    """Test updating a board (async)."""
+    respx.put("https://api.honeycomb.io/1/boards/board-123").mock(
+        return_value=Response(
+            200, json=mock_response(BoardFactory, id="board-123", name="Updated Board")
+        )
+    )
+
+    async with HoneycombClient(api_key="test-key") as client:
+        request = BoardCreateFactory.build(name="Updated Board")
+        board = await client.boards.update_async(board_id="board-123", board=request)
+        assert board.id == "board-123"
+        assert board.name == "Updated Board"
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_delete_board_async():
+    """Test deleting a board (async)."""
+    respx.delete("https://api.honeycomb.io/1/boards/board-123").mock(return_value=Response(204))
+
+    async with HoneycombClient(api_key="test-key") as client:
+        # Should not raise
+        await client.boards.delete_async(board_id="board-123")
+
+
+# Sync versions
+
+
+@respx.mock
+def test_list_boards_sync():
+    """Test listing boards (sync)."""
+    respx.get("https://api.honeycomb.io/1/boards").mock(
+        return_value=Response(200, json=mock_list_response(BoardFactory, count=2))
+    )
+
+    with HoneycombClient(api_key="test-key", sync=True) as client:
+        boards = client.boards.list()
+        assert len(boards) == 2
+
+
+@respx.mock
+def test_list_boards_empty_sync():
+    """Test listing boards returns empty list (sync)."""
+    respx.get("https://api.honeycomb.io/1/boards").mock(return_value=Response(200, json=[]))
+
+    with HoneycombClient(api_key="test-key", sync=True) as client:
+        boards = client.boards.list()
+        assert len(boards) == 0
+
+
+@respx.mock
+def test_get_board_sync():
+    """Test getting a specific board (sync)."""
+    respx.get("https://api.honeycomb.io/1/boards/board-123").mock(
+        return_value=Response(200, json=mock_response(BoardFactory, id="board-123"))
+    )
+
+    with HoneycombClient(api_key="test-key", sync=True) as client:
+        board = client.boards.get(board_id="board-123")
+        assert board.id == "board-123"
+
+
+@respx.mock
+def test_create_board_sync():
+    """Test creating a board (sync)."""
+    respx.post("https://api.honeycomb.io/1/boards").mock(
+        return_value=Response(201, json=mock_response(BoardFactory, id="new-board"))
+    )
+
+    with HoneycombClient(api_key="test-key", sync=True) as client:
+        request = BoardCreateFactory.build(name="New Board")
+        board = client.boards.create(board=request)
+        assert board.id == "new-board"
+
+
+@respx.mock
+def test_update_board_sync():
+    """Test updating a board (sync)."""
+    respx.put("https://api.honeycomb.io/1/boards/board-123").mock(
+        return_value=Response(200, json=mock_response(BoardFactory, id="board-123"))
+    )
+
+    with HoneycombClient(api_key="test-key", sync=True) as client:
+        request = BoardCreateFactory.build(name="Updated")
+        board = client.boards.update(board_id="board-123", board=request)
+        assert board.id == "board-123"
+
+
+@respx.mock
+def test_delete_board_sync():
+    """Test deleting a board (sync)."""
+    respx.delete("https://api.honeycomb.io/1/boards/board-123").mock(return_value=Response(204))
+
+    with HoneycombClient(api_key="test-key", sync=True) as client:
+        # Should not raise
+        client.boards.delete(board_id="board-123")
+
+
+def test_sync_board_methods_require_sync_mode():
+    """Test that sync board methods raise error in async mode."""
+    client = HoneycombClient(api_key="test-key")  # async mode
+
+    with pytest.raises(RuntimeError, match="Use list_async"):
+        client.boards.list()
+
+    with pytest.raises(RuntimeError, match="Use get_async"):
+        client.boards.get(board_id="board-123")
+
+    with pytest.raises(RuntimeError, match="Use create_async"):
+        request = BoardCreateFactory.build()
+        client.boards.create(board=request)
+
+    with pytest.raises(RuntimeError, match="Use update_async"):
+        request = BoardCreateFactory.build()
+        client.boards.update(board_id="board-123", board=request)
+
+    with pytest.raises(RuntimeError, match="Use delete_async"):
+        client.boards.delete(board_id="board-123")

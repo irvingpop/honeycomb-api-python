@@ -388,3 +388,106 @@ def test_sync_methods_require_sync_mode():
 
     with pytest.raises(RuntimeError, match="Use delete_async"):
         client.environments.delete(env_id="env-123")
+
+
+# -------------------------------------------------------------------------
+# Team slug auto-detection error tests
+# -------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_environments_no_included_raises_async():
+    """Test that missing 'included' in auth response raises ValueError (async)."""
+    # Auth response without included section
+    respx.get("https://api.honeycomb.io/2/auth").mock(
+        return_value=Response(
+            200,
+            json={
+                "data": {
+                    "id": "mgmt123",
+                    "type": "api-keys",
+                    "attributes": {"name": "Test Key", "key_type": "management"},
+                }
+                # Missing 'included' section
+            },
+        )
+    )
+
+    async with HoneycombClient(
+        management_key="test-mgmt-key", management_secret="test-secret"
+    ) as client:
+        with pytest.raises(ValueError, match="Cannot auto-detect team slug"):
+            await client.environments.list_async()
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_list_environments_no_team_slug_in_included_raises_async():
+    """Test that missing team slug in included section raises ValueError (async)."""
+    # Auth response with included but no team with slug
+    respx.get("https://api.honeycomb.io/2/auth").mock(
+        return_value=Response(
+            200,
+            json={
+                "data": {
+                    "id": "mgmt123",
+                    "type": "api-keys",
+                    "attributes": {
+                        "name": "Test Key",
+                        "key_type": "management",
+                        "disabled": False,
+                        "scopes": [],
+                        "timestamps": {},
+                    },
+                    "relationships": {"team": {"data": {"type": "teams", "id": "team123"}}},
+                },
+                "included": [
+                    {
+                        "id": "team123",
+                        "type": "teams",
+                        "attributes": {"name": "Test Team"},  # Missing slug
+                    }
+                ],
+            },
+        )
+    )
+
+    async with HoneycombClient(
+        management_key="test-mgmt-key", management_secret="test-secret"
+    ) as client:
+        with pytest.raises(ValueError, match="Cannot auto-detect team slug"):
+            await client.environments.list_async()
+
+
+@respx.mock
+def test_list_environments_no_included_raises_sync():
+    """Test that missing 'included' in auth response raises ValueError (sync)."""
+    respx.get("https://api.honeycomb.io/2/auth").mock(
+        return_value=Response(
+            200,
+            json={
+                "data": {
+                    "id": "mgmt123",
+                    "type": "api-keys",
+                    "attributes": {
+                        "name": "Test Key",
+                        "key_type": "management",
+                        "disabled": False,
+                        "scopes": [],
+                        "timestamps": {},
+                    },
+                    "relationships": {"team": {"data": {"type": "teams", "id": "team123"}}},
+                }
+                # Missing 'included' section
+            },
+        )
+    )
+
+    with (
+        HoneycombClient(
+            management_key="test-mgmt-key", management_secret="test-secret", sync=True
+        ) as client,
+        pytest.raises(ValueError, match="Cannot auto-detect team slug"),
+    ):
+        client.environments.list()
