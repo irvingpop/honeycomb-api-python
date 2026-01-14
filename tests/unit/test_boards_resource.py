@@ -6,7 +6,13 @@ from httpx import Response
 
 from honeycomb import BoardBuilder, HoneycombClient
 from honeycomb.models.boards import BoardViewCreate, BoardViewFilter, BoardViewFilterOperation
-from tests.factories import BoardCreateFactory, BoardFactory, mock_list_response, mock_response
+from tests.factories import (
+    BoardCreateFactory,
+    BoardFactory,
+    BoardViewFactory,
+    mock_list_response,
+    mock_response,
+)
 
 
 @pytest.mark.asyncio
@@ -149,7 +155,9 @@ class TestBoardViewsResourceAsync:
         client = HoneycombClient(api_key="test-key")
 
         respx_mock.post("https://api.honeycomb.io/1/boards/board-1/views").mock(
-            return_value=Response(200, json={"id": "view-new", "name": "New View", "filters": []})
+            return_value=Response(
+                200, json=mock_response(BoardViewFactory, id="view-new", name="New View")
+            )
         )
 
         async with client:
@@ -171,7 +179,9 @@ class TestBoardViewsResourceAsync:
         client = HoneycombClient(api_key="test-key")
 
         respx_mock.put("https://api.honeycomb.io/1/boards/board-1/views/view-1").mock(
-            return_value=Response(200, json={"id": "view-1", "name": "Updated View", "filters": []})
+            return_value=Response(
+                200, json=mock_response(BoardViewFactory, id="view-1", name="Updated View")
+            )
         )
 
         async with client:
@@ -259,7 +269,9 @@ class TestBoardViewsResourceSync:
         client = HoneycombClient(api_key="test-key", sync=True)
 
         respx_mock.post("https://api.honeycomb.io/1/boards/board-1/views").mock(
-            return_value=Response(200, json={"id": "view-new", "name": "New View", "filters": []})
+            return_value=Response(
+                200, json=mock_response(BoardViewFactory, id="view-new", name="New View")
+            )
         )
 
         with client:

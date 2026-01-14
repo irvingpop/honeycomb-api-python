@@ -9,6 +9,7 @@ from honeycomb.models import (
     ServiceMapDependencyRequestStatus,
     ServiceMapNode,
 )
+from tests.factories import QueryFactory, QueryResultFactory, mock_response
 
 # =============================================================================
 # API Keys Pagination Tests
@@ -702,13 +703,13 @@ class TestQueryResultsPagination:
 
         # Mock create saved query
         respx.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
-            return_value=Response(200, json={"id": "query-456", "query_json": {}})
+            return_value=Response(200, json=mock_response(QueryFactory, id="query-456"))
         )
 
         # Mock create query result
         create_result_route = respx.post(
             "https://api.honeycomb.io/1/query_results/my-dataset"
-        ).mock(return_value=Response(200, json={"id": "result-123"}))
+        ).mock(return_value=Response(200, json=mock_response(QueryResultFactory, id="result-123")))
 
         # Mock get query result (complete)
         respx.get("https://api.honeycomb.io/1/query_results/my-dataset/result-123").mock(
@@ -746,13 +747,13 @@ class TestQueryResultsPagination:
 
         # Mock create saved query
         respx.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
-            return_value=Response(200, json={"id": "query-456", "query_json": {}})
+            return_value=Response(200, json=mock_response(QueryFactory, id="query-456"))
         )
 
         # Mock create query result
         create_result_route = respx.post(
             "https://api.honeycomb.io/1/query_results/my-dataset"
-        ).mock(return_value=Response(200, json={"id": "result-123"}))
+        ).mock(return_value=Response(200, json=mock_response(QueryResultFactory, id="result-123")))
 
         # Mock get query result
         respx.get("https://api.honeycomb.io/1/query_results/my-dataset/result-123").mock(
@@ -859,12 +860,12 @@ class TestRunAllAsync:
 
         # Mock create saved query
         respx.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
-            return_value=Response(200, json={"id": "query-456", "query_json": {}})
+            return_value=Response(200, json=mock_response(QueryFactory, id="query-456"))
         )
 
         # Mock first (and only) query result
         respx.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
-            return_value=Response(200, json={"id": "result-123"})
+            return_value=Response(200, json=mock_response(QueryResultFactory, id="result-123"))
         )
 
         respx.get("https://api.honeycomb.io/1/query_results/my-dataset/result-123").mock(
@@ -908,12 +909,12 @@ class TestRunAllAsync:
 
         # Mock create saved query
         respx.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
-            return_value=Response(200, json={"id": "query-456", "query_json": {}})
+            return_value=Response(200, json=mock_response(QueryFactory, id="query-456"))
         )
 
         # Mock single page
         respx.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
-            return_value=Response(200, json={"id": "result-123"})
+            return_value=Response(200, json=mock_response(QueryResultFactory, id="result-123"))
         )
 
         respx.get("https://api.honeycomb.io/1/query_results/my-dataset/result-123").mock(
