@@ -342,7 +342,6 @@ direnv allow
 This project maintains **high test coverage standards**:
 
 - **≥95% coverage** required for all resource modules
-- **86% overall** resources coverage
 - Tests use [Polyfactory](https://github.com/litestar-org/polyfactory) for schema-valid mock data generation
 
 

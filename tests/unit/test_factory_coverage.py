@@ -142,22 +142,25 @@ class TestFactoryCoverage:
             assert board.name
             assert board.type
             # Verify it has valid structure
-            assert hasattr(board, 'panels')
+            assert hasattr(board, "panels")
 
 
 class TestCoverageValidation:
     """Verify coverage-generated instances are Pydantic-valid."""
 
-    @pytest.mark.parametrize("factory", [
-        ColumnFactory,
-        DatasetFactory,
-        SLOFactory,
-        TriggerFactory,
-        EmailRecipientFactory,
-        WebhookRecipientFactory,
-        MarkerFactory,
-        QueryAnnotationFactory,
-    ])
+    @pytest.mark.parametrize(
+        "factory",
+        [
+            ColumnFactory,
+            DatasetFactory,
+            SLOFactory,
+            TriggerFactory,
+            EmailRecipientFactory,
+            WebhookRecipientFactory,
+            MarkerFactory,
+            QueryAnnotationFactory,
+        ],
+    )
     def test_coverage_instances_validate(self, factory):
         """Test that all coverage() instances pass Pydantic validation."""
         # If coverage() produces invalid data, Pydantic will raise ValidationError
@@ -179,5 +182,6 @@ class TestCoverageValidation:
 
             # Should be deserializable
             from honeycomb.models import SLO
+
             reconstructed = SLO.model_validate(json_data)
             assert reconstructed.name == slo.name

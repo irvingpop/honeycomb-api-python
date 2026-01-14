@@ -5,7 +5,6 @@ providing cleaner test code without explicit Factory.build() calls.
 """
 
 
-
 def test_slo_factory_fixture(slo_factory):
     """Demo: SLO factory injected as fixture."""
     slo = slo_factory.build()
