@@ -10,8 +10,9 @@ def test_duplicate_queries_rejected():
     """Test that duplicate query specifications are rejected."""
     test_data = {
         "name": "Test Dashboard",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "Application Errors",
                 "dataset": "java-honeycomb",
                 "calculations": [{"op": "COUNT"}],
@@ -23,6 +24,7 @@ def test_duplicate_queries_rejected():
                 "chart_type": "cbar",
             },
             {
+                "type": "query",
                 "name": "Bytes Received/s - Errors by Service",
                 "dataset": "java-honeycomb",
                 "calculations": [{"op": "COUNT"}],
@@ -47,8 +49,9 @@ def test_multiple_duplicate_sets():
     """Test that multiple sets of duplicates are all reported."""
     test_data = {
         "name": "Test Dashboard",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "Panel 1",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -56,6 +59,7 @@ def test_multiple_duplicate_sets():
                 "time_range": 3600,
             },
             {
+                "type": "query",
                 "name": "Panel 2",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -63,6 +67,7 @@ def test_multiple_duplicate_sets():
                 "time_range": 3600,
             },
             {
+                "type": "query",
                 "name": "Panel 3",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -70,6 +75,7 @@ def test_multiple_duplicate_sets():
                 "time_range": 3600,
             },
             {
+                "type": "query",
                 "name": "Panel 4",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -92,8 +98,9 @@ def test_different_orders_still_duplicate():
     """Test that different orders don't prevent duplicate detection."""
     test_data = {
         "name": "Test Dashboard",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "Panel 1",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -102,6 +109,7 @@ def test_different_orders_still_duplicate():
                 "time_range": 3600,
             },
             {
+                "type": "query",
                 "name": "Panel 2",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -123,8 +131,9 @@ def test_different_limits_still_duplicate():
     """Test that different limits don't prevent duplicate detection."""
     test_data = {
         "name": "Test Dashboard",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "Panel 1",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -133,6 +142,7 @@ def test_different_limits_still_duplicate():
                 "time_range": 3600,
             },
             {
+                "type": "query",
                 "name": "Panel 2",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -151,8 +161,9 @@ def test_non_duplicate_queries_accepted():
     """Test that non-duplicate queries are accepted."""
     test_data = {
         "name": "Test Dashboard",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "Error Count",
                 "dataset": "java-honeycomb",
                 "calculations": [{"op": "COUNT"}],
@@ -160,6 +171,7 @@ def test_non_duplicate_queries_accepted():
                 "time_range": 3600,
             },
             {
+                "type": "query",
                 "name": "P99 Latency",
                 "dataset": "java-honeycomb",
                 "calculations": [{"op": "P99", "column": "duration_ms"}],
@@ -171,15 +183,16 @@ def test_non_duplicate_queries_accepted():
     # Should not raise
     board = BoardToolInput.model_validate(test_data)
     assert board.name == "Test Dashboard"
-    assert len(board.inline_query_panels) == 2
+    assert len(board.panels) == 2
 
 
 def test_different_filters_not_duplicate():
     """Test that different filters make queries unique."""
     test_data = {
         "name": "Test Dashboard",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "Errors",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -187,6 +200,7 @@ def test_different_filters_not_duplicate():
                 "time_range": 3600,
             },
             {
+                "type": "query",
                 "name": "Warnings",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -198,15 +212,16 @@ def test_different_filters_not_duplicate():
 
     # Should not raise
     board = BoardToolInput.model_validate(test_data)
-    assert len(board.inline_query_panels) == 2
+    assert len(board.panels) == 2
 
 
 def test_different_breakdowns_not_duplicate():
     """Test that different breakdowns make queries unique."""
     test_data = {
         "name": "Test Dashboard",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "By Service",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -214,6 +229,7 @@ def test_different_breakdowns_not_duplicate():
                 "time_range": 3600,
             },
             {
+                "type": "query",
                 "name": "By Endpoint",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
@@ -225,21 +241,23 @@ def test_different_breakdowns_not_duplicate():
 
     # Should not raise
     board = BoardToolInput.model_validate(test_data)
-    assert len(board.inline_query_panels) == 2
+    assert len(board.panels) == 2
 
 
 def test_different_calculations_not_duplicate():
     """Test that different calculations make queries unique."""
     test_data = {
         "name": "Test Dashboard",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "Count",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "COUNT"}],
                 "time_range": 3600,
             },
             {
+                "type": "query",
                 "name": "Average",
                 "dataset": "test-dataset",
                 "calculations": [{"op": "AVG", "column": "duration_ms"}],
@@ -250,17 +268,40 @@ def test_different_calculations_not_duplicate():
 
     # Should not raise
     board = BoardToolInput.model_validate(test_data)
-    assert len(board.inline_query_panels) == 2
+    assert len(board.panels) == 2
 
 
-def test_no_inline_query_panels():
-    """Test that boards with no inline query panels don't error."""
+def test_no_query_panels():
+    """Test that boards with no query panels don't error."""
     test_data = {
         "name": "Test Dashboard",
-        "text_panels": [{"content": "## Test"}],
+        "panels": [{"type": "text", "content": "## Test"}],
     }
 
     # Should not raise
     board = BoardToolInput.model_validate(test_data)
     assert board.name == "Test Dashboard"
-    assert board.inline_query_panels is None
+    assert len(board.panels) == 1
+
+
+def test_mixed_panel_types_no_duplicate_error():
+    """Test that boards with mixed panel types validate correctly."""
+    test_data = {
+        "name": "Test Dashboard",
+        "panels": [
+            {
+                "type": "query",
+                "name": "Error Count",
+                "dataset": "test-dataset",
+                "calculations": [{"op": "COUNT"}],
+                "time_range": 3600,
+            },
+            {"type": "text", "content": "## Section Header"},
+            {"type": "existing_slo", "slo_id": "slo-123"},
+        ],
+    }
+
+    # Should not raise
+    board = BoardToolInput.model_validate(test_data)
+    assert board.name == "Test Dashboard"
+    assert len(board.panels) == 3

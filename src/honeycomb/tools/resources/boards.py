@@ -28,10 +28,14 @@ BOARD_DESCRIPTIONS = {
         "Returns the complete board configuration including all panel definitions, layout mode (auto or manual), tags, and links to visualizations."
     ),
     "honeycomb_create_board": (
-        "Creates a new board (dashboard) with inline query panels, SLO panels, text panels, board views, and preset filters in a single operation. "
+        "Creates a new board (dashboard) with panels, board views, and preset filters in a single operation. "
         "Use this to build comprehensive dashboards for service monitoring, create SRE views, or consolidate related visualizations. "
-        "Requires a name and supports inline_query_panels (array of query definitions that will be created automatically), text_panels (markdown content), slo_panels (SLO IDs), views (filtered perspectives), and preset_filters (dynamic filters). "
-        "Each inline query panel needs a name, dataset, time_range, and calculations - optionally include filters, breakdowns, orders, and limit. "
+        "Requires a name and a 'panels' array. Each panel has a 'type' field: "
+        "'query' (inline query panel - needs name, dataset, calculations), "
+        "'text' (markdown panel - needs content), "
+        "'slo' (inline SLO panel - needs name, dataset, sli, target_percentage), "
+        "'existing_slo' (reference existing SLO by slo_id). "
+        "IMPORTANT: Panels appear in the exact order specified in the array - this controls the visual layout. "
         "Query panels can include calculated_fields (derived columns) - see honeycomb_create_derived_column for expression syntax. "
         "For inline SLO panels with SLI expressions: must return boolean, use $ prefix for columns. Example: LT($status_code, 500). "
         "Board views allow creating filtered perspectives (max 50 per board): each view has a name and filters array with column, operation (=, !=, >, >=, <, <=, contains, starts-with, ends-with, exists, in), and value. "
@@ -132,12 +136,13 @@ def generate_create_board_tool() -> dict[str, Any]:
     schema = BoardToolInput.model_json_schema()
 
     examples: list[dict[str, Any]] = [
-        # Simple: inline query panels with auto-layout
+        # Simple: query panels with auto-layout
         {
             "name": "API Dashboard",
             "layout_generation": "auto",
-            "inline_query_panels": [
+            "panels": [
                 {
+                    "type": "query",
                     "name": "Error Count",
                     "dataset": "api-logs",
                     "time_range": 3600,
@@ -145,6 +150,7 @@ def generate_create_board_tool() -> dict[str, Any]:
                     "filters": [{"column": "status_code", "op": ">=", "value": 500}],
                 },
                 {
+                    "type": "query",
                     "name": "P99 Latency",
                     "dataset": "api-logs",
                     "time_range": 3600,
@@ -152,28 +158,30 @@ def generate_create_board_tool() -> dict[str, Any]:
                 },
             ],
         },
-        # With text panel
+        # Mixed panel types - order is preserved
         {
             "name": "Service Overview",
             "description": "Main service health dashboard",
             "layout_generation": "auto",
-            "inline_query_panels": [
+            "panels": [
+                {"type": "text", "content": "## Service Status\nMonitor during peak hours"},
                 {
+                    "type": "query",
                     "name": "Request Rate",
                     "dataset": "production",
                     "time_range": 7200,
                     "calculations": [{"op": "COUNT"}],
                     "breakdowns": ["endpoint"],
-                }
+                },
             ],
-            "text_panels": [{"content": "## Service Status\nMonitor during peak hours"}],
         },
-        # Complex: with existing SLO ID
+        # Complex: interleaved panel types with existing SLO
         {
             "name": "SRE Dashboard",
             "layout_generation": "auto",
-            "inline_query_panels": [
+            "panels": [
                 {
+                    "type": "query",
                     "name": "Error Rate",
                     "dataset": "api-logs",
                     "time_range": 3600,
@@ -182,27 +190,27 @@ def generate_create_board_tool() -> dict[str, Any]:
                     "breakdowns": ["service"],
                     "orders": [{"op": "COUNT", "order": "descending"}],
                     "limit": 20,
-                }
+                },
+                {"type": "existing_slo", "slo_id": "slo-123"},
+                {"type": "text", "content": "## Alerts\nCheck PagerDuty for incidents"},
             ],
-            "slo_panels": ["slo-123"],
-            "text_panels": [{"content": "## Alerts\nCheck PagerDuty for incidents"}],
             "tags": [{"key": "team", "value": "platform"}],
         },
         # Advanced: inline SLO creation with derived column
         {
             "name": "Production Monitoring",
             "layout_generation": "auto",
-            "inline_query_panels": [
+            "panels": [
                 {
+                    "type": "query",
                     "name": "Request Count",
                     "dataset": "production",
                     "time_range": 86400,
                     "calculations": [{"op": "COUNT"}],
                     "breakdowns": ["service"],
-                }
-            ],
-            "inline_slo_panels": [
+                },
                 {
+                    "type": "slo",
                     "name": "API Availability",
                     "dataset": "api-logs",
                     "sli": {
@@ -213,22 +221,23 @@ def generate_create_board_tool() -> dict[str, Any]:
                     "target_percentage": 99.9,
                     "time_period_days": 30,
                     "description": "99.9% availability target",
-                }
+                },
+                {"type": "text", "content": "## SLO Policy\nReview weekly"},
             ],
-            "text_panels": [{"content": "## SLO Policy\nReview weekly"}],
         },
         # With board views for filtered perspectives
         {
             "name": "Service Dashboard",
             "layout_generation": "auto",
-            "inline_query_panels": [
+            "panels": [
                 {
+                    "type": "query",
                     "name": "Request Metrics",
                     "dataset": "api-logs",
                     "time_range": 3600,
                     "calculations": [{"op": "COUNT"}],
                     "breakdowns": ["service"],
-                }
+                },
             ],
             "views": [
                 {

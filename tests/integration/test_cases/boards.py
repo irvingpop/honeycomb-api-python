@@ -51,12 +51,12 @@ TEST_CASES = [
             "layout_generation": "auto",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params",
-            "len(params['inline_query_panels']) >= 2",
+            "'panels' in params",
+            "len([p for p in params['panels'] if p.get('type') == 'query']) >= 2",
             # Verify first panel structure
-            "any(p.get('name') == 'Error Count' and p.get('dataset') == 'api-logs' and p.get('time_range') == 3600 for p in params['inline_query_panels'])",
+            "any(p.get('type') == 'query' and p.get('name') == 'Error Count' and p.get('dataset') == 'api-logs' and p.get('time_range') == 3600 for p in params['panels'])",
             # Verify second panel has P99 calculation
-            "any(p.get('name') == 'P99 Latency' and any(c.get('op') == 'P99' and c.get('column') in ['duration_ms', 'duration'] for c in p.get('calculations', [])) for p in params['inline_query_panels'])",
+            "any(p.get('type') == 'query' and p.get('name') == 'P99 Latency' and any(c.get('op') == 'P99' and c.get('column') in ['duration_ms', 'duration'] for c in p.get('calculations', [])) for p in params['panels'])",
         ],
     },
     {
@@ -74,12 +74,10 @@ TEST_CASES = [
             "layout_generation": "auto",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params and len(params['inline_query_panels']) >= 1",
-            "params['inline_query_panels'][0].get('name') == 'Request Rate'",
-            "params['inline_query_panels'][0].get('dataset') == 'production'",
-            "'breakdowns' in params['inline_query_panels'][0] and 'endpoint' in params['inline_query_panels'][0]['breakdowns']",
-            "'text_panels' in params and len(params['text_panels']) >= 1",
-            "any('Service Status' in str(tp.get('content', '')) for tp in params.get('text_panels', []))",
+            "'panels' in params and len([p for p in params['panels'] if p.get('type') == 'query']) >= 1",
+            "any(p.get('type') == 'query' and p.get('name') == 'Request Rate' and p.get('dataset') == 'production' for p in params['panels'])",
+            "any(p.get('type') == 'query' and 'breakdowns' in p and 'endpoint' in p['breakdowns'] for p in params['panels'])",
+            "any(p.get('type') == 'text' and 'Service Status' in str(p.get('content', '')) for p in params['panels'])",
         ],
     },
     {
@@ -96,15 +94,12 @@ TEST_CASES = [
             "layout_generation": "auto",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params",
-            "len(params['inline_query_panels']) >= 1",
-            "params['inline_query_panels'][0].get('dataset') == 'api-logs'",
-            "params['inline_query_panels'][0].get('time_range') == 3600",
-            "'filters' in params['inline_query_panels'][0]",
-            "any(f.get('column') in ['status_code', 'status'] and f.get('value') == 500 for f in params['inline_query_panels'][0]['filters'])",
-            "'breakdowns' in params['inline_query_panels'][0]",
-            "'service' in params['inline_query_panels'][0].get('breakdowns', [])",
-            "params['inline_query_panels'][0].get('limit', 0) <= 20",
+            "'panels' in params",
+            "len([p for p in params['panels'] if p.get('type') == 'query']) >= 1",
+            "any(p.get('type') == 'query' and p.get('dataset') == 'api-logs' and p.get('time_range') == 3600 for p in params['panels'])",
+            "any(p.get('type') == 'query' and 'filters' in p and any(f.get('column') in ['status_code', 'status'] and f.get('value') == 500 for f in p['filters']) for p in params['panels'])",
+            "any(p.get('type') == 'query' and 'breakdowns' in p and 'service' in p['breakdowns'] for p in params['panels'])",
+            "any(p.get('type') == 'query' and p.get('limit', 0) <= 20 for p in params['panels'])",
         ],
     },
     {
@@ -119,12 +114,12 @@ TEST_CASES = [
             "name": "Cross-Service Dashboard",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params",
-            "len(params['inline_query_panels']) >= 1",
+            "'panels' in params",
+            "len([p for p in params['panels'] if p.get('type') == 'query']) >= 1",
             # Environment-wide is represented as dataset: null (not a specific dataset)
-            "params['inline_query_panels'][0].get('dataset') is None or params['inline_query_panels'][0].get('dataset') == '__all__'",
-            "any(c.get('op') == 'COUNT' for c in params['inline_query_panels'][0].get('calculations', []))",
-            "any(f.get('column') in ['status_code', 'status'] and f.get('value') == 500 for f in params['inline_query_panels'][0].get('filters', []))",
+            "any(p.get('type') == 'query' and (p.get('dataset') is None or p.get('dataset') == '__all__') for p in params['panels'])",
+            "any(p.get('type') == 'query' and any(c.get('op') == 'COUNT' for c in p.get('calculations', [])) for p in params['panels'])",
+            "any(p.get('type') == 'query' and any(f.get('column') in ['status_code', 'status'] and f.get('value') == 500 for f in p.get('filters', [])) for p in params['panels'])",
         ],
     },
     {
@@ -141,14 +136,13 @@ TEST_CASES = [
             "name": "Production Monitoring",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params and len(params['inline_query_panels']) >= 1",
-            "'inline_slo_panels' in params and len(params['inline_slo_panels']) >= 1",
-            "params['inline_slo_panels'][0].get('name') == 'API Availability'",
-            "params['inline_slo_panels'][0].get('dataset') == 'api-logs'",
-            "params['inline_slo_panels'][0]['sli'].get('alias') == 'success_rate'",
-            "'expression' in params['inline_slo_panels'][0]['sli']",
-            "params['inline_slo_panels'][0].get('target_percentage') == 99.9",
-            "params['inline_slo_panels'][0].get('time_period_days') == 30",
+            "'panels' in params and len([p for p in params['panels'] if p.get('type') == 'query']) >= 1",
+            "len([p for p in params['panels'] if p.get('type') == 'slo']) >= 1",
+            "any(p.get('type') == 'slo' and p.get('name') == 'API Availability' and p.get('dataset') == 'api-logs' for p in params['panels'])",
+            "any(p.get('type') == 'slo' and p.get('sli', {}).get('alias') == 'success_rate' for p in params['panels'])",
+            "any(p.get('type') == 'slo' and 'expression' in p.get('sli', {}) for p in params['panels'])",
+            "any(p.get('type') == 'slo' and p.get('target_percentage') == 99.9 for p in params['panels'])",
+            "any(p.get('type') == 'slo' and p.get('time_period_days') == 30 for p in params['panels'])",
         ],
     },
     {
@@ -164,11 +158,9 @@ TEST_CASES = [
             "name": "Platform Health",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params and len(params['inline_query_panels']) >= 1",
-            "params['inline_query_panels'][0].get('name') == 'Request Count'",
-            "params['inline_query_panels'][0].get('time_range') == 14400",
-            "'slo_panels' in params and len(params['slo_panels']) >= 1",
-            "'slo-abc123' in params.get('slo_panels', [])",
+            "'panels' in params and len([p for p in params['panels'] if p.get('type') == 'query']) >= 1",
+            "any(p.get('type') == 'query' and p.get('name') == 'Request Count' and p.get('time_range') == 14400 for p in params['panels'])",
+            "any(p.get('type') == 'existing_slo' and p.get('slo_id') == 'slo-abc123' for p in params['panels'])",
         ],
     },
     {
@@ -185,12 +177,10 @@ TEST_CASES = [
             "name": "Operations Dashboard",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params and len(params['inline_query_panels']) >= 1",
-            "params['inline_query_panels'][0].get('dataset') == 'api-logs'",
-            "params['inline_query_panels'][0].get('time_range') == 3600",
-            "'slo_panels' in params and 'slo-789' in params['slo_panels']",
-            "'text_panels' in params",
-            "any('Alerts' in str(tp.get('content', '')) for tp in params.get('text_panels', []))",
+            "'panels' in params and len([p for p in params['panels'] if p.get('type') == 'query']) >= 1",
+            "any(p.get('type') == 'query' and p.get('dataset') == 'api-logs' and p.get('time_range') == 3600 for p in params['panels'])",
+            "any(p.get('type') == 'existing_slo' and p.get('slo_id') == 'slo-789' for p in params['panels'])",
+            "any(p.get('type') == 'text' and 'Alerts' in str(p.get('content', '')) for p in params['panels'])",
             "'tags' in params and any(t.get('key') == 'team' and t.get('value') == 'platform' for t in params['tags'])",
         ],
     },
@@ -212,7 +202,7 @@ TEST_CASES = [
             "layout_generation": "auto",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params and len(params['inline_query_panels']) >= 1",
+            "'panels' in params and len([p for p in params['panels'] if p.get('type') == 'query']) >= 1",
             "'views' in params and len(params['views']) == 3",
             "params['views'][0].get('name') == 'Active Services'",
             "len(params['views'][0].get('filters', [])) == 1",
@@ -260,10 +250,10 @@ TEST_CASES = [
             "layout_generation": "auto",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params",
-            "len(params['inline_query_panels']) >= 2",
-            "any(p.get('name') == 'Error Rate Over Time' and p.get('chart_type') == 'line' for p in params['inline_query_panels'])",
-            "any(p.get('name') == 'Errors by Endpoint' and p.get('chart_type') in ['bar', 'cbar', 'tsbar'] for p in params['inline_query_panels'])",
+            "'panels' in params",
+            "len([p for p in params['panels'] if p.get('type') == 'query']) >= 2",
+            "any(p.get('type') == 'query' and p.get('name') == 'Error Rate Over Time' and p.get('chart_type') == 'line' for p in params['panels'])",
+            "any(p.get('type') == 'query' and p.get('name') == 'Errors by Endpoint' and p.get('chart_type') in ['bar', 'cbar', 'tsbar'] for p in params['panels'])",
         ],
     },
     {
@@ -279,14 +269,14 @@ TEST_CASES = [
             "name": "Latency Analysis",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params",
-            "len(params['inline_query_panels']) >= 1",
-            "params['inline_query_panels'][0].get('name') == 'P99 Latency (Log Scale)'",
+            "'panels' in params",
+            "len([p for p in params['panels'] if p.get('type') == 'query']) >= 1",
+            "any(p.get('type') == 'query' and p.get('name') == 'P99 Latency (Log Scale)' for p in params['panels'])",
             # Check for visualization settings - either full object or chart_type with log_scale
-            "(params['inline_query_panels'][0].get('visualization') is not None and "
-            "(params['inline_query_panels'][0]['visualization'].get('utc_xaxis') == True or "
-            "any(c.get('log_scale') == True for c in params['inline_query_panels'][0]['visualization'].get('charts', []))))"
-            " or params['inline_query_panels'][0].get('chart_type') is not None",
+            "any(p.get('type') == 'query' and (p.get('visualization') is not None and "
+            "(p['visualization'].get('utc_xaxis') == True or "
+            "any(c.get('log_scale') == True for c in p['visualization'].get('charts', []))))"
+            " or p.get('chart_type') is not None for p in params['panels'])",
         ],
     },
     {
@@ -303,13 +293,12 @@ TEST_CASES = [
             "name": "Request Classification",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params",
-            "len(params['inline_query_panels']) >= 1",
-            "'calculated_fields' in params['inline_query_panels'][0]",
-            "len(params['inline_query_panels'][0].get('calculated_fields', [])) >= 1",
-            "any(cf.get('name') == 'latency_bucket' for cf in params['inline_query_panels'][0].get('calculated_fields', []))",
-            "any('IF(' in cf.get('expression', '') or 'LTE(' in cf.get('expression', '') for cf in params['inline_query_panels'][0].get('calculated_fields', []))",
-            "'breakdowns' in params['inline_query_panels'][0] and 'latency_bucket' in params['inline_query_panels'][0]['breakdowns']",
+            "'panels' in params",
+            "len([p for p in params['panels'] if p.get('type') == 'query']) >= 1",
+            "any(p.get('type') == 'query' and 'calculated_fields' in p and len(p['calculated_fields']) >= 1 for p in params['panels'])",
+            "any(p.get('type') == 'query' and any(cf.get('name') == 'latency_bucket' for cf in p.get('calculated_fields', [])) for p in params['panels'])",
+            "any(p.get('type') == 'query' and any('IF(' in cf.get('expression', '') or 'LTE(' in cf.get('expression', '') for cf in p.get('calculated_fields', [])) for p in params['panels'])",
+            "any(p.get('type') == 'query' and 'breakdowns' in p and 'latency_bucket' in p['breakdowns'] for p in params['panels'])",
         ],
     },
     {
@@ -325,10 +314,9 @@ TEST_CASES = [
             "name": "Day-over-Day Comparison",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params",
-            "len(params['inline_query_panels']) >= 1",
-            "'compare_time_offset_seconds' in params['inline_query_panels'][0]",
-            "params['inline_query_panels'][0].get('compare_time_offset_seconds') == 86400",
+            "'panels' in params",
+            "len([p for p in params['panels'] if p.get('type') == 'query']) >= 1",
+            "any(p.get('type') == 'query' and 'compare_time_offset_seconds' in p and p['compare_time_offset_seconds'] == 86400 for p in params['panels'])",
         ],
     },
     {
@@ -346,16 +334,12 @@ TEST_CASES = [
             "layout_generation": "auto",
         },
         "assertion_checks": [
-            "'inline_query_panels' in params and len(params['inline_query_panels']) >= 1",
-            "params['inline_query_panels'][0].get('name') == 'Slowest Endpoints'",
-            "params['inline_query_panels'][0].get('dataset') == 'api-logs'",
-            "'orders' in params['inline_query_panels'][0]",
-            "len(params['inline_query_panels'][0]['orders']) >= 1",
-            "params['inline_query_panels'][0]['orders'][0].get('op') == 'AVG'",
-            "params['inline_query_panels'][0]['orders'][0].get('column') == 'duration_ms'",
-            "params['inline_query_panels'][0]['orders'][0].get('order') == 'descending'",
-            "params['inline_query_panels'][0].get('limit') == 10",
-            "'breakdowns' in params['inline_query_panels'][0] and 'endpoint' in params['inline_query_panels'][0]['breakdowns']",
+            "'panels' in params and len([p for p in params['panels'] if p.get('type') == 'query']) >= 1",
+            "any(p.get('type') == 'query' and p.get('name') == 'Slowest Endpoints' and p.get('dataset') == 'api-logs' for p in params['panels'])",
+            "any(p.get('type') == 'query' and 'orders' in p and len(p['orders']) >= 1 for p in params['panels'])",
+            "any(p.get('type') == 'query' and any(o.get('op') == 'AVG' and o.get('column') == 'duration_ms' and o.get('order') == 'descending' for o in p.get('orders', [])) for p in params['panels'])",
+            "any(p.get('type') == 'query' and p.get('limit') == 10 for p in params['panels'])",
+            "any(p.get('type') == 'query' and 'breakdowns' in p and 'endpoint' in p['breakdowns'] for p in params['panels'])",
         ],
     },
 ]

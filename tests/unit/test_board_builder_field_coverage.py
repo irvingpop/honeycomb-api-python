@@ -4,7 +4,13 @@ This test prevents regressions where new fields added to QueryPanelInput are
 not properly handled in the board builder conversion logic.
 """
 
+from honeycomb.models.board_builder import QueryBuilderPanel
 from honeycomb.tools.builders import _build_board
+
+
+def get_query_builder_panels(bundle):
+    """Get QueryBuilderPanel instances from unified panels list."""
+    return [p for p in bundle.panels if isinstance(p, QueryBuilderPanel)]
 
 
 def test_all_query_panel_fields_are_mapped():
@@ -17,8 +23,9 @@ def test_all_query_panel_fields_are_mapped():
     tool_input = {
         "name": "Complete Field Test",
         "layout_generation": "auto",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 # Panel metadata
                 "name": "Complete Query Panel",
                 "description": "Tests all query fields",
@@ -50,8 +57,9 @@ def test_all_query_panel_fields_are_mapped():
     bundle = builder.build()
 
     # Get the QueryBuilder that was created
-    assert len(bundle.query_builder_panels) == 1
-    qb_panel = bundle.query_builder_panels[0]
+    query_builder_panels = get_query_builder_panels(bundle)
+    assert len(query_builder_panels) == 1
+    qb_panel = query_builder_panels[0]
     qb = qb_panel.builder
 
     # Build the QuerySpec to inspect what was actually set
@@ -78,8 +86,9 @@ def test_granularity_is_preserved():
     """Specific regression test for granularity field (caused duplicate QueryID bug)."""
     tool_input = {
         "name": "Granularity Test",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "With Granularity",
                 "dataset": "test",
                 "time_range": 3600,
@@ -92,7 +101,8 @@ def test_granularity_is_preserved():
 
     builder = _build_board(tool_input)
     bundle = builder.build()
-    spec = bundle.query_builder_panels[0].builder.build()
+    query_builder_panels = get_query_builder_panels(bundle)
+    spec = query_builder_panels[0].builder.build()
 
     assert spec.granularity == 120, "granularity was lost during conversion"
 
@@ -101,8 +111,9 @@ def test_filter_combination_is_preserved():
     """Specific regression test for filter_combination field."""
     tool_input = {
         "name": "Filter Combination Test",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "OR Filters",
                 "dataset": "test",
                 "time_range": 3600,
@@ -118,7 +129,8 @@ def test_filter_combination_is_preserved():
 
     builder = _build_board(tool_input)
     bundle = builder.build()
-    spec = bundle.query_builder_panels[0].builder.build()
+    query_builder_panels = get_query_builder_panels(bundle)
+    spec = query_builder_panels[0].builder.build()
 
     assert spec.filter_combination.value == "OR", "filter_combination was lost"
 
@@ -127,8 +139,9 @@ def test_havings_is_preserved():
     """Specific regression test for havings field."""
     tool_input = {
         "name": "Havings Test",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "With Having Clause",
                 "dataset": "test",
                 "time_range": 3600,
@@ -143,7 +156,8 @@ def test_havings_is_preserved():
 
     builder = _build_board(tool_input)
     bundle = builder.build()
-    spec = bundle.query_builder_panels[0].builder.build()
+    query_builder_panels = get_query_builder_panels(bundle)
+    spec = query_builder_panels[0].builder.build()
 
     assert spec.havings is not None and len(spec.havings) == 1, "havings was lost"
     assert spec.havings[0].calculate_op.value == "COUNT"
@@ -153,8 +167,9 @@ def test_no_granularity_remains_none():
     """Test that missing granularity stays None (not replaced with default)."""
     tool_input = {
         "name": "No Granularity Test",
-        "inline_query_panels": [
+        "panels": [
             {
+                "type": "query",
                 "name": "Without Granularity",
                 "dataset": "test",
                 "time_range": 3600,
@@ -166,6 +181,7 @@ def test_no_granularity_remains_none():
 
     builder = _build_board(tool_input)
     bundle = builder.build()
-    spec = bundle.query_builder_panels[0].builder.build()
+    query_builder_panels = get_query_builder_panels(bundle)
+    spec = query_builder_panels[0].builder.build()
 
     assert spec.granularity is None, "granularity should remain None when not specified"

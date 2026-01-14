@@ -129,7 +129,7 @@
     },
     {
       "name": "honeycomb_create_board",
-      "description": "Creates a new board (dashboard) with inline query panels, SLO panels, text panels, board views, and preset filters in a single operation. Use this to build comprehensive dashboards for service monitoring, create SRE views, or consolidate related visualizations. Requires a name and supports inline_query_panels (array of query definitions that will be created automatically), text_panels (markdown content), slo_panels (SLO IDs), views (filtered perspectives), and preset_filters (dynamic filters). Each inline query panel needs a name, dataset, time_range, and calculations - optionally include filters, breakdowns, orders, and limit. Query panels can include calculated_fields (derived columns) - see honeycomb_create_derived_column for expression syntax. For inline SLO panels with SLI expressions: must return boolean, use $ prefix for columns. Example: LT($status_code, 500). Board views allow creating filtered perspectives (max 50 per board): each view has a name and filters array with column, operation (=, !=, >, >=, <, <=, contains, starts-with, ends-with, exists, in), and value. Preset filters (max 5) allow dynamic filtering of board data: each has column and alias properties. Layout defaults to auto-layout (Honeycomb arranges panels) but supports manual layout with explicit positioning. The tool orchestrates: creating all inline queries with annotations, inline SLOs, board views, preset filters, assembling panel configurations, and creating the board with all components in one API call.",
+      "description": "Creates a new board (dashboard) with panels, board views, and preset filters in a single operation. Use this to build comprehensive dashboards for service monitoring, create SRE views, or consolidate related visualizations. Requires a name and a 'panels' array. Each panel has a 'type' field: 'query' (inline query panel - needs name, dataset, calculations), 'text' (markdown panel - needs content), 'slo' (inline SLO panel - needs name, dataset, sli, target_percentage), 'existing_slo' (reference existing SLO by slo_id). IMPORTANT: Panels appear in the exact order specified in the array - this controls the visual layout. Query panels can include calculated_fields (derived columns) - see honeycomb_create_derived_column for expression syntax. For inline SLO panels with SLI expressions: must return boolean, use $ prefix for columns. Example: LT($status_code, 500). Board views allow creating filtered perspectives (max 50 per board): each view has a name and filters array with column, operation (=, !=, >, >=, <, <=, contains, starts-with, ends-with, exists, in), and value. Preset filters (max 5) allow dynamic filtering of board data: each has column and alias properties. Layout defaults to auto-layout (Honeycomb arranges panels) but supports manual layout with explicit positioning. The tool orchestrates: creating all inline queries with annotations, inline SLOs, board views, preset filters, assembling panel configurations, and creating the board with all components in one API call.",
       "input_schema": {
         "$defs": {
           "BoardViewFilter": {
@@ -286,6 +286,41 @@
               }
             },
             "title": "ChartSettingsInput",
+            "type": "object"
+          },
+          "ExistingSLOPanelInput": {
+            "additionalProperties": false,
+            "description": "Reference an existing SLO as a board panel.",
+            "properties": {
+              "type": {
+                "const": "existing_slo",
+                "default": "existing_slo",
+                "description": "Panel type discriminator",
+                "title": "Type",
+                "type": "string"
+              },
+              "slo_id": {
+                "description": "Existing SLO ID to display on the board",
+                "title": "Slo Id",
+                "type": "string"
+              },
+              "position": {
+                "anyOf": [
+                  {
+                    "$ref": "#/$defs/PositionInput"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "default": null,
+                "description": "Panel position (required for manual layout)"
+              }
+            },
+            "required": [
+              "slo_id"
+            ],
+            "title": "ExistingSLOPanelInput",
             "type": "object"
           },
           "Filter": {
@@ -519,8 +554,15 @@
           },
           "QueryPanelInput": {
             "additionalProperties": false,
-            "description": "Query panel specification for board tool input.\n\nThis model represents a complete query panel with FLAT structure.\nQuery fields are at the top level, not nested under a 'query' object.\n\nExample (simple with chart_type shorthand):\n    {\n        \"name\": \"CPU Usage\",\n        \"dataset\": \"metrics\",\n        \"time_range\": 3600,\n        \"calculations\": [{\"op\": \"AVG\", \"column\": \"cpu_percent\"}],\n        \"chart_type\": \"line\"\n    }\n\nExample (with full visualization settings):\n    {\n        \"name\": \"Error Rate\",\n        \"dataset\": \"api-logs\",\n        \"time_range\": 3600,\n        \"calculations\": [{\"op\": \"COUNT\"}],\n        \"visualization\": {\n            \"utc_xaxis\": true,\n            \"charts\": [{\"chart_type\": \"stacked\", \"log_scale\": true}]\n        }\n    }",
+            "description": "Query panel specification for board tool input.\n\nThis model represents a complete query panel with FLAT structure.\nQuery fields are at the top level, not nested under a 'query' object.\n\nExample (simple with chart_type shorthand):\n    {\n        \"type\": \"query\",\n        \"name\": \"CPU Usage\",\n        \"dataset\": \"metrics\",\n        \"time_range\": 3600,\n        \"calculations\": [{\"op\": \"AVG\", \"column\": \"cpu_percent\"}],\n        \"chart_type\": \"line\"\n    }\n\nExample (with full visualization settings):\n    {\n        \"type\": \"query\",\n        \"name\": \"Error Rate\",\n        \"dataset\": \"api-logs\",\n        \"time_range\": 3600,\n        \"calculations\": [{\"op\": \"COUNT\"}],\n        \"visualization\": {\n            \"utc_xaxis\": true,\n            \"charts\": [{\"chart_type\": \"stacked\", \"log_scale\": true}]\n        }\n    }",
             "properties": {
+              "type": {
+                "const": "query",
+                "default": "query",
+                "description": "Panel type discriminator",
+                "title": "Type",
+                "type": "string"
+              },
               "name": {
                 "description": "Panel/query name",
                 "title": "Name",
@@ -860,6 +902,13 @@
             "additionalProperties": false,
             "description": "Inline SLO panel for boards.\n\nCreates an SLO and adds it to the board in one operation.",
             "properties": {
+              "type": {
+                "const": "slo",
+                "default": "slo",
+                "description": "Panel type discriminator",
+                "title": "Type",
+                "type": "string"
+              },
               "name": {
                 "description": "SLO name",
                 "title": "Name",
@@ -952,6 +1001,13 @@
             "additionalProperties": false,
             "description": "Text/markdown panel for boards.",
             "properties": {
+              "type": {
+                "const": "text",
+                "default": "text",
+                "description": "Panel type discriminator",
+                "title": "Type",
+                "type": "string"
+              },
               "content": {
                 "description": "Markdown content for the panel",
                 "title": "Content",
@@ -1032,7 +1088,7 @@
           }
         },
         "additionalProperties": false,
-        "description": "Complete board tool input for creating boards.\n\nSupports three layout modes:\n- auto: Automatically arranges panels (position not required)\n- manual: User-specified positions (position required for all panels)\n\nPanel types:\n- inline_query_panels: Query panels (creates queries inline)\n- inline_slo_panels: SLO panels (creates SLOs inline)\n- text_panels: Markdown/text panels\n- slo_panels: Reference existing SLOs by ID",
+        "description": "Complete board tool input for creating boards.\n\nSupports two layout modes:\n- auto: Automatically arranges panels (position not required)\n- manual: User-specified positions (position required for all panels)\n\nPanels are specified in the unified `panels` array. Each panel has a `type` field:\n- query: Inline query panel (creates query automatically)\n- text: Markdown/text panel\n- slo: Inline SLO panel (creates SLO automatically)\n- existing_slo: Reference an existing SLO by ID\n\nPanels are displayed in the order they appear in the array.",
         "properties": {
           "name": {
             "description": "Board name",
@@ -1062,11 +1118,33 @@
             "title": "Layout Generation",
             "type": "string"
           },
-          "inline_query_panels": {
+          "panels": {
             "anyOf": [
               {
                 "items": {
-                  "$ref": "#/$defs/QueryPanelInput"
+                  "discriminator": {
+                    "mapping": {
+                      "existing_slo": "#/$defs/ExistingSLOPanelInput",
+                      "query": "#/$defs/QueryPanelInput",
+                      "slo": "#/$defs/SLOPanelInput",
+                      "text": "#/$defs/TextPanelInput"
+                    },
+                    "propertyName": "type"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/$defs/QueryPanelInput"
+                    },
+                    {
+                      "$ref": "#/$defs/TextPanelInput"
+                    },
+                    {
+                      "$ref": "#/$defs/SLOPanelInput"
+                    },
+                    {
+                      "$ref": "#/$defs/ExistingSLOPanelInput"
+                    }
+                  ]
                 },
                 "type": "array"
               },
@@ -1075,56 +1153,8 @@
               }
             ],
             "default": null,
-            "description": "Query panels to create inline",
-            "title": "Inline Query Panels"
-          },
-          "inline_slo_panels": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/SLOPanelInput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "SLO panels to create inline",
-            "title": "Inline Slo Panels"
-          },
-          "text_panels": {
-            "anyOf": [
-              {
-                "items": {
-                  "$ref": "#/$defs/TextPanelInput"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Text/markdown panels",
-            "title": "Text Panels"
-          },
-          "slo_panels": {
-            "anyOf": [
-              {
-                "items": {
-                  "type": "string"
-                },
-                "type": "array"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "default": null,
-            "description": "Existing SLO IDs to add as panels",
-            "title": "Slo Panels"
+            "description": "Board panels in display order. Each panel has a 'type' field: 'query' (inline query), 'text' (markdown), 'slo' (inline SLO), 'existing_slo' (reference existing SLO by ID)",
+            "title": "Panels"
           },
           "tags": {
             "anyOf": [
@@ -1230,8 +1260,9 @@
         {
           "name": "API Dashboard",
           "layout_generation": "auto",
-          "inline_query_panels": [
+          "panels": [
             {
+              "type": "query",
               "name": "Error Count",
               "dataset": "api-logs",
               "time_range": 3600,
@@ -1249,6 +1280,7 @@
               ]
             },
             {
+              "type": "query",
               "name": "P99 Latency",
               "dataset": "api-logs",
               "time_range": 3600,
@@ -1265,8 +1297,13 @@
           "name": "Service Overview",
           "description": "Main service health dashboard",
           "layout_generation": "auto",
-          "inline_query_panels": [
+          "panels": [
             {
+              "type": "text",
+              "content": "## Service Status\nMonitor during peak hours"
+            },
+            {
+              "type": "query",
               "name": "Request Rate",
               "dataset": "production",
               "time_range": 7200,
@@ -1279,18 +1316,14 @@
                 "endpoint"
               ]
             }
-          ],
-          "text_panels": [
-            {
-              "content": "## Service Status\nMonitor during peak hours"
-            }
           ]
         },
         {
           "name": "SRE Dashboard",
           "layout_generation": "auto",
-          "inline_query_panels": [
+          "panels": [
             {
+              "type": "query",
               "name": "Error Rate",
               "dataset": "api-logs",
               "time_range": 3600,
@@ -1316,13 +1349,13 @@
                 }
               ],
               "limit": 20
-            }
-          ],
-          "slo_panels": [
-            "slo-123"
-          ],
-          "text_panels": [
+            },
             {
+              "type": "existing_slo",
+              "slo_id": "slo-123"
+            },
+            {
+              "type": "text",
               "content": "## Alerts\nCheck PagerDuty for incidents"
             }
           ],
@@ -1336,8 +1369,9 @@
         {
           "name": "Production Monitoring",
           "layout_generation": "auto",
-          "inline_query_panels": [
+          "panels": [
             {
+              "type": "query",
               "name": "Request Count",
               "dataset": "production",
               "time_range": 86400,
@@ -1349,10 +1383,9 @@
               "breakdowns": [
                 "service"
               ]
-            }
-          ],
-          "inline_slo_panels": [
+            },
             {
+              "type": "slo",
               "name": "API Availability",
               "dataset": "api-logs",
               "sli": {
@@ -1363,10 +1396,9 @@
               "target_percentage": 99.9,
               "time_period_days": 30,
               "description": "99.9% availability target"
-            }
-          ],
-          "text_panels": [
+            },
             {
+              "type": "text",
               "content": "## SLO Policy\nReview weekly"
             }
           ]
@@ -1374,8 +1406,9 @@
         {
           "name": "Service Dashboard",
           "layout_generation": "auto",
-          "inline_query_panels": [
+          "panels": [
             {
+              "type": "query",
               "name": "Request Metrics",
               "dataset": "api-logs",
               "time_range": 3600,

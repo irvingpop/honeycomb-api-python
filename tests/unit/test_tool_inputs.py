@@ -11,6 +11,7 @@ from honeycomb.models.tool_inputs import (
     BurnAlertInput,
     CalculatedFieldInput,
     ChartSettingsInput,
+    ExistingSLOPanelInput,
     PositionInput,
     PresetFilterInput,
     QueryPanelInput,
@@ -659,30 +660,46 @@ class TestBoardToolInput:
         """Test board with query panels."""
         board = BoardToolInput(
             name="Dashboard",
-            inline_query_panels=[QueryPanelInput(name="Panel 1")],
+            panels=[QueryPanelInput(name="Panel 1")],
         )
-        assert len(board.inline_query_panels) == 1
+        assert len(board.panels) == 1
 
     def test_board_with_all_panel_types(self):
-        """Test board with all panel types."""
+        """Test board with all panel types in unified panels array."""
         board = BoardToolInput(
             name="Complete Board",
-            inline_query_panels=[QueryPanelInput(name="Query")],
-            inline_slo_panels=[
+            panels=[
+                QueryPanelInput(name="Query"),
                 SLOPanelInput(
                     name="SLO",
                     dataset="test",
                     sli=SLIInput(alias="test"),
                     target_percentage=99.9,
-                )
+                ),
+                TextPanelInput(content="# Header"),
+                ExistingSLOPanelInput(slo_id="slo_123"),
             ],
-            text_panels=[TextPanelInput(content="# Header")],
-            slo_panels=["slo_123"],
         )
-        assert len(board.inline_query_panels) == 1
-        assert len(board.inline_slo_panels) == 1
-        assert len(board.text_panels) == 1
-        assert len(board.slo_panels) == 1
+        assert len(board.panels) == 4
+
+    def test_panel_ordering_preserved(self):
+        """Test that panels are stored in insertion order."""
+        from honeycomb.models.query_builder import CalcOp, Calculation
+
+        board = BoardToolInput(
+            name="Ordered Board",
+            panels=[
+                QueryPanelInput(name="Query 1", calculations=[Calculation(op=CalcOp.COUNT)]),
+                TextPanelInput(content="# Section"),
+                QueryPanelInput(
+                    name="Query 2", calculations=[Calculation(op=CalcOp.AVG, column="duration_ms")]
+                ),
+            ],
+        )
+        assert len(board.panels) == 3
+        assert isinstance(board.panels[0], QueryPanelInput)
+        assert isinstance(board.panels[1], TextPanelInput)
+        assert isinstance(board.panels[2], QueryPanelInput)
 
     def test_board_with_features(self):
         """Test board with tags, filters, and views."""
@@ -745,9 +762,9 @@ class TestModelJsonSchema:
         assert "target_nines" not in schema["properties"]  # Removed
 
     def test_board_tool_schema(self):
-        """Test BoardToolInput generates schema."""
+        """Test BoardToolInput generates schema with unified panels array."""
         schema = BoardToolInput.model_json_schema()
         assert schema["type"] == "object"
         assert "additionalProperties" in schema
         assert schema["additionalProperties"] is False
-        assert "inline_query_panels" in schema["properties"]
+        assert "panels" in schema["properties"]

@@ -12,7 +12,7 @@ These models are used by:
 
 from __future__ import annotations
 
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from typing_extensions import Self
@@ -140,6 +140,7 @@ class QueryPanelInput(BaseModel):
 
     Example (simple with chart_type shorthand):
         {
+            "type": "query",
             "name": "CPU Usage",
             "dataset": "metrics",
             "time_range": 3600,
@@ -149,6 +150,7 @@ class QueryPanelInput(BaseModel):
 
     Example (with full visualization settings):
         {
+            "type": "query",
             "name": "Error Rate",
             "dataset": "api-logs",
             "time_range": 3600,
@@ -161,6 +163,9 @@ class QueryPanelInput(BaseModel):
     """
 
     model_config = ConfigDict(extra="forbid")
+
+    # Panel type discriminator
+    type: Literal["query"] = Field(default="query", description="Panel type discriminator")
 
     # Panel metadata
     name: str = Field(description="Panel/query name")
@@ -689,6 +694,9 @@ class TextPanelInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # Panel type discriminator
+    type: Literal["text"] = Field(default="text", description="Panel type discriminator")
+
     content: str = Field(description="Markdown content for the panel")
     position: PositionInput | None = Field(
         default=None, description="Panel position (required for manual layout)"
@@ -703,6 +711,9 @@ class SLOPanelInput(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
+    # Panel type discriminator
+    type: Literal["slo"] = Field(default="slo", description="Panel type discriminator")
+
     name: str = Field(description="SLO name")
     description: str | None = Field(default=None, description="SLO description")
     dataset: str = Field(description="Dataset slug")
@@ -712,6 +723,29 @@ class SLOPanelInput(BaseModel):
     position: PositionInput | None = Field(
         default=None, description="Panel position (required for manual layout)"
     )
+
+
+class ExistingSLOPanelInput(BaseModel):
+    """Reference an existing SLO as a board panel."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    # Panel type discriminator
+    type: Literal["existing_slo"] = Field(
+        default="existing_slo", description="Panel type discriminator"
+    )
+
+    slo_id: str = Field(description="Existing SLO ID to display on the board")
+    position: PositionInput | None = Field(
+        default=None, description="Panel position (required for manual layout)"
+    )
+
+
+# Discriminated union for all panel types
+UnifiedPanelInput = Annotated[
+    QueryPanelInput | TextPanelInput | SLOPanelInput | ExistingSLOPanelInput,
+    Field(discriminator="type"),
+]
 
 
 # =============================================================================
@@ -799,15 +833,17 @@ class BoardViewInput(BaseModel):
 class BoardToolInput(BaseModel):
     """Complete board tool input for creating boards.
 
-    Supports three layout modes:
+    Supports two layout modes:
     - auto: Automatically arranges panels (position not required)
     - manual: User-specified positions (position required for all panels)
 
-    Panel types:
-    - inline_query_panels: Query panels (creates queries inline)
-    - inline_slo_panels: SLO panels (creates SLOs inline)
-    - text_panels: Markdown/text panels
-    - slo_panels: Reference existing SLOs by ID
+    Panels are specified in the unified `panels` array. Each panel has a `type` field:
+    - query: Inline query panel (creates query automatically)
+    - text: Markdown/text panel
+    - slo: Inline SLO panel (creates SLO automatically)
+    - existing_slo: Reference an existing SLO by ID
+
+    Panels are displayed in the order they appear in the array.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -819,18 +855,12 @@ class BoardToolInput(BaseModel):
         default="auto", description="Layout mode (auto or manual)"
     )
 
-    # Panels
-    inline_query_panels: list[QueryPanelInput] | None = Field(
-        default=None, description="Query panels to create inline"
-    )
-    inline_slo_panels: list[SLOPanelInput] | None = Field(
-        default=None, description="SLO panels to create inline"
-    )
-    text_panels: list[TextPanelInput] | None = Field(
-        default=None, description="Text/markdown panels"
-    )
-    slo_panels: list[str] | None = Field(
-        default=None, description="Existing SLO IDs to add as panels"
+    # Unified panels array - panels appear in the order specified
+    panels: list[UnifiedPanelInput] | None = Field(
+        default=None,
+        description="Board panels in display order. Each panel has a 'type' field: "
+        "'query' (inline query), 'text' (markdown), 'slo' (inline SLO), "
+        "'existing_slo' (reference existing SLO by ID)",
     )
 
     # Board features
@@ -844,7 +874,7 @@ class BoardToolInput(BaseModel):
 
     @model_validator(mode="after")
     def validate_no_duplicate_queries(self) -> Self:
-        """Validate that no duplicate query specifications exist in inline_query_panels.
+        """Validate that no duplicate query specifications exist in panels.
 
         Uses shared validation logic from honeycomb.validation.boards.
 
@@ -852,10 +882,13 @@ class BoardToolInput(BaseModel):
             ValueError: If duplicate query specifications are detected, with details
                        about which panels are duplicates and how to fix them.
         """
-        if self.inline_query_panels:
-            from honeycomb.validation.boards import validate_no_duplicate_query_panels
+        if self.panels:
+            # Extract query panels from unified panels array
+            query_panels = [p for p in self.panels if isinstance(p, QueryPanelInput)]
+            if query_panels:
+                from honeycomb.validation.boards import validate_no_duplicate_query_panels
 
-            validate_no_duplicate_query_panels(self.inline_query_panels)
+                validate_no_duplicate_query_panels(query_panels)
 
         return self
 

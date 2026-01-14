@@ -98,6 +98,12 @@ class TextPanel:
     position: PositionInput | None
 
 
+# Type alias for any panel type
+BuilderPanel = (
+    QueryBuilderPanel | ExistingQueryPanel | SLOBuilderPanel | ExistingSLOPanel | TextPanel
+)
+
+
 @dataclass
 class BoardBundle:
     """Board creation bundle for orchestration.
@@ -110,10 +116,7 @@ class BoardBundle:
         layout_generation: Layout mode (auto or manual)
         tags: Optional tags list
         preset_filters: Optional preset filters list
-        query_builder_panels: Panels from QueryBuilder instances
-        existing_query_panels: Panels from existing query IDs
-        slo_panels: SLO panels
-        text_panels: Text panels
+        panels: All panels in insertion order (preserves user-specified ordering)
         views: Board views to create
     """
 
@@ -122,12 +125,8 @@ class BoardBundle:
     layout_generation: Literal["auto", "manual"]
     tags: list[dict[str, str]] | None
     preset_filters: list[dict[str, str]] | None
-    # Panels (in order added)
-    query_builder_panels: list[QueryBuilderPanel]
-    existing_query_panels: list[ExistingQueryPanel]
-    slo_builder_panels: list[SLOBuilderPanel]
-    existing_slo_panels: list[ExistingSLOPanel]
-    text_panels: list[TextPanel]
+    # Panels in insertion order (single unified list)
+    panels: list[BuilderPanel]
     # Views
     views: list[BoardViewCreate]
 
@@ -172,12 +171,8 @@ class BoardBuilder(TagsMixin):
         self._description: str | None = None
         self._layout_generation: Literal["auto", "manual"] = "manual"
         self._preset_filters: list[dict[str, str]] = []
-        # Panel storage (in order added)
-        self._query_builder_panels: list[QueryBuilderPanel] = []
-        self._existing_query_panels: list[ExistingQueryPanel] = []
-        self._slo_builder_panels: list[SLOBuilderPanel] = []
-        self._existing_slo_panels: list[ExistingSLOPanel] = []
-        self._text_panels: list[TextPanel] = []
+        # Single ordered panel list (preserves insertion order)
+        self._panels: list[BuilderPanel] = []
         # Views
         self._views: list[BoardViewCreate] = []
 
@@ -278,7 +273,7 @@ class BoardBuilder(TagsMixin):
             if not query.has_name():
                 raise ValueError("QueryBuilder must have name in constructor for board panels")
 
-            self._query_builder_panels.append(
+            self._panels.append(
                 QueryBuilderPanel(
                     builder=query,
                     position=position,
@@ -291,7 +286,7 @@ class BoardBuilder(TagsMixin):
             if not annotation_id:
                 raise ValueError("annotation_id required when using existing query ID")
 
-            self._existing_query_panels.append(
+            self._panels.append(
                 ExistingQueryPanel(
                     query_id=query,
                     annotation_id=annotation_id,
@@ -332,9 +327,9 @@ class BoardBuilder(TagsMixin):
         from honeycomb.models.slo_builder import SLOBuilder
 
         if isinstance(slo, SLOBuilder):
-            self._slo_builder_panels.append(SLOBuilderPanel(builder=slo, position=position))
+            self._panels.append(SLOBuilderPanel(builder=slo, position=position))
         else:
-            self._existing_slo_panels.append(ExistingSLOPanel(slo_id=slo, position=position))
+            self._panels.append(ExistingSLOPanel(slo_id=slo, position=position))
         return self
 
     def text(
@@ -359,7 +354,7 @@ class BoardBuilder(TagsMixin):
         """
         if len(content) > 10000:
             raise ValueError(f"Text content must be <= 10000 characters, got {len(content)}")
-        self._text_panels.append(TextPanel(content=content, position=position))
+        self._panels.append(TextPanel(content=content, position=position))
         return self
 
     # -------------------------------------------------------------------------
@@ -429,14 +424,7 @@ class BoardBuilder(TagsMixin):
         """
         # Validate manual layout requires all positions
         if self._layout_generation == "manual":
-            all_panels = (
-                self._query_builder_panels
-                + self._existing_query_panels
-                + self._slo_builder_panels
-                + self._existing_slo_panels
-                + self._text_panels
-            )
-            for i, panel in enumerate(all_panels):
+            for i, panel in enumerate(self._panels):
                 if panel.position is None:
                     raise ValueError(
                         f"Manual layout requires position for all panels. "
@@ -449,10 +437,6 @@ class BoardBuilder(TagsMixin):
             layout_generation=self._layout_generation,
             tags=self._get_all_tags(),
             preset_filters=self._preset_filters if self._preset_filters else None,
-            query_builder_panels=self._query_builder_panels,
-            existing_query_panels=self._existing_query_panels,
-            slo_builder_panels=self._slo_builder_panels,
-            existing_slo_panels=self._existing_slo_panels,
-            text_panels=self._text_panels,
+            panels=list(self._panels),  # Copy to prevent mutation
             views=self._views,
         )
