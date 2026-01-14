@@ -5,6 +5,7 @@ import respx
 from httpx import Response
 
 from honeycomb import HoneycombClient, QueryBuilder, QuerySpec
+from tests.factories import QueryAnnotationFactory, QueryFactory, mock_response
 
 
 @pytest.mark.asyncio
@@ -470,3 +471,99 @@ class TestQuerySpec:
             compare_time_offset_seconds=None,
         )
         assert spec.compare_time_offset_seconds is None
+
+
+# =============================================================================
+# Create with Annotation Tests (added for Phase 4)
+# =============================================================================
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_create_query_with_annotation_async():
+    """Test creating a query with annotation metadata (async)."""
+    # Mock query creation
+    respx.post("https://api.honeycomb.io/1/queries/test-dataset").mock(
+        return_value=Response(200, json=mock_response(QueryFactory, id="query-123"))
+    )
+
+    # Mock annotation creation
+    respx.post("https://api.honeycomb.io/1/query_annotations/test-dataset").mock(
+        return_value=Response(
+            201,
+            json=mock_response(
+                QueryAnnotationFactory, id="annot-456", name="Error Analysis", query_id="query-123"
+            ),
+        )
+    )
+
+    async with HoneycombClient(api_key="test-key") as client:
+        builder = QueryBuilder("Error Analysis").dataset("test-dataset").time_range(3600).count()
+        query, annotation_id = await client.queries.create_with_annotation_async(builder=builder)
+        assert query.id == "query-123"
+        assert annotation_id == "annot-456"
+
+
+# =============================================================================
+# Validation Error Tests (added for coverage)
+# =============================================================================
+
+
+@pytest.mark.asyncio
+async def test_create_with_dataset_param_and_builder_raises():
+    """Test that passing dataset param with QueryBuilder raises ValueError."""
+    async with HoneycombClient(api_key="test-key") as client:
+        builder = QueryBuilder().dataset("test-dataset").time_range(3600).count()
+        with pytest.raises(ValueError, match="dataset parameter not allowed with QueryBuilder"):
+            await client.queries.create_async(spec=builder, dataset="other-dataset")
+
+
+@pytest.mark.asyncio
+async def test_create_with_queryspec_without_dataset_raises():
+    """Test that QuerySpec without dataset param raises ValueError."""
+    async with HoneycombClient(api_key="test-key") as client:
+        spec = QuerySpec(time_range=3600, calculations=[{"op": "COUNT"}])
+        with pytest.raises(ValueError, match="dataset parameter required when using QuerySpec"):
+            await client.queries.create_async(spec=spec)
+
+
+@pytest.mark.asyncio
+async def test_create_with_annotation_without_name_raises():
+    """Test that create_with_annotation without builder name raises ValueError."""
+    async with HoneycombClient(api_key="test-key") as client:
+        builder = QueryBuilder().dataset("test-dataset").time_range(3600).count()  # No name
+        with pytest.raises(
+            ValueError, match="create_with_annotation requires a QueryBuilder with .name"
+        ):
+            await client.queries.create_with_annotation_async(builder=builder)
+
+
+# -------------------------------------------------------------------------
+# Sync method guard tests (for 100% coverage)
+# -------------------------------------------------------------------------
+
+
+def test_sync_create_raises_in_async_mode():
+    """Test that sync create raises in async mode."""
+    client = HoneycombClient(api_key="test-key")  # async mode
+    builder = QueryBuilder().dataset("test-dataset").time_range(3600).count()
+
+    with pytest.raises(RuntimeError, match="Use create_async"):
+        client.queries.create(builder)
+
+
+def test_sync_get_raises_in_async_mode():
+    """Test that sync get raises in async mode."""
+    client = HoneycombClient(api_key="test-key")  # async mode
+
+    with pytest.raises(RuntimeError, match="Use get_async"):
+        client.queries.get(dataset="test-dataset", query_id="query-123")
+
+
+def test_sync_create_with_queryspec_dataset_validation():
+    """Test sync create with QuerySpec and dataset validation (covers line 233)."""
+    client = HoneycombClient(api_key="test-key", sync=True)
+
+    spec = QuerySpec(time_range=3600, calculations=[{"op": "COUNT"}])
+    with pytest.raises(ValueError, match="dataset parameter required"), client:
+        client.queries.create(spec)  # Missing dataset parameter

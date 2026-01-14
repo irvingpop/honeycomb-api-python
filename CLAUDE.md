@@ -123,22 +123,32 @@ All resources extend [BaseResource](src/honeycomb/resources/base.py) and follow 
 **Dataset-scoped resources** require `dataset` parameter: Triggers, SLOs, Queries
 **Environment-scoped resources** don't: Boards, Recipients
 
-## Testing Pattern
+## Testing Standards
 
-All tests use `respx` to mock HTTP requests:
+### Coverage Requirements
 
-```python
-async def test_example(client: HoneycombClient, mock_api: MockRouter):
-    mock_api.get("https://api.honeycomb.io/1/triggers/dataset").respond(
-        json=[{"id": "t1", "name": "Trigger"}]
-    )
-    triggers = await client.triggers.list_async(dataset="dataset")
-    assert len(triggers) == 1
-```
+**All resources** in `src/honeycomb/resources/` must maintain **≥95% test coverage**.
+
+**Coverage enforcement**: Run `/ci` before committing. The CI skill reports coverage gaps.
+
+### Testing Pattern
+
+Tests use **respx** for HTTP mocking + **Polyfactory** for data generation:
 
 **Key fixtures** ([tests/conftest.py](tests/conftest.py)):
-- `mock_api` - respx MockRouter
-- `client` - HoneycombClient with test key
+- `api_key` - Test API key string
+- Factory fixtures: `slo_factory`, `trigger_factory`, etc. (injected via Polyfactory)
+
+### Using Polyfactory for Test Data
+
+**When to use factories**:
+
+**Use factories** (preferred):
+- Standard CRUD operations (list, get, create, update)
+- Response mocking for GET/POST/PUT endpoints
+- Bulk data generation (lists, batches)
+- Edge case testing with `.coverage()`
+
 
 ## Important Implementation Details
 

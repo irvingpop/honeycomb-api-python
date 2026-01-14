@@ -58,20 +58,24 @@ async def process_inline_recipients(
         # Check if recipient with matching type and target already exists
         existing = None
         for existing_recip in existing_recipients:
-            if existing_recip.type == recip_type:
+            if existing_recip.type == recip_type.value:  # Compare string to string
                 # Check target match based on type
+                # Note: details is Optional[PydanticModel] - could be None
                 existing_target = None
-                if recip_type == RecipientType.email:
-                    existing_target = existing_recip.details.get("email_address")
-                elif recip_type == RecipientType.slack:
-                    existing_target = existing_recip.details.get("slack_channel")
-                elif recip_type == RecipientType.webhook or recip_type in (
-                    RecipientType.msteams_workflow,
-                    RecipientType.msteams,
-                ):
-                    existing_target = existing_recip.details.get("webhook_url")
-                elif recip_type == RecipientType.pagerduty:
-                    existing_target = existing_recip.details.get("pagerduty_integration_key")
+                if existing_recip.details is not None:
+                    if recip_type == RecipientType.email:
+                        existing_target = getattr(existing_recip.details, "email_address", None)
+                    elif recip_type == RecipientType.slack:
+                        existing_target = getattr(existing_recip.details, "slack_channel", None)
+                    elif recip_type == RecipientType.webhook or recip_type in (
+                        RecipientType.msteams_workflow,
+                        RecipientType.msteams,
+                    ):
+                        existing_target = getattr(existing_recip.details, "webhook_url", None)
+                    elif recip_type == RecipientType.pagerduty:
+                        existing_target = getattr(
+                            existing_recip.details, "pagerduty_integration_key", None
+                        )
 
                 if existing_target == target:
                     existing = existing_recip
