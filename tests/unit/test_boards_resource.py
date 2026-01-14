@@ -73,20 +73,20 @@ class TestBoardOrchestration:
             assert panels[4]["type"] == "text", f"Panel 4 should be text, got {panels[4]['type']}"
 
             # Verify query panel IDs are correct (order matters!)
-            assert (
-                panels[0]["query_panel"]["query_id"] == "query-1"
-            ), "First query panel should be query-1"
-            assert (
-                panels[3]["query_panel"]["query_id"] == "query-2"
-            ), "Fourth query panel should be query-2"
+            assert panels[0]["query_panel"]["query_id"] == "query-1", (
+                "First query panel should be query-1"
+            )
+            assert panels[3]["query_panel"]["query_id"] == "query-2", (
+                "Fourth query panel should be query-2"
+            )
 
             # Verify text content is in correct order
-            assert (
-                "Section 1" in panels[1]["text_panel"]["content"]
-            ), "Second panel should be Section 1"
-            assert (
-                "Section 2" in panels[4]["text_panel"]["content"]
-            ), "Fifth panel should be Section 2"
+            assert "Section 1" in panels[1]["text_panel"]["content"], (
+                "Second panel should be Section 1"
+            )
+            assert "Section 2" in panels[4]["text_panel"]["content"], (
+                "Fifth panel should be Section 2"
+            )
 
             # Verify SLO ID is correct
             assert panels[2]["slo_panel"]["slo_id"] == "slo-1", "Third panel should be slo-1"

@@ -55,6 +55,7 @@ pytest-cov = "^7.0.0"
 datamodel-code-generator = {extras = ["http", "ruff"], version = "^0.52.2"}
 jsonschema = ">=4.23.0"
 types-jsonschema = "^4.26.0.20260109"
+polyfactory = {version = ">=2.18.0", python = ">=3.10,<4.0"}
 
 [tool.poetry.group.docs.dependencies]
 mkdocs = ">=1.5"
@@ -112,6 +113,7 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "src/honeycomb/cli/*.py" = ["B904"]  # CLI error exits don't need exception chaining
+"tests/factories/*.py" = ["E731"]  # Polyfactory uses lambda expressions for field providers
 
 [tool.ruff.lint.isort]
 known-first-party = ["honeycomb"]
