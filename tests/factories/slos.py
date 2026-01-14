@@ -1,11 +1,10 @@
 """Factories for SLO, BurnAlert, and related models."""
 
 from honeycomb._generated_models import (
-    BudgetRateBurnAlertListResponseSlo,
+    BurnAlertListSloSlo,
     CreateBudgetRateBurnAlertRequest,
     CreateExhaustionTimeBurnAlertRequest,
     CreateExhaustionTimeBurnAlertRequestSlo,
-    ExhaustionTimeBurnAlertListResponseSlo,
     SLOCreateSli,
     SLOSli,
     Tag,
@@ -13,7 +12,7 @@ from honeycomb._generated_models import (
 from honeycomb.models import (
     SLO,
     BudgetRateBurnAlertDetailResponse,
-    ExhaustionTime1,
+    ExhaustionTimeDetailResponse,
     SLOCreate,
 )
 
@@ -96,30 +95,30 @@ class SLOCreateFactory(HoneycombFactory):
 # =============================================================================
 
 
-class ExhaustionTimeBurnAlertSloFactory(HoneycombFactory):
-    """Factory for ExhaustionTimeBurnAlertListResponseSlo (SLO reference in list response)."""
+class BurnAlertSloFactory(HoneycombFactory):
+    """Factory for BurnAlertListSloSlo (shared SLO reference in burn alert list responses).
 
-    __model__ = ExhaustionTimeBurnAlertListResponseSlo
+    This factory is used for both exhaustion_time and budget_rate burn alert responses.
+    """
 
-    id = lambda: HoneycombFactory._honeycomb_id()
-
-
-class BudgetRateBurnAlertSloFactory(HoneycombFactory):
-    """Factory for BudgetRateBurnAlertListResponseSlo (SLO reference in list response)."""
-
-    __model__ = BudgetRateBurnAlertListResponseSlo
+    __model__ = BurnAlertListSloSlo
 
     id = lambda: HoneycombFactory._honeycomb_id()
+
+
+# Aliases for backwards compatibility
+ExhaustionTimeBurnAlertSloFactory = BurnAlertSloFactory
+BudgetRateBurnAlertSloFactory = BurnAlertSloFactory
 
 
 class ExhaustionTimeBurnAlertFactory(HoneycombFactory):
-    """Factory for ExhaustionTime1 (exhaustion_time burn alert list/detail response).
+    """Factory for ExhaustionTimeDetailResponse (exhaustion_time burn alert list/detail response).
 
     Example:
         alert = ExhaustionTimeBurnAlertFactory.build(id="alert-123")
     """
 
-    __model__ = ExhaustionTime1
+    __model__ = ExhaustionTimeDetailResponse
 
     id = lambda: HoneycombFactory._honeycomb_id()
     alert_type = "exhaustion_time"

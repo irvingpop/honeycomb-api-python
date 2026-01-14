@@ -99,6 +99,7 @@ from .recipients import (
 from .slos import (
     BudgetRateBurnAlertFactory,
     BudgetRateBurnAlertSloFactory,
+    BurnAlertSloFactory,
     CreateBudgetRateBurnAlertFactory,
     CreateExhaustionTimeBurnAlertFactory,
     CreateExhaustionTimeBurnAlertRequestSloFactory,
@@ -191,6 +192,7 @@ __all__ = [
     "ExhaustionTimeBurnAlertSloFactory",
     "BudgetRateBurnAlertFactory",
     "BudgetRateBurnAlertSloFactory",
+    "BurnAlertSloFactory",
     "CreateExhaustionTimeBurnAlertFactory",
     "CreateExhaustionTimeBurnAlertRequestSloFactory",
     "CreateBudgetRateBurnAlertFactory",

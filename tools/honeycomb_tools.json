@@ -1876,11 +1876,11 @@
           }
         },
         "required": [
-          "query",
-          "trigger_id",
           "name",
+          "threshold",
+          "trigger_id",
           "dataset",
-          "threshold"
+          "query"
         ],
         "$defs": {
           "BaseTriggerBaselineDetails": {

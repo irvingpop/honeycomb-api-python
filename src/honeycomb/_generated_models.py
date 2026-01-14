@@ -2069,23 +2069,6 @@ class ExhaustionTime(BurnAlertSharedParams):
     )
 
 
-class ExhaustionTimeBurnAlertListResponseSlo(BaseModel):
-    """
-    Details about the SLO associated with the burn alert.
-    """
-
-    id: str | None = Field(default=None, description="Unique identifier (ID) of a SLO.")
-
-
-class ExhaustionTimeBurnAlertListResponse(ExhaustionTime):
-    slo: ExhaustionTimeBurnAlertListResponseSlo | None = Field(
-        default=None,
-        description="Details about the SLO associated with the burn alert.",
-        examples=[{"id": "2LBq9LckbcA"}],
-    )
-    alert_type: Literal["exhaustion_time"]
-
-
 class CreateExhaustionTimeBurnAlertRequestSlo(BaseModel):
     """
     Details about the SLO associated with the burn alert.
@@ -2113,21 +2096,6 @@ class BudgetRate(BurnAlertSharedParams):
         ge=1,
         le=1000000,
     )
-
-
-class BudgetRateBurnAlertListResponseSlo(ExhaustionTimeBurnAlertListResponseSlo):
-    """
-    Details about the SLO associated with the burn alert.
-    """
-
-
-class BudgetRate1(BudgetRate):
-    slo: BudgetRateBurnAlertListResponseSlo | None = Field(
-        default=None,
-        description="Details about the SLO associated with the burn alert.",
-        examples=[{"id": "2LBq9LckbcA"}],
-    )
-    alert_type: Literal["budget_rate"]
 
 
 class CreateBudgetRateBurnAlertRequestSlo(CreateExhaustionTimeBurnAlertRequestSlo):
@@ -2377,18 +2345,6 @@ class IncludedResource(BaseModel):
 
 class ApiKeyCreateRequestDataRelationships(BaseModel):
     environment: EnvironmentRelationship
-
-
-class AttributesAttributes(BaseModel):
-    secret: str = Field(
-        ...,
-        description="The API Key secret. This is the only time it will be returned.",
-        examples=["12345678901234567890123456789"],
-    )
-
-
-class AttributesAttributes2(ConfigurationKey, AttributesAttributes):
-    pass
 
 
 class ApiKeyCreateResponseDataRelationships(ApiKeyObjectRelationships):
@@ -2845,6 +2801,34 @@ class MapNode(BaseModel):
     )
 
 
+class ApiKeySecret(BaseModel):
+    secret: str = Field(
+        ...,
+        description="The API Key secret. This is the only time it will be returned.",
+        examples=["12345678901234567890123456789"],
+    )
+
+
+class BurnAlertListSloSlo(BaseModel):
+    """
+    Details about the SLO associated with the burn alert.
+    """
+
+    id: str | None = Field(default=None, description="Unique identifier (ID) of a SLO.")
+
+
+class BurnAlertListSlo(BaseModel):
+    slo: BurnAlertListSloSlo | None = Field(
+        default=None,
+        description="Details about the SLO associated with the burn alert.",
+        examples=[{"id": "2LBq9LckbcA"}],
+    )
+
+
+class ConfigurationKeyCreateAttributes(ConfigurationKey, ApiKeySecret):
+    key_type: Literal["configuration"]
+
+
 class RateLimitedError(RootModel[RateLimitedProblem | RateLimitedJSONAPI]):
     root: RateLimitedProblem | RateLimitedJSONAPI = Field(
         ...,
@@ -3165,17 +3149,7 @@ class SLOHistoryResponse(RootModel[dict[str, list[SLOHistory]]]):
     root: dict[str, list[SLOHistory]]
 
 
-class BurnAlertListResponse(RootModel[ExhaustionTimeBurnAlertListResponse | BudgetRate1]):
-    root: ExhaustionTimeBurnAlertListResponse | BudgetRate1 = Field(..., discriminator="alert_type")
-
-
-class ExhaustionTime1(ExhaustionTimeBurnAlertListResponse):
-    recipients: list[NotificationRecipient] | None = Field(
-        default=None,
-        description="A list of [Recipients](/api/recipients/) to notify when an alert fires. Using `type`+`target` is deprecated. First, create the Recipient via the Recipients API, and then specify the ID.\n",
-        examples=[[{"id": "abcd123", "type": "email", "target": "alerts@example.com"}]],
-        min_length=1,
-    )
+class ExhaustionTimeBurnAlertListResponse(ExhaustionTime, BurnAlertListSlo):
     alert_type: Literal["exhaustion_time"]
 
 
@@ -3204,13 +3178,7 @@ class UpdateExhaustionTimeBurnAlertRequest(ExhaustionTime):
     alert_type: Literal["exhaustion_time"]
 
 
-class BudgetRateBurnAlertDetailResponse(BudgetRate1):
-    recipients: list[NotificationRecipient] | None = Field(
-        default=None,
-        description="A list of [Recipients](/api/recipients/) to notify when an alert fires. Using `type`+`target` is deprecated. First, create the Recipient via the Recipients API, and then specify the ID.\n",
-        examples=[[{"id": "abcd123", "type": "email", "target": "alerts@example.com"}]],
-        min_length=1,
-    )
+class BudgetRateListResponse(BudgetRate, BurnAlertListSlo):
     alert_type: Literal["budget_rate"]
 
 
@@ -3264,26 +3232,6 @@ class ApiKeyCreateRequestData(BaseModel):
 
 class ApiKeyCreateRequest(BaseModel):
     data: ApiKeyCreateRequestData
-
-
-class AttributesAttributes1(IngestKey, AttributesAttributes):
-    pass
-
-
-class ApiKeyCreateResponseData(BaseModel):
-    id: str = Field(
-        ...,
-        description="The unique identifier of the API Key",
-        examples=["hcxik_12345678901234567890123456"],
-    )
-    type: ApiKeyObjectType
-    attributes: AttributesAttributes1 | AttributesAttributes2
-    relationships: ApiKeyCreateResponseDataRelationships
-    links: ApiKeyCreateResponseDataLinks
-
-
-class ApiKeyCreateResponse(BaseModel):
-    data: ApiKeyCreateResponseData
 
 
 class ApiKeyUpdateRequest(BaseModel):
@@ -3367,8 +3315,23 @@ class MapDependency(BaseModel):
     )
 
 
-class BurnAlertDetailResponse(RootModel[ExhaustionTime1 | BudgetRateBurnAlertDetailResponse]):
-    root: ExhaustionTime1 | BudgetRateBurnAlertDetailResponse = Field(
+class BurnAlertDetailRecipients(BaseModel):
+    recipients: list[NotificationRecipient] | None = Field(
+        default=None,
+        description="A list of [Recipients](/api/recipients/) to notify when an alert fires. Using `type`+`target` is deprecated. First, create the Recipient via the Recipients API, and then specify the ID.\n",
+        examples=[[{"id": "abcd123", "type": "email", "target": "alerts@example.com"}]],
+        min_length=1,
+    )
+
+
+class IngestKeyCreateAttributes(IngestKey, ApiKeySecret):
+    key_type: Literal["ingest"]
+
+
+class BurnAlertListResponse(
+    RootModel[ExhaustionTimeBurnAlertListResponse | BudgetRateListResponse]
+):
+    root: ExhaustionTimeBurnAlertListResponse | BudgetRateListResponse = Field(
         ..., discriminator="alert_type"
     )
 
@@ -3389,6 +3352,14 @@ class UpdateBurnAlertRequest(
     )
 
 
+class ExhaustionTimeDetailResponse(ExhaustionTimeBurnAlertListResponse, BurnAlertDetailRecipients):
+    alert_type: Literal["exhaustion_time"]
+
+
+class BudgetRateBurnAlertDetailResponse(BudgetRateListResponse, BurnAlertDetailRecipients):
+    alert_type: Literal["budget_rate"]
+
+
 class ApiKeyObject(BaseModel):
     id: str | None = Field(
         default=None,
@@ -3403,6 +3374,24 @@ class ApiKeyObject(BaseModel):
 
 class ApiKeyResponse(BaseModel):
     data: ApiKeyObject
+
+
+class ApiKeyCreateResponseData(BaseModel):
+    id: str = Field(
+        ...,
+        description="The unique identifier of the API Key",
+        examples=["hcxik_12345678901234567890123456"],
+    )
+    type: ApiKeyObjectType
+    attributes: IngestKeyCreateAttributes | ConfigurationKeyCreateAttributes = Field(
+        ..., discriminator="key_type"
+    )
+    relationships: ApiKeyCreateResponseDataRelationships
+    links: ApiKeyCreateResponseDataLinks
+
+
+class ApiKeyCreateResponse(BaseModel):
+    data: ApiKeyCreateResponseData
 
 
 class ApiKeyListResponse(BaseModel):
@@ -3470,4 +3459,12 @@ class Board(BaseModel):
         description="A list of preset filters to apply to the board. For backwards compatibility, if no preset filters are provided, the existing preset filters will be preserved. If an empty array is provided, all preset filters will be deleted.\n**Note**: Each board is limited to a maximum of 5 preset filters. Attempting to create or update a board with more than 5 preset filters will result in an error.\n",
         examples=[[{"column": "app.Service", "alias": "Service"}]],
         max_length=5,
+    )
+
+
+class BurnAlertDetailResponse(
+    RootModel[ExhaustionTimeDetailResponse | BudgetRateBurnAlertDetailResponse]
+):
+    root: ExhaustionTimeDetailResponse | BudgetRateBurnAlertDetailResponse = Field(
+        ..., discriminator="alert_type"
     )
