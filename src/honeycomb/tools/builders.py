@@ -422,7 +422,7 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
     """Convert tool input to BoardBuilder with Pydantic validation and inline panel creation.
 
     Args:
-        data: Tool input dict from Claude (includes name, inline_query_panels, etc.)
+        data: Tool input dict from Claude (includes name, panels, etc.)
 
     Returns:
         Configured BoardBuilder instance ready to build()
@@ -434,20 +434,28 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
         >>> data = {
         ...     "name": "API Dashboard",
         ...     "layout_generation": "auto",
-        ...     "inline_query_panels": [
+        ...     "panels": [
         ...         {
+        ...             "type": "query",
         ...             "name": "Error Count",
         ...             "dataset": "api-logs",
         ...             "time_range": 3600,
         ...             "calculations": [{"op": "COUNT"}]
-        ...         }
-        ...     ],
-        ...     "text_panels": [{"content": "## Notes"}]
+        ...         },
+        ...         {"type": "text", "content": "## Notes"},
+        ...         {"type": "existing_slo", "slo_id": "slo-123"}
+        ...     ]
         ... }
         >>> builder = _build_board(data)
         >>> bundle = builder.build()
     """
     from honeycomb.models.query_builder import QueryBuilder
+    from honeycomb.models.tool_inputs import (
+        ExistingSLOPanelInput,
+        QueryPanelInput,
+        SLOPanelInput,
+        TextPanelInput,
+    )
 
     # Validate input with Pydantic (raises ValidationError on invalid input)
     validated = BoardToolInput.model_validate(data)
@@ -464,114 +472,109 @@ def _build_board(data: dict[str, Any]) -> BoardBuilder:
     else:
         builder.manual_layout()
 
-    # Inline query panels (create QueryBuilder instances from validated models)
-    for query_panel in validated.inline_query_panels or []:
-        # Build QueryBuilder from validated QueryPanelInput model
-        qb = QueryBuilder(query_panel.name)
+    # Process panels in order (preserves user-specified ordering)
+    for panel in validated.panels or []:
+        if isinstance(panel, QueryPanelInput):
+            # Build QueryBuilder from validated QueryPanelInput model
+            qb = QueryBuilder(panel.name)
 
-        if query_panel.description:
-            qb.description(query_panel.description)
+            if panel.description:
+                qb.description(panel.description)
 
-        # Dataset - optional for environment-wide queries
-        if query_panel.dataset:
-            qb.dataset(query_panel.dataset)
-        else:
-            qb.environment_wide()  # Default to environment-wide
+            # Dataset - optional for environment-wide queries
+            if panel.dataset:
+                qb.dataset(panel.dataset)
+            else:
+                qb.environment_wide()  # Default to environment-wide
 
-        # Time range
-        if query_panel.time_range:
-            qb.time_range(query_panel.time_range)
+            # Time range
+            if panel.time_range:
+                qb.time_range(panel.time_range)
 
-        # Calculations - these are already validated Calculation models
-        for calc in query_panel.calculations or []:
-            qb._calculations.append(calc)
+            # Calculations - these are already validated Calculation models
+            for calc in panel.calculations or []:
+                qb._calculations.append(calc)
 
-        # Filters - these are already validated Filter models
-        for filt in query_panel.filters or []:
-            qb.filter(filt.column, filt.op, filt.value)
+            # Filters - these are already validated Filter models
+            for filt in panel.filters or []:
+                qb.filter(filt.column, filt.op, filt.value)
 
-        # Filter combination
-        if query_panel.filter_combination:
-            qb.filter_with(query_panel.filter_combination)
+            # Filter combination
+            if panel.filter_combination:
+                qb.filter_with(panel.filter_combination)
 
-        # Breakdowns
-        for breakdown in query_panel.breakdowns or []:
-            qb.group_by(breakdown)
+            # Breakdowns
+            for breakdown in panel.breakdowns or []:
+                qb.group_by(breakdown)
 
-        # Granularity
-        if query_panel.granularity:
-            qb.granularity(query_panel.granularity)
+            # Granularity
+            if panel.granularity:
+                qb.granularity(panel.granularity)
 
-        # Orders - these are already validated Order models
-        for order in query_panel.orders or []:
-            # Order model has 'op' (CalcOp), 'column' (optional str), and 'order' (OrderDirection)
-            qb.order_by(op=order.op, direction=order.order, column=order.column)
+            # Orders - these are already validated Order models
+            for order in panel.orders or []:
+                qb.order_by(op=order.op, direction=order.order, column=order.column)
 
-        # Limit
-        if query_panel.limit:
-            qb.limit(query_panel.limit)
+            # Limit
+            if panel.limit:
+                qb.limit(panel.limit)
 
-        # Havings
-        for having in query_panel.havings or []:
-            qb._havings.append(having)
+            # Havings
+            for having in panel.havings or []:
+                qb._havings.append(having)
 
-        # Calculated fields (inline derived columns)
-        for calc_field in query_panel.calculated_fields or []:
-            qb.calculated_field(calc_field.name, calc_field.expression)
+            # Calculated fields (inline derived columns)
+            for calc_field in panel.calculated_fields or []:
+                qb.calculated_field(calc_field.name, calc_field.expression)
 
-        # Compare time offset for historical comparison
-        if query_panel.compare_time_offset_seconds:
-            qb.compare_time_offset(query_panel.compare_time_offset_seconds)
+            # Compare time offset for historical comparison
+            if panel.compare_time_offset_seconds:
+                qb.compare_time_offset(panel.compare_time_offset_seconds)
 
-        # Build visualization dict from typed model or chart_type shorthand
-        viz_dict = _build_visualization_dict(query_panel.visualization, query_panel.chart_type)
+            # Build visualization dict from typed model or chart_type shorthand
+            viz_dict = _build_visualization_dict(panel.visualization, panel.chart_type)
 
-        # Add to board with position and style
-        builder.query(
-            qb,
-            position=query_panel.position,  # Already a PositionInput or None
-            style=query_panel.style,
-            visualization=viz_dict,
-        )
+            # Add to board with position and style
+            builder.query(
+                qb,
+                position=panel.position,
+                style=panel.style,
+                visualization=viz_dict,
+            )
 
-    # Text panels (validated TextPanelInput models)
-    for text_panel in validated.text_panels or []:
-        builder.text(text_panel.content, position=text_panel.position)
+        elif isinstance(panel, TextPanelInput):
+            builder.text(panel.content, position=panel.position)
 
-    # Inline SLO panels (create SLOBuilder instances from validated SLOPanelInput models)
-    for slo_panel in validated.inline_slo_panels or []:
-        # Build SLOBuilder from validated SLOPanelInput model
-        from honeycomb.models import SLOBuilder
+        elif isinstance(panel, SLOPanelInput):
+            # Build SLOBuilder from validated SLOPanelInput model
+            from honeycomb.models import SLOBuilder
 
-        slo_builder = SLOBuilder(slo_panel.name)
+            slo_builder = SLOBuilder(panel.name)
 
-        if slo_panel.description:
-            slo_builder.description(slo_panel.description)
+            if panel.description:
+                slo_builder.description(panel.description)
 
-        # Dataset (required in SLOPanelInput)
-        slo_builder.dataset(slo_panel.dataset)
+            # Dataset (required in SLOPanelInput)
+            slo_builder.dataset(panel.dataset)
 
-        # SLI (validated SLIInput model)
-        alias = slo_panel.sli.alias
-        if slo_panel.sli.expression:
-            # Inline derived column
-            slo_builder.sli(alias, slo_panel.sli.expression, slo_panel.sli.description)
-        else:
-            # Existing derived column
-            slo_builder.sli(alias)
+            # SLI (validated SLIInput model)
+            alias = panel.sli.alias
+            if panel.sli.expression:
+                slo_builder.sli(alias, panel.sli.expression, panel.sli.description)
+            else:
+                slo_builder.sli(alias)
 
-        # Target (target_percentage is required in SLOPanelInput)
-        slo_builder.target_percentage(slo_panel.target_percentage)
+            # Target
+            slo_builder.target_percentage(panel.target_percentage)
 
-        # Time period
-        slo_builder.time_period_days(slo_panel.time_period_days)
+            # Time period
+            slo_builder.time_period_days(panel.time_period_days)
 
-        # Add to board
-        builder.slo(slo_builder, position=slo_panel.position)
+            # Add to board
+            builder.slo(slo_builder, position=panel.position)
 
-    # Existing SLO panels (by ID - list of strings)
-    for slo_id in validated.slo_panels or []:
-        builder.slo(slo_id)
+        elif isinstance(panel, ExistingSLOPanelInput):
+            builder.slo(panel.slo_id, position=panel.position)
 
     # Tags (validated TagInput models)
     for tag in validated.tags or []:

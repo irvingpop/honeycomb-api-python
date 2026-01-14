@@ -1,11 +1,95 @@
-"""Tests for boards resource (board views CRUD operations)."""
+"""Tests for boards resource (board views CRUD operations and orchestration)."""
 
 import pytest
 import respx
 from httpx import Response
 
-from honeycomb import HoneycombClient
+from honeycomb import BoardBuilder, HoneycombClient
 from honeycomb.models.boards import BoardViewCreate, BoardViewFilter, BoardViewFilterOperation
+
+
+@pytest.mark.asyncio
+class TestBoardOrchestration:
+    """Tests for create_from_bundle_async orchestration."""
+
+    @respx.mock
+    async def test_panel_ordering_preserved_in_execution(self, respx_mock):
+        """Test that panel order is preserved through full execution path.
+
+        Verifies: BoardBuilder → BoardBundle → create_from_bundle_async → API panels
+        """
+        client = HoneycombClient(api_key="test-key")
+
+        # Capture the request to verify panel order
+        board_request = None
+
+        def capture_board_request(request):
+            nonlocal board_request
+            board_request = request
+            # Return a valid board response
+            return Response(
+                200,
+                json={
+                    "id": "board-123",
+                    "name": "Test Board",
+                    "type": "flexible",
+                    "panels": [],  # Don't care about response panels, we check request
+                    "layout_generation": "auto",
+                },
+            )
+
+        respx_mock.post("https://api.honeycomb.io/1/boards").mock(side_effect=capture_board_request)
+
+        # Build board with mixed panel types in specific order
+        bundle = (
+            BoardBuilder("Test Board")
+            .auto_layout()
+            .query("query-1", "annot-1", style="graph")  # Query panel first
+            .text("## Section 1")  # Text panel second
+            .slo("slo-1")  # SLO panel third
+            .query("query-2", "annot-2", style="table")  # Query panel fourth
+            .text("## Section 2")  # Text panel fifth
+            .build()
+        )
+
+        async with client:
+            board = await client.boards.create_from_bundle_async(bundle)
+
+            # Verify board was created
+            assert board.id == "board-123"
+
+            # Parse the request that was sent
+            import json
+
+            request_body = json.loads(board_request.content)
+            panels = request_body["panels"]
+
+            # Verify panels are in exact insertion order
+            assert len(panels) == 5, f"Expected 5 panels, got {len(panels)}"
+            assert panels[0]["type"] == "query", f"Panel 0 should be query, got {panels[0]['type']}"
+            assert panels[1]["type"] == "text", f"Panel 1 should be text, got {panels[1]['type']}"
+            assert panels[2]["type"] == "slo", f"Panel 2 should be slo, got {panels[2]['type']}"
+            assert panels[3]["type"] == "query", f"Panel 3 should be query, got {panels[3]['type']}"
+            assert panels[4]["type"] == "text", f"Panel 4 should be text, got {panels[4]['type']}"
+
+            # Verify query panel IDs are correct (order matters!)
+            assert (
+                panels[0]["query_panel"]["query_id"] == "query-1"
+            ), "First query panel should be query-1"
+            assert (
+                panels[3]["query_panel"]["query_id"] == "query-2"
+            ), "Fourth query panel should be query-2"
+
+            # Verify text content is in correct order
+            assert (
+                "Section 1" in panels[1]["text_panel"]["content"]
+            ), "Second panel should be Section 1"
+            assert (
+                "Section 2" in panels[4]["text_panel"]["content"]
+            ), "Fifth panel should be Section 2"
+
+            # Verify SLO ID is correct
+            assert panels[2]["slo_panel"]["slo_id"] == "slo-1", "Third panel should be slo-1"
 
 
 @pytest.mark.asyncio

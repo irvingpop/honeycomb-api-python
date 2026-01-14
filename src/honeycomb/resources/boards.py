@@ -122,14 +122,13 @@ class BoardsResource(BaseResource):
         """Create board from BoardBundle with automatic query and view creation.
 
         Orchestrates:
-        1. Create queries + annotations from QueryBuilder instances
+        1. Process panels in order, creating queries/SLOs as needed
         2. Assemble all panel configurations
         3. Create board with all panels
         4. Create views for the board (if any)
 
-        Panels are added to the board in the order they appear in the bundle:
-        - Auto-layout: Honeycomb arranges panels in this order
-        - Manual-layout: Respects explicit positions
+        Panels are added to the board in the exact order they appear in the bundle,
+        preserving user-specified ordering regardless of panel type.
 
         If view creation fails, a warning is issued but the board creation succeeds.
         Views can be created manually later using create_view_async().
@@ -154,70 +153,77 @@ class BoardsResource(BaseResource):
             ...         .build()
             ... )
         """
+        from ..models.board_builder import (
+            ExistingQueryPanel,
+            ExistingSLOPanel,
+            QueryBuilderPanel,
+            SLOBuilderPanel,
+        )
+        from ..models.board_builder import (
+            TextPanel as BuilderTextPanel,
+        )
 
-        panels: list[QueryPanel | SLOPanel | TextPanel] = []
+        api_panels: list[QueryPanel | SLOPanel | TextPanel] = []
 
-        # Create query panels from QueryBuilder instances
-        for qb_panel in bundle.query_builder_panels:
-            # Apply dataset override if specified
-            if qb_panel.dataset_override:
-                # Temporarily override the dataset on the builder
-                original_dataset = qb_panel.builder.get_dataset()
-                qb_panel.builder.dataset(qb_panel.dataset_override)
-                query, annotation_id = await self._client.queries.create_with_annotation_async(
-                    qb_panel.builder
-                )
-                # Restore original dataset
-                qb_panel.builder.dataset(original_dataset)
-            else:
-                query, annotation_id = await self._client.queries.create_with_annotation_async(
-                    qb_panel.builder
-                )
-            panels.append(
-                self._build_query_panel(
-                    query.id,
-                    annotation_id,
-                    qb_panel.position,
-                    qb_panel.style,
-                    qb_panel.visualization,
-                )
-            )
+        # Process panels in order (preserves user-specified ordering)
+        for panel in bundle.panels:
+            match panel:
+                case QueryBuilderPanel():
+                    # Apply dataset override if specified
+                    if panel.dataset_override:
+                        original_dataset = panel.builder.get_dataset()
+                        panel.builder.dataset(panel.dataset_override)
+                        (
+                            query,
+                            annotation_id,
+                        ) = await self._client.queries.create_with_annotation_async(panel.builder)
+                        panel.builder.dataset(original_dataset)
+                    else:
+                        (
+                            query,
+                            annotation_id,
+                        ) = await self._client.queries.create_with_annotation_async(panel.builder)
+                    api_panels.append(
+                        self._build_query_panel(
+                            query.id,
+                            annotation_id,
+                            panel.position,
+                            panel.style,
+                            panel.visualization,
+                        )
+                    )
 
-        # Add existing query panels
-        for existing in bundle.existing_query_panels:
-            panels.append(
-                self._build_query_panel(
-                    existing.query_id,
-                    existing.annotation_id,
-                    existing.position,
-                    existing.style,
-                    existing.visualization,
-                )
-            )
+                case ExistingQueryPanel():
+                    api_panels.append(
+                        self._build_query_panel(
+                            panel.query_id,
+                            panel.annotation_id,
+                            panel.position,
+                            panel.style,
+                            panel.visualization,
+                        )
+                    )
 
-        # Create SLOs from SLOBuilder instances
-        for slo_panel in bundle.slo_builder_panels:
-            # Create SLO using existing orchestration
-            slo_dict = await self._client.slos.create_from_bundle_async(slo_panel.builder.build())
-            # Get first SLO (should only be one dataset for board usage)
-            slo = next(iter(slo_dict.values()))
-            assert slo.id is not None, "Created SLO must have an ID"
-            panels.append(self._build_slo_panel(slo.id, slo_panel.position))
+                case SLOBuilderPanel():
+                    slo_dict = await self._client.slos.create_from_bundle_async(
+                        panel.builder.build()
+                    )
+                    slo = next(iter(slo_dict.values()))
+                    assert slo.id is not None, "Created SLO must have an ID"
+                    api_panels.append(self._build_slo_panel(slo.id, panel.position))
 
-        # Add existing SLO panels
-        for slo_existing in bundle.existing_slo_panels:
-            panels.append(self._build_slo_panel(slo_existing.slo_id, slo_existing.position))
+                case ExistingSLOPanel():
+                    api_panels.append(self._build_slo_panel(panel.slo_id, panel.position))
 
-        # Add text panels
-        for text in bundle.text_panels:
-            panels.append(self._build_text_panel(text.content, text.position))
+                case BuilderTextPanel():
+                    api_panels.append(self._build_text_panel(panel.content, panel.position))
 
         # Create board
         board_create = BoardCreate(
             name=bundle.board_name,
             description=bundle.board_description,
             type="flexible",
-            panels=panels if panels else None,
+            panels=api_panels if api_panels else None,
             layout_generation=bundle.layout_generation,
             tags=bundle.tags,
             preset_filters=bundle.preset_filters,

@@ -3,7 +3,22 @@
 import pytest
 
 from honeycomb import BoardBuilder, BoardBundle
+from honeycomb.models.board_builder import (
+    ExistingQueryPanel,
+    ExistingSLOPanel,
+    TextPanel,
+)
 from honeycomb.models.boards import BoardViewFilter, BoardViewFilterOperation
+
+
+def count_panels_by_type(bundle: BoardBundle, panel_type: type) -> int:
+    """Count panels of a specific type in the bundle."""
+    return sum(1 for p in bundle.panels if isinstance(p, panel_type))
+
+
+def get_panels_by_type(bundle: BoardBundle, panel_type: type) -> list:
+    """Get panels of a specific type from the bundle."""
+    return [p for p in bundle.panels if isinstance(p, panel_type)]
 
 
 class TestBoardBuilderBasics:
@@ -17,8 +32,7 @@ class TestBoardBuilderBasics:
         assert bundle.board_name == "Test Board"
         assert bundle.layout_generation == "manual"  # Default
         assert bundle.board_description is None
-        assert len(bundle.query_builder_panels) == 0
-        assert len(bundle.existing_query_panels) == 0
+        assert len(bundle.panels) == 0
         assert bundle.tags is None
 
     def test_board_with_description(self):
@@ -64,8 +78,9 @@ class TestBoardBuilderQueryPanels:
         """Test adding minimal query panel."""
         bundle = BoardBuilder("Test").auto_layout().query("query-id-1", "annotation-id-1").build()
 
-        assert len(bundle.existing_query_panels) == 1
-        panel = bundle.existing_query_panels[0]
+        existing_queries = get_panels_by_type(bundle, ExistingQueryPanel)
+        assert len(existing_queries) == 1
+        panel = existing_queries[0]
         assert panel.query_id == "query-id-1"
         assert panel.annotation_id == "annotation-id-1"
         assert panel.style == "graph"  # Default
@@ -81,7 +96,8 @@ class TestBoardBuilderQueryPanels:
             .build()
         )
 
-        panel = bundle.existing_query_panels[0]
+        existing_queries = get_panels_by_type(bundle, ExistingQueryPanel)
+        panel = existing_queries[0]
         assert panel.position == position
         assert panel.position[0] == 0  # x
         assert panel.position[2] == 8  # width
@@ -96,7 +112,8 @@ class TestBoardBuilderQueryPanels:
                 .build()
             )
 
-            assert bundle.existing_query_panels[0].style == style
+            existing_queries = get_panels_by_type(bundle, ExistingQueryPanel)
+            assert existing_queries[0].style == style
 
     def test_query_panel_with_dataset(self):
         """Test query panel with dataset."""
@@ -107,7 +124,8 @@ class TestBoardBuilderQueryPanels:
             .build()
         )
 
-        assert bundle.existing_query_panels[0].dataset == "my-dataset"
+        existing_queries = get_panels_by_type(bundle, ExistingQueryPanel)
+        assert existing_queries[0].dataset == "my-dataset"
 
     def test_query_panel_with_visualization_settings(self):
         """Test query panel with visualization settings."""
@@ -119,7 +137,8 @@ class TestBoardBuilderQueryPanels:
             .build()
         )
 
-        assert bundle.existing_query_panels[0].visualization == vis_settings
+        existing_queries = get_panels_by_type(bundle, ExistingQueryPanel)
+        assert existing_queries[0].visualization == vis_settings
 
 
 class TestBoardBuilderSLOPanels:
@@ -129,8 +148,9 @@ class TestBoardBuilderSLOPanels:
         """Test adding minimal SLO panel (existing SLO ID)."""
         bundle = BoardBuilder("Test").auto_layout().slo("slo-id-1").build()
 
-        assert len(bundle.existing_slo_panels) == 1
-        panel = bundle.existing_slo_panels[0]
+        existing_slos = get_panels_by_type(bundle, ExistingSLOPanel)
+        assert len(existing_slos) == 1
+        panel = existing_slos[0]
         assert panel.slo_id == "slo-id-1"
         assert panel.position is None
 
@@ -139,7 +159,8 @@ class TestBoardBuilderSLOPanels:
         position = (8, 0, 4, 6)
         bundle = BoardBuilder("Test").manual_layout().slo("slo-id-1", position=position).build()
 
-        assert bundle.existing_slo_panels[0].position == position
+        existing_slos = get_panels_by_type(bundle, ExistingSLOPanel)
+        assert existing_slos[0].position == position
 
 
 class TestBoardBuilderTextPanels:
@@ -149,8 +170,9 @@ class TestBoardBuilderTextPanels:
         """Test adding minimal text panel."""
         bundle = BoardBuilder("Test").auto_layout().text("## Notes\n\nSome notes here").build()
 
-        assert len(bundle.text_panels) == 1
-        panel = bundle.text_panels[0]
+        text_panels = get_panels_by_type(bundle, TextPanel)
+        assert len(text_panels) == 1
+        panel = text_panels[0]
         assert panel.content == "## Notes\n\nSome notes here"
         assert panel.position is None
 
@@ -161,7 +183,8 @@ class TestBoardBuilderTextPanels:
             BoardBuilder("Test").manual_layout().text("## Alert Info", position=position).build()
         )
 
-        assert bundle.text_panels[0].position == position
+        text_panels = get_panels_by_type(bundle, TextPanel)
+        assert text_panels[0].position == position
 
     def test_text_panel_max_length_validation(self):
         """Test that text panel validates max length."""
@@ -185,9 +208,9 @@ class TestBoardBuilderMixedPanels:
             .build()
         )
 
-        assert len(bundle.existing_query_panels) == 1
-        assert len(bundle.existing_slo_panels) == 1
-        assert len(bundle.text_panels) == 1
+        assert count_panels_by_type(bundle, ExistingQueryPanel) == 1
+        assert count_panels_by_type(bundle, ExistingSLOPanel) == 1
+        assert count_panels_by_type(bundle, TextPanel) == 1
 
     def test_board_with_multiple_queries(self):
         """Test board with multiple query panels."""
@@ -200,10 +223,39 @@ class TestBoardBuilderMixedPanels:
             .build()
         )
 
-        assert len(bundle.existing_query_panels) == 3
-        assert bundle.existing_query_panels[0].style == "graph"
-        assert bundle.existing_query_panels[1].style == "table"
-        assert bundle.existing_query_panels[2].style == "combo"
+        existing_queries = get_panels_by_type(bundle, ExistingQueryPanel)
+        assert len(existing_queries) == 3
+        assert existing_queries[0].style == "graph"
+        assert existing_queries[1].style == "table"
+        assert existing_queries[2].style == "combo"
+
+    def test_panel_ordering_preserved(self):
+        """Test that panels are stored in insertion order."""
+        bundle = (
+            BoardBuilder("Test")
+            .auto_layout()
+            .query("query-1", "annot-1")
+            .text("## First Text")
+            .slo("slo-1")
+            .query("query-2", "annot-2")
+            .text("## Second Text")
+            .build()
+        )
+
+        # Panels should be in exact insertion order
+        assert len(bundle.panels) == 5
+        assert isinstance(bundle.panels[0], ExistingQueryPanel)
+        assert isinstance(bundle.panels[1], TextPanel)
+        assert isinstance(bundle.panels[2], ExistingSLOPanel)
+        assert isinstance(bundle.panels[3], ExistingQueryPanel)
+        assert isinstance(bundle.panels[4], TextPanel)
+
+        # Verify content
+        assert bundle.panels[0].query_id == "query-1"
+        assert bundle.panels[1].content == "## First Text"
+        assert bundle.panels[2].slo_id == "slo-1"
+        assert bundle.panels[3].query_id == "query-2"
+        assert bundle.panels[4].content == "## Second Text"
 
 
 class TestBoardBuilderTags:
@@ -279,8 +331,8 @@ class TestBoardBuilderValidation:
         )
 
         assert bundle.layout_generation == "auto"
-        assert len(bundle.existing_query_panels) == 1
-        assert len(bundle.existing_slo_panels) == 1
+        assert count_panels_by_type(bundle, ExistingQueryPanel) == 1
+        assert count_panels_by_type(bundle, ExistingSLOPanel) == 1
 
 
 class TestBoardBuilderComplexScenarios:
@@ -304,9 +356,9 @@ class TestBoardBuilderComplexScenarios:
         assert bundle.board_name == "Service Dashboard"
         assert bundle.board_description == "Comprehensive service monitoring"
         assert bundle.layout_generation == "auto"
-        assert len(bundle.existing_query_panels) == 2
-        assert len(bundle.existing_slo_panels) == 1
-        assert len(bundle.text_panels) == 1
+        assert count_panels_by_type(bundle, ExistingQueryPanel) == 2
+        assert count_panels_by_type(bundle, ExistingSLOPanel) == 1
+        assert count_panels_by_type(bundle, TextPanel) == 1
         assert bundle.tags is not None
         assert len(bundle.tags) == 2
 
@@ -333,26 +385,30 @@ class TestBoardBuilderComplexScenarios:
 
         assert bundle.board_name == "Custom Layout"
         assert bundle.layout_generation == "manual"
-        assert len(bundle.existing_query_panels) == 1
-        assert len(bundle.existing_slo_panels) == 1
-        assert len(bundle.text_panels) == 1
+        assert count_panels_by_type(bundle, ExistingQueryPanel) == 1
+        assert count_panels_by_type(bundle, ExistingSLOPanel) == 1
+        assert count_panels_by_type(bundle, TextPanel) == 1
 
-        # Verify all panels have positions
-        pos1 = bundle.existing_query_panels[0].position
+        # Verify all panels have positions (panels are in insertion order)
+        existing_queries = get_panels_by_type(bundle, ExistingQueryPanel)
+        existing_slos = get_panels_by_type(bundle, ExistingSLOPanel)
+        text_panels = get_panels_by_type(bundle, TextPanel)
+
+        pos1 = existing_queries[0].position
         assert pos1 is not None
         assert pos1.x_coordinate == 0
         assert pos1.y_coordinate == 0
         assert pos1.width == 8
         assert pos1.height == 6
 
-        pos2 = bundle.existing_slo_panels[0].position
+        pos2 = existing_slos[0].position
         assert pos2 is not None
         assert pos2.x_coordinate == 8
         assert pos2.y_coordinate == 0
         assert pos2.width == 4
         assert pos2.height == 6
 
-        pos3 = bundle.text_panels[0].position
+        pos3 = text_panels[0].position
         assert pos3 is not None
         assert pos3.x_coordinate == 0
         assert pos3.y_coordinate == 6
@@ -462,5 +518,5 @@ class TestBoardBuilderViews:
         )
 
         assert bundle.board_name == "Service Dashboard"
-        assert len(bundle.existing_query_panels) == 1
+        assert count_panels_by_type(bundle, ExistingQueryPanel) == 1
         assert len(bundle.views) == 2

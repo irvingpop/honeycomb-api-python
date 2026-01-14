@@ -1,5 +1,5 @@
 # Honeycomb API Python Client - Development Makefile
-.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs generate-tools validate-tools ci update-deps release-patch release-minor release-major changelog generate-models generate-models-fresh check-models-sync
+.PHONY: help install install-dev lint lint-fix format typecheck test test-cov test-live clean build publish docs docs-serve docs-build validate-docs generate-tools validate-tools tools ci update-deps release-patch release-minor release-major changelog generate-models generate-models-fresh check-models-sync
 
 # Default target
 help:
@@ -41,6 +41,7 @@ help:
 	@echo "  make validate-docs  Validate all documentation code examples"
 	@echo ""
 	@echo "Claude Tools:"
+	@echo "  make tools          Generate and validate Claude tool definitions"
 	@echo "  make generate-tools Generate Claude tool definitions (all + per-resource JSON)"
 	@echo "  make validate-tools Validate generated tool definitions"
 	@echo ""
@@ -189,6 +190,9 @@ validate-tools:
 		exit 1; \
 	fi
 	poetry run python -m honeycomb.tools validate tools/honeycomb_tools.json
+
+tools: generate-tools validate-tools
+	@echo "Claude tools generated and validated successfully!"
 
 # =============================================================================
 # Maintenance
