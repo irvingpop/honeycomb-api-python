@@ -4,8 +4,13 @@ This module provides the abstract base class that all patches inherit from,
 enabling testable, composable patches for the Honeycomb OpenAPI spec.
 """
 
+import logging
 from abc import ABC, abstractmethod
 from typing import Any
+
+# Create logger for patch operations
+logger = logging.getLogger("openapi_patches")
+logger.setLevel(logging.INFO)
 
 
 class BasePatch(ABC):
@@ -80,3 +85,6 @@ def get_schemas(spec: dict[str, Any]) -> dict[str, Any]:
         The components/schemas dictionary.
     """
     return spec.setdefault("components", {}).setdefault("schemas", {})
+
+
+__all__ = ["BasePatch", "get_schemas", "logger"]

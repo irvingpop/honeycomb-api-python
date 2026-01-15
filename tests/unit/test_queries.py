@@ -221,7 +221,9 @@ class TestQueryResultsResourceAsync:
         respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
             return_value=Response(
                 200,
-                json=mock_response(QueryFactory, id="saved-query-123", query_json={"time_range": 3600}),
+                json=mock_response(
+                    QueryFactory, id="saved-query-123", query_json={"time_range": 3600}
+                ),
             )
         )
 
@@ -313,7 +315,10 @@ class TestQueryResultsResourceSync:
         # Mock query creation
         respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
             return_value=Response(
-                200, json=mock_response(QueryFactory, id="saved-sync-query", query_json={"time_range": 1800})
+                200,
+                json=mock_response(
+                    QueryFactory, id="saved-sync-query", query_json={"time_range": 1800}
+                ),
             )
         )
 

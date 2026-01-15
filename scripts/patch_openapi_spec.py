@@ -16,6 +16,7 @@ Usage:
 """
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -25,6 +26,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).parent))
 
 from openapi_patches import ALL_PATCHES
+from openapi_patches.base import logger as patch_logger
 
 
 def apply_patches(spec: dict) -> int:
@@ -57,7 +59,16 @@ def main() -> int:
     parser.add_argument(
         "--verbose", "-v", action="store_true", help="Show detailed patch information"
     )
+    parser.add_argument(
+        "--quiet", "-q", action="store_true", help="Suppress patch details (show only summary)"
+    )
     args = parser.parse_args()
+
+    # Configure logging
+    if not args.quiet:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("  %(message)s"))
+        patch_logger.addHandler(handler)
 
     print(f"Loading {args.input}...")
     with open(args.input) as f:

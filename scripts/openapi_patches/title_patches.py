@@ -7,7 +7,7 @@ instead of auto-numbered names (Type1, Details1, etc.) when using
 
 from typing import Any
 
-from .base import BasePatch, get_schemas
+from .base import BasePatch, get_schemas, logger
 
 
 class CreateColumnTypeTitlePatch(BasePatch):
@@ -26,7 +26,7 @@ class CreateColumnTypeTitlePatch(BasePatch):
     def apply(self, spec: dict[str, Any]) -> int:
         schemas = get_schemas(spec)
         schemas["CreateColumn"]["properties"]["type"]["title"] = "ColumnType"
-        print(f"  [check] CreateColumn.type -> ColumnType")
+        logger.info("CreateColumn.type -> ColumnType")
         return 1
 
 
@@ -75,7 +75,7 @@ class RecipientDetailsTitlePatch(BasePatch):
                 if "title" not in details:
                     details["title"] = f"{recipient_type}RecipientDetails"
                     patches += 1
-                    print(f"  [check] {schema_name}.details -> {recipient_type}RecipientDetails")
+                    logger.info(f"{schema_name}.details -> {recipient_type}RecipientDetails")
 
         return patches
 
@@ -128,7 +128,7 @@ class RecipientDetailsAdditionalPropertiesPatch(BasePatch):
                 if "additionalProperties" not in details:
                     details["additionalProperties"] = False
                     patches += 1
-                    print(f"  [check] {schema_name}.details: added additionalProperties=false")
+                    logger.info(f"{schema_name}.details: added additionalProperties=false")
 
         return patches
 
@@ -148,7 +148,7 @@ class UpdateBudgetRateBurnAlertTitlePatch(BasePatch):
     def apply(self, spec: dict[str, Any]) -> int:
         schemas = get_schemas(spec)
         schemas["UpdateBudgetRateBurnAlertRequest"]["title"] = "UpdateBudgetRateBurnAlert"
-        print(f"  [check] UpdateBudgetRateBurnAlertRequest: changed title to 'UpdateBudgetRateBurnAlert'")
+        logger.info("UpdateBudgetRateBurnAlertRequest: changed title to 'UpdateBudgetRateBurnAlert'")
         return 1
 
 
@@ -172,7 +172,7 @@ class BudgetRateBurnAlertListResponseTitlePatch(BasePatch):
     def apply(self, spec: dict[str, Any]) -> int:
         schemas = get_schemas(spec)
         schemas["BudgetRateBurnAlertListResponse"]["title"] = "Budget Rate List Response"
-        print(f"  [check] BudgetRateBurnAlertListResponse: changed title to 'Budget Rate List Response'")
+        logger.info("BudgetRateBurnAlertListResponse: changed title to 'Budget Rate List Response'")
         return 1
 
 
@@ -219,7 +219,7 @@ class BoardViewFilterOperationTitlePatch(BasePatch):
         schemas = get_schemas(spec)
         operation = schemas["BoardViewFilter"]["properties"]["operation"]
         operation["title"] = "BoardViewFilterOperation"
-        print(f"  [check] BoardViewFilter.operation: added title 'BoardViewFilterOperation'")
+        logger.info("BoardViewFilter.operation: added title 'BoardViewFilterOperation'")
         return 1
 
 
@@ -244,12 +244,12 @@ class ApiKeyRequestTitlesPatch(BasePatch):
         if "IngestKeyRequest" in schemas:
             schemas["IngestKeyRequest"]["title"] = "IngestKeyUpdate"
             patches += 1
-            print(f"  [check] IngestKeyRequest: changed title to 'IngestKeyUpdate'")
+            logger.info("IngestKeyRequest: changed title to 'IngestKeyUpdate'")
 
         if "ConfigurationKeyRequest" in schemas:
             schemas["ConfigurationKeyRequest"]["title"] = "ConfigurationKeyUpdate"
             patches += 1
-            print(f"  [check] ConfigurationKeyRequest: changed title to 'ConfigurationKeyUpdate'")
+            logger.info("ConfigurationKeyRequest: changed title to 'ConfigurationKeyUpdate'")
 
         return patches
 

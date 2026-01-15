@@ -10,7 +10,7 @@ with a clean oneOf discriminator.
 
 from typing import Any
 
-from .base import BasePatch, get_schemas
+from .base import BasePatch, get_schemas, logger
 
 
 class ApiKeyCreateAttributesRestructuringPatch(BasePatch):
@@ -92,7 +92,7 @@ class ApiKeyCreateAttributesRestructuringPatch(BasePatch):
             ],
         }
         patches += 1
-        print(f"  [check] Created IngestKeyCreateAttributes schema")
+        logger.info("Created IngestKeyCreateAttributes schema")
 
         # 2. Create ConfigurationKeyCreateAttributes
         schemas["ConfigurationKeyCreateAttributes"] = {
@@ -103,7 +103,7 @@ class ApiKeyCreateAttributesRestructuringPatch(BasePatch):
             ],
         }
         patches += 1
-        print(f"  [check] Created ConfigurationKeyCreateAttributes schema")
+        logger.info("Created ConfigurationKeyCreateAttributes schema")
 
         # 3. Replace the nested allOf with a clean oneOf discriminator
         data_props = schemas["ApiKeyCreateResponse"]["properties"]["data"]["properties"]
@@ -121,7 +121,7 @@ class ApiKeyCreateAttributesRestructuringPatch(BasePatch):
             },
         }
         patches += 1
-        print(f"  [check] ApiKeyCreateResponse.data.attributes: replaced allOf(oneOf) with oneOf discriminator")
+        logger.info("ApiKeyCreateResponse.data.attributes: replaced allOf(oneOf) with oneOf discriminator")
 
         return patches
 

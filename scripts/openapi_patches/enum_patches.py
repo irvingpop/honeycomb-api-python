@@ -6,7 +6,7 @@ like field_ for "=" and field__ for "!=" operators.
 
 from typing import Any
 
-from .base import BasePatch, get_schemas
+from .base import BasePatch, get_schemas, logger
 
 
 class FilterOpEnumPatch(BasePatch):
@@ -41,7 +41,7 @@ class FilterOpEnumPatch(BasePatch):
     def apply(self, spec: dict[str, Any]) -> int:
         schemas = get_schemas(spec)
         schemas["FilterOp"]["x-enum-varnames"] = self.VARNAMES
-        print(f"  [check] FilterOp: added x-enum-varnames for usable enum names")
+        logger.info("FilterOp: added x-enum-varnames for usable enum names")
         return 1
 
 
@@ -67,7 +67,7 @@ class HavingOpEnumPatch(BasePatch):
     def apply(self, spec: dict[str, Any]) -> int:
         schemas = get_schemas(spec)
         schemas["HavingOp"]["x-enum-varnames"] = self.VARNAMES
-        print(f"  [check] HavingOp: added x-enum-varnames for usable enum names")
+        logger.info("HavingOp: added x-enum-varnames for usable enum names")
         return 1
 
 
@@ -119,7 +119,7 @@ class TriggerThresholdOpEnumPatch(BasePatch):
 
         op = threshold_schema["properties"]["op"]
         op["x-enum-varnames"] = self.VARNAMES
-        print(f"  [check] BaseTriggerThreshold.op: added x-enum-varnames for usable enum names")
+        logger.info("BaseTriggerThreshold.op: added x-enum-varnames for usable enum names")
         return 1
 
 
@@ -159,7 +159,7 @@ class BoardViewFilterOperationEnumPatch(BasePatch):
         schemas = get_schemas(spec)
         operation = schemas["BoardViewFilter"]["properties"]["operation"]
         operation["x-enum-varnames"] = self.VARNAMES
-        print(f"  [check] BoardViewFilter.operation: added x-enum-varnames for usable enum names")
+        logger.info("BoardViewFilter.operation: added x-enum-varnames for usable enum names")
         return 1
 
 

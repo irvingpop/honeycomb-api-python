@@ -10,7 +10,7 @@ objects in allOf don't have names.
 
 from typing import Any
 
-from .base import BasePatch, get_schemas
+from .base import BasePatch, get_schemas, logger
 
 
 class ApiKeySecretExtractionPatch(BasePatch):
@@ -79,7 +79,7 @@ class ApiKeySecretExtractionPatch(BasePatch):
             "properties": inline_secret["properties"],
         }
         patches += 1
-        print(f"  [check] Created ApiKeySecret schema from inline object")
+        logger.info("Created ApiKeySecret schema from inline object")
 
         # 3. Replace the inline object with a $ref
         attributes["allOf"] = [
@@ -87,7 +87,7 @@ class ApiKeySecretExtractionPatch(BasePatch):
             {"$ref": "#/components/schemas/ApiKeySecret"},
         ]
         patches += 1
-        print(f"  [check] ApiKeyCreateResponse.data.attributes: replaced inline with $ref")
+        logger.info("ApiKeyCreateResponse.data.attributes: replaced inline with $ref")
 
         return patches
 
@@ -160,7 +160,7 @@ class BurnAlertDetailRecipientsExtractionPatch(BasePatch):
                 }
                 recipients_schema_created = True
                 patches += 1
-                print(f"  [check] Created BurnAlertDetailRecipients schema from inline object")
+                logger.info("Created BurnAlertDetailRecipients schema from inline object")
 
             # Replace inline with $ref
             schema["allOf"] = [
@@ -168,7 +168,7 @@ class BurnAlertDetailRecipientsExtractionPatch(BasePatch):
                 {"$ref": "#/components/schemas/BurnAlertDetailRecipients"},
             ]
             patches += 1
-            print(f"  [check] {schema_name}: replaced inline recipients with $ref")
+            logger.info(f"{schema_name}: replaced inline recipients with $ref")
 
         return patches
 
@@ -240,7 +240,7 @@ class BurnAlertListSloExtractionPatch(BasePatch):
                 }
                 slo_schema_created = True
                 patches += 1
-                print(f"  [check] Created BurnAlertListSlo schema from inline object")
+                logger.info("Created BurnAlertListSlo schema from inline object")
 
             # Replace inline with $ref
             schema["allOf"] = [
@@ -248,7 +248,7 @@ class BurnAlertListSloExtractionPatch(BasePatch):
                 {"$ref": "#/components/schemas/BurnAlertListSlo"},
             ]
             patches += 1
-            print(f"  [check] {schema_name}: replaced inline slo with $ref")
+            logger.info(f"{schema_name}: replaced inline slo with $ref")
 
         return patches
 

@@ -8,10 +8,13 @@ import copy
 import sys
 from pathlib import Path
 
+import pytest
+
 # Add scripts directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "scripts"))
 
 from openapi_patches import ALL_PATCHES, get_schemas
+from openapi_patches.base import logger as patch_logger
 from openapi_patches.discriminator_restructuring import (
     ApiKeyCreateAttributesRestructuringPatch,
 )
@@ -35,6 +38,14 @@ from openapi_patches.title_patches import (
     CreateColumnTypeTitlePatch,
     RecipientDetailsTitlePatch,
 )
+
+
+@pytest.fixture(autouse=True)
+def suppress_patch_logging():
+    """Suppress patch logger output during tests."""
+    patch_logger.disabled = True
+    yield
+    patch_logger.disabled = False
 
 
 class TestBasePatch:
