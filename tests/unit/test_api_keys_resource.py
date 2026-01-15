@@ -6,7 +6,9 @@ from httpx import Response
 
 from honeycomb import HoneycombClient
 from tests.factories import (
+    ApiKeyCreateResponseDataFactory,
     ApiKeyObjectFactory,
+    IngestKeyCreateAttributesFactory,
     IngestKeyFactory,
     mock_response,
 )
@@ -57,14 +59,6 @@ def mock_api_key_list_response(keys: list, next_cursor: str | None = None) -> di
 def mock_api_key_response(key: dict) -> dict:
     """Mock JSON:API single API key response."""
     return {"data": key}
-
-
-def mock_api_key_create_response(key_id: str, secret: str) -> dict:
-    """Mock JSON:API create response with secret."""
-    return {
-        "data": mock_response(ApiKeyObjectFactory, id=key_id),
-        "secret": secret,
-    }
 
 
 # -------------------------------------------------------------------------
@@ -348,26 +342,18 @@ async def test_create_api_key_async():
     )
 
     # Create response has special structure with secret in attributes
+    # Now we can use Polyfactory with the clean IngestKeyCreateAttributes class
     respx.post("https://api.honeycomb.io/2/teams/test-team/api-keys").mock(
         return_value=Response(
             201,
             json={
-                "data": {
-                    "id": "hcxik_01234567890123456789012345",
-                    "type": "api-keys",
-                    "attributes": {
-                        "key_type": "ingest",
-                        "name": "Test Ingest Key",
-                        "disabled": False,
-                        "secret": "hcaik_secret123",  # Only in create response
-                        "permissions": {},
-                        "timestamps": {},
-                    },
-                    "relationships": {
-                        "environment": {"data": {"id": "env-123", "type": "environments"}}
-                    },
-                    "links": {},
-                }
+                "data": mock_response(
+                    ApiKeyCreateResponseDataFactory,
+                    id="hcxik_01234567890123456789012345",
+                    attributes=IngestKeyCreateAttributesFactory.build(
+                        name="Test Ingest Key", secret="hcaik_secret123"
+                    ),
+                )
             },
         )
     )

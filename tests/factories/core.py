@@ -1,8 +1,10 @@
 """Factories for core Honeycomb models (Environment, Dataset, ApiKey)."""
 
 from honeycomb._generated_models import (
+    ApiKeyCreateResponseData,
     ApiKeyObjectType,
     ConfigurationKey,
+    ConfigurationKeyCreateAttributes,
     ConfigurationKeyPermissions,
     CreateEnvironmentRequest,
     CreateEnvironmentRequestData,
@@ -14,6 +16,7 @@ from honeycomb._generated_models import (
     EnvironmentLinks,
     EnvironmentRelationshipDataType,
     IngestKey,
+    IngestKeyCreateAttributes,
     Permissions,
 )
 from honeycomb.models import ApiKeyObject, Dataset, DatasetCreate, DatasetUpdate, Environment
@@ -176,6 +179,60 @@ class ConfigurationKeyFactory(HoneycombFactory):
 
     name = lambda: f"Test Config Key {HoneycombFactory._honeycomb_id()}"
     disabled = False
+
+
+class IngestKeyCreateAttributesFactory(HoneycombFactory):
+    """Factory for IngestKeyCreateAttributes (ingest key create response with secret).
+
+    This is used for API key creation responses where the secret is included.
+
+    Example:
+        attrs = IngestKeyCreateAttributesFactory.build(secret="hcaik_secret123")
+    """
+
+    __model__ = IngestKeyCreateAttributes
+
+    key_type = "ingest"
+    name = lambda: f"Test Ingest Key {HoneycombFactory._honeycomb_id()}"
+    disabled = False
+    secret = lambda: f"hcaik_{HoneycombFactory._honeycomb_id()}"
+
+
+class ConfigurationKeyCreateAttributesFactory(HoneycombFactory):
+    """Factory for ConfigurationKeyCreateAttributes (config key create response with secret).
+
+    This is used for API key creation responses where the secret is included.
+
+    Example:
+        attrs = ConfigurationKeyCreateAttributesFactory.build(secret="hcalk_secret123")
+    """
+
+    __model__ = ConfigurationKeyCreateAttributes
+
+    key_type = "configuration"
+    name = lambda: f"Test Config Key {HoneycombFactory._honeycomb_id()}"
+    disabled = False
+    secret = lambda: f"hcalk_{HoneycombFactory._honeycomb_id()}"
+
+
+class ApiKeyCreateResponseDataFactory(HoneycombFactory):
+    """Factory for ApiKeyCreateResponseData (API key creation response data).
+
+    This factory generates the full response data object including the secret field,
+    which is only present in creation responses.
+
+    Example:
+        # Generate ingest key create response
+        response = ApiKeyCreateResponseDataFactory.build(
+            id="hcxik_123",
+            attributes=IngestKeyCreateAttributesFactory.build(secret="hcaik_secret123")
+        )
+    """
+
+    __model__ = ApiKeyCreateResponseData
+
+    id = lambda: f"hcxik_{HoneycombFactory._honeycomb_id()}"
+    type = "api-keys"
 
 
 class ApiKeyObjectFactory(HoneycombFactory):

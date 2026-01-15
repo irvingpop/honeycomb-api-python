@@ -5,7 +5,7 @@ import respx
 from httpx import Response
 
 from honeycomb import HoneycombClient, QueryBuilder, QuerySpec
-from tests.factories import QueryAnnotationFactory, QueryFactory, mock_response
+from tests.factories import QueryAnnotationFactory, QueryFactory, QueryResultFactory, mock_response
 
 
 @pytest.mark.asyncio
@@ -20,11 +20,7 @@ class TestQueriesResourceAsync:
         respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
             return_value=Response(
                 200,
-                json={
-                    "id": "query-123",
-                    "query_json": {"time_range": 3600},
-                    "created_at": "2024-01-01T00:00:00Z",
-                },
+                json=mock_response(QueryFactory, id="query-123", query_json={"time_range": 3600}),
             )
         )
 
@@ -43,10 +39,7 @@ class TestQueriesResourceAsync:
         respx_mock.get("https://api.honeycomb.io/1/queries/my-dataset/query-123").mock(
             return_value=Response(
                 200,
-                json={
-                    "id": "query-123",
-                    "query_json": {"time_range": 3600},
-                },
+                json=mock_response(QueryFactory, id="query-123", query_json={"time_range": 3600}),
             )
         )
 
@@ -66,10 +59,7 @@ class TestQueriesResourceSync:
         respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
             return_value=Response(
                 200,
-                json={
-                    "id": "query-456",
-                    "query_json": {"time_range": 1800},
-                },
+                json=mock_response(QueryFactory, id="query-456", query_json={"time_range": 1800}),
             )
         )
 
@@ -84,7 +74,7 @@ class TestQueriesResourceSync:
         client = HoneycombClient(api_key="test-key", sync=True)
 
         respx_mock.get("https://api.honeycomb.io/1/queries/my-dataset/query-456").mock(
-            return_value=Response(200, json={"id": "query-456", "query_json": {}})
+            return_value=Response(200, json=mock_response(QueryFactory, id="query-456"))
         )
 
         with client:
@@ -117,7 +107,7 @@ class TestQueryResultsResourceAsync:
         client = HoneycombClient(api_key="test-key")
 
         respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
-            return_value=Response(200, json={"id": "qr-123"})
+            return_value=Response(200, json=mock_response(QueryResultFactory, id="qr-123"))
         )
 
         async with client:
@@ -156,12 +146,12 @@ class TestQueryResultsResourceAsync:
 
         # Mock create saved query
         respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
-            return_value=Response(200, json={"id": "saved-query-789", "query_json": {}})
+            return_value=Response(200, json=mock_response(QueryFactory, id="saved-query-789"))
         )
 
         # Mock create query result
         respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
-            return_value=Response(200, json={"id": "qr-789"})
+            return_value=Response(200, json=mock_response(QueryResultFactory, id="qr-789"))
         )
 
         # Mock polling - first call returns None (not ready), second returns data
@@ -200,12 +190,12 @@ class TestQueryResultsResourceAsync:
 
         # Mock create saved query
         respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
-            return_value=Response(200, json={"id": "saved-query-slow", "query_json": {}})
+            return_value=Response(200, json=mock_response(QueryFactory, id="saved-query-slow"))
         )
 
         # Mock create query result
         respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
-            return_value=Response(200, json={"id": "qr-slow"})
+            return_value=Response(200, json=mock_response(QueryResultFactory, id="qr-slow"))
         )
 
         # Always return None (never completes)
@@ -231,13 +221,15 @@ class TestQueryResultsResourceAsync:
         respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
             return_value=Response(
                 200,
-                json={"id": "saved-query-123", "query_json": {"time_range": 3600}},
+                json=mock_response(
+                    QueryFactory, id="saved-query-123", query_json={"time_range": 3600}
+                ),
             )
         )
 
         # Mock query result creation
         respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
-            return_value=Response(200, json={"id": "qr-combo-1"})
+            return_value=Response(200, json=mock_response(QueryResultFactory, id="qr-combo-1"))
         )
 
         # Mock query result polling
@@ -276,7 +268,7 @@ class TestQueryResultsResourceSync:
         client = HoneycombClient(api_key="test-key", sync=True)
 
         respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
-            return_value=Response(200, json={"id": "qr-sync-1"})
+            return_value=Response(200, json=mock_response(QueryResultFactory, id="qr-sync-1"))
         )
 
         with client:
@@ -323,13 +315,16 @@ class TestQueryResultsResourceSync:
         # Mock query creation
         respx_mock.post("https://api.honeycomb.io/1/queries/my-dataset").mock(
             return_value=Response(
-                200, json={"id": "saved-sync-query", "query_json": {"time_range": 1800}}
+                200,
+                json=mock_response(
+                    QueryFactory, id="saved-sync-query", query_json={"time_range": 1800}
+                ),
             )
         )
 
         # Mock query result creation
         respx_mock.post("https://api.honeycomb.io/1/query_results/my-dataset").mock(
-            return_value=Response(200, json={"id": "qr-sync-combo"})
+            return_value=Response(200, json=mock_response(QueryResultFactory, id="qr-sync-combo"))
         )
 
         # Mock query result polling

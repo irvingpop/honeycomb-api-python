@@ -382,8 +382,7 @@ def management_credentials() -> tuple[str, str]:
     creds = load_management_credentials()
     if not creds:
         pytest.skip(
-            "Management credentials not available. Set HONEYCOMB_MANAGEMENT_KEY "
-            "and HONEYCOMB_MANAGEMENT_SECRET in .envrc"
+            "Management credentials not available. Set HONEYCOMB_API_KEY in .envrc and use direnv exec . to run the tests"
         )
     return creds
 

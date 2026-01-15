@@ -1,332 +1,87 @@
 #!/usr/bin/env python3
-"""Patch api.yaml to add titles to inline schemas for stable datamodel-codegen output.
+"""Patch api.yaml for stable datamodel-codegen output.
 
-This script adds 'title' fields to inline/anonymous schema definitions in the
-Honeycomb OpenAPI spec. This allows datamodel-codegen with --use-title-as-name
-to generate stable, semantic class names instead of auto-numbered names like
-Type1, Details1, etc.
+This script applies patches to the Honeycomb OpenAPI spec to ensure
+datamodel-codegen generates clean, usable class names instead of
+auto-numbered names (Type1, Details1, AttributesAttributes1, etc.).
 
-Without this patch:
-  - Type1, Type2, Details1, Details2 (88 numbered classes)
-
-With this patch:
-  - CreateColumnType, PagerDutyRecipientDetails (5 unused dead code enums remain)
+The patches are organized into modules:
+- title_patches: Add titles to inline schemas
+- enum_patches: Add x-enum-varnames for readable operator names
+- field_patches: Fix required fields, patterns, defaults
+- schema_extraction: Extract inline schemas to named schemas
 
 Usage:
     ./scripts/patch_openapi_spec.py api.yaml api-patched.yaml
 """
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
 import yaml
 
+# Add scripts directory to path for imports
+sys.path.insert(0, str(Path(__file__).parent))
 
-def patch_inline_titles(spec: dict) -> int:
-    """Add titles to inline schemas that cause numbered class generation.
+from openapi_patches import ALL_PATCHES
+from openapi_patches.base import logger as patch_logger
 
-    Returns count of titles added.
+
+def apply_patches(spec: dict) -> int:
+    """Apply all patches to the OpenAPI spec.
+
+    Args:
+        spec: The OpenAPI spec as a dictionary. Modified in place.
+
+    Returns:
+        Total count of changes made across all patches.
     """
-    patches = 0
-    schemas = spec.get("components", {}).get("schemas", {})
+    total_patches = 0
 
-    # Patch 1: CreateColumn.type enum -> ColumnType
-    if "CreateColumn" in schemas:
-        props = schemas["CreateColumn"].get("properties", {})
-        if "type" in props and "title" not in props["type"]:
-            props["type"]["title"] = "ColumnType"
-            patches += 1
-            print(f"  ✓ CreateColumn.type -> ColumnType")
+    for patch in ALL_PATCHES:
+        changes = patch(spec)
+        total_patches += changes
 
-    # Patch 2: Recipient details objects -> {Type}RecipientDetails
-    recipient_types = [
-        "PagerDuty",
-        "Email",
-        "Slack",
-        "Webhook",
-        "MSTeams",
-        "MSTeamsWorkflow",
-    ]
-
-    for recipient_type in recipient_types:
-        schema_name = f"{recipient_type}Recipient"
-        if schema_name not in schemas:
-            continue
-
-        # Recipient schemas use allOf pattern
-        all_of = schemas[schema_name].get("allOf", [])
-        for item in all_of:
-            if not isinstance(item, dict):
-                continue
-            if "properties" not in item:
-                continue
-            if "details" not in item["properties"]:
-                continue
-
-            details = item["properties"]["details"]
-            if "title" not in details:
-                details["title"] = f"{recipient_type}RecipientDetails"
-                patches += 1
-                print(f"  ✓ {schema_name}.details -> {recipient_type}RecipientDetails")
-
-    # Patch 3: Fix DatasetUpdatePayload - make fields optional for partial updates
-    if "DatasetUpdatePayload" in schemas:
-        if "required" in schemas["DatasetUpdatePayload"]:
-            del schemas["DatasetUpdatePayload"]["required"]
-            patches += 1
-            print(f"  ✓ DatasetUpdatePayload: removed 'required' (UPDATE should be partial)")
-
-    # Patch 4: Make BatchEvent.data required (can't send event without data)
-    if "BatchEvent" in schemas:
-        schemas["BatchEvent"].setdefault("required", [])
-        if "data" not in schemas["BatchEvent"]["required"]:
-            schemas["BatchEvent"]["required"].append("data")
-            patches += 1
-            print(f"  ✓ BatchEvent: added 'data' to required fields")
-
-    # Patch 5: Make burn alert recipients optional (useful for testing/builders)
-    burn_alert_schemas = [
-        "CreateExhaustionTimeBurnAlertRequest",
-        "CreateBudgetRateBurnAlertRequest",
-    ]
-    for schema_name in burn_alert_schemas:
-        if schema_name in schemas:
-            all_of = schemas[schema_name].get("allOf", [])
-            for item in all_of:
-                if isinstance(item, dict) and "required" in item:
-                    if "recipients" in item["required"]:
-                        item["required"].remove("recipients")
-                        patches += 1
-                        print(f"  ✓ {schema_name}: removed 'recipients' from required")
-
-    # Patch 6: Fix UpdateBudgetRateBurnAlertRequest title (conflicts with BudgetRateBurnAlert)
-    if "UpdateBudgetRateBurnAlertRequest" in schemas:
-        if schemas["UpdateBudgetRateBurnAlertRequest"].get("title") == "Budget Rate":
-            schemas["UpdateBudgetRateBurnAlertRequest"]["title"] = "UpdateBudgetRateBurnAlert"
-            patches += 1
-            print(f"  ✓ UpdateBudgetRateBurnAlertRequest: changed title to 'UpdateBudgetRateBurnAlert'")
-
-    # Patch 7: Add additionalProperties: false to recipient details for strict validation
-    # This prevents LLMs from hallucinating extra fields
-    recipient_detail_schemas = [
-        "PagerDutyRecipientDetails",
-        "EmailRecipientDetails",
-        "SlackRecipientDetails",
-        "MSTeamsRecipientDetails",
-        "MSTeamsWorkflowRecipientDetails",
-        "WebhookRecipientDetails",
-    ]
-
-    for recipient_type in recipient_types:
-        schema_name = f"{recipient_type}Recipient"
-        if schema_name not in schemas:
-            continue
-
-        all_of = schemas[schema_name].get("allOf", [])
-        for item in all_of:
-            if not isinstance(item, dict):
-                continue
-            if "properties" not in item:
-                continue
-            if "details" not in item["properties"]:
-                continue
-
-            details = item["properties"]["details"]
-            if "additionalProperties" not in details:
-                details["additionalProperties"] = False
-                patches += 1
-                print(f"  ✓ {schema_name}.details: added additionalProperties=false")
-
-    # Patch 8: Add x-enum-varnames to FilterOp for usable enum names
-    # Without this, = becomes field_, != becomes field__, etc.
-    FILTER_OP_VARNAMES = [
-        "EQUALS",               # "="
-        "NOT_EQUALS",           # "!="
-        "GREATER_THAN",         # ">"
-        "GREATER_THAN_OR_EQUAL",  # ">="
-        "LESS_THAN",            # "<"
-        "LESS_THAN_OR_EQUAL",   # "<="
-        "STARTS_WITH",          # "starts-with"
-        "DOES_NOT_START_WITH",  # "does-not-start-with"
-        "ENDS_WITH",            # "ends-with"
-        "DOES_NOT_END_WITH",    # "does-not-end-with"
-        "EXISTS",               # "exists"
-        "DOES_NOT_EXIST",       # "does-not-exist"
-        "CONTAINS",             # "contains"
-        "DOES_NOT_CONTAIN",     # "does-not-contain"
-        "IN",                   # "in"
-        "NOT_IN",               # "not-in"
-    ]
-
-    if "FilterOp" in schemas:
-        schemas["FilterOp"]["x-enum-varnames"] = FILTER_OP_VARNAMES
-        patches += 1
-        print(f"  ✓ FilterOp: added x-enum-varnames for usable enum names")
-
-    # Patch 9: Add x-enum-varnames to HavingOp (subset of FilterOp)
-    HAVING_OP_VARNAMES = [
-        "EQUALS",               # "="
-        "NOT_EQUALS",           # "!="
-        "GREATER_THAN",         # ">"
-        "GREATER_THAN_OR_EQUAL",  # ">="
-        "LESS_THAN",            # "<"
-        "LESS_THAN_OR_EQUAL",   # "<="
-    ]
-
-    if "HavingOp" in schemas:
-        schemas["HavingOp"]["x-enum-varnames"] = HAVING_OP_VARNAMES
-        patches += 1
-        print(f"  ✓ HavingOp: added x-enum-varnames for usable enum names")
-
-    # Patch 10: Remove/override problematic defaults from Query schema
-    # The spec has example values and API defaults that don't match our usage
-    if "Query" in schemas:
-        props = schemas["Query"].get("properties", {})
-
-        # Remove bogus timestamp defaults (these are example values, not real defaults)
-        if "start_time" in props and "default" in props["start_time"]:
-            del props["start_time"]["default"]
-            patches += 1
-            print(f"  ✓ Query.start_time: removed bogus default timestamp")
-        if "end_time" in props and "default" in props["end_time"]:
-            del props["end_time"]["default"]
-            patches += 1
-            print(f"  ✓ Query.end_time: removed bogus default timestamp")
-
-        # Override breakdowns default (spec has ["user_agent"], we want None)
-        # We override this in QuerySpec anyway, but removing it from base is cleaner
-        if "breakdowns" in props and props["breakdowns"].get("default"):
-            props["breakdowns"]["default"] = None
-            patches += 1
-            print(f"  ✓ Query.breakdowns: changed default from ['user_agent'] to None")
-
-        # Override limit default (spec has 100, we want None for more flexibility)
-        # We override this in QuerySpec anyway, but removing it from base is cleaner
-        if "limit" in props and props["limit"].get("default"):
-            props["limit"]["default"] = None
-            patches += 1
-            print(f"  ✓ Query.limit: changed default from 100 to None")
-
-    # Patch 11: Add x-enum-varnames to BaseTriggerThreshold.op for usable enum names
-    # Without this, > becomes field_, >= becomes field__, etc.
-    THRESHOLD_OP_VARNAMES = [
-        "GREATER_THAN",           # ">"
-        "GREATER_THAN_OR_EQUAL",  # ">="
-        "LESS_THAN",              # "<"
-        "LESS_THAN_OR_EQUAL",     # "<="
-    ]
-
-    if "BaseTrigger" in schemas:
-        threshold = schemas["BaseTrigger"].get("properties", {}).get("threshold", {})
-        if threshold:
-            # Navigate to the threshold schema (could be inline or $ref)
-            # First check if it's a $ref
-            if "$ref" in threshold:
-                # Extract schema name from $ref like "#/components/schemas/BaseTriggerThreshold"
-                ref = threshold["$ref"]
-                threshold_schema_name = ref.split("/")[-1]
-                threshold_schema = schemas.get(threshold_schema_name, {})
-            else:
-                threshold_schema = threshold
-
-            # Now add x-enum-varnames to the op property
-            op = threshold_schema.get("properties", {}).get("op", {})
-            if op.get("enum") == [">", ">=", "<", "<="]:
-                op["x-enum-varnames"] = THRESHOLD_OP_VARNAMES
-                patches += 1
-                print(f"  ✓ BaseTriggerThreshold.op: added x-enum-varnames for usable enum names")
-
-    # Patch 12: Add x-enum-varnames to BoardViewFilter.operation (same as FilterOp)
-    # Without this, = becomes field_, != becomes field__, etc.
-    BOARD_VIEW_FILTER_OP_VARNAMES = [
-        "EQUALS",               # "="
-        "NOT_EQUALS",           # "!="
-        "GREATER_THAN",         # ">"
-        "GREATER_THAN_OR_EQUAL",  # ">="
-        "LESS_THAN",            # "<"
-        "LESS_THAN_OR_EQUAL",   # "<="
-        "STARTS_WITH",          # "starts-with"
-        "DOES_NOT_START_WITH",  # "does-not-start-with"
-        "ENDS_WITH",            # "ends-with"
-        "DOES_NOT_END_WITH",    # "does-not-end-with"
-        "EXISTS",               # "exists"
-        "DOES_NOT_EXIST",       # "does-not-exist"
-        "CONTAINS",             # "contains"
-        "DOES_NOT_CONTAIN",     # "does-not-contain"
-        "IN",                   # "in"
-        "NOT_IN",               # "not-in"
-    ]
-
-    if "BoardViewFilter" in schemas:
-        operation = schemas["BoardViewFilter"].get("properties", {}).get("operation", {})
-        if operation and "enum" in operation:
-            operation["x-enum-varnames"] = BOARD_VIEW_FILTER_OP_VARNAMES
-            # Also add a title so the generated enum gets a nice name
-            if "title" not in operation:
-                operation["title"] = "BoardViewFilterOperation"
-            patches += 2  # Count both patches
-            print(f"  ✓ BoardViewFilter.operation: added x-enum-varnames and title for usable enum names")
-
-    # Patch 13: Fix API key ID validation patterns
-    # The spec uses hcxik_ and hcxlk_ but actual API uses hcaik_ and hcalk_
-    # This causes validation errors when trying to update keys
-    for schema_name in list(schemas.keys()):
-        schema = schemas[schema_name]
-        if isinstance(schema, dict) and "properties" in schema:
-            props = schema["properties"]
-
-            # Fix IngestKey1 and ConfigurationKey1 id patterns (for update operations)
-            if "id" in props and isinstance(props["id"], dict):
-                pattern = props["id"].get("pattern", "")
-
-                # Fix ingest key pattern
-                if pattern == "^hcxik_[a-zA-Z0-9]{26}$":
-                    props["id"]["pattern"] = "^hc[a-z]ik_[a-zA-Z0-9]{26}$"
-                    patches += 1
-                    print(f"  ✓ {schema_name}.id: fixed ingest key pattern (hcxik_ -> hc[a-z]ik_)")
-
-                # Fix configuration key pattern
-                elif pattern == "^hcxlk_[a-zA-Z0-9]{26}$":
-                    props["id"]["pattern"] = "^hc[a-z]lk_[a-zA-Z0-9]{26}$"
-                    patches += 1
-                    print(f"  ✓ {schema_name}.id: fixed configuration key pattern (hcxlk_ -> hc[a-z]lk_)")
-
-    # Patch 14: Fix titles on IngestKeyRequest and ConfigurationKeyRequest to avoid numbered names
-    # DMCG generates IngestKey1/ConfigurationKey1 because the titles conflict with IngestKey/ConfigurationKey
-    # Change titles to unique names for cleaner generated code
-    if "IngestKeyRequest" in schemas:
-        schemas["IngestKeyRequest"]["title"] = "IngestKeyUpdate"
-        patches += 1
-        print(f"  ✓ IngestKeyRequest: changed title to 'IngestKeyUpdate'")
-
-    if "ConfigurationKeyRequest" in schemas:
-        schemas["ConfigurationKeyRequest"]["title"] = "ConfigurationKeyUpdate"
-        patches += 1
-        print(f"  ✓ ConfigurationKeyRequest: changed title to 'ConfigurationKeyUpdate'")
-
-    return patches
+    return total_patches
 
 
 def main() -> int:
-    """Patch api.yaml with inline schema titles."""
-    parser = argparse.ArgumentParser(description="Patch api.yaml for datamodel-codegen")
+    """Patch api.yaml with all configured patches."""
+    parser = argparse.ArgumentParser(
+        description="Patch api.yaml for datamodel-codegen",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=__doc__,
+    )
     parser.add_argument("input", type=Path, help="Input api.yaml file")
     parser.add_argument("output", type=Path, help="Output patched api.yaml file")
+    parser.add_argument(
+        "--verbose", "-v", action="store_true", help="Show detailed patch information"
+    )
+    parser.add_argument(
+        "--quiet", "-q", action="store_true", help="Suppress patch details (show only summary)"
+    )
     args = parser.parse_args()
+
+    # Configure logging
+    if not args.quiet:
+        handler = logging.StreamHandler()
+        handler.setFormatter(logging.Formatter("  %(message)s"))
+        patch_logger.addHandler(handler)
 
     print(f"Loading {args.input}...")
     with open(args.input) as f:
         spec = yaml.safe_load(f)
 
-    print("Applying patches...")
-    patches = patch_inline_titles(spec)
+    print(f"Applying {len(ALL_PATCHES)} patches...")
+    total_changes = apply_patches(spec)
 
     print(f"\nWriting {args.output}...")
     with open(args.output, "w") as f:
         yaml.dump(spec, f, default_flow_style=False, sort_keys=False, allow_unicode=True)
 
-    print(f"\n✓ Applied {patches} title patches")
+    print(f"\n[check] Applied patches with {total_changes} total changes")
     print(f"  Input:  {args.input}")
     print(f"  Output: {args.output}")
 
