@@ -35,6 +35,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -246,6 +247,102 @@ class TestToolSelection:
 class TestArgumentCorrectness:
     """Test argument correctness using test case data."""
 
+    def _validate_via_executor(self, tool_name: str, tool_input: dict[str, Any]) -> None:
+        """Validate tool params using the same logic as the executor.
+
+        This mirrors the executor's validation flow without making API calls.
+        Raises ValidationError or other exceptions if params are invalid.
+
+        By calling the same builder functions and model constructors that the
+        executor uses, we ensure our tests validate exactly what production validates.
+        """
+        # Import all validation dependencies (same as executor uses)
+        from honeycomb.models import (
+            ColumnCreate,
+            DerivedColumnCreate,
+            MarkerCreate,
+            MarkerSettingCreate,
+            QueryAnnotationCreate,
+        )
+        from honeycomb.models.datasets import DatasetCreate, DatasetUpdate
+
+        # Strip metadata fields (executor does this via strip_metadata_fields)
+        params = {k: v for k, v in tool_input.items() if k not in ("confidence", "notes")}
+
+        # Route to appropriate validator - mirrors executor routing
+        # Triggers/SLOs/Boards - use builders (they validate internally)
+        if tool_name in ("honeycomb_create_trigger", "honeycomb_update_trigger"):
+            from honeycomb.tools.builders import _build_trigger
+            _build_trigger(params)  # Validates via TriggerToolInput.model_validate()
+
+        elif tool_name in ("honeycomb_create_slo", "honeycomb_update_slo"):
+            from honeycomb.tools.builders import _build_slo
+            _build_slo(params)  # Validates via SLOToolInput.model_validate()
+
+        elif tool_name in ("honeycomb_create_board", "honeycomb_update_board"):
+            from honeycomb.tools.builders import _build_board
+            _build_board(params)  # Validates via BoardToolInput.model_validate()
+
+        # Recipients - use get_recipient_class to get the right discriminated union class
+        elif tool_name in ("honeycomb_create_recipient", "honeycomb_update_recipient"):
+            from honeycomb.models.recipients import get_recipient_class
+            params_copy = params.copy()
+            params_copy.pop("recipient_id", None)  # Routing param for update
+            recipient_class = get_recipient_class(params_copy["type"])
+            recipient_class(**params_copy)  # Validates via Pydantic __init__
+
+        # Direct model instantiation (validates via Pydantic __init__)
+        elif tool_name == "honeycomb_create_dataset":
+            DatasetCreate(**params)
+
+        elif tool_name == "honeycomb_update_dataset":
+            params_copy = params.copy()
+            params_copy.pop("slug", None)  # Routing param, not model field
+            DatasetUpdate(**params_copy)
+
+        elif tool_name in ("honeycomb_create_column", "honeycomb_update_column"):
+            params_copy = params.copy()
+            params_copy.pop("dataset", None)
+            params_copy.pop("column_id", None)
+            ColumnCreate(**params_copy)
+
+        elif tool_name in ("honeycomb_create_derived_column", "honeycomb_update_derived_column"):
+            params_copy = params.copy()
+            params_copy.pop("dataset", None)
+            params_copy.pop("derived_column_id", None)
+            DerivedColumnCreate(**params_copy)
+
+        elif tool_name in ("honeycomb_create_marker", "honeycomb_update_marker"):
+            params_copy = params.copy()
+            params_copy.pop("dataset", None)
+            params_copy.pop("marker_id", None)
+            MarkerCreate(**params_copy)
+
+        elif tool_name in ("honeycomb_create_marker_setting", "honeycomb_update_marker_setting"):
+            params_copy = params.copy()
+            params_copy.pop("dataset", None)
+            params_copy.pop("setting_id", None)
+            MarkerSettingCreate(**params_copy)
+
+        elif tool_name in ("honeycomb_create_query_annotation", "honeycomb_update_query_annotation"):
+            params_copy = params.copy()
+            params_copy.pop("dataset", None)
+            params_copy.pop("annotation_id", None)
+            QueryAnnotationCreate(**params_copy)
+
+        # Queries - direct QuerySpec instantiation (see executor.py:893, 915)
+        elif tool_name in ("honeycomb_create_query", "honeycomb_run_query"):
+            from honeycomb.models.queries import QuerySpec
+            params_copy = params.copy()
+            params_copy.pop("dataset", None)
+            params_copy.pop("annotation_name", None)  # Not supported yet, executor removes it
+            QuerySpec(**params_copy)  # Validates
+
+        # Skip validation for:
+        # - List/get/delete operations (no complex validation needed)
+        # - Environments/API keys (v2 JSON:API wrappers - executor uses convenience params)
+        # - Burn alerts (nested structure - executor converts flat to nested)
+
     @pytest.mark.parametrize("test_case", get_all_test_cases(), ids=lambda tc: tc["id"])
     def test_argument_assertions(self, anthropic_client, test_case):
         """Verify parameter assertions."""
@@ -270,6 +367,29 @@ class TestArgumentCorrectness:
         if expected_params is None or expected_params == {}:
             # For parameter-less operations, only verify tool selection (already done above)
             return
+
+        # VALIDATE PARAMS using executor's validation logic
+        # This ensures params would pass the same validation as production
+        try:
+            self._validate_via_executor(tool_call.name, params)
+        except Exception as e:
+            # Validation failed - print debug info
+            from pydantic import ValidationError
+            print("\n" + "=" * 80)
+            print(f"EXECUTOR VALIDATION FAILED: {test_case['id']}")
+            print("=" * 80)
+            print(f"\nPROMPT:\n{test_case['prompt']}\n")
+            print(f"CLAUDE'S OUTPUT:\n{result['text']}\n")
+            print(f"TOOL: {tool_call.name}")
+            print(f"RAW PARAMS: {params}\n")
+            if isinstance(e, ValidationError):
+                print(f"VALIDATION ERRORS:\n{e}\n")
+            else:
+                print(f"ERROR: {e}\n")
+            print("=" * 80 + "\n")
+            raise AssertionError(
+                f"Executor validation failed for {test_case['id']}: {e}"
+            ) from e
 
         # Check expected parameters (partial match)
         try:

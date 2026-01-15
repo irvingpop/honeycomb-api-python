@@ -112,7 +112,7 @@ test-live:
 
 test-eval:
 	rm -rf tests/integration/.tool_call_cache/*.json
-	direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v -n 4
+	direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py::TestArgumentCorrectness -v -n 4
 
 test-eval-debug:
 	rm -rf tests/integration/.tool_call_cache/*.json

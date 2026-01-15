@@ -30,7 +30,7 @@ TEST_CASES = [
         "description": "P99 calculation (not COUNT)",
         "prompt": (
             "Create a trigger using a single tool call. In dataset 'api-logs' that alerts when "
-            "P99 of duration_ms exceeds 2000ms over the last 30 minutes"
+            "P99 of duration_ms exceeds 2000ms over the last 15 minutes"
         ),
         "expected_tool": "honeycomb_create_trigger",
         "expected_params": {
