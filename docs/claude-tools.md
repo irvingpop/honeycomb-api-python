@@ -382,12 +382,64 @@ This overcomes Claude's training knowledge and ensures correct tool selection ev
 
 ## Customization
 
-### Filter Available Tools
+### Context Window Management
+
+> **Warning**: Using all 67 tools (`HONEYCOMB_TOOLS`) consumes ~100K tokens per API call.
+> For production use, supply only the tools relevant to your use case.
+
+Each resource module provides a `get_tools()` function for efficient tool loading:
+
+```python
+from honeycomb.tools.resources import triggers, slos, burn_alerts
+
+# Only provide alerting tools (~15K tokens instead of ~100K)
+ALERTING_TOOLS = triggers.get_tools() + slos.get_tools() + burn_alerts.get_tools()
+
+response = client.beta.messages.create(
+    tools=ALERTING_TOOLS,  # Scoped subset
+    # ... other parameters
+)
+```
+
+**Available resource modules:**
+
+```python
+from honeycomb.tools.resources import (
+    triggers,        # 5 tools - alerts on query thresholds
+    slos,            # 5 tools - service level objectives
+    burn_alerts,     # 5 tools - SLO budget alerts
+    boards,          # 5 tools - dashboards
+    queries,         # 3 tools - run queries
+    datasets,        # 5 tools - dataset management
+    columns,         # 5 tools - column metadata
+    derived_columns, # 5 tools - computed metrics
+    recipients,      # 6 tools - notification targets
+    markers,         # 4 tools - event annotations
+    marker_settings, # 5 tools - marker type config
+    events,          # 2 tools - send events
+    auth,            # 1 tool  - auth info
+    api_keys,        # 5 tools - key management
+    environments,    # 5 tools - environment management
+    analysis,        # 2 tools - search_columns, environment_summary
+    service_map,     # 1 tool  - service dependencies
+)
+
+# Get tools for a specific resource
+trigger_tools = triggers.get_tools()
+```
+
+**When to use full toolset (`HONEYCOMB_TOOLS`):**
+
+- User intent is ambiguous and could involve any resource
+- Building a general-purpose assistant that handles all Honeycomb operations
+- Running evaluation tests for tool selection accuracy
+
+### Filter Tools by Name (Alternative)
 
 ```python
 from honeycomb.tools import get_all_tools
 
-# Only provide alerting tools
+# Filter by name pattern
 ALERTING_TOOLS = [
     t for t in get_all_tools()
     if any(x in t["name"] for x in ["trigger", "slo", "burn_alert"])
@@ -421,14 +473,17 @@ response = client.beta.messages.create(
 The SDK includes comprehensive test suite:
 
 ```bash
-# Run all tool validation tests
-poetry run pytest tests/integration/test_claude_tools_eval.py -v
+# Run argument correctness tests (resource-scoped tools, high parallelism)
+make test-eval
+
+# Run tool selection tests (single batched call with all tools)
+make test-eval-selection
+
+# Run all evaluation tests
+make test-eval-all
 
 # Test specific resource
 poetry run pytest tests/integration/test_claude_tools_eval.py -v -k triggers
-
-# Fast tests only (no LLM evaluation)
-poetry run pytest tests/integration/test_claude_tools_eval.py -v -k "tool_selection"
 ```
 
 ## Troubleshooting

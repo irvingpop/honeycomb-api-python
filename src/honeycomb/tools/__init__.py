@@ -21,13 +21,10 @@ from typing import Any
 from honeycomb.tools.executor import execute_tool
 from honeycomb.tools.generator import generate_all_tools
 
-# Generate all tool definitions (includes input_examples for documentation)
-_ALL_TOOLS_WITH_EXAMPLES: list[dict[str, Any]] = generate_all_tools()
-
-# Claude-compatible tools (without input_examples which Claude API rejects)
-HONEYCOMB_TOOLS: list[dict[str, Any]] = [
-    {k: v for k, v in tool.items() if k != "input_examples"} for tool in _ALL_TOOLS_WITH_EXAMPLES
-]
+# Generate all tool definitions (includes input_examples for Advanced Tool Use)
+# Note: input_examples is supported by Anthropic's Advanced Tool Use feature
+# See: https://www.anthropic.com/engineering/advanced-tool-use
+HONEYCOMB_TOOLS: list[dict[str, Any]] = generate_all_tools()
 
 
 def get_tool(name: str) -> dict[str, Any] | None:

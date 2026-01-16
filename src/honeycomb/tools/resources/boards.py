@@ -99,9 +99,9 @@ def generate_list_boards_tool() -> dict[str, Any]:
     """Generate honeycomb_list_boards tool definition."""
     schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
 
-    examples: list[dict[str, Any]] = [
-        {},  # List all boards
-    ]
+    # No parameters - tool lists all boards in the environment
+    # Empty examples cause API 500 errors, so we provide None to skip examples
+    examples = None
 
     return create_tool_definition(
         name="honeycomb_list_boards",
@@ -275,6 +275,10 @@ def generate_update_board_tool() -> dict[str, Any]:
 
     schema["properties"].update(base_schema["properties"])
     schema["required"].extend(base_schema.get("required", []))
+
+    # Include $defs for nested models (QueryPanel, SLOPanel, etc.)
+    if "$defs" in base_schema:
+        schema["$defs"] = base_schema["$defs"]
 
     examples: list[dict[str, Any]] = [
         {

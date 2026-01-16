@@ -79,8 +79,8 @@ def generate_get_auth_tool() -> dict[str, Any]:
     )
 
     examples = [
-        {},
-        {"use_v2": True},
+        {"use_v2": False},  # Use v1 endpoint (auto-detect)
+        {"use_v2": True},  # Force v2 endpoint for management key info
     ]
 
     return create_tool_definition(

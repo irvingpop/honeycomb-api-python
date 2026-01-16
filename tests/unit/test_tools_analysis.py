@@ -259,6 +259,7 @@ class TestEnvironmentSummaryExecution:
             result = await execute_tool(client, "honeycomb_get_environment_summary", {})
 
         data = json.loads(result)
+        assert data["environment"] == "production"  # Should extract from auth response
         assert data["dataset_count"] == 1
         assert data["datasets"][0]["name"] == "api"
         assert data["datasets"][0]["semantic_groups"]["has_http"] is True

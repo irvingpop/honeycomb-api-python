@@ -126,12 +126,14 @@ async def get_environment_summary_async(
     environment_name: str = "unknown"
     try:
         auth_info = await client.auth.get_async()
-        env_slug = getattr(auth_info, "environment_slug", None)
-        env_name = getattr(auth_info, "environment_name", None)
-        if env_slug:
-            environment_name = str(env_slug)
-        elif env_name:
-            environment_name = str(env_name)
+        # Auth info has nested environment object with slug and name (v1 only)
+        # v2 (management key) auth doesn't have environment since it can access multiple
+        if hasattr(auth_info, "environment") and auth_info.environment:
+            # Prefer slug over name (slug is more canonical)
+            if auth_info.environment.slug:
+                environment_name = str(auth_info.environment.slug)
+            elif auth_info.environment.name:
+                environment_name = str(auth_info.environment.name)
     except Exception:
         pass  # Keep default "unknown"
 

@@ -13,6 +13,7 @@ from ..models.boards import (
     BoardView,
     BoardViewCreate,
     QueryPanel,
+    QueryPanelQueryPanel,
     SLOPanel,
     TextPanel,
 )
@@ -259,8 +260,6 @@ class BoardsResource(BaseResource):
         visualization: dict[str, Any] | None,
     ) -> QueryPanel:
         """Build QueryPanel Pydantic model from bundle data."""
-        from honeycomb._generated_models import QueryPanelQueryPanel
-
         # Build the nested query_panel data
         query_panel_data = QueryPanelQueryPanel(
             query_id=query_id,

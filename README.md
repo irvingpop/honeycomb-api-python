@@ -223,6 +223,58 @@ hny query run --dataset my-dataset --count --last-30-minutes
 
 See the [CLI Reference](https://irvingpop.github.io/honeycomb-api-python/cli/) for full documentation.
 
+## MCP Server for Claude
+
+The SDK includes an MCP (Model Context Protocol) server that lets Claude Desktop, Claude Code, and Cursor interact with Honeycomb directly.
+
+### Configuration
+
+No installation required! Add to your MCP configuration using `uvx` or `pipx`:
+
+**Using uvx (recommended):**
+
+```json
+{
+  "mcpServers": {
+    "honeycomb": {
+      "command": "uvx",
+      "args": ["--from", "honeycomb-api[mcp]", "hny-mcp"],
+      "env": {
+        "HONEYCOMB_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+**Using pipx:**
+
+```json
+{
+  "mcpServers": {
+    "honeycomb": {
+      "command": "pipx",
+      "args": ["run", "--spec", "honeycomb-api[mcp]", "hny-mcp"],
+      "env": {
+        "HONEYCOMB_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+**Configuration file locations:**
+- Claude Desktop (macOS): `~/Library/Application Support/Claude/claude_desktop_config.json`
+- Claude Code: `~/.claude/settings.json` or `.claude/settings.local.json`
+- Cursor: `~/.cursor/mcp.json`
+
+Once configured, ask Claude:
+- "What datasets do I have in Honeycomb?"
+- "Create a trigger for high error rates in api-logs"
+- "Search for columns related to HTTP status"
+
+See the [MCP documentation](https://irvingpop.github.io/honeycomb-api-python/usage/mcp/) for detailed setup instructions.
+
 ## Usage Guide
 
 For complete usage examples and guides, see the [full documentation](https://irvingpop.github.io/honeycomb-api-python/):

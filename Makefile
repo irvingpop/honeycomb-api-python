@@ -20,8 +20,9 @@ help:
 	@echo "  make test           Run all tests"
 	@echo "  make test-cov       Run tests with coverage report"
 	@echo "  make test-unit      Run only unit tests"
-	@echo "  make test-eval      Run evaluation tests (requires ANTHROPIC_API_KEY)"
-	@echo "  make test-eval-debug Run evaluation tests with no cache or parallelism (requires ANTHROPIC_API_KEY)"
+	@echo "  make test-eval      Run argument correctness tests with resource-scoped tools (requires ANTHROPIC_API_KEY)"
+	@echo "  make test-eval-selection Run tool selection tests with batched call (requires ANTHROPIC_API_KEY)"
+	@echo "  make test-eval-all  Run all evaluation tests (requires ANTHROPIC_API_KEY)"
 	@echo "  make test-live      Run live Claude tool tests (requires ANTHROPIC_API_KEY and HONEYCOMB_MANAGEMENT_KEY)"
 	@echo ""
 	@echo "Build & Publish:"
@@ -68,7 +69,7 @@ help:
 	@touch .venv-installed
 
 .venv-dev-installed: pyproject.toml poetry.lock
-	poetry install
+	poetry install --with mcp
 	@touch .venv-dev-installed
 
 install: .venv-installed
@@ -111,12 +112,13 @@ test-live:
 	direnv exec . poetry run pytest tests/integration/test_claude_tools_live.py -v -s
 
 test-eval:
-	rm -rf tests/integration/.tool_call_cache/*.json
-	direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py::TestArgumentCorrectness -v -n 4
+	direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py::TestArgumentCorrectness -v -n 8
 
-test-eval-debug:
-	rm -rf tests/integration/.tool_call_cache/*.json
-	EVAL_USE_CACHE=false direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v
+test-eval-selection:
+	direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py::TestToolSelection -v
+
+test-eval-all:
+	direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v -n 8
 
 # =============================================================================
 # Build & Publish

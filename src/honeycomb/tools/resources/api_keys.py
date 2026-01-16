@@ -106,8 +106,8 @@ def generate_list_api_keys_tool() -> dict[str, Any]:
     )
 
     examples: list[dict[str, Any]] = [
-        {},
-        {"key_type": "ingest"},
+        {"key_type": "ingest"},  # Filter to ingest keys only
+        {"key_type": "configuration"},  # Filter to configuration keys only
     ]
 
     return create_tool_definition(

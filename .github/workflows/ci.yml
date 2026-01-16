@@ -37,7 +37,7 @@ jobs:
             venv-${{ runner.os }}-
 
       - name: Install dependencies
-        run: poetry install --no-interaction
+        run: poetry install --no-interaction --with mcp
 
       - name: Check generated models sync
         run: make check-models-sync
