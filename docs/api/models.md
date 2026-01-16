@@ -9,13 +9,11 @@ Pydantic models for type-safe request and response handling.
 ::: honeycomb.models.triggers.TriggerThreshold
 ::: honeycomb.models.triggers.TriggerThresholdOp
 ::: honeycomb.models.triggers.TriggerAlertType
-::: honeycomb.models.triggers.TriggerQuery
 
 ## SLO Models
 
 ::: honeycomb.models.slos.SLO
 ::: honeycomb.models.slos.SLOCreate
-::: honeycomb.models.slos.SLI
 
 ## Dataset Models
 
