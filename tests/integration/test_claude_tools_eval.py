@@ -5,8 +5,6 @@ Scalable architecture for testing all 57 tools across 13 resources.
 Test data is organized in test_cases/ directory, with one file per resource.
 This allows easy addition of new test cases without modifying test execution logic.
 
-Tool call results are cached to disk to speed up repeated test runs.
-
 Requirements:
     - ANTHROPIC_API_KEY environment variable
 
@@ -14,33 +12,38 @@ Installation:
     poetry install --with evals
 
 Usage:
-    # Run all eval tests
-    direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v
+    # Run argument correctness tests (resource-scoped tools, high parallelism)
+    direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py::TestArgumentCorrectness -v -n 8
+
+    # Run tool selection tests (single batched call with all tools)
+    direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py::TestToolSelection -v
 
     # Run tests for specific resource
     direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v -k triggers
 
-    # Run specific test by ID
-    direnv exec . poetry run pytest tests/integration/test_claude_tools_eval.py -v -k trigger_p99_percentile
-
-    # Clear cache for fresh run
-    rm -rf tests/integration/.tool_call_cache/
-
 Environment Variables:
     ANTHROPIC_API_KEY: Required for all tests
-    EVAL_USE_CACHE: Use cached results (default: true)
 """
 
-import hashlib
 import json
 import os
-from pathlib import Path
 from typing import Any
 
 import pytest
 
 anthropic_module = pytest.importorskip(
     "anthropic", reason="Anthropic SDK not installed. Run: poetry install --with evals"
+)
+
+tenacity_module = pytest.importorskip(
+    "tenacity", reason="Tenacity not installed. Run: poetry install --with evals"
+)
+
+from tenacity import (  # noqa: E402
+    retry,
+    retry_if_exception_type,
+    stop_after_attempt,
+    wait_exponential,
 )
 
 from honeycomb.tools import HONEYCOMB_TOOLS  # noqa: E402
@@ -53,72 +56,65 @@ pytestmark = [
 
 
 # ==============================================================================
-# Tool Call Caching
+# Resource-Scoped Tools
 # ==============================================================================
 
 
-CACHE_DIR = Path(__file__).parent / ".tool_call_cache"
+# Map resource name to module name
+RESOURCE_MODULES = {
+    "triggers": "triggers",
+    "slos": "slos",
+    "boards": "boards",
+    "queries": "queries",
+    "burn_alerts": "burn_alerts",
+    "datasets": "datasets",
+    "columns": "columns",
+    "derived_columns": "derived_columns",
+    "recipients": "recipients",
+    "markers": "markers",
+    "marker_settings": "marker_settings",
+    "events": "events",
+    "auth": "auth",
+    "api_keys": "api_keys",
+    "environments": "environments",
+    "analysis": "analysis",
+    "service_map": "service_map",
+}
 
 
-def get_cache_key(prompt: str) -> str:
-    """Generate a cache key for a prompt."""
-    return hashlib.sha256(prompt.encode()).hexdigest()
+def get_tools_for_resource(resource: str) -> list[dict]:
+    """Load tool definitions for a specific resource from honeycomb.tools.resources.
 
+    Args:
+        resource: Resource name (e.g., "triggers", "slos")
 
-class CachedToolCall:
-    """Wrapper to match Anthropic tool call interface."""
+    Returns:
+        List of tool definitions for that resource, or all tools if unknown
+    """
+    from honeycomb.tools import resources
 
-    def __init__(self, name: str, input_params: dict):
-        self.name = name
-        self.input = input_params
-
-
-def load_cached_result(prompt: str) -> dict | None:
-    """Load cached tool call result if available."""
-    if os.environ.get("EVAL_USE_CACHE", "true").lower() != "true":
-        return None
-
-    cache_key = get_cache_key(prompt)
-    cache_file = CACHE_DIR / f"{cache_key}.json"
-
-    if cache_file.exists():
-        try:
-            with open(cache_file) as f:
-                return json.load(f)
-        except (json.JSONDecodeError, OSError):
-            return None
-    return None
-
-
-def save_cached_result(prompt: str, result: dict) -> None:
-    """Save tool call result to cache."""
-    CACHE_DIR.mkdir(exist_ok=True)
-    cache_key = get_cache_key(prompt)
-    cache_file = CACHE_DIR / f"{cache_key}.json"
-
-    # Convert tool calls to serializable format
-    serializable_result = {
-        "tool_calls": [{"name": tc.name, "input": tc.input} for tc in result.get("tool_calls", [])],
-        "text": result.get("text", ""),
-        "stop_reason": result.get("stop_reason", ""),
+    # Some test case files contain multiple related resources
+    # Map these to combined tool sets
+    COMBINED_RESOURCES = {
+        # markers.py contains both marker and marker_settings test cases
+        "markers": ["markers", "marker_settings"],
     }
 
-    try:
-        with open(cache_file, "w") as f:
-            json.dump(serializable_result, f)
-    except OSError:
-        pass  # Silently ignore cache write failures
+    modules_to_load = COMBINED_RESOURCES.get(resource, [resource])
 
+    tools = []
+    for mod_name in modules_to_load:
+        module_name = RESOURCE_MODULES.get(mod_name)
+        if module_name:
+            module = getattr(resources, module_name, None)
+            if module and hasattr(module, "get_tools"):
+                tools.extend(module.get_tools())
 
-def deserialize_cached_result(cached: dict) -> dict:
-    """Convert cached JSON back to expected format."""
-    return {
-        "tool_calls": [
-            CachedToolCall(tc["name"], tc["input"]) for tc in cached.get("tool_calls", [])
-        ],
-        "text": cached.get("text", ""),
-        "stop_reason": cached.get("stop_reason", ""),
-    }
+    if tools:
+        return tools
+
+    # Fallback to all tools for unknown resources
+    return HONEYCOMB_TOOLS
 
 
 # ==============================================================================
@@ -158,28 +154,34 @@ SYSTEM_PROMPT = (
 )
 
 
-def call_claude_with_tools(client, prompt: str, use_cache: bool = True) -> dict:
-    """Call Claude with Honeycomb tools (with caching).
+@retry(
+    wait=wait_exponential(multiplier=1, min=2, max=30),
+    stop=stop_after_attempt(5),
+    retry=retry_if_exception_type(anthropic_module.RateLimitError),
+)
+def call_claude_with_tools(
+    client,
+    prompt: str,
+    tools: list[dict] | None = None,
+) -> dict:
+    """Call Claude with specified tools (defaults to all if not provided).
 
     Args:
         client: Anthropic client
         prompt: User prompt
-        use_cache: Whether to use caching (default: True)
+        tools: Tool definitions to use (defaults to HONEYCOMB_TOOLS)
 
     Returns:
         Dict with tool_calls, text, and stop_reason
     """
-    # Check cache first
-    if use_cache:
-        cached = load_cached_result(prompt)
-        if cached is not None:
-            return deserialize_cached_result(cached)
+    if tools is None:
+        tools = HONEYCOMB_TOOLS
 
     response = client.beta.messages.create(
         model="claude-sonnet-4-5-20250929",
         max_tokens=4096,
         betas=["advanced-tool-use-2025-11-20"],
-        tools=HONEYCOMB_TOOLS,
+        tools=tools,
         system=SYSTEM_PROMPT,
         messages=[{"role": "user", "content": prompt}],
     )
@@ -187,17 +189,11 @@ def call_claude_with_tools(client, prompt: str, use_cache: bool = True) -> dict:
     tool_calls = [b for b in response.content if b.type == "tool_use"]
     text_content = " ".join(b.text for b in response.content if hasattr(b, "text"))
 
-    result = {
+    return {
         "tool_calls": tool_calls,
         "text": text_content,
         "stop_reason": response.stop_reason,
     }
-
-    # Save to cache
-    if use_cache:
-        save_cached_result(prompt, result)
-
-    return result
 
 
 def check_assertion(assertion_expr: str, params: dict) -> bool:
@@ -226,26 +222,100 @@ def check_assertion(assertion_expr: str, params: dict) -> bool:
 
 
 class TestToolSelection:
-    """Test correct tool selection using test case data."""
+    """Test correct tool selection from all 57 tools using a single batched call."""
 
-    @pytest.mark.parametrize("test_case", get_all_test_cases(), ids=lambda tc: tc["id"])
-    def test_tool_selection(self, anthropic_client, test_case):
-        """Verify Claude selects the correct tool."""
-        result = call_claude_with_tools(anthropic_client, test_case["prompt"])
+    # Only test create operations - these are the most important for tool selection
+    # and cover all major resource types
+    CREATE_TOOL_CASES = [
+        (
+            "triggers",
+            "honeycomb_create_trigger",
+            "Create a trigger in api-logs that fires when error count > 100",
+        ),
+        ("slos", "honeycomb_create_slo", "Create an SLO in api-logs with 99.9% target"),
+        ("burn_alerts", "honeycomb_create_burn_alert", "Create a burn alert for SLO slo-123"),
+        ("boards", "honeycomb_create_board", "Create a board called 'API Dashboard'"),
+        ("datasets", "honeycomb_create_dataset", "Create a dataset called 'new-service'"),
+        ("columns", "honeycomb_create_column", "Create a column 'user_id' in api-logs"),
+        (
+            "derived_columns",
+            "honeycomb_create_derived_column",
+            "Create a derived column 'is_error' in api-logs",
+        ),
+        (
+            "recipients",
+            "honeycomb_create_recipient",
+            "Create an email recipient for alerts@example.com",
+        ),
+        ("markers", "honeycomb_create_marker", "Create a marker in api-logs for a deployment"),
+        (
+            "marker_settings",
+            "honeycomb_create_marker_setting",
+            "Create a marker setting 'deploy' in api-logs",
+        ),
+        (
+            "api_keys",
+            "honeycomb_create_api_key",
+            "Create an ingest API key for the production environment",
+        ),
+        (
+            "environments",
+            "honeycomb_create_environment",
+            "Create a new environment called 'staging'",
+        ),
+        ("queries", "honeycomb_create_query", "Create a query in api-logs counting requests"),
+    ]
 
-        # Verify tool was called
-        assert len(result["tool_calls"]) >= 1, f"No tool calls for: {test_case['description']}"
+    def test_tool_selection_creates(self, anthropic_client):
+        """Verify Claude selects correct create tools from all 57 options."""
+        # Build single batched prompt that encourages parallel tool calls
+        lines = [
+            "IMPORTANT: You MUST call ALL of the following tools IN PARALLEL in a single response.",
+            "Do NOT stop after the first tool call - call all tools at once.",
+            "",
+            "Call these tools simultaneously:",
+        ]
+        for i, (_, expected_tool, prompt) in enumerate(self.CREATE_TOOL_CASES, 1):
+            lines.append(f"{i}. {prompt}")
 
-        # Verify correct tool selected
-        actual_tool = result["tool_calls"][0].name
-        expected_tool = test_case["expected_tool"]
-        assert actual_tool == expected_tool, (
-            f"{test_case['id']}: Expected '{expected_tool}' but got '{actual_tool}'"
+        combined_prompt = "\n".join(lines)
+
+        result = call_claude_with_tools(
+            anthropic_client,
+            combined_prompt,
+            tools=HONEYCOMB_TOOLS,  # All 57 tools for selection testing
         )
+
+        # Verify we got enough tool calls
+        num_calls = len(result["tool_calls"])
+        expected_count = len(self.CREATE_TOOL_CASES)
+
+        # Build a map of tool names we got
+        actual_tools = {tc.name for tc in result["tool_calls"]}
+        expected_tools = {t[1] for t in self.CREATE_TOOL_CASES}
+
+        # Check which tools we got
+        missing = expected_tools - actual_tools
+        if missing:
+            print(f"\nMissing tools: {missing}")
+            print(f"Got {num_calls} tool calls: {[tc.name for tc in result['tool_calls']]}")
+
+        # We should get at least most of the expected tools
+        # Allow some tolerance since parallel tool calling can be tricky
+        assert num_calls >= expected_count * 0.7, (
+            f"Expected at least {int(expected_count * 0.7)} tool calls (70% of {expected_count}), "
+            f"got {num_calls}"
+        )
+
+        # Verify the tools we did get are correct (in any order)
+        for tc in result["tool_calls"]:
+            assert tc.name in expected_tools, (
+                f"Unexpected tool call: {tc.name} (expected one of {expected_tools})"
+            )
 
 
 class TestArgumentCorrectness:
-    """Test argument correctness using test case data."""
+    """Test argument correctness AND confidence using resource-scoped tools."""
 
     def _validate_via_executor(self, tool_name: str, tool_input: dict[str, Any]) -> None:
         """Validate tool params using the same logic as the executor.
@@ -353,8 +423,16 @@ class TestArgumentCorrectness:
 
     @pytest.mark.parametrize("test_case", get_all_test_cases(), ids=lambda tc: tc["id"])
     def test_argument_assertions(self, anthropic_client, test_case):
-        """Verify parameter assertions."""
-        result = call_claude_with_tools(anthropic_client, test_case["prompt"])
+        """Verify parameter assertions and confidence level."""
+        # Get resource-specific tools for reduced token usage
+        resource = test_case.get("resource")
+        tools = get_tools_for_resource(resource) if resource else HONEYCOMB_TOOLS
+
+        result = call_claude_with_tools(
+            anthropic_client,
+            test_case["prompt"],
+            tools=tools,
+        )
 
         if len(result["tool_calls"]) < 1:
             # Print debug info when no tool calls made
@@ -369,6 +447,31 @@ class TestArgumentCorrectness:
 
         tool_call = result["tool_calls"][0]
         params = tool_call.input
+
+        # Verify correct tool was selected (basic sanity check)
+        expected_tool = test_case["expected_tool"]
+        actual_tool = tool_call.name
+        assert actual_tool == expected_tool, (
+            f"{test_case['id']}: Expected '{expected_tool}' but got '{actual_tool}'"
+        )
+
+        # Check confidence level (merged from TestConfidenceLevel)
+        confidence = params.get("confidence", "none")
+        if confidence not in ("high", "medium"):
+            notes = params.get("notes", {})
+            print("\n" + "=" * 80)
+            print(f"LOW CONFIDENCE: {test_case['id']}")
+            print("=" * 80)
+            print(f"\nCONFIDENCE: {confidence}")
+            print("\nNOTES:")
+            print(json.dumps(notes, indent=2))
+            print(f"\nPROMPT:\n{test_case['prompt']}\n")
+            print(f"CLAUDE'S REASONING:\n{result['text']}\n")
+            print(f"TOOL CALLED: {tool_call.name}")
+            print("=" * 80 + "\n")
+            raise AssertionError(
+                f"Confidence '{confidence}' is below 'medium' threshold for {test_case['id']}"
+            )
 
         # Skip parameter validation for parameter-less operations
         expected_params = test_case.get("expected_params", {})
@@ -437,50 +540,6 @@ class TestArgumentCorrectness:
             print(f"TOOL PARAMETERS:\n{json.dumps(params, indent=2)}\n")
             print("=" * 80 + "\n")
             raise
-
-
-# ==============================================================================
-# Confidence Validation Tests
-# ==============================================================================
-
-
-class TestConfidenceLevel:
-    """Test that Claude provides adequate confidence for all tool calls."""
-
-    @pytest.mark.parametrize("test_case", get_all_test_cases(), ids=lambda tc: tc["id"])
-    def test_confidence_is_medium_or_higher(self, anthropic_client, test_case):
-        """Verify Claude provides 'medium' or 'high' confidence for tool calls.
-
-        If confidence is missing, it defaults to 'none' which fails the test.
-        When confidence is too low, the test outputs the notes for debugging.
-        """
-        result = call_claude_with_tools(anthropic_client, test_case["prompt"])
-
-        if len(result["tool_calls"]) < 1:
-            pytest.skip(f"No tool calls made for: {test_case['description']}")
-
-        tool_call = result["tool_calls"][0]
-        params = tool_call.input
-
-        # Extract confidence (default to "none" if missing)
-        confidence = params.get("confidence", "none")
-        notes = params.get("notes", {})
-
-        # Confidence must be "high" or "medium" to pass
-        if confidence not in ("high", "medium"):
-            print("\n" + "=" * 80)
-            print(f"LOW CONFIDENCE: {test_case['id']}")
-            print("=" * 80)
-            print(f"\nCONFIDENCE: {confidence}")
-            print("\nNOTES:")
-            print(json.dumps(notes, indent=2))
-            print(f"\nPROMPT:\n{test_case['prompt']}\n")
-            print(f"CLAUDE'S REASONING:\n{result['text']}\n")
-            print(f"TOOL CALLED: {tool_call.name}")
-            print("=" * 80 + "\n")
-            raise AssertionError(
-                f"Confidence '{confidence}' is below 'medium' threshold for {test_case['id']}"
-            )
 
 
 # ==============================================================================

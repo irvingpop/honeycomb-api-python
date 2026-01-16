@@ -3782,7 +3782,6 @@ description = "Retry code until it succeeds"
 optional = false
 python-versions = ">=3.9"
 groups = ["evals"]
-markers = "python_version < \"4.0\""
 files = [
     {file = "tenacity-9.1.2-py3-none-any.whl", hash = "sha256:f77bf36710d8b73a50b2dd155c97b870017ad21afe6ab300326b0371b3b05138"},
     {file = "tenacity-9.1.2.tar.gz", hash = "sha256:1169d376c297e7de388d18b4481760d478b0e99a777cad3a9c86e556f4b697cb"},
@@ -4270,4 +4269,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10"
-content-hash = "9ecdc23aee2cde211492ebc9396d89a8f1a311129cf2090034e9b2864522c7b0"
+content-hash = "65cfbc70fd88004b199888eae180240cf31689f6af08ee839dd02ca0b98c60ca"
