@@ -109,3 +109,4 @@ api.yaml.backup.*
 # Claude
 .claude/settings.local.json
 .api-patched.yaml
+.mcp.json
