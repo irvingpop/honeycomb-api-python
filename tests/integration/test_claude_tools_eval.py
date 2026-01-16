@@ -273,19 +273,23 @@ class TestArgumentCorrectness:
         # Triggers/SLOs/Boards - use builders (they validate internally)
         if tool_name in ("honeycomb_create_trigger", "honeycomb_update_trigger"):
             from honeycomb.tools.builders import _build_trigger
+
             _build_trigger(params)  # Validates via TriggerToolInput.model_validate()
 
         elif tool_name in ("honeycomb_create_slo", "honeycomb_update_slo"):
             from honeycomb.tools.builders import _build_slo
+
             _build_slo(params)  # Validates via SLOToolInput.model_validate()
 
         elif tool_name in ("honeycomb_create_board", "honeycomb_update_board"):
             from honeycomb.tools.builders import _build_board
+
             _build_board(params)  # Validates via BoardToolInput.model_validate()
 
         # Recipients - use get_recipient_class to get the right discriminated union class
         elif tool_name in ("honeycomb_create_recipient", "honeycomb_update_recipient"):
             from honeycomb.models.recipients import get_recipient_class
+
             params_copy = params.copy()
             params_copy.pop("recipient_id", None)  # Routing param for update
             recipient_class = get_recipient_class(params_copy["type"])
@@ -324,7 +328,10 @@ class TestArgumentCorrectness:
             params_copy.pop("setting_id", None)
             MarkerSettingCreate(**params_copy)
 
-        elif tool_name in ("honeycomb_create_query_annotation", "honeycomb_update_query_annotation"):
+        elif tool_name in (
+            "honeycomb_create_query_annotation",
+            "honeycomb_update_query_annotation",
+        ):
             params_copy = params.copy()
             params_copy.pop("dataset", None)
             params_copy.pop("annotation_id", None)
@@ -333,6 +340,7 @@ class TestArgumentCorrectness:
         # Queries - direct QuerySpec instantiation (see executor.py:893, 915)
         elif tool_name in ("honeycomb_create_query", "honeycomb_run_query"):
             from honeycomb.models.queries import QuerySpec
+
             params_copy = params.copy()
             params_copy.pop("dataset", None)
             params_copy.pop("annotation_name", None)  # Not supported yet, executor removes it
@@ -375,6 +383,7 @@ class TestArgumentCorrectness:
         except Exception as e:
             # Validation failed - print debug info
             from pydantic import ValidationError
+
             print("\n" + "=" * 80)
             print(f"EXECUTOR VALIDATION FAILED: {test_case['id']}")
             print("=" * 80)
@@ -387,9 +396,7 @@ class TestArgumentCorrectness:
             else:
                 print(f"ERROR: {e}\n")
             print("=" * 80 + "\n")
-            raise AssertionError(
-                f"Executor validation failed for {test_case['id']}: {e}"
-            ) from e
+            raise AssertionError(f"Executor validation failed for {test_case['id']}: {e}") from e
 
         # Check expected parameters (partial match)
         try:

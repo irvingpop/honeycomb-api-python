@@ -11,6 +11,11 @@ from datetime import datetime
 from difflib import SequenceMatcher
 from typing import TYPE_CHECKING
 
+from honeycomb.tools.analysis.cache import (
+    get_columns_cached,
+    get_datasets_cached,
+    get_derived_columns_cached,
+)
 from honeycomb.tools.analysis.models import (
     ColumnSearchResult,
     SearchColumnsResponse,
@@ -154,16 +159,16 @@ async def search_columns_async(
     if dataset:
         datasets_to_search = [dataset]
     else:
-        all_datasets = await client.datasets.list_async()
+        all_datasets = await get_datasets_cached(client)
         # Filter out datasets without slugs
         datasets_to_search = [d.slug for d in all_datasets if d.slug is not None]
 
-    # Fetch columns and derived columns from all datasets in parallel
+    # Fetch columns and derived columns from all datasets in parallel (using cache)
     async def fetch_dataset_data(
         ds: str,
     ) -> tuple[str, list["Column"], list["DerivedColumn"]]:
-        columns_coro = client.columns.list_async(dataset=ds)
-        derived_coro = client.derived_columns.list_async(dataset=ds)
+        columns_coro = get_columns_cached(client, ds)
+        derived_coro = get_derived_columns_cached(client, ds)
         columns, derived = await asyncio.gather(columns_coro, derived_coro)
         return ds, columns, derived
 
@@ -202,9 +207,9 @@ async def search_columns_async(
             if score >= MIN_SIMILARITY_THRESHOLD:
                 all_matches.append(_derived_column_to_result(dc, ds, score))
 
-    # Also search environment-wide derived columns
+    # Also search environment-wide derived columns (using cache)
     try:
-        env_derived = await client.derived_columns.list_async(dataset="__all__")
+        env_derived = await get_derived_columns_cached(client, "__all__")
         for dc in env_derived:
             score = calculate_similarity(query, dc.alias)
             if score >= MIN_SIMILARITY_THRESHOLD:

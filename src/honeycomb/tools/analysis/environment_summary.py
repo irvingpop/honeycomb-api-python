@@ -9,6 +9,11 @@ import contextlib
 from datetime import datetime
 from typing import TYPE_CHECKING
 
+from honeycomb.tools.analysis.cache import (
+    get_columns_cached,
+    get_datasets_cached,
+    get_derived_columns_cached,
+)
 from honeycomb.tools.analysis.models import (
     DatasetSummary,
     DerivedColumnSummary,
@@ -49,13 +54,13 @@ async def get_environment_summary_async(
     # Cap sample column count
     sample_column_count = min(sample_column_count, 50)
 
-    # Fetch all datasets
-    datasets = await client.datasets.list_async()
+    # Fetch all datasets (using cache - warms cache for subsequent column searches)
+    datasets = await get_datasets_cached(client)
 
-    # Fetch environment-wide derived columns
+    # Fetch environment-wide derived columns (using cache)
     env_derived_cols: list[DerivedColumnSummary] = []
     try:
-        env_dcs = await client.derived_columns.list_async(dataset="__all__")
+        env_dcs = await get_derived_columns_cached(client, "__all__")
         env_derived_cols = [
             DerivedColumnSummary(
                 alias=dc.alias,
@@ -75,8 +80,9 @@ async def get_environment_summary_async(
             if not dataset.slug:
                 return None
 
-            columns_coro = client.columns.list_async(dataset=dataset.slug)
-            derived_coro = client.derived_columns.list_async(dataset=dataset.slug)
+            # Fetch columns and derived columns in parallel (using cache)
+            columns_coro = get_columns_cached(client, dataset.slug)
+            derived_coro = get_derived_columns_cached(client, dataset.slug)
             columns, derived_cols = await asyncio.gather(columns_coro, derived_coro)
 
             # Filter out None key_names from columns
