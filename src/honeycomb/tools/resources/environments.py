@@ -93,7 +93,9 @@ def generate_list_environments_tool() -> dict[str, Any]:
     """Generate honeycomb_list_environments tool definition."""
     schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
 
-    examples: list[dict[str, Any]] = [{}]
+    # No parameters - tool lists all environments for authenticated team
+    # Empty examples cause API 500 errors, so we provide None to skip examples
+    examples = None
 
     return create_tool_definition(
         name="honeycomb_list_environments",

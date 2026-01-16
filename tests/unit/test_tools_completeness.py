@@ -321,10 +321,10 @@ class TestToolDefinitionExamples:
 
     def test_trigger_examples_cover_all_calc_types(self):
         """Tool definition examples should showcase variety of calculations."""
-        from honeycomb.tools import _ALL_TOOLS_WITH_EXAMPLES
+        from honeycomb.tools import HONEYCOMB_TOOLS
 
         tool = next(
-            (t for t in _ALL_TOOLS_WITH_EXAMPLES if t["name"] == "honeycomb_create_trigger"), None
+            (t for t in HONEYCOMB_TOOLS if t["name"] == "honeycomb_create_trigger"), None
         )
         assert tool is not None
 
@@ -344,10 +344,10 @@ class TestToolDefinitionExamples:
 
     def test_trigger_examples_cover_filter_varieties(self):
         """Tool definition examples should showcase variety of filters."""
-        from honeycomb.tools import _ALL_TOOLS_WITH_EXAMPLES
+        from honeycomb.tools import HONEYCOMB_TOOLS
 
         tool = next(
-            (t for t in _ALL_TOOLS_WITH_EXAMPLES if t["name"] == "honeycomb_create_trigger"), None
+            (t for t in HONEYCOMB_TOOLS if t["name"] == "honeycomb_create_trigger"), None
         )
         assert tool is not None
 

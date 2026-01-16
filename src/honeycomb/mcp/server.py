@@ -150,8 +150,8 @@ def _get_meta_tools() -> list[dict[str, Any]]:
         {
             "name": "honeycomb_discover_tools",
             "description": (
-                "Discover available Honeycomb API tools. Returns tool names, "
-                "brief descriptions, and required parameters. "
+                "Discover available Honeycomb API tools with complete schemas and examples. "
+                "Returns tool names, full descriptions, complete input schemas, and usage examples. "
                 "TIP: Start with honeycomb_get_environment_summary (discovery category) "
                 "to see the current environment and available datasets. "
                 "Then use this tool to find specific tools for your task. "
@@ -193,14 +193,14 @@ def _get_meta_tools() -> list[dict[str, Any]]:
 
 
 def _get_tool_catalog(tools: list[dict[str, Any]], category: str | None = None) -> dict[str, Any]:
-    """Return lightweight tool information for discovery.
+    """Return complete tool information for discovery.
 
     Args:
         tools: List of tool definitions
         category: Optional category filter (uses display names like "discovery")
 
     Returns:
-        Dict with tool summaries and metadata
+        Dict with complete tool definitions including schemas and examples
     """
     # Check if management credentials are available
     has_mgmt_creds = bool(
@@ -224,22 +224,19 @@ def _get_tool_catalog(tools: list[dict[str, Any]], category: str | None = None) 
         if category and tool_category != category and tool_category != internal_category:
             continue
 
-        # Lightweight: name, truncated description, required params only
-        description = tool["description"]
-        # Truncate at first sentence or 200 chars
-        if ". " in description[:200]:
-            description = description[: description.index(". ", 0, 200) + 1]
-        elif len(description) > 200:
-            description = description[:197] + "..."
+        # Return complete tool definition with schema and examples
+        tool_info = {
+            "name": tool["name"],
+            "description": tool["description"],
+            "input_schema": tool["input_schema"],
+            "category": tool_category,
+        }
 
-        tool_details.append(
-            {
-                "name": tool["name"],
-                "description": description,
-                "required": tool["input_schema"].get("required", []),
-                "category": tool_category,
-            }
-        )
+        # Include examples if present
+        if "input_examples" in tool:
+            tool_info["input_examples"] = tool["input_examples"]
+
+        tool_details.append(tool_info)
 
     return {
         "tools": tool_details,

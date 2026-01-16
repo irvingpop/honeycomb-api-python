@@ -91,9 +91,9 @@ def generate_list_datasets_tool() -> dict[str, Any]:
     """Generate honeycomb_list_datasets tool definition."""
     schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
 
-    examples: list[dict[str, Any]] = [
-        {},  # List all datasets
-    ]
+    # No parameters - tool lists all datasets in the environment
+    # Empty examples cause API 500 errors, so we provide None to skip examples
+    examples = None
 
     return create_tool_definition(
         name="honeycomb_list_datasets",
@@ -169,6 +169,10 @@ def generate_update_dataset_tool() -> dict[str, Any]:
     # Add properties from DatasetUpdate (all optional)
     schema["properties"].update(base_schema["properties"])
     # Don't extend required - DatasetUpdate fields are all optional
+
+    # Include $defs for nested models (e.g., DatasetUpdatePayloadSettings)
+    if "$defs" in base_schema:
+        schema["$defs"] = base_schema["$defs"]
 
     examples: list[dict[str, Any]] = [
         {"slug": "api-logs", "description": "Updated description for API logs"},

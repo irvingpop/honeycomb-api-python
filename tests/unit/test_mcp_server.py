@@ -162,19 +162,20 @@ class TestToolCatalog:
 
         assert "name" in tool
         assert "description" in tool
-        assert "required" in tool
+        assert "input_schema" in tool
         assert "category" in tool
 
-        # Description should be truncated
-        assert len(tool["description"]) <= 203  # 200 + "..."
+        # Schema should have required fields
+        assert "required" in tool["input_schema"]
+        assert "properties" in tool["input_schema"]
 
     def test_catalog_required_params(self):
-        """Test that required params are included."""
+        """Test that required params are included in schema."""
         catalog = _get_tool_catalog(HONEYCOMB_TOOLS, category="triggers")
 
         # honeycomb_list_triggers requires dataset
         list_tool = next(t for t in catalog["tools"] if t["name"] == "honeycomb_list_triggers")
-        assert "dataset" in list_tool["required"]
+        assert "dataset" in list_tool["input_schema"]["required"]
 
 
 class TestNativeToolsMode:

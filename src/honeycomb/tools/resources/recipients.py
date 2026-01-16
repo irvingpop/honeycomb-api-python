@@ -99,9 +99,9 @@ def generate_list_recipients_tool() -> dict[str, Any]:
     """Generate honeycomb_list_recipients tool definition."""
     schema: dict[str, Any] = {"type": "object", "properties": {}, "required": []}
 
-    examples: list[dict[str, Any]] = [
-        {},  # List all recipients
-    ]
+    # No parameters - tool lists all recipients in the environment
+    # Empty examples cause API 500 errors, so we provide None to skip examples
+    examples = None
 
     return create_tool_definition(
         name="honeycomb_list_recipients",
@@ -229,7 +229,7 @@ def generate_update_recipient_tool() -> dict[str, Any]:
         {
             "recipient_id": "rec-456",
             "type": "slack",
-            "details": {"channel": "#new-alerts"},
+            "details": {"slack_channel": "#new-alerts"},
         },
     ]
 

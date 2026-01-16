@@ -198,12 +198,11 @@ def generate_create_trigger_tool() -> dict[str, Any]:
             "threshold": {"op": ">", "value": 50, "exceeded_limit": 2},
             "frequency": 900,
             "recipients": [
+                {"type": "email", "target": "oncall@example.com"},
+                {"type": "webhook", "target": "https://hooks.example.com/alert"},
                 {"type": "slack", "target": "#alerts"},
-                {
-                    "type": "pagerduty",
-                    "target": "routing-key-123",
-                    "details": {"severity": "critical"},
-                },
+                {"type": "pagerduty", "target": "routing-key-123"},
+                {"type": "msteams", "target": "teams-channel-url"},
             ],
             "tags": [
                 {"key": "team", "value": "platform"},

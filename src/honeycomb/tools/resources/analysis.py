@@ -139,10 +139,9 @@ def generate_get_environment_summary_tool() -> dict[str, Any]:
     )
 
     examples: list[dict[str, Any]] = [
-        {},
-        {"include_sample_columns": True},
-        {"include_sample_columns": True, "sample_column_count": 20},
-        {"include_sample_columns": False},
+        {"include_sample_columns": True},  # With sample columns (default)
+        {"include_sample_columns": True, "sample_column_count": 20},  # Custom sample count
+        {"include_sample_columns": False},  # Without sample columns
     ]
 
     return create_tool_definition(
