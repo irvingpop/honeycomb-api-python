@@ -75,6 +75,22 @@ MANAGEMENT_KEY_TOOLS = {
     "honeycomb_delete_environment",
 }
 
+# Destructive tools that permanently delete data (blocked by default)
+DELETE_TOOLS = {
+    "honeycomb_delete_dataset",
+    "honeycomb_delete_trigger",
+    "honeycomb_delete_slo",
+    "honeycomb_delete_burn_alert",
+    "honeycomb_delete_board",
+    "honeycomb_delete_derived_column",
+    "honeycomb_delete_column",
+    "honeycomb_delete_marker",
+    "honeycomb_delete_marker_setting",
+    "honeycomb_delete_recipient",
+    "honeycomb_delete_environment",  # v2 API - also in MANAGEMENT_KEY_TOOLS
+    "honeycomb_delete_api_key",  # v2 API - also in MANAGEMENT_KEY_TOOLS
+}
+
 
 def _get_category_from_tool_name(tool_name: str) -> str:
     """Extract category from tool name.
@@ -250,6 +266,16 @@ def _use_native_tools() -> bool:
     return os.environ.get("HONEYCOMB_MCP_NATIVE_TOOLS", "").lower() in ("1", "true")
 
 
+def _are_deletes_blocked() -> bool:
+    """Check if delete operations are blocked (default: true).
+
+    Set HONEYCOMB_ALLOW_DELETES=true to enable delete operations.
+    This is a safety mechanism to prevent accidental data loss.
+    """
+    allow_deletes = os.environ.get("HONEYCOMB_ALLOW_DELETES", "").lower()
+    return allow_deletes not in ("1", "true")
+
+
 def _check_mcp_available() -> bool:
     """Check if MCP package is available."""
     try:
@@ -356,6 +382,19 @@ async def _run_server() -> None:
                 f"Unknown tool: {name}. Use honeycomb_discover_tools to see available tools."
             )
             logger.warning(error_msg)
+            return [types.TextContent(type="text", text=error_msg)]
+
+        # Check if delete operations are blocked
+        if name in DELETE_TOOLS and _are_deletes_blocked():
+            error_msg = (
+                f"DELETE OPERATION BLOCKED: {name}\n\n"
+                f"Delete operations are disabled by default to prevent accidental data loss.\n"
+                f"All Honeycomb delete operations are IRREVERSIBLE and PERMANENT.\n\n"
+                f"To enable delete operations, set HONEYCOMB_ALLOW_DELETES=true in your MCP configuration.\n\n"
+                f"Blocked operations:\n"
+                + "\n".join(f"  - {tool}" for tool in sorted(DELETE_TOOLS))
+            )
+            logger.warning("Delete operation blocked: %s", name)
             return [types.TextContent(type="text", text=error_msg)]
 
         # Get credentials and determine which to use based on tool

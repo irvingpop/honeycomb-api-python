@@ -2,6 +2,46 @@
 
 The Honeycomb API SDK includes an MCP (Model Context Protocol) server that exposes Honeycomb tools to Claude Desktop and other MCP-compatible clients.
 
+## Important: Delete Protection
+
+**DELETE OPERATIONS ARE BLOCKED BY DEFAULT** to prevent accidental data loss.
+
+All Honeycomb delete operations are **irreversible** and **permanent**. The MCP server blocks these operations unless you explicitly opt-in:
+
+- `honeycomb_delete_dataset` - Deletes dataset and ALL its data
+- `honeycomb_delete_trigger` - Permanently removes alert configurations
+- `honeycomb_delete_slo` - Deletes SLO and associated burn alerts
+- `honeycomb_delete_burn_alert` - Removes burn alert configurations
+- `honeycomb_delete_board` - Deletes dashboard
+- `honeycomb_delete_derived_column` - Removes calculated column definitions
+- `honeycomb_delete_column` - Removes column from dataset schema
+- `honeycomb_delete_marker` - Removes event annotations
+- `honeycomb_delete_marker_setting` - Deletes marker type-to-color mappings
+- `honeycomb_delete_recipient` - Deletes notification recipient
+- `honeycomb_delete_environment` - Deletes entire environment (requires management key)
+- `honeycomb_delete_api_key` - Revokes API keys (requires management key)
+
+### Enabling Delete Operations
+
+To allow Claude to perform delete operations, add `HONEYCOMB_ALLOW_DELETES=true` to your MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "honeycomb": {
+      "command": "uvx",
+      "args": ["--from", "honeycomb-api[mcp]", "hny-mcp"],
+      "env": {
+        "HONEYCOMB_API_KEY": "your-api-key",
+        "HONEYCOMB_ALLOW_DELETES": "true"
+      }
+    }
+  }
+}
+```
+
+**Recommendation**: Only enable deletes when actively cleaning up test data. Keep it disabled for production environments.
+
 ## Quick Start
 
 No installation required! Use [uv](https://docs.astral.sh/uv/#installation) (recommended) or [pipx](https://pipx.pypa.io/stable/#install-pipx) to run the MCP server directly.
@@ -173,6 +213,7 @@ Tools are organized into these categories:
 | `HONEYCOMB_API_KEY` | Yes* | Environment-scoped API key (for v1 API tools) |
 | `HONEYCOMB_MANAGEMENT_KEY` | No** | Management key ID (for v2 API tools) |
 | `HONEYCOMB_MANAGEMENT_SECRET` | No** | Management key secret (for v2 API tools) |
+| `HONEYCOMB_ALLOW_DELETES` | No | Set to `true` to enable delete operations (default: blocked) |
 | `HONEYCOMB_MCP_NATIVE_TOOLS` | No | Set to `1` to expose all tools directly |
 
 *Required for most operations (datasets, triggers, SLOs, queries, etc.)
