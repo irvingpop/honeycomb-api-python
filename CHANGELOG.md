@@ -5,6 +5,41 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.1] - 2026-01-16
+
+### Features
+
+- Add TTL-based column caching for analysis tools
+
+### Miscellaneous
+
+- Improve eval test by performing model validation via executor
+
+### Other
+
+- Polyfactory implementation 
+
+* chore:  polyfactory test mocks implementation - phase 4 checkpoint
+
+* majorly boost test coverage for all resources - nothing below 70% now.  fixed 2 bugs in _recipient_utils.py
+
+* More Polyfactory fun
+
+* readmes
+
+* fix a bug caught by review in _recipient_utils
+
+* cleanup
+- Refactor OpenAPI spec patching to be much more thorough 
+
+* refactor:  OpenAPI spec patching to eliminate numbered generated model names
+
+* ingest key mock factories
+
+* replace some manual json with mocks
+
+* log don't print from tests
+
 ## [0.7.0] - 2026-01-14
 
 ### Features
