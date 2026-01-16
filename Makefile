@@ -68,7 +68,7 @@ help:
 	@touch .venv-installed
 
 .venv-dev-installed: pyproject.toml poetry.lock
-	poetry install
+	poetry install --with mcp
 	@touch .venv-dev-installed
 
 install: .venv-installed
