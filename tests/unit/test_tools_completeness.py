@@ -323,9 +323,7 @@ class TestToolDefinitionExamples:
         """Tool definition examples should showcase variety of calculations."""
         from honeycomb.tools import HONEYCOMB_TOOLS
 
-        tool = next(
-            (t for t in HONEYCOMB_TOOLS if t["name"] == "honeycomb_create_trigger"), None
-        )
+        tool = next((t for t in HONEYCOMB_TOOLS if t["name"] == "honeycomb_create_trigger"), None)
         assert tool is not None
 
         examples = tool.get("input_examples", [])
@@ -346,9 +344,7 @@ class TestToolDefinitionExamples:
         """Tool definition examples should showcase variety of filters."""
         from honeycomb.tools import HONEYCOMB_TOOLS
 
-        tool = next(
-            (t for t in HONEYCOMB_TOOLS if t["name"] == "honeycomb_create_trigger"), None
-        )
+        tool = next((t for t in HONEYCOMB_TOOLS if t["name"] == "honeycomb_create_trigger"), None)
         assert tool is not None
 
         examples = tool.get("input_examples", [])

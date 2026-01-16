@@ -275,7 +275,7 @@ class TestToolSelection:
             "",
             "Call these tools simultaneously:",
         ]
-        for i, (_, expected_tool, prompt) in enumerate(self.CREATE_TOOL_CASES, 1):
+        for i, (_, _, prompt) in enumerate(self.CREATE_TOOL_CASES, 1):
             lines.append(f"{i}. {prompt}")
 
         combined_prompt = "\n".join(lines)

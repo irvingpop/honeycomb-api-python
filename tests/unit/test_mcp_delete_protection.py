@@ -3,8 +3,6 @@
 import os
 from unittest.mock import patch
 
-import pytest
-
 from honeycomb.mcp.server import DELETE_TOOLS, _are_deletes_blocked
 
 
@@ -65,7 +63,7 @@ class TestDeleteToolsList:
             "honeycomb_delete_api_key",
         }
 
-        assert DELETE_TOOLS == expected_deletes
+        assert expected_deletes == DELETE_TOOLS
 
     def test_delete_tools_count(self):
         """Verify expected number of delete operations."""

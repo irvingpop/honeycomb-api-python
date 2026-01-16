@@ -391,8 +391,7 @@ async def _run_server() -> None:
                 f"Delete operations are disabled by default to prevent accidental data loss.\n"
                 f"All Honeycomb delete operations are IRREVERSIBLE and PERMANENT.\n\n"
                 f"To enable delete operations, set HONEYCOMB_ALLOW_DELETES=true in your MCP configuration.\n\n"
-                f"Blocked operations:\n"
-                + "\n".join(f"  - {tool}" for tool in sorted(DELETE_TOOLS))
+                f"Blocked operations:\n" + "\n".join(f"  - {tool}" for tool in sorted(DELETE_TOOLS))
             )
             logger.warning("Delete operation blocked: %s", name)
             return [types.TextContent(type="text", text=error_msg)]
