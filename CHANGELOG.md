@@ -5,6 +5,38 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.3] - 2026-01-16
+
+### Other
+
+- Adds a slim MCP server that exposes all 69 tools via 2 meta-tools 
+
+* feat: mcp server
+
+* whoops not relevant
+
+Signed-off-by: Irving Popovetsky <irving@honeycomb.io>
+
+* fix CI
+
+Signed-off-by: Irving Popovetsky <irving@honeycomb.io>
+
+* don't swallow the body of the error message from the API - return it properly
+
+* fix a couple bugs in board updating
+
+* have the tools include examples
+
+* optimize eval tests
+
+* delete protection seems like a good idea
+
+* linting
+
+---------
+
+Signed-off-by: Irving Popovetsky <irving@honeycomb.io>
+
 ## [0.7.2] - 2026-01-16
 
 ### Bug Fixes

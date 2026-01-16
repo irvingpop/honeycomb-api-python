@@ -31,7 +31,7 @@ honeycomb-api = "honeycomb.cli:app"  # Matches package name for uvx/pipx
 hny-mcp = "honeycomb.mcp:run_server"  # MCP server for Claude Desktop
 
 [tool.poetry]
-version = "0.7.2"
+version = "0.7.3"
 packages = [{ include = "honeycomb", from = "src" }]
 
 [tool.poetry.dependencies]
