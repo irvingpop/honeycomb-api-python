@@ -884,14 +884,27 @@ async def _execute_delete_derived_column(
 async def _execute_create_query(client: "HoneycombClient", tool_input: dict[str, Any]) -> str:
     """Execute honeycomb_create_query.
 
-    Note: annotation_name parameter is accepted but currently ignored.
-    QueryBuilder integration required for full annotation support.
+    Creates a query and optionally an annotation if annotation_name is provided.
     """
     dataset = tool_input.pop("dataset")
-    tool_input.pop("annotation_name", None)  # Remove if present, not yet supported
+    annotation_name = tool_input.pop("annotation_name", None)
 
     query_spec = QuerySpec(**tool_input)
     query = await client.queries.create_async(spec=query_spec, dataset=dataset)
+
+    # If annotation_name provided, create the annotation
+    if annotation_name and query.id:
+        from honeycomb.models.query_annotations import QueryAnnotationCreate
+
+        annotation = await client.query_annotations.create_async(
+            dataset=dataset,
+            annotation=QueryAnnotationCreate(
+                name=annotation_name,
+                query_id=query.id,
+            ),
+        )
+        # Update the query object to include the annotation_id
+        query.query_annotation_id = annotation.id
 
     return json.dumps(query.model_dump(), default=str)
 

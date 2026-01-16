@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Annotated
 
-from pydantic import Field
+from pydantic import Field, model_validator
 
 from honeycomb._generated_models import Board as _BoardGenerated
 from honeycomb._generated_models import (
@@ -30,10 +30,33 @@ BoardViewFilterOperation = BoardViewFilterBoardViewFilterOperation
 
 
 # Wrapper models to handle API inconsistencies (some boards return panels without data)
+class QueryPanelQueryPanel(_QueryPanelQueryPanelGenerated):
+    """Query panel query panel wrapper with validation.
+
+    Validates that query_annotation_id is not mistakenly set to the query_id.
+    """
+
+    @model_validator(mode="after")
+    def validate_annotation_id(self) -> QueryPanelQueryPanel:
+        """Validate that annotation_id is not the same as query_id.
+
+        This catches a common mistake where users pass the query ID as the annotation ID.
+        Query annotations are separate objects that provide metadata for queries.
+        """
+        if self.query_id and self.query_annotation_id == self.query_id:
+            raise ValueError(
+                f"query_annotation_id cannot be the same as query_id ('{self.query_id}'). "
+                "Query annotations are separate metadata objects. "
+                "Create a query annotation first using client.query_annotations.create_async() "
+                "or use BoardBuilder with QueryBuilder to create them automatically."
+            )
+        return self
+
+
 class QueryPanel(_QueryPanelGenerated):
     """Query panel wrapper that makes query_panel optional for broken API responses."""
 
-    query_panel: _QueryPanelQueryPanelGenerated | None = None  # type: ignore[assignment]
+    query_panel: QueryPanelQueryPanel | None = None  # type: ignore[assignment]
 
 
 class SLOPanel(_SLOPanelGenerated):
@@ -58,6 +81,7 @@ __all__ = [
     "BoardQueryVisualizationSettings",
     "BoardQueryVisualizationSettingsChart",
     "QueryPanel",
+    "QueryPanelQueryPanel",
     "SLOPanel",
     "TextPanel",
     "BoardView",
