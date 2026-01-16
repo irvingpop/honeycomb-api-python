@@ -98,21 +98,24 @@ class HoneycombValidationError(HoneycombAPIError):
             error_parts = []
             for e in self.errors:
                 if isinstance(e, dict):
-                    # Format 1: {"field": "...", "message": "..."}
-                    if "field" in e and "message" in e:
+                    # Format 1: {"field": "...", "description": "...", "code": "..."} (Honeycomb type_detail)
+                    if "field" in e and "description" in e:
+                        error_parts.append(f"{e['field']}: {e['description']}")
+                    # Format 2: {"field": "...", "message": "..."}
+                    elif "field" in e and "message" in e:
                         error_parts.append(f"{e['field']}: {e['message']}")
-                    # Format 2: {"detail": "...", "title": "..."}
+                    # Format 3: {"detail": "...", "title": "..."}
                     elif "detail" in e or "title" in e:
                         detail = e.get("detail", e.get("title", ""))
                         error_parts.append(str(detail))
-                    # Format 3: Any other dict - just stringify it
+                    # Format 4: Any other dict - just stringify it
                     else:
                         error_parts.append(str(e))
                 elif isinstance(e, str):
-                    # Format 4: Plain string
+                    # Format 5: Plain string
                     error_parts.append(e)
                 else:
-                    # Format 5: Other types - stringify
+                    # Format 6: Other types - stringify
                     error_parts.append(str(e))
 
             if error_parts:

@@ -451,7 +451,7 @@ class HoneycombClient:
 
         Handles multiple error formats:
         - Simple: {"error": "message"}
-        - RFC 7807: {"title": "...", "detail": "..."}
+        - RFC 7807: {"title": "...", "detail": "...", "type_detail": [...]}
         - JSON:API: {"errors": [{"detail": "..."}]}
         """
         try:
@@ -461,17 +461,18 @@ class HoneycombClient:
 
         errors: list[dict] | None = None
 
-        # Simple format (most common for Honeycomb)
-        if "error" in body:
-            return body["error"], None
-
-        # RFC 7807 Problem Details
+        # RFC 7807 Problem Details (check first - has both "title" AND may have "error")
+        # The validation errors come in "type_detail" field
         if "title" in body:
             msg = body["title"]
             if "detail" in body:
                 msg = f"{msg}: {body['detail']}"
             errors = body.get("type_detail")
             return msg, errors
+
+        # Simple format (most common for Honeycomb)
+        if "error" in body:
+            return body["error"], None
 
         # JSON:API format
         if "errors" in body and isinstance(body["errors"], list):
@@ -490,21 +491,31 @@ class HoneycombClient:
         message, errors = self._parse_error_response(response)
         request_id = response.headers.get("X-Request-Id")
 
+        # Parse response body for detailed error info
+        try:
+            response_body = response.json()
+        except Exception:
+            response_body = None
+
         if status == 401:
-            raise HoneycombAuthError(message, status, request_id)
+            raise HoneycombAuthError(message, status, request_id, response_body)
         elif status == 403:
-            raise HoneycombForbiddenError(message, status, request_id)
+            raise HoneycombForbiddenError(message, status, request_id, response_body)
         elif status == 404:
-            raise HoneycombNotFoundError(message, status, request_id)
+            raise HoneycombNotFoundError(message, status, request_id, response_body)
         elif status == 422:
-            raise HoneycombValidationError(message, status, request_id, errors=errors)
+            raise HoneycombValidationError(
+                message, status, request_id, response_body, errors=errors
+            )
         elif status == 429:
             retry_after = self._parse_retry_after(response)
-            raise HoneycombRateLimitError(message, status, request_id, retry_after=retry_after)
+            raise HoneycombRateLimitError(
+                message, status, request_id, response_body, retry_after=retry_after
+            )
         elif 500 <= status < 600:
-            raise HoneycombServerError(message, status, request_id)
+            raise HoneycombServerError(message, status, request_id, response_body)
         else:
-            raise HoneycombAPIError(message, status, request_id)
+            raise HoneycombAPIError(message, status, request_id, response_body)
 
     def _should_retry(self, response: httpx.Response, attempt: int) -> bool:
         """Determine if request should be retried."""
