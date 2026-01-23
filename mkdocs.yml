@@ -41,6 +41,7 @@ nav:
       - Quick Start: getting-started/quickstart.md
       - Authentication: getting-started/authentication.md
   - CLI Reference: cli.md
+  - MCP Server: mcp.md
   - Usage Guides:
       - Core Resources:
           - Datasets: usage/datasets.md

@@ -76,7 +76,7 @@ def generate_all_tools() -> list[dict[str, Any]]:
     """Generate all tool definitions.
 
     Returns:
-        List of 67 tool definitions from all resources.
+        List of 69 tool definitions from all resources.
     """
     tools = []
 

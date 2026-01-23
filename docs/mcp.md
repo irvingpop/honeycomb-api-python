@@ -1,46 +1,6 @@
-# MCP Server for Claude Desktop
+# MCP Server
 
-The Honeycomb API SDK includes an MCP (Model Context Protocol) server that exposes Honeycomb tools to Claude Desktop and other MCP-compatible clients.
-
-## Important: Delete Protection
-
-**DELETE OPERATIONS ARE BLOCKED BY DEFAULT** to prevent accidental data loss.
-
-All Honeycomb delete operations are **irreversible** and **permanent**. The MCP server blocks these operations unless you explicitly opt-in:
-
-- `honeycomb_delete_dataset` - Deletes dataset and ALL its data
-- `honeycomb_delete_trigger` - Permanently removes alert configurations
-- `honeycomb_delete_slo` - Deletes SLO and associated burn alerts
-- `honeycomb_delete_burn_alert` - Removes burn alert configurations
-- `honeycomb_delete_board` - Deletes dashboard
-- `honeycomb_delete_derived_column` - Removes calculated column definitions
-- `honeycomb_delete_column` - Removes column from dataset schema
-- `honeycomb_delete_marker` - Removes event annotations
-- `honeycomb_delete_marker_setting` - Deletes marker type-to-color mappings
-- `honeycomb_delete_recipient` - Deletes notification recipient
-- `honeycomb_delete_environment` - Deletes entire environment (requires management key)
-- `honeycomb_delete_api_key` - Revokes API keys (requires management key)
-
-### Enabling Delete Operations
-
-To allow Claude to perform delete operations, add `HONEYCOMB_ALLOW_DELETES=true` to your MCP configuration:
-
-```json
-{
-  "mcpServers": {
-    "honeycomb": {
-      "command": "uvx",
-      "args": ["--from", "honeycomb-api[mcp]", "hny-mcp"],
-      "env": {
-        "HONEYCOMB_API_KEY": "your-api-key",
-        "HONEYCOMB_ALLOW_DELETES": "true"
-      }
-    }
-  }
-}
-```
-
-**Recommendation**: Only enable deletes when actively cleaning up test data. Keep it disabled for production environments.
+The Honeycomb API SDK includes an MCP (Model Context Protocol) server that exposes Honeycomb tools to Claude and other MCP-compatible clients.
 
 ## Quick Start
 
@@ -56,77 +16,73 @@ Add the Honeycomb MCP server to your Claude Desktop configuration:
 
 **Linux**: `~/.config/Claude/claude_desktop_config.json`
 
-**Using uvx (recommended):**
-
-```json
-{
-  "mcpServers": {
-    "honeycomb": {
-      "command": "uvx",
-      "args": ["--from", "honeycomb-api[mcp]", "hny-mcp"],
-      "env": {
-        "HONEYCOMB_API_KEY": "your-environment-api-key"
+=== "uvx"
+    ```json
+    {
+      "mcpServers": {
+        "honeycomb": {
+          "command": "uvx",
+          "args": ["--from", "honeycomb-api[mcp]", "hny-mcp"],
+          "env": {
+            "HONEYCOMB_API_KEY": "your-environment-api-key"
+          }
+        }
       }
     }
-  }
-}
-```
+    ```
 
-**Using pipx:**
-
-```json
-{
-  "mcpServers": {
-    "honeycomb": {
-      "command": "pipx",
-      "args": ["run", "--spec", "honeycomb-api[mcp]", "hny-mcp"],
-      "env": {
-        "HONEYCOMB_API_KEY": "your-environment-api-key"
+=== "pipx"
+    ```json
+    {
+      "mcpServers": {
+        "honeycomb": {
+          "command": "pipx",
+          "args": ["run", "--spec", "honeycomb-api[mcp]", "hny-mcp"],
+          "env": {
+            "HONEYCOMB_API_KEY": "your-environment-api-key"
+          }
+        }
       }
     }
-  }
-}
-```
+    ```
 
 After saving, restart Claude Desktop. You should see "honeycomb" in the MCP servers list.
 
-### Claude Code (CLI)
+### Claude Code
 
 Add the MCP server to your Claude Code configuration.
 
 **Edit `~/.claude/settings.json`** (or `.claude/settings.local.json` for project-specific):
 
-**Using uvx (recommended):**
-
-```json
-{
-  "mcpServers": {
-    "honeycomb": {
-      "command": "uvx",
-      "args": ["--from", "honeycomb-api[mcp]", "hny-mcp"],
-      "env": {
-        "HONEYCOMB_API_KEY": "your-api-key"
+=== "uvx"
+    ```json
+    {
+      "mcpServers": {
+        "honeycomb": {
+          "command": "uvx",
+          "args": ["--from", "honeycomb-api[mcp]", "hny-mcp"],
+          "env": {
+            "HONEYCOMB_API_KEY": "your-api-key"
+          }
+        }
       }
     }
-  }
-}
-```
+    ```
 
-**Using pipx:**
-
-```json
-{
-  "mcpServers": {
-    "honeycomb": {
-      "command": "pipx",
-      "args": ["run", "--spec", "honeycomb-api[mcp]", "hny-mcp"],
-      "env": {
-        "HONEYCOMB_API_KEY": "your-api-key"
+=== "pipx"
+    ```json
+    {
+      "mcpServers": {
+        "honeycomb": {
+          "command": "pipx",
+          "args": ["run", "--spec", "honeycomb-api[mcp]", "hny-mcp"],
+          "env": {
+            "HONEYCOMB_API_KEY": "your-api-key"
+          }
+        }
       }
     }
-  }
-}
-```
+    ```
 
 ### Cursor
 
@@ -134,33 +90,31 @@ Add the MCP server to Cursor's configuration.
 
 **Edit `~/.cursor/mcp.json`:**
 
-**Using uvx (recommended):**
-
-```json
-{
-  "honeycomb": {
-    "command": "uvx",
-    "args": ["--from", "honeycomb-api[mcp]", "hny-mcp"],
-    "env": {
-      "HONEYCOMB_API_KEY": "your-api-key"
+=== "uvx"
+    ```json
+    {
+      "honeycomb": {
+        "command": "uvx",
+        "args": ["--from", "honeycomb-api[mcp]", "hny-mcp"],
+        "env": {
+          "HONEYCOMB_API_KEY": "your-api-key"
+        }
+      }
     }
-  }
-}
-```
+    ```
 
-**Using pipx:**
-
-```json
-{
-  "honeycomb": {
-    "command": "pipx",
-    "args": ["run", "--spec", "honeycomb-api[mcp]", "hny-mcp"],
-    "env": {
-      "HONEYCOMB_API_KEY": "your-api-key"
+=== "pipx"
+    ```json
+    {
+      "honeycomb": {
+        "command": "pipx",
+        "args": ["run", "--spec", "honeycomb-api[mcp]", "hny-mcp"],
+        "env": {
+          "HONEYCOMB_API_KEY": "your-api-key"
+        }
+      }
     }
-  }
-}
-```
+    ```
 
 ### Start Using Honeycomb Tools
 
@@ -219,6 +173,45 @@ Tools are organized into these categories:
 *Required for most operations (datasets, triggers, SLOs, queries, etc.)
 
 **Required only for team-level operations (managing environments and API keys). If not provided, these 10 tools are automatically hidden.
+
+
+### Important: Delete Protection
+
+**DELETE OPERATIONS ARE BLOCKED BY DEFAULT** to prevent accidental data loss.
+
+All Honeycomb delete operations are **irreversible** and **permanent**. The MCP server blocks these operations unless you explicitly opt-in:
+
+- `honeycomb_delete_dataset` - Deletes dataset and ALL its data
+- `honeycomb_delete_trigger` - Permanently removes alert configurations
+- `honeycomb_delete_slo` - Deletes SLO and associated burn alerts
+- `honeycomb_delete_burn_alert` - Removes burn alert configurations
+- `honeycomb_delete_board` - Deletes dashboard
+- `honeycomb_delete_derived_column` - Removes calculated column definitions
+- `honeycomb_delete_column` - Removes column from dataset schema
+- `honeycomb_delete_marker` - Removes event annotations
+- `honeycomb_delete_marker_setting` - Deletes marker type-to-color mappings
+- `honeycomb_delete_recipient` - Deletes notification recipient
+- `honeycomb_delete_environment` - Deletes entire environment (requires management key)
+- `honeycomb_delete_api_key` - Revokes API keys (requires management key)
+
+### Enabling Delete Operations
+
+To allow Claude to perform delete operations, add `HONEYCOMB_ALLOW_DELETES=true` to your MCP configuration:
+
+```json
+{
+  "mcpServers": {
+    "honeycomb": {
+      "command": "uvx",
+      "args": ["--from", "honeycomb-api[mcp]", "hny-mcp"],
+      "env": {
+        "HONEYCOMB_API_KEY": "your-api-key",
+        "HONEYCOMB_ALLOW_DELETES": "true"
+      }
+    }
+  }
+}
+```
 
 ### Native Tools Mode (Advanced)
 
@@ -316,13 +309,3 @@ For local development or testing unreleased versions, use `poetry run`:
 2. Check MCP config file syntax is valid JSON
 3. Verify `uvx` or `pipx` is working: `uvx --version` or `pipx --version`
 4. Check MCP server logs (typically in Claude Desktop logs)
-
-## API Reference
-
-For detailed information about individual tools and their parameters, see:
-
-- [Triggers](triggers.md)
-- [SLOs](slos.md)
-- [Queries](queries.md)
-- [Datasets](datasets.md)
-- [Boards](boards.md)

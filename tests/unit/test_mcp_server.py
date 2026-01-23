@@ -62,7 +62,7 @@ class TestCategoryExtraction:
         assert _get_category_from_tool_name("honeycomb_get_recipient_triggers") == "recipients"
 
     def test_all_tools_have_categories(self):
-        """Ensure all 67 tools have valid categories."""
+        """Ensure all 69 tools have valid categories."""
         for tool in HONEYCOMB_TOOLS:
             category = _get_category_from_tool_name(tool["name"])
             assert category != "unknown", f"Tool {tool['name']} has unknown category"

@@ -1,11 +1,11 @@
 # Claude Tool Definitions for Honeycomb API
 
-Honeycomb Python SDK provides 67 Claude-compatible tool definitions that enable LLMs to create and manage Honeycomb resources via structured tool calls.
+Honeycomb Python SDK provides 69 Claude-compatible tool definitions that enable LLMs to create and manage Honeycomb resources via structured tool calls.
 
 ## Overview
 
 The `honeycomb.tools` module provides:
-- **67 tool definitions** covering 14 Honeycomb API resources
+- **69 tool definitions** covering 14 Honeycomb API resources
 - **JSON schemas** for automatic parameter validation
 - **Hand-crafted descriptions** for optimal LLM tool selection
 - **Execution handlers** that call Honeycomb API with orchestration
@@ -299,7 +299,7 @@ Do it in one:
 
 ### 4. Use Advanced Tool Use Beta
 
-Always include the beta for better tool selection with 67 tools:
+Always include the beta for better tool selection and ability to use input examples:
 
 ```python
 response = client.beta.messages.create(
@@ -378,13 +378,13 @@ The descriptions use directive language:
 "IMPORTANT: Use this tool (not honeycomb_create_derived_column) when creating an SLO"
 ```
 
-This overcomes Claude's training knowledge and ensures correct tool selection even with 67 options.
+This overcomes Claude's training knowledge and ensures correct tool selection even with all tools available.
 
 ## Customization
 
 ### Context Window Management
 
-> **Warning**: Using all 67 tools (`HONEYCOMB_TOOLS`) consumes ~100K tokens per API call.
+> **Warning**: Using all tools (`HONEYCOMB_TOOLS`) consumes ~100K tokens per API call.
 > For production use, supply only the tools relevant to your use case.
 
 Each resource module provides a `get_tools()` function for efficient tool loading:
@@ -633,7 +633,7 @@ See the `examples/` directory in the repository for complete examples:
 
 ## Tool Inventory
 
-Full list of 67 tools available via:
+Full list of all tools available via:
 
 ```python
 from honeycomb.tools import list_tool_names
@@ -654,7 +654,7 @@ honeycomb_create_recipient
 honeycomb_create_slo
 honeycomb_create_trigger
 honeycomb_delete_board
-... (67 total)
+... (69 total)
 ```
 
 ## Learn More
